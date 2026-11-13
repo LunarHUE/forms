@@ -1,6 +1,32 @@
 # forms
 
+A form library that doesn't depend on any UI framework. The core holds the form
+logic, and small adapters connect it to each framework or schema library.
 
+| Package                   | What it is                                       |
+| ------------------------- | ------------------------------------------------ |
+| `@lunarhue/forms-core`    | Framework-independent core                       |
+| `@lunarhue/forms-react`   | React adapter (React 16.8 and later)             |
+| `@lunarhue/forms-solid`   | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
+| `@lunarhue/forms-vue`     | Vue 3 adapter                                    |
+| `@lunarhue/forms-valibot` | Valibot schema adapter                           |
+
+The repo is in early setup. The packages build and publish-check, but none has a
+real API yet and nothing is published.
+
+## Scripts
+
+Run these from the repo root with `bun run <name>`. Each one covers every package.
+
+- `typecheck`: `tsc` over the tooling config files and each package. Packages read
+  each other from source, so no build is needed first.
+- `lint`: oxlint with type-aware rules, plus the React Compiler rules for
+  `packages/react`. Warnings fail it.
+- `test`: vitest, runtime tests and `*.test-d.ts` type tests.
+- `build`: ESM in `dist/esm` and CJS in `dist/cjs` with tsdown, declarations
+  with `tsc`. Packages build in dependency order.
+- `check:package`: publint and arethetypeswrong on the packed package. Needs a build.
+- `size`: size-limit on each entry point. Needs a build.
 
 ## Working on it
 
