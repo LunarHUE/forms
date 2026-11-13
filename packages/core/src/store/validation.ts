@@ -48,7 +48,7 @@ export interface ValidationOptions<V, E> {
 /** Field and form validators, their timing, debounce and async runs. */
 export interface Validation<E> {
   /** Adds a validator at stable path `path`. The returned function removes it and the errors it set. */
-  register(path: Path, validator: ValidatorInput<unknown, E>): () => void;
+  register(this: void, path: Path, validator: ValidatorInput<unknown, E>): () => void;
   /** Runs every validator at and below `path` now. Resolves true when the subtree has no validation error. */
   validate(path: Path): Promise<boolean>;
   /** Called after a user-edit write at `path` changed the value, inside the write's batch. */

@@ -56,7 +56,7 @@ export interface Baseline {
    * while its items have the keys and order of its baseline, and is one leaf
    * otherwise.
    */
-  changes(path?: Path): readonly Change[];
+  changes(this: void, path?: Path): readonly Change[];
   /** The baseline value at stable path `path`, and the item keys of the arrays in it. */
   locate(path: Path): { readonly value: unknown; readonly keys: KeyTrie | undefined };
   /** Compares two values with the form's equality chain. `keys` names the items of `b`. */

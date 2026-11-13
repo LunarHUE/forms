@@ -21,15 +21,15 @@ export interface SubmitOptions<V, E, I, R, O = V> {
 /** Submitting, form-wide user errors and finding invalid fields. */
 export interface Submit<E, I, R> {
   /** As `FormStore.submit`. */
-  submit(...args: IntentArgs<I>): Promise<Submission<I, R>>;
+  submit(this: void, ...args: IntentArgs<I>): Promise<Submission<I, R>>;
   /** As `FormStore.handleSubmit`. */
-  handleSubmit(event?: { preventDefault(): void }): Promise<void>;
+  handleSubmit(this: void, event?: { preventDefault(): void }): Promise<void>;
   /** As `FormStore.setErrors`. */
-  setErrors(errors: ErrorMap<E>): void;
+  setErrors(this: void, errors: ErrorMap<E>): void;
   /** As `FormStore.firstInvalid`. */
-  firstInvalid(): AnyFieldHandle<E> | undefined;
+  firstInvalid(this: void): AnyFieldHandle<E> | undefined;
   /** As `FormStore.disabledInvalid`. */
-  disabledInvalid(): DisabledInvalid<E>[];
+  disabledInvalid(this: void): DisabledInvalid<E>[];
   /** Called when the whole form is reset, inside the reset's batch, to abort a running submit. */
   abort(): void;
 }
