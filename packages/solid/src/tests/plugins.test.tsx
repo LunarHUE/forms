@@ -1,5 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "../plugins.js";
+import { history } from "../plugins/history.js";
 import { type Rebase, rebase } from "../plugins/rebase.js";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createForm, createForms, type FormOf } from "../index.js";
@@ -95,5 +96,39 @@ describe("the rebase plugin", () => {
     await settle();
     expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("b");
     expect(getAs(host, "p", HTMLParagraphElement).textContent).toBe("2");
+  });
+});
+
+const undoHistory = history();
+const Note = createForms({ plugins: [undoHistory] }).define({ defaultValues: { text: "" } });
+
+function NotePage() {
+  const form = createForm(Note);
+  return (
+    <>
+      <form.Field name="text">{(field) => <input {...field.inputProps()} />}</form.Field>
+      <button type="button" disabled={!(undoHistory.formMeta(form.state)?.canUndo ?? false)} onClick={() => form.plugins.history.undo()}>
+        Undo
+      </button>
+    </>
+  );
+}
+
+describe("the history plugin", () => {
+  it("enables an undo button through its form meta and disables it after the undo", async () => {
+    const { host } = mount(() => <NotePage />);
+    const input = get(host, "input");
+    const button = getAs(host, "button", HTMLButtonElement);
+    expect(button.disabled).toBe(true);
+
+    typeText(input, "a");
+    // The step is recorded a microtask after the write.
+    await settle();
+    expect(button.disabled).toBe(false);
+
+    button.click();
+    await settle();
+    expect(input.value).toBe("");
+    expect(button.disabled).toBe(true);
   });
 });
