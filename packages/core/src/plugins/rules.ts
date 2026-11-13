@@ -1,6 +1,7 @@
+import { hookPlugin } from "../hook-plugin.js";
 import type { Path } from "../path.js";
 import type { HookPlugin, PluginContext } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { recorder } from "../store/host/recorder.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
 export interface RuleResult {
@@ -27,7 +28,7 @@ export interface RulesMeta {
 // `V` only types the rules for the caller. The plugin hands them the store's value as a `V`.
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResult>>): HookPlugin<undefined, "rules", RulesMeta> {
-  const plugin: HookPlugin<undefined, "rules", RulesMeta> = definePlugin({
+  const plugin: HookPlugin<undefined, "rules", RulesMeta> = hookPlugin([recorder], {
     name: "rules",
     setup(ctx: PluginContext<RulesMeta>) {
       const { store } = ctx;

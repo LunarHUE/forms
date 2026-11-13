@@ -1,7 +1,17 @@
-import type { HookPlugin, MetaSource, PluginDefinition } from "./plugin.js";
-import { createPluginHost, hosts } from "./store/plugins.js";
+import { hookPlugin } from "./hook-plugin.js";
+import type { HookPlugin, PluginDefinition } from "./plugin.js";
+import { active } from "./store/host/active.js";
+import { order } from "./store/host/order.js";
+import { recorder } from "./store/host/recorder.js";
+import { submit } from "./store/host/submit.js";
+import { timing } from "./store/host/timing.js";
+import { transforms } from "./store/host/transforms.js";
+import { hosts } from "./store/plugins.js";
 
 export { refuse } from "./store/plugins.js";
+
+// Every part, since a plugin's hooks aren't known until its setup runs.
+const every = [order, transforms, recorder, timing, active, submit];
 
 /**
  * Makes a hook plugin from its definition. Install it with
@@ -16,11 +26,7 @@ export { refuse } from "./store/plugins.js";
 export function definePlugin<A = undefined, N extends string = string, M = unknown, F = unknown>(
   definition: PluginDefinition<A, N, M, F>,
 ): HookPlugin<A, N, M, F> {
-  const { name } = definition;
-  // The host writes each plugin's meta under its name, with the type its context took.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const read = (source: MetaSource) => source.meta?.[name] as (M & F) | undefined;
-  return { ...definition, "~host": createPluginHost, meta: read, formMeta: read };
+  return hookPlugin(every, definition);
 }
 
 /**

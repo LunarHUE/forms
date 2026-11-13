@@ -1,5 +1,7 @@
+import { hookPlugin } from "../hook-plugin.js";
 import type { HookPlugin, PluginContext, WriteRecord } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { recorder } from "../store/host/recorder.js";
+import { timing } from "../store/host/timing.js";
 
 /** The API of `history`, as `form.plugins.history`. */
 export interface HistoryApi {
@@ -41,7 +43,7 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * After an edit it changes a microtask later, when the step is recorded.
  */
 export function history(limit = 100): HookPlugin<HistoryApi, "history", never, HistoryMeta> {
-  return definePlugin({
+  return hookPlugin([recorder, timing], {
     name: "history",
     setup(ctx: PluginContext<never, HistoryMeta>) {
       const { store } = ctx;
