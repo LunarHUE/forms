@@ -1,33 +1,41 @@
 # Examples
 
-Every example app builds the same "New order" form, next to a dev inspector
-that shows the store's state as it changes. React with Next.js is the only
-framework so far.
-They are workspace packages, so they install the library packages from this
-repo with `workspace:*`.
+Small forms that show what the API looks like. Each file is one idea and
+reads top to bottom: the schema or default values, `createForms`, `define`,
+and one component that renders the form.
+
+These are for reading. Nothing here is rendered, run or tested. The root
+`typecheck` script checks every file, so the code stays in step with the
+library, and `lint` covers them too.
 
 ## Layout
 
-- `examples/shared/*` holds framework-free code that every app imports as
-  TypeScript source. Nothing here is built or published.
-  - `order` (`@lunarhue/forms-example-order`): the valibot schema, the option
-    lists, the validators the schema can't express, a fake server, the
-    server settings the inspector toggles, an invalid value for testing, and
-    `styles.css`, the one stylesheet for the whole page.
-  - `inspector` (`@lunarhue/forms-example-inspector`): the dev panel, written
-    in plain DOM. `mountInspector(element, store, options)` renders it and
-    returns the function that removes it.
-- `examples/react/*` holds the React apps.
-  - `shared` (`@lunarhue/forms-example-react`): the form, its field
-    components, the render badges and the inspector wrapper, as TSX source.
-    `OrderPage` takes the save function, the starting values and a header
-    from each app.
-  - `next` (`@lunarhue/forms-example-next`): the Next.js App Router app.
+`react` (`@lunarhue/forms-example-react`) and `solid`
+(`@lunarhue/forms-example-solid`) are private workspace packages, one per
+adapter. They have the same files:
 
-There are no Solid or Vue examples yet.
+| File                   | What it shows                                                  |
+| ---------------------- | -------------------------------------------------------------- |
+| `basic.tsx`            | A schema, field components, a fieldset and a submit button     |
+| `readme.tsx`           | The root README's example, exactly as it appears there (React) |
+| `arrays.tsx`           | A list of rows with push, remove and move                      |
+| `async-validation.tsx` | A debounced server check on a username                         |
+| `rules.tsx`            | Fields disabled or hidden from another field's value           |
+| `history.tsx`          | Undo and redo buttons                                          |
+| `mask.tsx`             | A phone number shown formatted and stored as digits            |
+| `persist.tsx`          | A draft kept in `localStorage` across reloads                  |
+| `bind.tsx`             | The form kept in step with a zustand store, or a Solid signal  |
+| `dirty.tsx`            | A save button enabled only when something changed              |
 
-## Commands
+Each file default-exports its form component, which would work if you
+mounted it.
 
-The root `typecheck`, `lint` and `test` scripts cover every example that has
-a `typecheck` script or a `vitest.config.ts`. `build`, `check:package` and
-`size` only run for `packages/*`.
+There is no Vue example yet.
+
+## Elsewhere
+
+- The inspector, the dev panel that shows a form store as it changes, is
+  parked in `parked/inspector` until the docs site can render these forms
+  with it beside them.
+- Browser tests don't live here. They belong in a separate suite that runs
+  the same checks against every adapter, tracked in issue #69.
