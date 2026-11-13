@@ -3,7 +3,7 @@ import type { Path, PathSegment } from "./path.js";
 import type { FieldSnapshot } from "./snapshot.js";
 import type { AnyFormStore } from "./store.js";
 import type { ValidatorInput } from "./validator.js";
-import type { ChildValue, ItemOf, KeysOf, ShapeOf } from "./value.js";
+import type { ChildValue, IsLiteralUnion, ItemOf, KeysOf, ShapeOf } from "./value.js";
 
 /**
  * Options every write command takes. Every write counts as a user edit
@@ -156,17 +156,32 @@ export type ChildHandles<V, E = FormError> = {
   readonly [K in KeysOf<V>]-?: FieldHandle<ChildValue<V, K>, E>;
 };
 
+/**
+ * The item and options `push` and `insert` take on an array with items of
+ * type `I`. The item is required when `I` is a union of literals without
+ * `null` or `undefined`, such as the options a checkbox group picks. No
+ * option is the empty one, so the adapter's item value is `undefined`,
+ * which `I` doesn't allow.
+ */
+export type ItemArgs<I> =
+  IsLiteralUnion<I> extends true
+    ? [Extract<I, null | undefined>] extends [never]
+      ? [item: I, options?: WriteOptions]
+      : [item?: I, options?: WriteOptions]
+    : [item?: I, options?: WriteOptions];
+
 /** The handle for an array value. Items are addressed by stable key, not index. */
 export interface ArrayHandle<V, E = FormError> extends HandleBase<V, E> {
   /** Replaces the whole array. */
   setValue(value: V, options?: WriteOptions): void;
   /**
    * Adds an item at the end. With no item it uses the schema adapter's item
-   * value, or `undefined` when there is no adapter.
+   * value, or `undefined` when there is no adapter. An array of a union of
+   * literals has no empty item, so it needs the item. See `ItemArgs`.
    */
-  push(item?: ItemOf<V>, options?: WriteOptions): void;
+  push(...args: ItemArgs<ItemOf<V>>): void;
   /** Adds an item before `index`. With no item it behaves as `push` does. */
-  insert(index: number, item?: ItemOf<V>, options?: WriteOptions): void;
+  insert(index: number, ...args: ItemArgs<ItemOf<V>>): void;
   /**
    * Removes the item at `index`. Its handle keeps returning its last
    * snapshot, so a component that is still unmounting can read it. The store

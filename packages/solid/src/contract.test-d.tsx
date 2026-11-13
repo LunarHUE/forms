@@ -84,6 +84,7 @@ const signupSchema = v.object({
   plan: v.picklist(["free", "pro"]),
   bio: v.string(),
   tags: v.array(v.string()),
+  channels: v.array(v.picklist(["email", "sms"])),
   billing: AddressSchema,
   shipping: AddressSchema,
   rows: v.array(v.object({ title: v.string(), qty: v.number(), address: AddressSchema })),
@@ -112,6 +113,7 @@ interface SignupDraft {
   plan: "free" | "pro" | undefined;
   bio: string;
   tags: string[];
+  channels: ("email" | "sms")[];
   billing: Address;
   shipping: Address;
   rows: Row[];
@@ -575,6 +577,7 @@ describe("free functions", () => {
     expectTypeOf(createInputProps(root.at("age"), { kind: "number", type: "range" })).toEqualTypeOf<NumberInputProps>();
     expectTypeOf(createInputProps(root.at("subscribe"), { kind: "checkbox" })).toEqualTypeOf<CheckableProps>();
     expectTypeOf(createInputProps(root.at("tags"), { kind: "checkbox", value: "news" })).toEqualTypeOf<CheckableProps>();
+    expectTypeOf(createInputProps(root.at("channels"), { kind: "checkbox", value: "sms" })).toEqualTypeOf<CheckableProps>();
     expectTypeOf(createInputProps(root.at("plan"), { kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
     expectTypeOf(createInputProps(root.at("plan"), { kind: "select" })).toEqualTypeOf<SelectProps>();
     // @ts-expect-error: a number field is not text
@@ -583,6 +586,8 @@ describe("free functions", () => {
     createInputProps(root.at("name"), { kind: "number" });
     // @ts-expect-error: a checkbox group's value is one of the array's items
     createInputProps(root.at("tags"), { kind: "checkbox", value: 1 });
+    // @ts-expect-error: a picked option is never undefined
+    createInputProps(root.at("channels"), { kind: "checkbox", value: undefined });
     // @ts-expect-error: a boolean field is not a select
     createInputProps(root.at("subscribe"), { kind: "select" });
   });

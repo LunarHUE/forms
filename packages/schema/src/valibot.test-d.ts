@@ -41,6 +41,7 @@ describe("valibot()", () => {
       qty: v.number(),
       kind: v.picklist(["a", "b"]),
       fixed: v.literal("x"),
+      channels: v.array(v.picklist(["email", "sms"])),
       lines: v.array(v.object({ sku: v.string(), price: v.number() })),
       auth: v.variant("type", [
         v.object({ type: v.literal("password"), password: v.string() }),
@@ -54,12 +55,16 @@ describe("valibot()", () => {
         qty: number | undefined;
         kind: "a" | "b" | undefined;
         fixed: "x";
+        channels: ("email" | "sms")[];
         lines: { sku: string; price: number | undefined }[];
         auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
       }>
     >();
     expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
     store.root.at("lines").push({ sku: "", price: undefined });
+    store.root.at("channels").push("sms");
+    // @ts-expect-error: the adapter has no empty channel to add
+    store.root.at("channels").push();
   });
 
   it("still requires defaultValues for a schema of another vendor", () => {

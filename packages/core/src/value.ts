@@ -128,6 +128,36 @@ type IsPlainUnion<T, N = NonNullable<T>, R = Exclude<N, boolean>> = [R] extends 
         : false
     : true;
 
+/** True for a string, number or bigint literal, or a boolean. False for a wide `string`, `number` or `bigint` and for anything else. */
+type IsLiteral<T> = T extends string
+  ? string extends T
+    ? false
+    : true
+  : T extends number
+    ? number extends T
+      ? false
+      : true
+    : T extends bigint
+      ? bigint extends T
+        ? false
+        : true
+      : T extends boolean
+        ? true
+        : false;
+
+/**
+ * True when `T` is a union of literals, such as a picklist's value: two or
+ * more members besides `null` and `undefined`, each a literal or `boolean`.
+ * A plain `boolean` doesn't count.
+ */
+export type IsLiteralUnion<T> = IsPlainUnion<T> extends true ? (false extends IsLiteral<NonNullable<T>> ? false : true) : false;
+
+/**
+ * `Draft` of an array item. A union of literals stays as it is: in an array
+ * of picked options a missing option is a missing item, not an empty one.
+ */
+type DraftItem<T> = unknown extends T ? T : IsLiteralUnion<T> extends true ? T : Draft<T>;
+
 /** `Draft` of one union member. */
 type DraftMember<T> = T extends string | boolean | null | undefined
   ? T
@@ -141,7 +171,7 @@ type DraftMember<T> = T extends string | boolean | null | undefined
       ? T | undefined
       : T extends readonly unknown[]
         ? number extends T["length"]
-          ? { [K in keyof T]: Draft<T[K]> }
+          ? { [K in keyof T]: DraftItem<T[K]> }
           : { [K in keyof T]: Draft<T[K]> } | undefined
         : { [K in keyof T]: Draft<T[K]> };
 
@@ -149,9 +179,11 @@ type DraftMember<T> = T extends string | boolean | null | undefined
  * The value a form holds before the user fills it in, when a schema adapter
  * builds its defaults. Strings and booleans stay as they are, since they
  * start at `""` and `false`. A single string, number or bigint literal stays
- * as it is, since it starts at its value. Arrays become arrays of drafts.
- * Tuples become tuples of drafts or `undefined`. Plain objects get a draft
- * of each property and keep their modifiers. A union of plain objects is
+ * as it is, since it starts at its value. Arrays become arrays of drafts,
+ * except that an array of a union of literals keeps its items as they are:
+ * a checkbox group leaves an unpicked option out instead of holding an
+ * empty item. Tuples become tuples of drafts or `undefined`. Plain objects
+ * get a draft of each property and keep their modifiers. A union of plain objects is
  * read as a discriminated union and gets a draft of each member. Every other
  * value, including `number`, `Date` and unions of literals, may also be
  * `undefined`. A class instance other than the leaves in `LeafValue` can't be

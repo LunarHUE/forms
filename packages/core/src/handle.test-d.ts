@@ -13,6 +13,7 @@ import type {
   ObjectHandle,
   Patch,
   ValueOf,
+  WriteOptions,
 } from "./index.js";
 
 interface Address {
@@ -24,6 +25,12 @@ interface Row {
   title: string;
   done: boolean;
 }
+
+declare const channels: ArrayHandle<("email" | "sms")[]>;
+declare const optionalChannels: ArrayHandle<("email" | "sms" | undefined)[]>;
+declare const nullableChannels: ArrayHandle<("email" | "sms" | null)[]>;
+declare const flags: ArrayHandle<boolean[]>;
+declare const emails: ArrayHandle<"email"[]>;
 
 type Shape = { kind: "circle"; radius: number } | { kind: "square"; side: number };
 
@@ -112,6 +119,26 @@ describe("child handles", () => {
     // @ts-expect-error: an item needs every key of Row
     rows.push({ title: "a" });
     expectTypeOf(rows.peek().keys).toEqualTypeOf<readonly string[]>();
+  });
+
+  it("array commands on a union of literals need the item", () => {
+    expectTypeOf<Parameters<typeof channels.push>>().toEqualTypeOf<[item: "email" | "sms", options?: WriteOptions]>();
+    expectTypeOf<Parameters<typeof optionalChannels.push>>().toEqualTypeOf<
+      [item?: "email" | "sms" | undefined, options?: WriteOptions]
+    >();
+    channels.push("sms");
+    channels.push("email", { edited: false });
+    channels.insert(0, "sms");
+    // @ts-expect-error: no channel is the empty one, so push needs one
+    channels.push();
+    // @ts-expect-error: undefined is no channel
+    channels.push(undefined);
+    // @ts-expect-error: insert needs one too
+    channels.insert(0);
+    optionalChannels.push();
+    nullableChannels.push();
+    flags.push();
+    emails.push();
   });
 
   it("object setValue merges a partial and replaces a whole value", () => {

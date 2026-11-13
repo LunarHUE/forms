@@ -47,6 +47,7 @@ describe("zod()", () => {
       qty: z.number(),
       kind: z.enum(["a", "b"]),
       fixed: z.literal("x"),
+      channels: z.array(z.enum(["email", "sms"])),
       lines: z.array(z.object({ sku: z.string(), price: z.number() })),
       auth: z.discriminatedUnion("type", [
         z.object({ type: z.literal("password"), password: z.string() }),
@@ -60,12 +61,16 @@ describe("zod()", () => {
         qty: number | undefined;
         kind: "a" | "b" | undefined;
         fixed: "x";
+        channels: ("email" | "sms")[];
         lines: { sku: string; price: number | undefined }[];
         auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
       }>
     >();
     expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
     store.root.at("lines").push({ sku: "", price: undefined });
+    store.root.at("channels").push("sms");
+    // @ts-expect-error: the adapter has no empty channel to add
+    store.root.at("channels").push();
   });
 
   it("still requires defaultValues for a valibot schema", () => {

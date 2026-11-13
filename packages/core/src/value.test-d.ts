@@ -59,9 +59,39 @@ describe("Draft", () => {
     expectTypeOf<Draft<{ n: number }[]>>().toEqualTypeOf<{ n: number | undefined }[]>();
   });
 
+  it("keeps array items that are a union of literals", () => {
+    type Channel = "email" | "sms" | "push";
+    expectTypeOf<Draft<Channel[]>>().toEqualTypeOf<Channel[]>();
+    expectTypeOf<Draft<readonly Channel[]>>().toEqualTypeOf<readonly Channel[]>();
+    expectTypeOf<Draft<(1 | 2)[]>>().toEqualTypeOf<(1 | 2)[]>();
+    expectTypeOf<Draft<("a" | boolean)[]>>().toEqualTypeOf<("a" | boolean)[]>();
+    expectTypeOf<Draft<(Channel | undefined)[]>>().toEqualTypeOf<(Channel | undefined)[]>();
+    expectTypeOf<Draft<(Channel | null)[]>>().toEqualTypeOf<(Channel | null)[]>();
+    expectTypeOf<Draft<Channel[][]>>().toEqualTypeOf<Channel[][]>();
+    expectTypeOf<Draft<{ channels: Channel[] }>>().toEqualTypeOf<{ channels: Channel[] }>();
+    expectTypeOf<Draft<Channel[] | undefined>>().toEqualTypeOf<Channel[] | undefined>();
+  });
+
+  it("still drafts other array items", () => {
+    expectTypeOf<Draft<Date[]>>().toEqualTypeOf<(Date | undefined)[]>();
+    expectTypeOf<Draft<bigint[]>>().toEqualTypeOf<(bigint | undefined)[]>();
+    expectTypeOf<Draft<(number | null)[]>>().toEqualTypeOf<(number | null | undefined)[]>();
+    expectTypeOf<Draft<(string | number)[]>>().toEqualTypeOf<(string | number | undefined)[]>();
+    expectTypeOf<Draft<number[][]>>().toEqualTypeOf<(number | undefined)[][]>();
+    expectTypeOf<Draft<{ sku: "a" | "b"; qty: number }[]>>().toEqualTypeOf<
+      { sku: "a" | "b" | undefined; qty: number | undefined }[]
+    >();
+    type Line = { kind: "item"; qty: number; size: "s" | "m" } | { kind: "note"; text: string };
+    expectTypeOf<Draft<Line[]>>().toEqualTypeOf<
+      ({ kind: "item"; qty: number | undefined; size: "s" | "m" | undefined } | { kind: "note"; text: string })[]
+    >();
+  });
+
   it("drafts tuple elements and adds undefined to the tuple", () => {
     expectTypeOf<Draft<[string, number]>>().toEqualTypeOf<[string, number | undefined] | undefined>();
     expectTypeOf<Draft<readonly [boolean]>>().toEqualTypeOf<readonly [boolean] | undefined>();
+    expectTypeOf<Draft<["a" | "b"]>>().toEqualTypeOf<["a" | "b" | undefined] | undefined>();
+    expectTypeOf<Draft<["a" | "b"][]>>().toEqualTypeOf<(["a" | "b" | undefined] | undefined)[]>();
   });
 
   it("drafts each property of a plain object and keeps its modifiers", () => {

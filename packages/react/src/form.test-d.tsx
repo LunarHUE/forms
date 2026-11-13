@@ -65,6 +65,7 @@ interface Order {
   shipping: Address;
   lines: { item: string; qty: number }[];
   stops: Address[];
+  channels: ("email" | "sms")[];
 }
 declare const orderSchema: FakeSchema<Order>;
 declare const addressSchema: FakeSchema<Address>;
@@ -94,6 +95,7 @@ type DraftOrder = {
   shipping: DraftAddress;
   lines: DraftLine[];
   stops: DraftAddress[];
+  channels: ("email" | "sms")[];
 };
 type Fields = { readonly TextField: typeof TextField; readonly NumberField: typeof NumberField };
 type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, Fields>;
@@ -119,6 +121,14 @@ function OrderPage() {
               expectTypeOf(field.value).toEqualTypeOf<string>();
               expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string>>();
               return <input type="email" {...field.inputProps()} />;
+            }}
+          </form.Field>
+          <form.Field name="channels">
+            {(field) => {
+              expectTypeOf(field.value).toEqualTypeOf<readonly ("email" | "sms")[]>();
+              // @ts-expect-error: a picked option is never undefined
+              field.inputProps({ kind: "checkbox", value: undefined });
+              return <input {...field.inputProps({ kind: "checkbox", value: "sms" })} />;
             }}
           </form.Field>
           <form.Items name="lines">

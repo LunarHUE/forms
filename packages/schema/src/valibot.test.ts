@@ -131,6 +131,9 @@ describe("itemValue", () => {
   it("gives the item default of an array at the root", () => {
     expect(itemValue(v.array(v.object({ t: v.string() })), [])).toEqual({ t: "" });
     expect(itemValue(v.array(v.number()), [])).toBeUndefined();
+    // A picklist item has no empty value, so a checkbox group's array has to be given one.
+    expect(itemValue(v.array(v.picklist(["email", "sms"])), [])).toBeUndefined();
+    expect(itemValue(v.array(v.nullable(v.picklist(["email", "sms"]))), [])).toBeNull();
   });
 
   it("walks objects and wrappers to a nested array", () => {
