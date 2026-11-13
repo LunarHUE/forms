@@ -356,7 +356,7 @@ describe("context", () => {
         <SubmitButton />
       </Boundary>,
     );
-    expect(screen.getByText(/no form\.Form is mounted above this component/)).toBeTruthy();
+    expect(screen.getByText(/^@lunarhue\/forms-react: no form\.Form is mounted above this component\..* https:\/\/\S+#react:context:form$/)).toBeTruthy();
     quiet.mockRestore();
   });
 
@@ -374,6 +374,39 @@ describe("context", () => {
     );
     expect(screen.getAllByText(/no form\.Form of this definition is mounted above this component/)).toHaveLength(2);
     quiet.mockRestore();
+  });
+});
+
+describe("errors in production", () => {
+  // Not a definition from forms.define.
+  const stray = {};
+  function Stray() {
+    // @ts-expect-error: useForm takes a definition from forms.define
+    useForm(stray);
+    return null;
+  }
+
+  it("are a short code and a link", () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const shown = [SubmitButton, NoteBody, SharedId, Stray].map(
+        (Part) =>
+          render(
+            <Boundary>
+              <Part />
+            </Boundary>,
+          ).container.textContent,
+      );
+      expect(shown).toEqual(
+        ["context:form", "context:definition", "context:forms", "form:definition"].map((code) =>
+          expect.stringMatching(new RegExp(`^@lunarhue/forms-react: ${code} https://\\S+#react:${code}$`)),
+        ),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      quiet.mockRestore();
+    }
   });
 });
 

@@ -149,7 +149,7 @@
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "11 kB"
+      "limit": "10.8 kB"
     },
     {
       "name": "react + valibot()",
@@ -157,7 +157,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.7 kB"
+      "limit": "13.55 kB"
     }
   ]
 }
