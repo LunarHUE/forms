@@ -36,7 +36,7 @@ export default defineConfig({
   },
   settings: {
     // Lowest React the adapter supports. Only used where the react plugin is on.
-    react: { version: "18.0.0" },
+    react: { version: "16.8.0" },
   },
   rules: {
     // These check that imported names exist in the target module. oxlint's
