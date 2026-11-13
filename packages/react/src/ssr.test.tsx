@@ -119,7 +119,7 @@ const tour: Trip = { title: "Tour", stops: [{ place: "Oslo", nights: 2 }] };
 const trip = counted.define({ defaultValues: tour });
 
 function TripForm() {
-  const form = trip.useForm({ id: "trip" });
+  const form = useForm(trip, { id: "trip" });
   const title = useField(form.root.at("title"));
   return (
     <form {...form.formProps}>
