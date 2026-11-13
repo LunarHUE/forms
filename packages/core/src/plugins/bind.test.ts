@@ -3,6 +3,7 @@ import { createFormsCore } from "../forms-core.js";
 import type { WriteRecord } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
 import { type BindOptions, bind } from "./bind.js";
+import { dirty } from "./dirty.js";
 import type { Resolve } from "./rebase.js";
 
 /** A store the app owns, with a spy on what the binding sets. */
@@ -51,7 +52,7 @@ interface Profile {
 }
 
 const defaults: Profile = { name: "form", email: "form@x", tags: [] };
-const profile = createFormsCore().define({ defaultValues: defaults });
+const profile = createFormsCore({ plugins: [dirty()] }).define({ defaultValues: defaults });
 
 /** A store bound to `box` and listened to, as a mounted form is. */
 function bound(box: Outside<Profile>, options: Partial<BindOptions<Profile>> = {}) {

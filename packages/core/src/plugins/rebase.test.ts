@@ -5,10 +5,11 @@ import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals } from "../store/form-store.js";
 import type { ValidatorContext } from "../validator.js";
+import { dirty } from "./dirty.js";
 import { validation as runner } from "./validation.js";
 import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
 
-const make = (initial: unknown, plugins: readonly AnyPlugin[] = [runner(), rebasePlugin()]) => {
+const make = (initial: unknown, plugins: readonly AnyPlugin[] = [runner(), rebasePlugin(), dirty()]) => {
   const parts = createFormInternals<unknown>({ id: "f", initial, plugins });
   // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -202,7 +203,7 @@ describe("rebase", () => {
     const { store } = createFormInternals<unknown>({
       id: "f",
       initial: { a: "x", b: "x" },
-      plugins: [runner(), rebasePlugin()],
+      plugins: [runner(), rebasePlugin(), dirty()],
       validate: { form },
     });
     await store.validate();
@@ -222,7 +223,7 @@ describe("rebase", () => {
     const { store } = createFormInternals<unknown>({
       id: "f",
       initial: { a: "x", b: "x" },
-      plugins: [runner(), rebasePlugin()],
+      plugins: [runner(), rebasePlugin(), dirty()],
       validate: { form },
     });
     await store.validate();
@@ -248,7 +249,7 @@ describe("rebase", () => {
   });
 
   it("works without the validation runner, and revalidates nothing", () => {
-    const { store, root, rebase } = make({ a: "x", b: { c: "x" } }, [rebasePlugin()]);
+    const { store, root, rebase } = make({ a: "x", b: { c: "x" } }, [rebasePlugin(), dirty()]);
     root.at("a").setValue("mine");
     const { taken } = rebase(root, { a: "server", b: { c: "y" } }, (leaf) => (leaf.edited ? "keep" : "take"));
     expect(taken).toEqual([["b", "c"]]);

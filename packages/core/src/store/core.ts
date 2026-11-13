@@ -42,7 +42,7 @@ export interface StoreCoreOptions {
    * The store calls it when a field's value changes and after `recheckDirty`.
    * The form's `dirty` is its answer for the root. Without it nothing is dirty.
    */
-  readonly dirty?: (path: Path, value: unknown) => boolean;
+  readonly dirty?: ((path: Path, value: unknown) => boolean) | undefined;
 }
 
 /**
@@ -269,19 +269,16 @@ const flagFrom = (decl: unknown, inherited: boolean): Flag => {
   return { decl, own, on: own || inherited };
 };
 
-// The flag of the child at `seg`, inheriting `inherited` in place of the
-// parent's `on` when given. A tuple's entry in the declaration applies to every item.
-const flagUnder = ({ decl, on }: Flag, seg: string, inherited = on): Flag =>
-  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, inherited);
+// The flag of the child at `seg`. A tuple's entry in the declaration applies to every item.
+const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
+  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, on);
 
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
   const { id } = options;
-  // The value the server snapshots start from. `started` moves it.
-  let initial = options.initial;
   const show = options.show ?? "touched-or-submitted";
   const dirtyHook = options.dirty;
-  let current = initial;
+  let current = options.initial;
   let root: Node<E> | undefined;
   // How many commands have changed something. While it is 0 the current snapshot is the server snapshot.
   let changes = 0;
@@ -560,7 +557,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     node.name = nameOf(node);
     syncKeys(node);
     node.snapshot = freeze(build(node));
-    if (changes === 0) node.server = node.snapshot;
+    // A root made after a change still shows the start, since only
+    // form-level commands run without making it.
+    if (changes === 0 || !parent) node.server = node.snapshot;
     return node;
   };
 
@@ -689,57 +688,35 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     return undefined;
   };
 
-  interface InitialPlace {
-    readonly value: unknown;
-    readonly name: string;
-    readonly blocked: boolean;
-    readonly disabled: Flag;
-    readonly readOnly: Flag;
-  }
-
-  // Where `node` sat in the initial value, using its parent's server keys or
-  // the positional keys every key list starts with, and the flags it started with.
-  const initialPlace = (node: Node<E>): InitialPlace => {
-    if (!node.parent) {
-      const disabled = flagFrom(options.disabled, false);
-      const readOnly = flagFrom(options.readOnly, false);
-      return { value: initial, name: "", blocked: false, disabled, readOnly };
-    }
-    const parent = initialPlace(node.parent);
-    // A parent with a server snapshot hands down the flags it shows there,
-    // since plugin setup may have set them.
-    const shown = node.parent.server;
-    const disabled = flagUnder(parent.disabled, node.seg, shown?.disabled);
-    const readOnly = flagUnder(parent.readOnly, node.seg, shown?.readOnly);
-    const at = (value: unknown, segment: string, blocked: boolean): InitialPlace => ({
-      value,
-      name: parent.name === "" ? segment : `${parent.name}.${segment}`,
-      blocked,
-      disabled,
-      readOnly,
-    });
-    const holder = parent.value;
-    if (parent.blocked) return at(undefined, node.seg, true);
-    if (Array.isArray(holder)) {
-      // Setup may have changed the parent's keys, which its server snapshot keeps.
-      const index = shown?.keys?.indexOf(node.seg) ?? initialIndex(node.seg, holder.length);
-      if (index < 0) return at(undefined, node.seg, true);
-      const item: unknown = holder[index];
-      return at(item, String(index), false);
-    }
-    if (isPlainObject(holder)) return at(childOf(holder, node.seg), node.seg, false);
-    return at(undefined, node.seg, holder !== undefined && holder !== null);
-  };
-
-  // The snapshot `node` had at creation, built from the initial value and flags.
+  // The snapshot `node` had when the store started. The root and every node
+  // made by then have theirs. A node made since gets one from its parent's:
+  // the value under it, found by the parent's item keys then, and the flags
+  // its declaration gives it under the parent's.
   const serverOf = (node: Node<E>): Snapshot<E> => {
-    if (node.server) return node.server;
-    const { value, name, disabled, readOnly } = initialPlace(node);
-    const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
-    // Plugin setup may have written a value that differs from the baseline.
-    const state = { ...idle, dirty: !!dirtyHook?.(pathOf(node, false), value), disabled: disabled.on, readOnly: readOnly.on };
-    node.server = freeze(entries(value, name, keys && freeze(keys), state));
-    return node.server;
+    const parent = node.parent;
+    if (node.server || !parent) return (node.server ??= node.snapshot);
+    const above = serverOf(parent);
+    const holder = above.value;
+    let value: unknown;
+    let step = node.seg;
+    if (Array.isArray(holder)) {
+      // Setup may have changed the parent's keys, which its start snapshot keeps.
+      const index = above.keys?.indexOf(step) ?? -1;
+      if (index >= 0) {
+        value = holder[index];
+        step = String(index);
+      }
+    } else if (isPlainObject(holder)) value = childOf(holder, step);
+    const keys = Array.isArray(value) ? freeze(initialKeys(value.length)) : undefined;
+    return (node.server = freeze(
+      entries(value, above.name === "" ? step : `${above.name}.${step}`, keys, {
+        ...idle,
+        // Plugin setup may have written a value that differs from the baseline.
+        dirty: !!dirtyHook?.(pathOf(node, false), value),
+        disabled: node.disabled.decl === true || above.disabled,
+        readOnly: node.readOnly.decl === true || above.readOnly,
+      }),
+    ));
   };
 
   // Sets the own flag and brings the existing nodes below up to date. A node
@@ -1002,7 +979,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     started() {
       if (!changes) return;
       changes = 0;
-      initial = current;
       serverForm = form().snapshot;
       const visit = (node: Node<E>) => {
         node.server = node.snapshot;

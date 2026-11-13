@@ -40,7 +40,8 @@ export interface OrderValidate {
 
 /**
  * The validators the schema doesn't cover, shaped for the definition's
- * `validate` option. Every adapter's definition passes this same object:
+ * `validate` option. The order definition passes this same object in every
+ * framework:
  *
  * ```ts
  * forms.define({ schema: OrderSchema, defaultValues: loadOrder(), validate: orderValidate, onSubmit: orderOnSubmit })

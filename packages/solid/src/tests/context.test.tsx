@@ -1,11 +1,12 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createSignal, Errored, flush, Show } from "solid-js";
 import * as v from "valibot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createForm, createForms, useFormContext, type AnyForm, type FormOf } from "../index.js";
+import { dirty } from "../plugins/dirty.js";
 import { getAs, mount, settle } from "./dom.js";
 
-const forms = createForms({ plugins: [valibot()] });
+const forms = createForms({ plugins: [valibot(), dirty()] });
 const Order = forms.define({
   schema: v.object({ customer: v.pipe(v.string(), v.minLength(1, "Required")) }),
   onSubmit: () => "saved",
@@ -201,13 +202,52 @@ describe("context", () => {
       );
     });
     const messages = [...host.querySelectorAll("p")].map((p) => p.textContent);
-    const missing =
-      "Error: @lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.";
+    const missing = expect.stringMatching(
+      /^Error: @lunarhue\/forms-solid: useFormContext\(definition\) found no form made from that definition\. It skips forms of other definitions\. Render it inside the `form\.Form` of a form made by `createForm\(definition\)`\. https:\/\/\S+#solid:context:definition$/,
+    );
     expect(messages).toEqual([
-      "Error: @lunarhue/forms-solid: useFormContext() found no form. Render it inside the form's `form.Form`.",
+      expect.stringMatching(
+        /^Error: @lunarhue\/forms-solid: useFormContext\(\) found no form\. Render it inside the form's `form\.Form`\. https:\/\/\S+#solid:context:form$/,
+      ),
       missing,
       missing,
     ]);
+  });
+
+  it("throws a short code and a link in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const { host } = mount(() => {
+        const note = createForm(Note);
+        return (
+          <>
+            <Errored fallback={(error) => <p>{String(error())}</p>}>
+              <SubmitButton />
+            </Errored>
+            <note.Form>
+              <Errored fallback={(error) => <p>{String(error())}</p>}>
+                <OrderCustomer />
+              </Errored>
+            </note.Form>
+            <Errored fallback={(error) => <p>{String(error())}</p>}>
+              <SharedId />
+            </Errored>
+            <Errored fallback={(error) => <p>{String(error())}</p>}>
+              {/* @ts-expect-error: a bound component needs a name or a handle */}
+              <note.Field>{() => null}</note.Field>
+            </Errored>
+          </>
+        );
+      });
+      expect([...host.querySelectorAll("p")].map((p) => p.textContent)).toEqual([
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:form https:\/\/\S+#solid:context:form$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:definition https:\/\/\S+#solid:context:definition$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:forms https:\/\/\S+#solid:context:forms$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: field:target https:\/\/\S+#solid:field:target$/),
+      ]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("finds the nearest form of the forms past forms of other createForms calls", () => {
@@ -243,8 +283,9 @@ describe("context", () => {
         </>
       );
     });
-    const missing =
-      "Error: @lunarhue/forms-solid: useFormContext(forms) found no form made from those forms. It skips forms of other `createForms` calls. Render it inside the `form.Form` of a form made from one of their definitions.";
+    const missing = expect.stringMatching(
+      /^Error: @lunarhue\/forms-solid: useFormContext\(forms\) found no form made from those forms\. It skips forms of other `createForms` calls\. Render it inside the `form\.Form` of a form made from one of their definitions\. https:\/\/\S+#solid:context:forms$/,
+    );
     expect([...host.querySelectorAll("p")].map((p) => p.textContent)).toEqual([missing, missing]);
   });
 

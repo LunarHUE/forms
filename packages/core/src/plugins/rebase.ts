@@ -2,10 +2,9 @@ import type { HandleBase } from "../handle.js";
 import type { Path } from "../path.js";
 import type { HookPlugin } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
+import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
-
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 export type { RebaseChoice, RebaseLeaf, Resolve } from "../store/rebase.js";
 
@@ -29,6 +28,9 @@ export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V>, reso
 /**
  * The rebase plugin. Its API is `form.plugins.rebase`, a `Rebase`.
  *
+ * Values are compared by the form's dirty comparison when `dirty()` is
+ * installed, and by `Object.is` alone when it isn't.
+ *
  * Objects are walked key by key. An array is walked item by item when its
  * items still have the keys and order of its baseline and the incoming
  * array has as many items. Otherwise it is one leaf.
@@ -45,12 +47,7 @@ export function rebase(): HookPlugin<Rebase, "rebase"> {
       const { store } = ctx;
       const api: Rebase = (handle, incoming, resolve) => {
         if (handle.store !== store) {
-          // Production gets the code that docs/errors.md lists. See `failure` in store/plugins.ts.
-          throw new TypeError(
-            typeof process !== "undefined" && process.env.NODE_ENV !== "production"
-              ? "rebase: the handle belongs to another store."
-              : "@lunarhue/forms-core: rebase:store",
-          );
+          throw new TypeError(problem("rebase:store"));
         }
         let taken: Path[] = [];
         // Called from inside another plugin's hook, this waits for the round to

@@ -49,6 +49,17 @@
         "default": "./dist/cjs/plugins/bind.js"
       }
     },
+    "./plugins/dirty": {
+      "@lunarhue/source": "./src/plugins/dirty.ts",
+      "import": {
+        "types": "./dist/esm/plugins/dirty.d.ts",
+        "default": "./dist/esm/plugins/dirty.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/dirty.d.ts",
+        "default": "./dist/cjs/plugins/dirty.js"
+      }
+    },
     "./plugins/history": {
       "@lunarhue/source": "./src/plugins/history.ts",
       "import": {
@@ -131,7 +142,7 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "8 kB"
+      "limit": "7.5 kB"
     },
     {
       "name": "./plugins",
@@ -144,6 +155,12 @@
       "path": "dist/esm/plugins/validation.js",
       "import": "{ validation }",
       "limit": "2.95 kB"
+    },
+    {
+      "name": "./plugins/dirty",
+      "path": "dist/esm/plugins/dirty.js",
+      "import": "{ dirty }",
+      "limit": "1.2 kB"
     },
     {
       "name": "./plugins/bind",
@@ -188,6 +205,14 @@
         "dist/esm/plugins/mask.js": "{ mask }"
       },
       "limit": "2.5 kB"
+    },
+    {
+      "name": "core + dirty()",
+      "import": {
+        "dist/esm/index.js": "*",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "8.1 kB"
     }
   ]
 }

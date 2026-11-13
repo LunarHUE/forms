@@ -5,6 +5,7 @@ import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import type { Validator } from "../validator.js";
 import { validation as runner } from "../plugins/validation.js";
+import { dirty } from "../plugins/dirty.js";
 import { createFormStore, type FormStoreOptions } from "./form-store.js";
 
 interface Value {
@@ -14,7 +15,7 @@ interface Value {
 
 const initial: Value = { name: "", rows: [{ title: "" }, { title: "" }] };
 
-const plugins = [runner()];
+const plugins = [runner(), dirty()];
 
 const make = (options: Omit<FormStoreOptions<Value>, "id" | "initial"> = {}, value: Value = initial) =>
   createFormStore<Value>({ id: "f", initial: value, plugins, ...options });

@@ -25,6 +25,7 @@ import { createContext, createElement, Fragment, type ReactElement, type ReactNo
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
+import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
 import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, PropsOf, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
@@ -488,7 +489,7 @@ export const useForm: UseForm = (definition, ...args) => {
   const generatedId = useId();
   const make = () => {
     const maker = makers.get(definition);
-    if (maker === undefined) throw new Error("@lunarhue/forms-react: useForm takes a definition from forms.define.");
+    if (maker === undefined) throw new Error(problem("form:definition"));
     return maker(args, generatedId);
   };
   const [form, setForm] = useState(make);
@@ -507,13 +508,7 @@ export const useFormContext: UseFormContext = (definition?: object) => {
     while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
   }
   if (node === null) {
-    throw new Error(
-      definition === undefined
-        ? "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop."
-        : "define" in definition
-          ? "@lunarhue/forms-react: no form.Form of these forms is mounted above this component. Forms of other createForms calls don't count. Render it inside the form.Form of a form made from one of their definitions."
-          : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
-    );
+    throw new Error(problem(definition === undefined ? "context:form" : "define" in definition ? "context:forms" : "context:definition"));
   }
   // A form found by its definition or its forms is the form their types describe. With neither the caller gets `UnknownForm`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

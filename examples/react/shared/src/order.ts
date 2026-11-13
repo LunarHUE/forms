@@ -7,21 +7,23 @@ import {
   type SaveOrder,
 } from "@lunarhue/forms-example-order";
 import { createForms, type DeepPartial, type FormOf } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { rules } from "@lunarhue/forms-react/plugins/rules";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import type * as v from "valibot";
 import { CheckboxGroupField, NumberField, RadioGroupField, SelectField, TextField } from "./fields.js";
 
 /**
- * The app's one `createForms` call, at module scope. The valibot adapter
+ * The app's one `createForms` call, at module scope. The `valibot()` plugin
  * gives every schema form its starting values, so `defaultValues` is
- * optional. The field components are registered, so every form and scope
- * made here has them bound: `form.TextField name="customer.name"`. The
+ * optional. `dirty()` gives each field and the form the `dirty` flag the
+ * inspector shows. The field components are registered, so every form and
+ * scope made here has them bound: `form.TextField name="customer.name"`. The
  * option components are written with `Choice`, so each use checks its
  * options against the named field.
  */
 export const forms = createForms({
-  plugins: [valibot()],
+  plugins: [valibot(), dirty()],
   fields: { TextField, NumberField, SelectField, RadioGroupField, CheckboxGroupField },
 });
 
@@ -40,8 +42,9 @@ export type OrderDefaults = DeepPartial<OrderValue>;
 /** What each mounted order form is made with. */
 export interface OrderOptions {
   /**
-   * Where the order is saved. The SPA passes `saveOrder` from the fake
-   * server, and Next.js passes a server action that calls it on the server.
+   * Where the order is saved: `saveOrder` from the fake server when the
+   * app saves in the browser, or, in Next.js, a server action that calls
+   * it on the server.
    */
   readonly save: SaveOrder;
   /** The order to start from, such as one a server loaded. Without it the form starts empty. */

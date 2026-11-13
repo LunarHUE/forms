@@ -3,6 +3,7 @@ import type { FormError, Show } from "../errors.js";
 import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
 import type { AnyHookPlugin, AnyPlugin, PluginErrorHandler } from "../plugin.js";
+import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
@@ -30,9 +31,9 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   /** The item `push` and `insert` add when called without one. Gets the array's stable path. Defaults to undefined. */
   readonly itemValue?: ((path: Path) => unknown) | undefined;
   /**
-   * The plugins, shared ones first. The hook plugins get a host, and the
-   * first plugin that brings the validation runner gives the store its
-   * validation.
+   * The plugins, shared ones first. The hook plugins get a host, the first
+   * plugin that brings the validation runner gives the store its
+   * validation, and `dirty()` gives it dirty tracking.
    */
   readonly plugins?: readonly AnyPlugin[] | undefined;
   /** Called when a plugin hook throws. Defaults to throwing on a later task. */
@@ -59,11 +60,14 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // A plugin's starting value is one the form's value type allows, as a write's is.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const options = { ...given, initial: initial as V };
+  // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
+  // option, so nothing is dirty and nothing is compared.
+  const createDirty = plugins.find((plugin) => plugin.dirty)?.dirty;
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
     // The core first calls this when something reads, after `baseline` below exists.
-    dirty: (path, value) => baseline.dirty(path, value),
+    dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
   });
   // Only a store with hook plugins gets a host, and only a store with a plugin
   // that brings the runner gets validation. The plugins bring that code with
@@ -74,14 +78,14 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // Each copy of core has its own host and its own `refuse`, so plugins from
   // two copies don't work together. Development only: production drops it.
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin["~host"] !== createHost)) {
-    console.warn("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
+    console.warn(problem("plugins:copies"));
   }
   const runner = plugins.find((plugin) => plugin.validation)?.validation ?? noValidation;
   // The host's core wraps this store's and keeps its types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = (host?.core ?? raw) as StoreCore<E, I, R>;
   const context: FormContext<V, E, I, R> = { core, store: () => store };
-  const baseline = createBaseline(context, options);
+  const baseline = createBaseline(context, options, createDirty);
   const validation = runner(context, options);
   const submit = createSubmit(context, options, validation, host);
 

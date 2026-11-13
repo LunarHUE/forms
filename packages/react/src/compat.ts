@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useEffect, useLayoutEffect, useReducer, useState } from "react";
+import { problem } from "./problem.js";
 
 // React's own hooks where it has them, and small fallbacks for React 16.8 and
 // 17. Each choice is made once, here at load, so a component calls the same
@@ -116,8 +117,6 @@ export function generatedIdUsed(): void {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     if (nativeId !== undefined || !onServer || warned) return;
     warned = true;
-    console.warn(
-      "@lunarhue/forms-react: a form was server rendered without an `id`. React before 18 has no `useId`, so the generated id can't match on the client. Pass `id` to `useForm`.",
-    );
+    console.warn(problem("id:server"));
   }
 }

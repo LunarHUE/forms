@@ -136,7 +136,8 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
   fieldAt(path: Path): AnyFieldHandle<E> | undefined;
   /**
    * Returns every dirty leaf at and below `path` (the whole form by default),
-   * in value order. A read for event handlers and effects, not render.
+   * in value order. A read for event handlers and effects, not render. Empty
+   * without `dirty()`.
    */
   changes(path?: Path): readonly Change[];
   /**

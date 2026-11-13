@@ -3,16 +3,18 @@ import { useDisabledErrors, useField, useFormContext, useFormState } from "@luna
 import { type ReactNode, useDeferredValue } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { money } from "./line-items.js";
-import { order } from "./order.js";
+import { forms, order } from "./order.js";
 
 /**
- * The submit button. It takes the form from context with the untyped
- * `useFormContext`, which works under any `form.Form`, so the same button
- * fits every form. It reads one boolean from the form snapshot, so it
- * re-renders only when a submit starts or ends.
+ * The submit button. `useFormContext(forms)` returns the nearest form made
+ * by this example's `forms`, typed with its plugins, error type and field
+ * components. Its value is unknown, since any definition of `forms` fits,
+ * so the button works under every form made here and reads only the form
+ * state. It reads one boolean from the form snapshot, so it re-renders
+ * only when a submit starts or ends.
  */
 export function SubmitButton() {
-  const form = useFormContext();
+  const form = useFormContext(forms);
   const submitting = useFormState(form, (snapshot) => snapshot.submitting);
   const badge = useRenderBadge();
   return (
@@ -33,18 +35,18 @@ export interface FormStatusProps {
 
 /**
  * One line saying where the last submit stands. Like `SubmitButton` it
- * takes the form with the untyped `useFormContext`, so it fits every form.
- * The result's type is unknown here, so what a success says comes in as
- * `saved`.
+ * takes the form with `useFormContext(forms)`, so it fits every form made
+ * by `forms`. The result's type differs between those forms and is
+ * unknown here, so what a success says comes in as `saved`.
  */
-export function FormStatus(props: FormStatusProps) {
-  const form = useFormContext();
+export function FormStatus({ saved }: FormStatusProps) {
+  const form = useFormContext(forms);
   const status = useFormState(form, (snapshot) => snapshot.submission.status);
   let text: ReactNode = "";
   if (status === "submitting") text = "Saving the order.";
   else if (status === "invalid") text = "Fix the errors above, then try again.";
   else if (status === "failed") text = "The save failed. Try again.";
-  else if (status === "succeeded") text = props.saved;
+  else if (status === "succeeded") text = saved;
   return (
     <span className="form-status" role="status" data-status={status}>
       {text}

@@ -2,10 +2,8 @@ import type { MapError } from "../errors.js";
 import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorInput } from "../validator.js";
+import { problem } from "../problem.js";
 import type { FormContext } from "./context.js";
-
-// Core has no node types, so this declares the global the development check reads.
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** The store options validation reads. */
 export interface ValidationOptions<V, E> {
@@ -74,30 +72,6 @@ export interface SchemaOutput {
  */
 export type CreateValidation = <V, E, I, R>(context: FormContext<V, E, I, R>, options: ValidationOptions<V, E>) => Validation<E>;
 
-/** What asked for validation with no runner installed. */
-type Asker = "definition" | "validator";
-
-/**
- * The error for a store that needs the runner and has none. Development
- * gets a sentence. A bundler replaces the read of NODE_ENV with
- * "production", folds the check to false and drops the sentences, so
- * production gets `@lunarhue/forms-core: validation:<asker>`, which
- * docs/errors.md lists.
- */
-function missing(asker: Asker): Error {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-    const sentences: Record<Asker, string> = {
-      definition: "This form's definition has `validate` or `schema`, but no plugin brings the validation runner.",
-      validator:
-        "A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner.",
-    };
-    return new Error(
-      `${sentences[asker]} Add \`validation()\` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as \`valibot()\`, to \`plugins\`.`,
-    );
-  }
-  return new Error(`@lunarhue/forms-core: validation:${asker}`);
-}
-
 const nothing = () => {};
 
 /**
@@ -108,10 +82,10 @@ const nothing = () => {};
  * and adding a validator throws.
  */
 export const noValidation: CreateValidation = (context, options) => {
-  if (options.validate || options.schema) throw missing("definition");
+  if (options.validate || options.schema) throw new Error(problem("validation:definition"));
   return {
     register() {
-      throw missing("validator");
+      throw new Error(problem("validation:validator"));
     },
     validate: async () => true,
     written: nothing,

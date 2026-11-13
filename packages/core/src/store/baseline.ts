@@ -1,36 +1,23 @@
-import type { Equals } from "../definition.js";
 import type { ResetOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
 import type { PluginBaseline } from "../plugin.js";
 import type { Change } from "../store.js";
-import { createEquality, ownKeys } from "./baseline/equality.js";
-import {
-  buildKeys,
-  childKeys,
-  indexKeys,
-  indexOfItem,
-  keysOf,
-  locate,
-  type KeysFor,
-  type KeyTrie,
-} from "./baseline/keys.js";
+import { buildKeys, indexKeys, indexOfItem, keysOf, locate, type KeysFor, type KeyTrie } from "./baseline/keys.js";
 import type { FormContext } from "./context.js";
-import { none, sameList } from "./entries.js";
+import type { CreateDirty, DirtyOptions } from "./dirty.js";
+import { none } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import { childOf, isPlainObject, setAt } from "./tree.js";
 
 /** The store options the baseline reads. */
-export interface BaselineOptions<V> {
+export interface BaselineOptions<V> extends DirtyOptions {
   /** The starting value, which is also the first baseline. */
   readonly initial: V;
-  /** The form's dirty comparison. It runs first and reaches `sharedEquals` through `next`. */
-  readonly equals?: Equals | undefined;
-  /** The comparison every form of one `createFormsCore` shares. It reaches the default through `next`. */
-  readonly sharedEquals?: Equals | undefined;
 }
 
 /**
- * Dirty tracking, reset and the list of changes.
+ * The baseline: reset, and dirty tracking and the list of changes when
+ * `dirty()` is installed.
  *
  * The baseline is a value plus the item keys of its arrays. An array item's
  * baseline is the baseline item with the same key, so an item keeps its
@@ -42,7 +29,8 @@ export interface Baseline extends PluginBaseline {
   /**
    * Computes `dirty` for the field at stable path `path` holding `value`.
    * The store core calls it as its `dirty` option, first when something
-   * reads, never while the store is being made.
+   * reads, never while the store is being made. Without `dirty()` it is
+   * always false, and the form store gives the core no `dirty` option.
    */
   dirty(path: Path, value: unknown): boolean;
   /**
@@ -55,7 +43,7 @@ export interface Baseline extends PluginBaseline {
    * Every dirty leaf at and below `path`, the whole form by default, in value
    * order. Objects are walked key by key. An array is walked item by item
    * while its items have the keys and order of its baseline, and is one leaf
-   * otherwise.
+   * otherwise. Empty without `dirty()`.
    */
   changes(this: void, path?: Path): readonly Change[];
 }
@@ -74,15 +62,22 @@ const emptyTrie = (): KeyTrie => ({ list: undefined, children: undefined });
 const pairing = ({ value, keys }: { value: unknown; keys: KeyTrie | undefined }) =>
   Array.isArray(value) ? keysOf(keys, value.length) : undefined;
 
-/** Makes the baseline. It starts as the initial value with positional item keys. */
-export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, options: BaselineOptions<V>): Baseline {
+/**
+ * Makes the baseline. It starts as the initial value with positional item
+ * keys. `createDirty` is the dirty tracking `dirty()` brings, when installed.
+ */
+export function createBaseline<V, E, I, R>(
+  context: FormContext<V, E, I, R>,
+  options: BaselineOptions<V>,
+  createDirty?: CreateDirty,
+): Baseline {
   const { core } = context;
   const { initial } = options;
-  const { compare, forget } = createEquality(options.equals, options.sharedEquals);
   let root: unknown = initial;
   let trie: KeyTrie | undefined;
 
   const find = (path: Path) => locate(root, trie, path);
+  const tracking = createDirty?.(core, find, options);
 
   const currentKeys: KeysFor = (path, length) => {
     const snapshot = core.getSnapshot(path);
@@ -96,7 +91,7 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
     const p = path.map(String);
     const steps = core.itemSteps(p);
     if (!steps) return;
-    forget();
+    tracking?.forget();
     const built = buildKeys(p, value, keysFor);
     if (p.length === 0) {
       root = deepFreeze(value);
@@ -154,10 +149,7 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
   };
 
   return {
-    dirty(path, value) {
-      const { value: baseline, keys } = find(path);
-      return !compare(path, value, baseline, keys);
-    },
+    dirty: tracking?.dirty ?? (() => false),
     reset(path, resetOptions) {
       const p = path.map(String);
       core.batch(() => {
@@ -168,34 +160,14 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
         move(p, target);
       });
     },
-    changes(path) {
-      const start = (path ?? []).map(String);
-      if (!core.isLive(start)) return none;
-      const out: Change[] = [];
-      const walk = (at: Path, value: unknown, baseline: unknown, keys: KeyTrie | undefined) => {
-        if (compare(at, value, baseline, keys)) return;
-        const before = out.length;
-        if (isPlainObject(value) && isPlainObject(baseline)) {
-          for (const key of ownKeys(value, baseline))
-            walk([...at, key], childOf(value, key), childOf(baseline, key), childKeys(keys, key));
-        } else if (Array.isArray(value) && Array.isArray(baseline) && value.length === baseline.length) {
-          const current = core.getSnapshot(at).keys ?? none;
-          if (sameList(current, keysOf(keys, baseline.length)))
-            current.forEach((key, i) => walk([...at, key], value[i], baseline[i], childKeys(keys, key)));
-        }
-        // A container whose children all compare equal still differs as a whole.
-        if (out.length === before) out.push(freeze({ path: freeze(at), baseline, value }));
-      };
-      const { value: baseline, keys } = find(start);
-      walk(start, core.getSnapshot(start).value, baseline, keys);
-      return freeze(out);
-    },
+    changes: tracking?.changes ?? (() => none),
     read(path) {
       if (!core.isLive(path)) return undefined;
       const found = find(path);
       return freeze({ value: found.value, keys: pairing(found) });
     },
-    equals: (path, a, b) => compare(path, a, b, find(path).keys),
+    // Without `dirty()` there is no comparison, so only the same value is equal.
+    equals: tracking?.equals ?? ((_path, a, b) => Object.is(a, b)),
     move,
   };
 }

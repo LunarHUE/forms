@@ -8,7 +8,7 @@ import { OrderForm } from "./order-form.js";
 
 /** Props for `OrderPage`. Each app passes what differs for its framework. */
 export interface OrderPageProps {
-  /** Where the order is saved: `saveOrder` in a SPA, a server action in Next.js. */
+  /** Where the order is saved: `saveOrder` in the browser, or a server action in Next.js. */
   readonly save: SaveOrder;
   /** The order to start from. Apps that render on the server load it there and pass it in. */
   readonly defaultValues?: OrderDefaults;
@@ -23,10 +23,10 @@ export interface OrderPageProps {
  * everything below.
  * The page reads no form state, so it commits once and its badge stays at 1.
  */
-export function OrderPage(props: OrderPageProps) {
+export function OrderPage({ save, defaultValues, header }: OrderPageProps) {
   const form = useForm(order, {
-    save: props.save,
-    ...(props.defaultValues === undefined ? {} : { defaultValues: props.defaultValues }),
+    save,
+    ...(defaultValues === undefined ? {} : { defaultValues }),
   });
   const badge = useRenderBadge();
   return (
@@ -38,7 +38,7 @@ export function OrderPage(props: OrderPageProps) {
         <p>
           Each pill counts how many times its component committed. Type in a field and watch which ones move.
         </p>
-        {props.header}
+        {header}
       </header>
       <main className="page">
         <section className="page-form" aria-label="Order form">

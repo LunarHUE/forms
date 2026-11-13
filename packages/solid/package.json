@@ -61,6 +61,17 @@
         "default": "./dist/cjs/plugins/bind.js"
       }
     },
+    "./plugins/dirty": {
+      "@lunarhue/source": "./src/plugins/dirty.ts",
+      "import": {
+        "types": "./dist/esm/plugins/dirty.d.ts",
+        "default": "./dist/esm/plugins/dirty.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/dirty.d.ts",
+        "default": "./dist/cjs/plugins/dirty.js"
+      }
+    },
     "./plugins/history": {
       "@lunarhue/source": "./src/plugins/history.ts",
       "import": {
@@ -163,7 +174,7 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "11 kB"
+      "limit": "10.65 kB"
     },
     {
       "name": "./v1",
@@ -177,7 +188,30 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.6 kB"
+      "limit": "13.45 kB"
+    },
+    {
+      "name": "solid + dirty()",
+      "import": {
+        "dist/esm/index.js": "*",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "10.9 kB"
+    },
+    {
+      "name": "solid, everything on",
+      "import": {
+        "dist/esm/index.js": "*",
+        "../schema/dist/esm/valibot.js": "{ valibot }",
+        "dist/esm/plugins/history.js": "{ history }",
+        "dist/esm/plugins/mask.js": "{ mask }",
+        "dist/esm/plugins/persist.js": "{ persist }",
+        "dist/esm/plugins/rules.js": "{ rules }",
+        "dist/esm/plugins/rebase.js": "{ rebase }",
+        "dist/esm/plugins/bind.js": "{ bind }",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "16.25 kB"
     }
   ]
 }
