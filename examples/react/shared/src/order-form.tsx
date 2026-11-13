@@ -1,10 +1,11 @@
 import { deliveryMethods, notificationChannels } from "@lunarhue/forms-example-order";
+import { useFormContext } from "@lunarhue/forms-react";
 import { AddressFields, SameAsBilling } from "./address.js";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { CheckboxGroupField, RadioGroupField } from "./fields.js";
 import { LineItems } from "./line-items.js";
 import { order } from "./order.js";
-import { DisabledErrors, FormErrors, FormStatus, OrderSummary, SubmitButton } from "./status.js";
+import { DisabledErrors, FormErrors, FormStatus, OrderSummary, SaveOutcome, SubmitButton } from "./status.js";
 
 /**
  * The customer's name and email, as registered components bound to the
@@ -12,7 +13,7 @@ import { DisabledErrors, FormErrors, FormStatus, OrderSummary, SubmitButton } fr
  * `TextField` shows "Checking..." while the field is `validating`.
  */
 function CustomerFields() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const badge = useRenderBadge();
   return (
     <fieldset className="fieldset">
@@ -28,7 +29,7 @@ function CustomerFields() {
 
 /** Delivery method and notification channels. */
 function DeliveryFields() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const badge = useRenderBadge();
   return (
     <fieldset className="fieldset">
@@ -66,7 +67,7 @@ function DeliveryFields() {
 
 /** The discount and the amount due. The form-level discount rule puts its error on `discount`. */
 function PaymentFields() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const badge = useRenderBadge();
   return (
     <fieldset className="fieldset">
@@ -86,7 +87,7 @@ function PaymentFields() {
  * ref that makes it the focus fallback after an invalid submit.
  */
 export function OrderForm() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   return (
     <form {...form.formProps} className="order-form" aria-label="New order">
       <CustomerFields />
@@ -98,7 +99,7 @@ export function OrderForm() {
       <AddressFields field={form.root.at("shipping")} legend="Shipping address" />
       <div className="form-actions">
         <SubmitButton />
-        <FormStatus />
+        <FormStatus saved={<SaveOutcome />} />
       </div>
       {/* Below the button, so they can appear without moving it. */}
       <FormErrors />

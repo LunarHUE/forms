@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { useDebugValue, useDeferredValue, useEffect, useState } from "react";
 import { expect, it } from "vitest";
-import { createForms, type FieldApi, type LeafHandle, useField, useInputProps } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, useInputProps } from "./index.js";
 
 // TanStack Table issue 6577: a table object that reads live mutable state
 // through methods, passed through an unrelated hook such as useDeferredValue
@@ -39,10 +39,10 @@ function DeferredHandle(props: { readonly handle: LeafHandle<string> }) {
   return <output aria-label="from deferred handle">{value}</output>;
 }
 
-type NoteStore = ReturnType<typeof note.useForm>["store"];
+type NoteStore = FormOf<typeof note>["store"];
 
 function Editor(props: { readonly onStore: (store: NoteStore) => () => void }) {
-  const form = note.useForm();
+  const form = useForm(note);
   const text = form.root.at("text");
   const [store] = useState(() => form.store);
   const { onStore } = props;

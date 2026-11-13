@@ -22,12 +22,9 @@ interface Log {
 
 /** The parts of the adapter the server render below uses. */
 interface Bundle {
-  createForms(): { define(config: { defaultValues: { name: string } }): BundleForm };
+  createForms(): { define(config: { defaultValues: { name: string } }): object };
+  useForm(definition: object, options: { id: string }): { root: { at(name: "name"): unknown } };
   useField(handle: unknown): { readonly value: string };
-}
-
-interface BundleForm {
-  useForm(options: { id: string }): { root: { at(name: "name"): unknown } };
 }
 
 it("bundles for React 17 with no warning and loads in Node's ESM loader", async () => {
@@ -57,7 +54,7 @@ it("bundles for React 17 with no warning and loads in Node's ESM loader", async 
   const bundle = (await import(/* @vite-ignore */ `${outDir}/adapter.mjs`)) as Bundle;
   const profile = bundle.createForms().define({ defaultValues: { name: "Ada" } });
   function Name() {
-    const form = profile.useForm({ id: "profile" });
+    const form = bundle.useForm(profile, { id: "profile" });
     return createElement("p", null, bundle.useField(form.root.at("name")).value);
   }
   expect(renderToString(createElement(Name))).toMatch(/>Ada<\/p>$/);

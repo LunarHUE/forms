@@ -1,4 +1,5 @@
 import { invalidOrder, type SaveOrder, serverSettings } from "@lunarhue/forms-example-order";
+import { useForm } from "@lunarhue/forms-react";
 import type { ReactNode } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { Inspector } from "./inspector.js";
@@ -17,12 +18,13 @@ export interface OrderPageProps {
 
 /**
  * The example page: the form on the left, the inspector on the right.
- * `order.useForm` makes the form once, with this page's save function and
- * starting values, and `form.Form` puts it in context for everything below.
+ * `useForm(order, options)` makes the form once, with this page's save
+ * function and starting values, and `form.Form` puts it in context for
+ * everything below.
  * The page reads no form state, so it commits once and its badge stays at 1.
  */
 export function OrderPage(props: OrderPageProps) {
-  const form = order.useForm({
+  const form = useForm(order, {
     save: props.save,
     ...(props.defaultValues === undefined ? {} : { defaultValues: props.defaultValues }),
   });

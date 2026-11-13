@@ -53,7 +53,7 @@ function makeApp(adapter: Adapter, ids: boolean) {
   const order = adapter.createForms({ fields: { TextField } }).define({ defaultValues: initial });
 
   function Plan() {
-    const plan = order.useFormContext().root.at("plan");
+    const plan = adapter.useFormContext(order).root.at("plan");
     return (
       <>
         <input {...adapter.useInputProps(plan, { kind: "radio", value: "free" })} />
@@ -70,7 +70,7 @@ function makeApp(adapter: Adapter, ids: boolean) {
   }
 
   function OrderForm(props: { readonly id: string }) {
-    const form = order.useForm(ids ? { id: props.id } : {});
+    const form = adapter.useForm(order, ids ? { id: props.id } : {});
     return (
       <form.Form>
         {({ submit: _submit, ...formProps }) => (

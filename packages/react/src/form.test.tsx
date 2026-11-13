@@ -7,8 +7,10 @@ import {
   type FieldApi,
   type FieldRef,
   type FocusTarget,
+  type FormOf,
   useDisabledErrors,
   useFieldRef,
+  useForm,
   useFormContext,
   useFormState,
 } from "./index.js";
@@ -36,7 +38,7 @@ const account = forms.define({
     return "ok";
   },
 });
-type AccountForm = ReturnType<typeof account.useForm>;
+type AccountForm = FormOf<typeof account>;
 const holder: { form?: AccountForm } = {};
 const current = (): AccountForm => {
   if (holder.form === undefined) throw new Error("no form rendered");
@@ -58,13 +60,13 @@ function SubmitButton() {
 }
 
 function DisabledErrors() {
-  const form = account.useFormContext();
+  const form = useFormContext(account);
   const disabled = useDisabledErrors(form);
   return <p data-testid="disabled">{disabled.map((entry) => `${entry.name}: ${entry.errors[0]?.message}`).join(";")}</p>;
 }
 
 function Account(props: { readonly focusOnInvalid?: (target: FocusTarget) => void; readonly id?: string }) {
-  const form = account.useForm({
+  const form = useForm(account, {
     ...(props.focusOnInvalid === undefined ? {} : { focusOnInvalid: props.focusOnInvalid }),
     ...(props.id === undefined ? {} : { id: props.id }),
   });
@@ -162,8 +164,8 @@ describe("submit", () => {
 const note = forms.define({ defaultValues: { text: "" } });
 
 function NoteBody() {
-  const inner = note.useFormContext();
-  const outer = account.useFormContext();
+  const inner = useFormContext(note);
+  const outer = useFormContext(account);
   const nearest = useFormContext();
   return (
     <>
@@ -174,7 +176,7 @@ function NoteBody() {
 }
 
 function NoteDialog() {
-  const dialog = note.useForm({ id: "note" });
+  const dialog = useForm(note, { id: "note" });
   return (
     <dialog.Form>
       <NoteBody />
@@ -183,16 +185,81 @@ function NoteDialog() {
 }
 
 function Page() {
-const form = account.useForm({ id: "outer" });
-return (
-  <form.Form>
-    {(props) => (
-      <form {...props}>
-        <NoteDialog />
-      </form>
-    )}
-  </form.Form>
-);
+  const form = useForm(account, { id: "outer" });
+  return (
+    <form.Form>
+      {(props) => (
+        <form {...props}>
+          <NoteDialog />
+        </form>
+      )}
+    </form.Form>
+  );
+}
+
+// A reusable part for any form: it knows no definition.
+function GenericControls(props: { readonly label: string }) {
+  const form = useFormContext();
+  const count = useFormState(form, (snapshot) => snapshot.submitCount);
+  const dirty = useFormState(form, (snapshot) => snapshot.dirty);
+  return (
+    <>
+      <button type="button" onClick={() => void form.submit()}>
+        {`submit ${props.label}`}
+      </button>
+      <button type="button" onClick={() => form.store.reset()}>
+        {`reset ${props.label}`}
+      </button>
+      <p data-testid={props.label}>{`${form.id} ${count} ${dirty ? "dirty" : "clean"}`}</p>
+    </>
+  );
+}
+
+function TwoForms() {
+  const first = useForm(account, { id: "first" });
+  const second = useForm(note, { id: "second" });
+  return (
+    <>
+      <first.Form>
+        <GenericControls label="a" />
+      </first.Form>
+      <second.Form>
+        <second.TextField name="text" label="Note" />
+        <GenericControls label="b" />
+      </second.Form>
+    </>
+  );
+}
+
+function OuterId() {
+  return <p data-testid="outer">{useFormContext(account).id}</p>;
+}
+
+// Two forms of one definition, one inside the other, with a form of another definition between them.
+function Sandwich() {
+  const outer = useForm(account, { id: "outer" });
+  const middle = useForm(note, { id: "middle" });
+  const inner = useForm(account, { id: "inner" });
+  return (
+    <outer.Form>
+      <OuterId />
+      <middle.Form>
+        <OuterId />
+        <inner.Form>
+          <OuterId />
+        </inner.Form>
+      </middle.Form>
+    </outer.Form>
+  );
+}
+
+function NoteInAccount() {
+  const form = useForm(account, { id: "only" });
+  return (
+    <form.Form>
+      <NoteBody />
+    </form.Form>
+  );
 }
 
 class Boundary extends Component<{ readonly children: ReactNode }, { message: string | undefined }> {
@@ -214,6 +281,28 @@ describe("context", () => {
     expect(input("Note").value).toBe("hi");
   });
 
+  it("works the same generic controls inside forms of two definitions", async () => {
+    render(<TwoForms />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("submit a"));
+    await act(settle);
+    expect(screen.getByTestId("a").textContent).toBe("first 1 clean");
+    expect(screen.getByTestId("b").textContent).toBe("second 0 clean");
+    await user.type(input("Note"), "hi");
+    await user.click(screen.getByText("submit b"));
+    await act(settle);
+    expect(screen.getByTestId("b").textContent).toBe("second 1 dirty");
+    await user.click(screen.getByText("reset b"));
+    expect(screen.getByTestId("b").textContent).toBe("second 1 clean");
+    expect(input("Note").value).toBe("");
+    expect(screen.getByTestId("a").textContent).toBe("first 1 clean");
+  });
+
+  it("finds the nearest form of the definition past forms of other definitions", () => {
+    render(<Sandwich />);
+    expect(screen.getAllByTestId("outer").map((element) => element.textContent)).toEqual(["outer", "outer", "inner"]);
+  });
+
   it("throws a clear error with no form.Form above", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
@@ -222,12 +311,22 @@ describe("context", () => {
       </Boundary>,
     );
     expect(screen.getByText(/no form\.Form is mounted above this component/)).toBeTruthy();
+    quiet.mockRestore();
+  });
+
+  it("throws a clear error when no form of the definition is above", () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <Boundary>
         <NoteBody />
       </Boundary>,
     );
-    expect(screen.getAllByText(/no form\.Form is mounted above this component/)).toHaveLength(2);
+    render(
+      <Boundary>
+        <NoteInAccount />
+      </Boundary>,
+    );
+    expect(screen.getAllByText(/no form\.Form of this definition is mounted above this component/)).toHaveLength(2);
     quiet.mockRestore();
   });
 });
@@ -238,9 +337,9 @@ describe("the form object without form.Form", () => {
       defaultValues: { title: "", rows: [{ label: "a" }] },
       validate: { fields: { title: required } },
     });
-    const box: { form?: ReturnType<typeof list.useForm> } = {};
+    const box: { form?: FormOf<typeof list> } = {};
     function Bare() {
-      const form = list.useForm();
+      const form = useForm(list);
       useEffect(() => {
         box.form = form;
       });
@@ -272,7 +371,7 @@ describe("the form object without form.Form", () => {
 
 describe("one field on two elements", () => {
   const titled = forms.define({ defaultValues: { title: "" }, validate: { fields: { title: required } } });
-  type TitledForm = ReturnType<typeof titled.useForm>;
+  type TitledForm = FormOf<typeof titled>;
   const box: { form?: TitledForm; ref?: FieldRef } = {};
   const form = (): TitledForm => {
     if (box.form === undefined) throw new Error("no form rendered");
@@ -280,7 +379,7 @@ describe("one field on two elements", () => {
   };
 
   function Twice(props: { readonly first: boolean }) {
-    const titledForm = titled.useForm();
+    const titledForm = useForm(titled);
     const ref = useFieldRef(titledForm.root.at("title"));
     useEffect(() => {
       box.form = titledForm;
@@ -303,7 +402,7 @@ describe("one field on two elements", () => {
 
   // Hands out the field's ref callback and renders no element of its own.
   function RefOnly() {
-    const titledForm = titled.useForm();
+    const titledForm = useForm(titled);
     const ref = useFieldRef(titledForm.root.at("title"));
     useEffect(() => {
       box.form = titledForm;

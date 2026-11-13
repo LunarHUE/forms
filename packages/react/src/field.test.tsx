@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createForms,
   type FieldApi,
+  type FormOf,
   type LeafHandle,
   useField,
+  useForm,
   useFormState,
   useInputProps,
   useItems,
@@ -37,7 +39,7 @@ function Line(props: { readonly item: LeafHandle<string>; readonly name: string 
   return <input aria-label={props.name} {...useInputProps(props.item)} />;
 }
 
-function Lines(props: { readonly form: ReturnType<typeof order.useForm> }) {
+function Lines(props: { readonly form: FormOf<typeof order> }) {
   const { form } = props;
   return (
     <form.Items name="lines">
@@ -60,7 +62,7 @@ function ItemsProbe() {
 }
 
 function OrderPage(props: { readonly onLive?: (live: Listeners) => void }) {
-  const form = order.useForm();
+  const form = useForm(order);
   const [live] = useState(() => countListeners(form.store));
   useCommits(commits, "page");
   const { onLive } = props;
@@ -91,9 +93,9 @@ describe("re-render isolation", () => {
 
   it("a selector that returns the same value causes no re-render", () => {
     const profile = createForms().define({ defaultValues: { name: "", age: 1 } });
-    const holder: { form?: ReturnType<typeof profile.useForm> } = {};
+    const holder: { form?: FormOf<typeof profile> } = {};
     function Empty() {
-      const form = profile.useForm();
+      const form = useForm(profile);
       useEffect(() => {
         holder.form = form;
       });
@@ -119,10 +121,10 @@ describe("re-render isolation", () => {
 describe("useItems", () => {
   it("keeps its list while the keys stay, and follows push", () => {
     const list = createForms().define({ defaultValues: { tags: ["a", "b"] } });
-    const holder: { form?: ReturnType<typeof list.useForm> } = {};
+    const holder: { form?: FormOf<typeof list> } = {};
     const lists: (readonly unknown[])[] = [];
     function Tags() {
-      const form = list.useForm();
+      const form = useForm(list);
       const items = useItems(form.root.at("tags"));
       useEffect(() => {
         holder.form = form;
@@ -151,7 +153,7 @@ type Check = (value: string) => string | undefined;
 const signup = createForms().define({ defaultValues: { name: "" } });
 
 function Name(props: { readonly validator: Check; readonly debounce?: number }) {
-  const form = signup.useForm();
+  const form = useForm(signup);
   const name = form.root.at("name");
   const input: ValidatorInput<string> =
     props.debounce === undefined ? (value) => toError(props.validator(value)) : { validate: (value) => toError(props.validator(value)), debounce: props.debounce };
@@ -235,7 +237,7 @@ describe("StrictMode lifecycle", () => {
     const status = createForms().define({ defaultValues: { name: "" } });
     let live: Listeners | undefined;
     function Status() {
-      const form = status.useForm();
+      const form = useForm(status);
       const [counts] = useState(() => countListeners(form.store));
       const dirty = useFormState(form, (snapshot) => snapshot.dirty);
       return (
