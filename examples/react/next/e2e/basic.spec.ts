@@ -60,15 +60,29 @@ test("an invalid submit shows the error and focuses the first invalid field", as
   await email.fill("");
   const member = page.getByRole("textbox", { name: "Member 1" });
   await member.fill("");
-  // Blurring a field shows its errors, which pushes the button down. Blur
-  // first, so the click lands on the button and not where it was.
-  await member.blur();
-  await expect(member).toHaveAttribute("aria-invalid", "true");
+  // The click blurs the member field, which shows its error. The click
+  // still lands because the error has space kept for it.
   await page.getByRole("button", { name: "Sign up" }).click();
+  await expect(member).toHaveAttribute("aria-invalid", "true");
   await expect(email).toBeFocused();
   await expect(email).toHaveAttribute("aria-invalid", "true");
   const describedBy = await email.getAttribute("aria-describedby");
   expect(describedBy).not.toBeNull();
   await expect(page.locator(`[id="${describedBy}"]`)).toHaveText("Enter a valid email.");
   await expect(page.getByRole("status")).toHaveText("");
+});
+
+test("an error appearing doesn't move the submit button", async ({ page }) => {
+  await open(page);
+  const button = page.getByRole("button", { name: "Sign up" });
+  const member = page.getByRole("textbox", { name: "Member 1" });
+  await member.fill("");
+  // Measure after filling, which can scroll the field into view. The error
+  // appears on blur.
+  const before = await button.boundingBox();
+  await member.blur();
+  await expect(page.locator(`[id="${await member.getAttribute("aria-describedby")}"]`)).toHaveText("Enter a name.");
+  const after = await button.boundingBox();
+  console.log("submit button before and after the error", before, after);
+  expect(after).toEqual(before);
 });

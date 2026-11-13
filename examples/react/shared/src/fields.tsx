@@ -24,11 +24,13 @@ export interface FieldErrorsProps {
 
 /**
  * The error list under a field. It is always rendered, with the id the
- * input's `aria-describedby` names, and takes no space while it is empty.
+ * input's `aria-describedby` names, so the stylesheet can keep a line of
+ * space for it and an error appearing doesn't move the rest of the form.
+ * While it is empty it is hidden from screen readers.
  */
 export function FieldErrors(props: FieldErrorsProps) {
   return (
-    <ul className="field-errors" id={props.id}>
+    <ul className="field-errors" id={props.id} aria-hidden={props.errors.length === 0 ? true : undefined}>
       {props.errors.map((error) => (
         <li key={error.message}>{error.message}</li>
       ))}
@@ -60,6 +62,8 @@ export function TextField(props: TextFieldProps) {
       <div className="field-label">
         {props.inline ? null : <label htmlFor={field.id}>{props.label}</label>}
         <RenderBadge counter={badge} name={field.name} />
+        {/* In the label row, so it appears and goes without moving the layout. */}
+        {field.validating ? <span className="field-hint">Checking...</span> : null}
       </div>
       <input
         {...field.inputProps()}
@@ -67,7 +71,6 @@ export function TextField(props: TextFieldProps) {
         autoComplete={props.autoComplete}
         aria-label={props.inline ? props.label : undefined}
       />
-      {field.validating ? <span className="field-hint">Checking...</span> : null}
       <FieldErrors id={field.errorId} errors={field.shownErrors} />
     </div>
   );

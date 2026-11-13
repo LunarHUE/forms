@@ -152,3 +152,18 @@ test("a submit saves, and a refused save puts the server's error on the email", 
   // The reject toggle turns itself off, so the next save goes through.
   await expect(page.getByLabel("Server rejects next save")).not.toBeChecked();
 });
+
+test("an error appearing doesn't move the submit button", async ({ page }) => {
+  await open(page);
+  const button = page.getByRole("button", { name: "Place order" });
+  const name = page.getByRole("textbox", { name: "Name" });
+  await name.fill("");
+  // Measure after filling, which can scroll the field into view. The error
+  // appears on blur.
+  const before = await button.boundingBox();
+  await name.blur();
+  await expect(name).toHaveAttribute("aria-invalid", "true");
+  const after = await button.boundingBox();
+  console.log("submit button before and after the error", before, after);
+  expect(after).toEqual(before);
+});

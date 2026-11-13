@@ -27,7 +27,9 @@ interface TextFieldProps {
 }
 // 2. Field components. Each is a plain component with a `field` prop. The
 // input props carry the value, change and blur handlers, and an
-// `aria-describedby` that points at `field.errorId` while errors show.
+// `aria-describedby` that points at `field.errorId` while errors show. The
+// error list is always rendered, so the stylesheet can keep a line of space
+// for it, and is hidden from screen readers while it is empty.
 function TextField({ field, label }: TextFieldProps) {
   return (
     <div className="field">
@@ -35,7 +37,7 @@ function TextField({ field, label }: TextFieldProps) {
         {label}
       </label>
       <input {...field.inputProps()} />
-      <ul className="field-errors" id={field.errorId}>
+      <ul className="field-errors" id={field.errorId} aria-hidden={field.shownErrors.length === 0 ? true : undefined}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>
         ))}
@@ -57,7 +59,7 @@ function NumberField({ field, label }: NumberFieldProps) {
         {label}
       </label>
       <input {...field.inputProps({ kind: "number" })} />
-      <ul className="field-errors" id={field.errorId}>
+      <ul className="field-errors" id={field.errorId} aria-hidden={field.shownErrors.length === 0 ? true : undefined}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>
         ))}
