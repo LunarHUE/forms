@@ -19,3 +19,23 @@ export function encodeSegment(segment: string | number): string {
 export function fieldId(formId: string, path: Path): string {
   return [formId, ...path.map(encodeSegment)].join("--");
 }
+
+/**
+ * The id of one radio, or one checkbox of a group, bound to the field `id`:
+ * the field id, `---option-`, then the encoded option. A field id never
+ * contains `---`, so this never equals a field id, a child's included. The
+ * text after `---` starts with `option-`, so it never equals `errorId(id)`.
+ */
+export function optionId(id: string, option: string | number): string {
+  return `${id}---option-${encodeSegment(option)}`;
+}
+
+/**
+ * The id of the element that shows the errors of the field `id`: the field
+ * id and `---error`. A field id never contains `---`, so this never equals a
+ * field id, and it never equals an `optionId`, whose text after `---` starts
+ * with `option-`.
+ */
+export function errorId(id: string): string {
+  return `${id}---error`;
+}

@@ -1,3 +1,4 @@
+import { errorId as coreErrorId } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
@@ -221,6 +222,83 @@ describe("radio", () => {
     expect(form.root.at("plan").peek().value).toBe("pro");
     expect(free.checked).toBe(false);
     expect(pro.checked).toBe(true);
+  });
+});
+
+/** The element a `<label>` with `text` points at. */
+function labelled(host: HTMLElement, text: string): HTMLElement | null | undefined {
+  const label = [...host.querySelectorAll("label")].find((each) => each.textContent === text);
+  return label?.control;
+}
+
+describe("ids", () => {
+  const Picker = forms.define({
+    defaultValues: { size: "", picks: ["a"] as string[] },
+    validate: { fields: { size: (value: string) => (value === "" ? { message: "Required" } : undefined) } },
+  });
+
+  /**
+   * A radio group, a checkbox group over an array, and the array's first
+   * item, whose key is `k0`, as its own input. The group has an option named
+   * `k0` too.
+   */
+  function mountPicker() {
+    let form: ReturnType<typeof Picker.createForm> | undefined;
+    const { host } = mount(() => {
+      const f = Picker.createForm({ id: "pick" });
+      form = f;
+      const small = createInputProps(f.root.at("size"), { kind: "radio", value: "s" });
+      const large = createInputProps(f.root.at("size"), { kind: "radio", value: "m l" });
+      const keyed = createInputProps(f.root.at("picks"), { kind: "checkbox", value: "k0" });
+      const plain = createInputProps(f.root.at("picks"), { kind: "checkbox", value: "a" });
+      const first = createInputProps(f.root.at("picks").item("k0"));
+      return (
+        <form {...f.formProps}>
+          <label for={small.id}>small</label>
+          <input data-size="s" {...small} />
+          <label for={large.id}>large</label>
+          <input data-size="m l" {...large} />
+          <label for={keyed.id}>keyed</label>
+          <input data-pick="k0" {...keyed} />
+          <label for={plain.id}>plain</label>
+          <input data-pick="a" {...plain} />
+          <input data-first {...first} />
+          <p id={errorId(f.root.at("size"))}>size errors</p>
+        </form>
+      );
+    });
+    if (!form) throw new Error("The form was not created.");
+    return { form, host };
+  }
+
+  it("gives each option of a radio or checkbox group its own id", () => {
+    const { host } = mountPicker();
+    expect(get(host, '[data-size="s"]').id).toBe("pick--size---option-s");
+    expect(get(host, '[data-size="m l"]').id).toBe("pick--size---option-m_20_l");
+    expect(get(host, '[data-size="m l"]').value).toBe("m l");
+    expect(get(host, "[data-pick=k0]").id).toBe("pick--picks---option-k0");
+    expect(get(host, "[data-first]").id).toBe("pick--picks--k0");
+    expect(get(host, "[data-first]").value).toBe("a");
+    expect(labelled(host, "large")).toBe(get(host, '[data-size="m l"]'));
+    expect(labelled(host, "plain")).toBe(get(host, "[data-pick=a]"));
+  });
+
+  it("renders no duplicate ids, with array items next to a group over the array", () => {
+    const { host } = mountPicker();
+    const ids = [...host.querySelectorAll("[id]")].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("points aria-describedby at core's error id and focuses the first radio after an invalid submit", async () => {
+    const { form, host } = mountPicker();
+    const size = form.root.at("size");
+    expect(errorId(size)).toBe(coreErrorId(size.id));
+    expect(errorId(size)).toBe("pick--size---error");
+    await form.handleSubmit();
+    await settle();
+    expect(get(host, '[data-size="m l"]').getAttribute("aria-describedby")).toBe(errorId(size));
+    expect(host.querySelector(`[id="${errorId(size)}"]`)?.textContent).toBe("size errors");
+    expect(document.activeElement).toBe(get(host, '[data-size="s"]'));
   });
 });
 

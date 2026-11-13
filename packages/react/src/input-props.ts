@@ -1,4 +1,4 @@
-import { encodeSegment, type FieldSnapshot } from "@lunarhue/forms-core";
+import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import { type BaseInputProps, errorId, type FieldRef } from "./input.js";
 import { type NumberText, setNumberText } from "./number-text.js";
@@ -147,7 +147,7 @@ function buildProps(
   const grouped = kind === "group" || kind === "radio";
   const base: BaseInputProps = {
     name: snapshot.name,
-    id: grouped ? `${handle.id}--${encodeSegment(asText(option))}` : handle.id,
+    id: grouped ? optionId(handle.id, asText(option)) : handle.id,
     onBlur: callbacks.onBlur,
     ref: callbacks.ref,
     disabled: snapshot.disabled,

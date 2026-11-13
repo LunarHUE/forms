@@ -86,7 +86,11 @@ export interface SelectOptions extends InputOptions {
 
 /** The props every kind of input gets. */
 export interface ControlProps<T extends HTMLElement> {
-  /** The handle's id, so a `<label for>` can point at it. */
+  /**
+   * The handle's id, so a `<label for>` can point at it. A radio or a
+   * checkbox of a group gets core's `optionId(handle.id, option)` instead, so
+   * each option has its own id.
+   */
   readonly id: string;
   /** The snapshot's dotted `name`, such as `rows.0.title`. Reactive. */
   readonly name: string;
@@ -282,6 +286,7 @@ export const fieldRef: FieldRef = (handle) => elementRegistrar(handle.store, han
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field
- * shows errors. Put it on the element that renders the errors.
+ * shows errors, core's `errorId(handle.id)`: the handle id with `---error`
+ * after it. Put it on the element that renders the errors.
  */
 export const errorId: (handle: Pick<HandleLike, "id">) => string = errorIdOf;

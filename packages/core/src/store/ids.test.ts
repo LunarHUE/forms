@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeSegment, fieldId } from "./ids.js";
+import { encodeSegment, errorId, fieldId, optionId } from "./ids.js";
 
 describe("ids", () => {
   it("keeps a dotted key apart from the nested path", () => {
@@ -20,5 +20,22 @@ describe("ids", () => {
     expect(encodeSegment("-x")).toBe("_2d_x");
     expect(encodeSegment("é")).toBe("_e9_");
     expect(fieldId("form", [])).toBe("form");
+  });
+
+  it("builds option and error ids after a `---`", () => {
+    const id = fieldId("f", ["plan"]);
+    expect(optionId(id, "pro")).toBe("f--plan---option-pro");
+    expect(optionId(id, 0)).toBe("f--plan---option-0");
+    expect(optionId(id, "a b--c")).toBe("f--plan---option-a_20_b_2d__2d_c");
+    expect(errorId(id)).toBe("f--plan---error");
+  });
+
+  it("keeps option ids apart from error ids and field ids", () => {
+    const id = fieldId("f", ["tags"]);
+    expect(optionId(id, "error")).not.toBe(errorId(id));
+    for (const key of ["0", "error", "option-0", "-x"]) {
+      expect(optionId(id, key)).not.toBe(fieldId("f", ["tags", key]));
+    }
+    expect(fieldId("f", ["tags", "-error"])).not.toContain("---");
   });
 });

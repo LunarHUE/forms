@@ -1,4 +1,4 @@
-import type { ItemOf, ShapeOf, ValueOf } from "@lunarhue/forms-core";
+import { errorId as coreErrorId, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import { useSyncExternalStore } from "react";
 import { type HandleLike, useField } from "./field.js";
@@ -21,7 +21,8 @@ export interface BaseInputProps {
   readonly name: string;
   /**
    * The handle's id, for `<label htmlFor>`. A radio or a checkbox of a group
-   * adds its option, encoded with core's `encodeSegment`.
+   * gets core's `optionId(handle.id, option)` instead, so each option has its
+   * own id.
    */
   readonly id: string;
   /** Marks the field touched and runs blur validation. */
@@ -211,11 +212,11 @@ export type UseFieldRef = (handle: HandleLike) => FieldRef;
 export const useFieldRef: UseFieldRef = (handle) => fieldRef(handle);
 
 /**
- * The id of the element that shows a field's errors: the handle id with
- * `---error` after it. No field id contains `---`, so it never names a
- * field. Input props point `aria-describedby` at it.
+ * The id of the element that shows a field's errors, core's
+ * `errorId(handle.id)`: the handle id with `---error` after it. It never
+ * names a field or an option. Input props point `aria-describedby` at it.
  */
 export type ErrorId = (handle: { readonly id: string }) => string;
 
 /** See `ErrorId`. */
-export const errorId: ErrorId = (handle) => `${handle.id}---error`;
+export const errorId: ErrorId = (handle) => coreErrorId(handle.id);

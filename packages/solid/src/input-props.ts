@@ -1,4 +1,4 @@
-import type { FieldSnapshot, Path } from "@lunarhue/forms-core";
+import { errorId, type FieldSnapshot, optionId, type Path } from "@lunarhue/forms-core";
 import type { ControlProps } from "./input.js";
 import { elementsOf } from "./refs.js";
 
@@ -31,7 +31,7 @@ export interface AnyInputOptions {
 
 /** Returns the id the input props point `aria-describedby` at while the field shows errors. */
 export function errorIdOf(handle: { readonly id: string }): string {
-  return `${handle.id}-errors`;
+  return errorId(handle.id);
 }
 
 /** A field value as the text of an input: empty while it is null or undefined, or not a primitive. */
@@ -63,13 +63,14 @@ function numberText(element: HTMLInputElement | undefined, value: unknown): stri
 
 /**
  * Adds the props every input kind shares to `own` and returns it. The
- * getters read the field's signal, so each is a reactive read.
+ * getters read the field's signal, so each is a reactive read. `id` is the
+ * element's id, the handle's unless the element is one option of the field.
  */
-function withControl(source: InputSource, options: AnyInputOptions | undefined, own: object): object {
+function withControl(source: InputSource, options: AnyInputOptions | undefined, own: object, id = source.handle.id): object {
   const { handle, read, register } = source;
   const errorsId = errorIdOf(handle);
   const control: ControlProps<HTMLElement> = {
-    id: handle.id,
+    id,
     get name() {
       return read().name;
     },
@@ -187,7 +188,7 @@ function checkboxProps(source: InputSource, options: AnyInputOptions | undefined
       else handle.setValue(list.filter((each) => each !== option));
     },
   };
-  return withControl(source, options, own);
+  return withControl(source, options, own, group ? optionId(handle.id, asText(option)) : handle.id);
 }
 
 function radioProps(source: InputSource, options: AnyInputOptions | undefined): object {
@@ -209,7 +210,7 @@ function radioProps(source: InputSource, options: AnyInputOptions | undefined): 
       else if (input.checked) handle.setValue(option);
     },
   };
-  return withControl(source, options, own);
+  return withControl(source, options, own, optionId(handle.id, asText(option)));
 }
 
 function selectProps(source: InputSource, options: AnyInputOptions | undefined): object {

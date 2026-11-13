@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createForms, errorId, useInputProps } from "./index.js";
+import { errorId as coreErrorId } from "@lunarhue/forms-core";
+import { createForms, errorId, optionId, useInputProps } from "./index.js";
 
 interface Settings {
   title: string;
@@ -106,7 +107,77 @@ describe("text and textarea", () => {
     });
     expect(title.getAttribute("aria-invalid")).toBe("true");
     expect(title.getAttribute("aria-describedby")).toBe(errorId(current().root.at("title")));
-    expect(input("pro").id).toBe("settings--plan--pro");
+    expect(input("pro").id).toBe(optionId("settings--plan", "pro"));
+  });
+});
+
+const picker = forms.define({ defaultValues: { size: "s", picks: ["a"] as string[] } });
+const pickHolder: { form?: ReturnType<typeof picker.useForm> } = {};
+const picked = () => {
+  if (pickHolder.form === undefined) throw new Error("no form rendered");
+  return pickHolder.form;
+};
+
+// A radio group, a checkbox group over an array, and the array's first item,
+// whose key is `k0`, as its own input. The group has an option named `k0` too.
+function Picker() {
+  const form = picker.useForm({ id: "pick" });
+  useEffect(() => {
+    pickHolder.form = form;
+  });
+  const size = form.root.at("size");
+  const picks = form.root.at("picks");
+  const small = useInputProps(size, { kind: "radio", value: "s" });
+  const large = useInputProps(size, { kind: "radio", value: "m l" });
+  const keyed = useInputProps(picks, { kind: "checkbox", value: "k0" });
+  const plain = useInputProps(picks, { kind: "checkbox", value: "a" });
+  const first = useInputProps(picks.item("k0"));
+  return (
+    <>
+      <label htmlFor={small.id}>small</label>
+      <input {...small} />
+      <label htmlFor={large.id}>large</label>
+      <input {...large} />
+      <label htmlFor={keyed.id}>keyed</label>
+      <input {...keyed} />
+      <label htmlFor={plain.id}>plain</label>
+      <input {...plain} />
+      <label htmlFor={first.id}>first pick</label>
+      <input {...first} />
+      <p id={errorId(size)}>size errors</p>
+    </>
+  );
+}
+
+describe("ids", () => {
+  it("gives each option of a radio or checkbox group its own id", () => {
+    render(<Picker />);
+    expect(input("small").id).toBe("pick--size---option-s");
+    expect(input("large").id).toBe("pick--size---option-m_20_l");
+    expect(input("large").value).toBe("m l");
+    expect(input("keyed").id).toBe("pick--picks---option-k0");
+    expect(input("plain").value).toBe("a");
+    expect(input("first pick").id).toBe("pick--picks--k0");
+    expect(input("first pick").value).toBe("a");
+  });
+
+  it("renders no duplicate ids, with array items next to a group over the array", () => {
+    const { container } = render(<Picker />);
+    const ids = [...container.querySelectorAll("[id]")].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("points aria-describedby at core's error id", () => {
+    render(<Picker />);
+    const size = picked().root.at("size");
+    act(() => {
+      size.setErrors({ message: "pick one" });
+      size.setTouched();
+    });
+    expect(errorId(size)).toBe(coreErrorId(size.id));
+    expect(errorId(size)).toBe("pick--size---error");
+    expect(input("small").getAttribute("aria-describedby")).toBe(errorId(size));
+    expect(document.getElementById(errorId(size))?.textContent).toBe("size errors");
   });
 });
 
