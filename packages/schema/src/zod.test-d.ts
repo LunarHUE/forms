@@ -1,4 +1,4 @@
-import { createFormsCore, type FormStore, type HasAdapter, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import { createFormsCore, type FormStore, type HasSchemaPlugin, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
@@ -6,28 +6,28 @@ import * as zm from "zod/mini";
 import { valibot } from "./valibot.js";
 import { zod, type ZodSchema } from "./zod.js";
 
-type Adapters = readonly [ReturnType<typeof zod>];
+type Installed = readonly [ReturnType<typeof zod>];
 
 const user = z.object({ name: z.string(), age: z.string().transform(Number) });
 const mini = zm.object({ name: zm.string(), tags: zm.array(zm.string()) });
 const fromValibot = v.object({ name: v.string() });
 
-// A schema from a vendor no adapter is registered for.
+// A schema from a vendor no installed plugin accepts.
 declare const other: StandardSchemaV1<{ name: string }> & { readonly other: true };
 
 describe("zod()", () => {
   it("supports concrete zod and zod/mini schemas", () => {
-    expectTypeOf<HasAdapter<typeof user, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<typeof mini, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<z.ZodArray<z.ZodString>, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<typeof fromValibot, Adapters>>().toEqualTypeOf<false>();
-    expectTypeOf<HasAdapter<typeof other, Adapters>>().toEqualTypeOf<false>();
+    expectTypeOf<HasSchemaPlugin<typeof user, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<typeof mini, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<z.ZodArray<z.ZodString>, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<typeof fromValibot, Installed>>().toEqualTypeOf<false>();
+    expectTypeOf<HasSchemaPlugin<typeof other, Installed>>().toEqualTypeOf<false>();
     expectTypeOf(user).toExtend<ZodSchema>();
     expectTypeOf(mini).toExtend<ZodSchema>();
   });
 
   it("makes defaultValues optional for a zod schema", () => {
-    const core = createFormsCore({ schemas: [zod()] });
+    const core = createFormsCore({ plugins: [zod()] });
     const store = core.define({ schema: user }).createStore();
     expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
     core.define({ schema: mini });
@@ -41,7 +41,7 @@ describe("zod()", () => {
   });
 
   it("types the value as the draft of the schema's input", () => {
-    const core = createFormsCore({ schemas: [zod()] });
+    const core = createFormsCore({ plugins: [zod()] });
     const order = z.object({
       title: z.string(),
       qty: z.number(),
@@ -69,23 +69,24 @@ describe("zod()", () => {
     expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
     store.root.at("lines").push({ sku: "", price: undefined });
     store.root.at("channels").push("sms");
-    // @ts-expect-error: the adapter has no empty channel to add
+    // @ts-expect-error: the schema plugin has no empty channel to add
     store.root.at("channels").push();
   });
 
-  it("still requires defaultValues for a valibot schema", () => {
-    const core = createFormsCore({ schemas: [zod()] });
-    // @ts-expect-error: no registered adapter supports this schema
+  it("still requires defaultValues for a valibot schema, which its runner validates", () => {
+    const core = createFormsCore({ plugins: [zod()] });
+    // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: fromValibot });
     const store = core.define({ schema: fromValibot, defaultValues: { name: "" } }).createStore();
     expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf<HasSchemaPlugin<typeof fromValibot, Installed>>().toEqualTypeOf<false>();
   });
 
-  it("makes defaultValues optional for both vendors when both adapters are registered", () => {
-    const core = createFormsCore({ schemas: [zod(), valibot()] });
+  it("makes defaultValues optional for both vendors when both schema plugins are installed", () => {
+    const core = createFormsCore({ plugins: [zod(), valibot()] });
     expectTypeOf(core.define({ schema: user }).createStore()).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
     expectTypeOf(core.define({ schema: fromValibot }).createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
-    // @ts-expect-error: no registered adapter supports this schema
+    // @ts-expect-error: no installed schema plugin accepts this schema
     core.define({ schema: other });
   });
 });

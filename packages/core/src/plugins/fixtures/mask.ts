@@ -1,4 +1,4 @@
-import type { Plugin } from "../../index.js";
+import type { HookPlugin } from "../../index.js";
 import { definePlugin } from "../../plugins.js";
 
 /** A cleaner for one field. It gets the value so far and the caller's original input. */
@@ -22,7 +22,7 @@ export interface MaskOptions {
  * A test fixture, not shipped. Cleans the value written at each named field,
  * by dotted stable path, so the store holds the clean value.
  */
-export function mask(fields: Readonly<Record<string, Mask>>, options: MaskOptions = {}): Plugin {
+export function mask(fields: Readonly<Record<string, Mask>>, options: MaskOptions = {}): HookPlugin {
   return definePlugin({
     name: options.name ?? "mask",
     ...(options.after && { after: options.after }),

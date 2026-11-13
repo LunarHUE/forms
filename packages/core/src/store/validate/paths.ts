@@ -6,8 +6,7 @@ export const item: unique symbol = Symbol("item");
 /** A stable path where a segment can be `item`, for validators declared over every array item. */
 export type Pattern = readonly (string | typeof item)[];
 
-/** A map key for a stable path. Numbers and their strings give the same key. */
-export const keyOf = (path: Path): string => JSON.stringify(path.map(String));
+export { keyOf } from "../placed.js";
 
 /** True when `path` starts with `prefix`. */
 export const startsWith = (path: Path, prefix: Path): boolean =>

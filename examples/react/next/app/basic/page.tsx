@@ -72,7 +72,7 @@ function NumberField({ field, label }: NumberFieldProps) {
 // Registering the field components puts them on every form, so a form has
 // `form.TextField` and `form.NumberField`. What `onSubmit` returns becomes
 // the submit's result.
-const forms = createForms({ schemas: [valibot()], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [valibot()], fields: { TextField, NumberField } });
 
 const signUp = forms.define({
   schema: SignUpSchema,

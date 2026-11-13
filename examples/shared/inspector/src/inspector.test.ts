@@ -12,7 +12,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mountInspector } from "./index.js";
 
-const definition = createFormsCore({ schemas: [valibot()] }).define({
+const definition = createFormsCore({ plugins: [valibot()] }).define({
   schema: OrderSchema,
   defaultValues: loadOrder(),
   validate: orderValidate,

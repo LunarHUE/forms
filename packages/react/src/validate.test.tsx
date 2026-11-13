@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
+import { validation } from "@lunarhue/forms-core/validation";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -20,7 +21,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [validation()], fields: { TextField } });
 const signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
@@ -99,7 +100,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
   );
 }
 
-const choiceForms = createForms({ fields: { RadioGroupField } });
+const choiceForms = createForms({ plugins: [validation()], fields: { RadioGroupField } });
 const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
 const delivery = choiceForms.define({ defaultValues: deliveryStart });
 const deliveryHolder: { form?: FormOf<typeof delivery> } = {};

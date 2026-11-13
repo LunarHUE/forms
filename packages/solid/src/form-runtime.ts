@@ -69,6 +69,7 @@ export function buildForm(parts: FormParts): RuntimeForm {
     ...scope,
     store,
     id: store.id,
+    plugins: store.plugins,
     state: createFormState(store),
     formProps,
     submit,

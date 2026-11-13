@@ -15,6 +15,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
+import { validation } from "@lunarhue/forms-core/validation";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -25,7 +26,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [validation()], fields: { TextField } });
 const required = (value: string) => (value === "" ? { message: "required" } : undefined);
 
 const saved: { value: unknown; intent: unknown }[] = [];

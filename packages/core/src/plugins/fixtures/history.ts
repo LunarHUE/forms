@@ -1,7 +1,7 @@
-import type { Plugin, WriteRecord } from "../../index.js";
+import type { HookPlugin, WriteRecord } from "../../index.js";
 import { definePlugin } from "../../plugins.js";
 
-/** What `pluginApi(store, plugin)` returns for `history`. */
+/** The API of `history`, as `form.plugins.history`. */
 export interface HistoryApi {
   /** Takes back the latest step. False when there is none. */
   undo(): boolean;
@@ -24,7 +24,7 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * replayed as array commands, so the items that stay keep their keys and
  * their per-field state.
  */
-export function history(limit = 100): Plugin<HistoryApi, "history"> {
+export function history(limit = 100): HookPlugin<HistoryApi, "history"> {
   return definePlugin({
     name: "history",
     setup(ctx) {

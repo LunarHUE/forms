@@ -1,4 +1,4 @@
-import type { Path, Plugin } from "../../index.js";
+import type { HookPlugin, Path, PluginContext } from "../../index.js";
 import { definePlugin } from "../../plugins.js";
 
 /** What a rule decides for its field. */
@@ -7,11 +7,9 @@ export interface RuleResult {
   readonly hidden?: boolean;
 }
 
-declare module "../../index.js" {
-  interface FieldMeta {
-    /** Set by the `rules` fixture on fields with a rule. */
-    readonly rules: { readonly hidden: boolean };
-  }
+/** The meta `rules` sets on fields with a rule. */
+export interface RulesMeta {
+  readonly hidden: boolean;
 }
 
 /**
@@ -23,10 +21,10 @@ declare module "../../index.js" {
  */
 // `V` only types the rules for the caller. The plugin hands them the store's value as a `V`.
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
-export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResult>>): Plugin<undefined, "rules"> {
-  return definePlugin({
+export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResult>>): HookPlugin<undefined, "rules", RulesMeta> {
+  const plugin: HookPlugin<undefined, "rules", RulesMeta> = definePlugin({
     name: "rules",
-    setup(ctx) {
+    setup(ctx: PluginContext<RulesMeta>) {
       const { store } = ctx;
       const list = Object.entries(fields).map(([name, rule]): [Path, (value: V) => RuleResult] => [name.split("."), rule]);
       const apply = () => {
@@ -37,7 +35,7 @@ export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResul
           const { disabled, hidden } = rule(value);
           const snapshot = store.getSnapshot(path);
           if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => store.fieldAt(path)?.setDisabled(disabled));
-          if (hidden !== undefined && snapshot.meta?.rules?.hidden !== hidden) ctx.setMeta(path, { hidden });
+          if (hidden !== undefined && plugin.meta(snapshot)?.hidden !== hidden) ctx.setMeta(path, { hidden });
         }
       };
       apply();
@@ -48,4 +46,5 @@ export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResul
       };
     },
   });
+  return plugin;
 }

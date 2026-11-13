@@ -3,34 +3,26 @@ export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 
-// The meta interfaces are declared here, in the entry module itself, because
-// module augmentation of "@lunarhue/forms-core" only reaches an interface the
-// entry module declares, not one it re-exports.
-
-/**
- * Per-field plugin state, by plugin name. It starts empty. A plugin adds its
- * slot with module augmentation:
- *
- *     declare module "@lunarhue/forms-core" {
- *       interface FieldMeta {
- *         readonly upload: { readonly progress: number };
- *       }
- *     }
- */
-// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type
-export interface FieldMeta {}
-
-/** Form-wide plugin state, by plugin name. A plugin adds its slot the same way as on `FieldMeta`. */
-// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type
-export interface FormMeta {}
-
 export type {
+  AnyHookPlugin,
   AnyPlugin,
+  HasSchemaPlugin,
+  HasValidation,
+  HookPlugin,
+  IfValidation,
+  MetaSource,
   Plugin,
+  PluginApis,
   PluginContext,
   PluginDefinition,
   PluginErrorHandler,
   PluginHooks,
+  Plugins,
+  PluginSchemas,
+  SchemaNeedsValidation,
+  SchemaPlugin,
+  ValidationNotInstalled,
+  ValidationPlugin,
   When,
   Write,
   WriteCause,
@@ -110,12 +102,13 @@ export type {
   WriteOptions,
 } from "./handle.js";
 export type { AnyFormStore, Change, DisabledInvalid, FormStore, IntentArgs } from "./store.js";
-export type { AdapterSchema, HasAdapter, SchemaAdapter } from "./schema-adapter.js";
+export type { SchemaAdapter } from "./schema-adapter.js";
 export type {
   CreateFormsCore,
   DefinedValue,
   Definition,
   DefinitionOptions,
+  DefinitionValidate,
   Equals,
   Flags,
   FormDefinition,
@@ -127,5 +120,8 @@ export type {
   SchemaValue,
   StoreInstance,
   SubmitContext,
+  Combined,
+  DefineConfig,
+  WithPlugins,
 } from "./definition.js";
 export type { Rebase, RebaseChoice, RebaseLeaf, RebaseResult, Resolve } from "./rebase.js";

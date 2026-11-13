@@ -45,6 +45,7 @@ export type {
   SolidForms,
   UseFormContext,
   ValidateProp,
+  ValidatePropFor,
 } from "./forms.js";
 export { createField, createItems, createValidator } from "./field.js";
 export type {

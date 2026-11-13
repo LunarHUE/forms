@@ -3,9 +3,10 @@ import type { Path } from "./path.js";
 import { rebase, type Resolve } from "./rebase.js";
 import type { FormStore } from "./store.js";
 import { createFormInternals } from "./store/form-store.js";
+import { validation as runner } from "./validation.js";
 
 const make = (initial: unknown) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [runner()] });
   return { ...parts, root: parts.store.root };
 };
 

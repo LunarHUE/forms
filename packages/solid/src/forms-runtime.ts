@@ -1,4 +1,4 @@
-import { createFormsCore, type FormsConfig } from "@lunarhue/forms-core";
+import { createFormsCore, type FormsConfig, type Plugins } from "@lunarhue/forms-core";
 import { createUniqueId } from "solid-js";
 import { madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
 import type { RuntimeFocus } from "./focus.js";
@@ -8,7 +8,7 @@ import { scopeCache, type RuntimeComponent, type RuntimeHandle } from "./scope-r
 export { useAnyForm };
 
 /** `createForms` options with their types erased. */
-interface RuntimeOptions extends FormsConfig<[], unknown> {
+interface RuntimeOptions extends FormsConfig<Plugins, unknown> {
   readonly focusOnInvalid?: RuntimeFocus;
   readonly fields?: Readonly<Record<string, RuntimeComponent>>;
 }

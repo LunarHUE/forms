@@ -1,8 +1,10 @@
-import type { FieldMeta, FormMeta } from "./index.js";
 import type { Path } from "./path.js";
+import type { SchemaAdapter } from "./schema-adapter.js";
 import type { Submission } from "./snapshot.js";
+import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { AnyFormStore } from "./store.js";
 import type { CreateHost } from "./store/plugins.js";
+import type { CreateValidation } from "./store/runner.js";
 
 /**
  * What made a write. `"user"` is a write from outside any plugin, `"reset"`
@@ -89,11 +91,13 @@ export type When = "sync" | "deferred" | "idle";
 /** Called when a plugin hook throws, with the plugin's name. The write and the other plugins carry on. */
 export type PluginErrorHandler = (error: unknown, plugin: string) => void;
 
-/** The type of slot `N` in meta interface `M`, or unknown when nothing declared it. */
-type SlotOf<M, N> = N extends keyof M ? M[N] : unknown;
-
-/** What a plugin's `setup` gets. Each plugin gets its own, once per store. */
-export interface PluginContext<N extends string = string> {
+/**
+ * What a hook plugin's `setup` gets. Each plugin gets its own, once per
+ * store. `M` is the plugin's meta on a field and `F` its meta on the form.
+ * Annotate `setup`'s parameter to set them:
+ * `setup(ctx: PluginContext<{ hidden: boolean }>)`.
+ */
+export interface PluginContext<M = unknown, F = unknown> {
   /** The store the plugin is installed on. */
   readonly store: AnyFormStore<unknown>;
   /**
@@ -101,9 +105,9 @@ export interface PluginContext<N extends string = string> {
    * writes only the slot under its own name. Inside a hook it lands with the
    * queued writes, after every plugin in the round has run.
    */
-  setMeta(this: void, path: Path, value: SlotOf<FieldMeta, N>): void;
+  setMeta(this: void, path: Path, value: M): void;
   /** Sets this plugin's meta on the form. It lands when `setMeta` would. */
-  setFormMeta(this: void, value: SlotOf<FormMeta, N>): void;
+  setFormMeta(this: void, value: F): void;
   /**
    * Runs `fn`, whose store writes get `cause: { plugin: name }`. Inside a
    * hook, setup included, it is queued and runs once every plugin in the
@@ -138,33 +142,148 @@ export interface PluginHooks<A = undefined> {
   onSubmit?(): unknown;
   /** Runs once a submit has ended, with how it ended. */
   onSubmitted?(submission: Submission<unknown>): void;
-  /** What `pluginApi(store, plugin)` returns. */
+  /** The plugin's own API. The form has it as `form.plugins[name]`, and so does the store. */
   readonly api?: A;
 }
 
 /** What `definePlugin` takes. */
-export interface PluginDefinition<A = undefined, N extends string = string> {
-  /** Unique within a store. It names the meta slot and the write cause. */
+export interface PluginDefinition<A = undefined, N extends string = string, M = unknown, F = unknown> {
+  /** Unique among a store's hook plugins. It names the meta slot, the write cause and the API's key. */
   readonly name: N;
   /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
   readonly after?: readonly string[];
   /** Runs once per store, when the store is made, and returns the plugin's hooks. */
-  setup(ctx: PluginContext<N>): PluginHooks<A>;
+  setup(ctx: PluginContext<M, F>): PluginHooks<A>;
+}
+
+/** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
+export interface MetaSource {
+  readonly meta?: Readonly<Record<string, unknown>> | undefined;
 }
 
 /**
- * A plugin, as `definePlugin` from `@lunarhue/forms-core/plugins` makes it.
- * Install it with `createFormsCore({ plugins })` or a definition's `plugins`.
+ * What goes in a `plugins` list. A plugin can bring any of three things,
+ * and every member but `name` is optional:
+ * - hooks into writes, reset and submit, with meta and an API, from
+ *   `definePlugin` in `@lunarhue/forms-core/plugins` (see `HookPlugin`);
+ * - a schema adapter, which gives its library's schemas default values, so
+ *   their forms need no `defaultValues` (see `SchemaPlugin`);
+ * - the validation runner, which `validation()` from
+ *   `@lunarhue/forms-core/validation` brings alone and every schema plugin
+ *   brings too.
+ *
+ * The host and the runner come with the plugin, so a store whose plugins
+ * bring neither never loads their code.
  */
-export interface Plugin<A = undefined, N extends string = string> extends PluginDefinition<A, N> {
-  /**
-   * Makes the store's plugin host. It comes with the plugin, so a store
-   * without plugins never loads the host's code. Internal.
-   */
-  readonly host: CreateHost;
+export interface Plugin<A = undefined, N extends string = string, M = unknown, F = unknown> {
+  /** The plugin's name. A hook plugin's must be unique among the store's hook plugins. */
+  readonly name: N;
+  /** A hook plugin's: the plugins it runs after, by name. */
+  readonly after?: readonly string[];
+  /** A hook plugin's: runs once per store and returns its hooks. */
+  setup?(ctx: PluginContext<M, F>): PluginHooks<A>;
+  /** A hook plugin's: makes the store's plugin host. Internal. */
+  readonly host?: CreateHost;
+  /** A hook plugin's: reads its meta from a field. */
+  meta?(source: MetaSource): M | undefined;
+  /** A hook plugin's: reads its meta from the form snapshot. */
+  formMeta?(source: MetaSource): F | undefined;
+  /** A schema plugin's: the adapter that gives its schemas' default values. */
+  readonly schema?: SchemaAdapter<never>;
+  /** The validation runner, from a schema plugin or `validation()`. Internal. */
+  readonly validation?: CreateValidation;
 }
 
-/** A plugin of any api and name. */
-// `any` lets a plugin of every `A` and `N` fit, whatever their variance.
+/**
+ * A plugin with hooks, as `definePlugin` makes it. `A` is its API, `N` its
+ * name, `M` its meta on a field and `F` its meta on the form.
+ */
+export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown> extends Plugin<A, N, M, F> {
+  setup(ctx: PluginContext<M, F>): PluginHooks<A>;
+  readonly host: CreateHost;
+  /**
+   * Reads this plugin's meta from a field snapshot or a field object, as
+   * `rules.meta(field)?.hidden`. Undefined until the plugin sets some there.
+   */
+  meta(source: MetaSource): M | undefined;
+  /** Reads this plugin's meta from the form snapshot. Undefined until the plugin sets some. */
+  formMeta(source: MetaSource): F | undefined;
+}
+
+/** A plugin that brings a schema adapter for schemas of type `S`, and the validation runner. */
+export interface SchemaPlugin<S extends StandardSchemaV1 = StandardSchemaV1, N extends string = string> extends Plugin<undefined, N> {
+  readonly schema: SchemaAdapter<S>;
+  readonly validation: CreateValidation;
+}
+
+/** The plugin `validation()` returns: the validation runner alone. */
+export interface ValidationPlugin extends Plugin<undefined, "validation"> {
+  readonly validation: CreateValidation;
+}
+
+/** A plugin of any kind, API, name and meta. */
+// `any` lets a plugin of every `A`, `N`, `M` and `F` fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
-export type AnyPlugin = Plugin<any, any>;
+export type AnyPlugin = Plugin<any, any, any, any>;
+
+/** A hook plugin of any API, name and meta. */
+// oxlint-disable-next-line typescript/no-explicit-any
+export type AnyHookPlugin = HookPlugin<any, any, any, any>;
+
+/** A list of plugins, as `createFormsCore({ plugins })` takes it. */
+export type Plugins = readonly AnyPlugin[];
+
+/** True when a plugin in `P` brings the validation runner. */
+export type HasValidation<P extends Plugins> = [Extract<P[number], { readonly validation: CreateValidation }>] extends [never]
+  ? false
+  : true;
+
+/** The schema types the schema plugins in `P` accept. */
+export type PluginSchemas<P extends Plugins> =
+  P[number] extends infer T ? (T extends { readonly schema: SchemaAdapter<infer S> } ? S : never) : never;
+
+/** True when a schema plugin in `P` accepts schema type `S`. */
+export type HasSchemaPlugin<S, P extends Plugins> = [S] extends [never]
+  ? false
+  : [S] extends [PluginSchemas<P>]
+    ? true
+    : false;
+
+/** The name `T` has on `form.plugins`: its name when it is a hook plugin with an API, else never. */
+type ApiName<T> =
+  // oxlint-disable-next-line typescript/no-explicit-any
+  T extends HookPlugin<infer A, infer N, any, any> ? ([A] extends [undefined] ? never : N) : never;
+
+/** The API of hook plugin `T`. */
+// oxlint-disable-next-line typescript/no-explicit-any
+type ApiOf<T> = T extends HookPlugin<infer A, string, any, any> ? A : never;
+
+/** The APIs of the hook plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
+export type PluginApis<P extends Plugins> = { readonly [T in P[number] as ApiName<T>]: ApiOf<T> };
+
+/**
+ * What `validate` becomes when no plugin brings the validation runner. The
+ * compiler names the missing property, which says what to install.
+ */
+export interface ValidationNotInstalled {
+  readonly "Add validation() or a schema plugin such as valibot() to plugins to use validate": never;
+}
+
+/**
+ * What `schema` becomes when no plugin brings the validation runner, which
+ * runs the schema. The compiler names the missing property, which says what
+ * to install.
+ */
+export interface SchemaNeedsValidation {
+  readonly "Add validation() or a schema plugin such as valibot() to plugins to use schema": never;
+}
+
+/**
+ * `T` when a plugin in `P` brings the validation runner. Otherwise `T`
+ * marked as needing it, so a value is a type error whose message names what
+ * to install, while `undefined`, `null` and `false` in `T` stay allowed. The
+ * mark keeps `T` itself, so a validator inside still gets its parameter
+ * types and only the missing runner is reported.
+ */
+export type IfValidation<P extends Plugins, T> =
+  HasValidation<P> extends true ? T : (NonNullable<T> & ValidationNotInstalled) | Extract<T, undefined | null | false>;

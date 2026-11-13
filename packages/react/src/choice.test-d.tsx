@@ -4,7 +4,7 @@ import {
   type Choice,
   createForms,
   type FieldApi,
-  type SchemaAdapter,
+  type SchemaPlugin,
   type StandardSchemaV1,
   useForm,
   type ValueOf,
@@ -13,7 +13,7 @@ import {
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
-declare const fakeAdapter: SchemaAdapter<FakeSchema<unknown>>;
+declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
 
 interface Option<T> {
   readonly value: T;
@@ -83,7 +83,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 }
 
 const forms = createForms({
-  schemas: [fakeAdapter],
+  plugins: [fakePlugin],
   fields: { SelectField, RadioGroupField, CheckboxGroupField, SizeField, TextField },
 });
 

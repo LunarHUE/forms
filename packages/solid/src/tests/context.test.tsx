@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createForm, createForms, useFormContext, type AnyForm, type FormOf } from "../index.js";
 import { getAs, mount, settle } from "./dom.js";
 
-const forms = createForms({ schemas: [valibot()] });
+const forms = createForms({ plugins: [valibot()] });
 const Order = forms.define({
   schema: v.object({ customer: v.pipe(v.string(), v.minLength(1, "Required")) }),
   onSubmit: () => "saved",

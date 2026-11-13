@@ -143,6 +143,10 @@ export interface ValidatorHandleLike extends HandleLike {
  * again when the handle changes, when a schema is a different object, when
  * a function becomes a schema or the other way round, or when `debounce`,
  * `on` or `recheckOnSubmit` change.
+ *
+ * It needs the validation runner, from `validation()` or a schema plugin. A
+ * handle doesn't carry the form's plugins, so the compiler can't check that.
+ * Without the runner it throws in development.
  */
 export type UseValidator = <H extends ValidatorHandleLike>(
   handle: H,

@@ -57,6 +57,7 @@ export type {
   Scope,
   ScopeMembers,
   ValidateProp,
+  ValidatePropFor,
 } from "./scope.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { useField, useFormState, useItems, useValidator } from "./field.js";

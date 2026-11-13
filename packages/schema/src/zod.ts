@@ -1,4 +1,5 @@
-import type { Path, SchemaAdapter } from "@lunarhue/forms-core";
+import type { Path, SchemaPlugin } from "@lunarhue/forms-core";
+import { defineSchemaPlugin } from "@lunarhue/forms-core/validation";
 import type { $ZodType, $ZodTypes } from "zod/v4/core";
 
 /** A Zod 4 schema, from `zod` or `zod/mini`. */
@@ -125,9 +126,14 @@ function itemValue(schema: ZodSchema, path: Path): unknown {
   return item && defaultValue(item);
 }
 
-const adapter: SchemaAdapter<ZodSchema> = { vendor: "zod", defaultValue, itemValue };
+const plugin = defineSchemaPlugin<ZodSchema>({ vendor: "zod", defaultValue, itemValue });
 
-/** The Zod 4 schema adapter for `createFormsCore({ schemas: [zod()] })`. Takes `zod` and `zod/mini` schemas. */
-export function zod(): SchemaAdapter<ZodSchema> {
-  return adapter;
+/**
+ * The Zod 4 schema plugin, for `createForms({ plugins: [zod()] })`. Takes
+ * `zod` and `zod/mini` schemas. `define` then takes a Zod schema and starts
+ * its form from the schema's defaults. It brings the validation runner, so
+ * the form's validators work with no other plugin.
+ */
+export function zod(): SchemaPlugin<ZodSchema> {
+  return plugin;
 }

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type AnyPlugin, createFormsCore, type PluginErrorHandler, type Write, type WriteRecord } from "../index.js";
-import { definePlugin, flushPlugins, pluginApi, refuse } from "../plugins.js";
+import { type AnyHookPlugin, createFormsCore, type PluginErrorHandler, type Write, type WriteRecord } from "../index.js";
+import { definePlugin, flushPlugins, refuse } from "../plugins.js";
 import { rebase } from "../rebase.js";
+import { validation } from "../validation.js";
 import { history } from "./fixtures/history.js";
 import { digits, mask, upper } from "./fixtures/mask.js";
 import { persist } from "./fixtures/persist.js";
@@ -19,8 +20,8 @@ const rethrow: PluginErrorHandler = (error) => {
 };
 
 /** A store with `plugins` on its definition. Plugin errors throw unless `onPluginError` says otherwise. */
-const make = <V>(defaultValues: V, plugins: readonly AnyPlugin[], onPluginError: PluginErrorHandler = rethrow) =>
-  createFormsCore({ onPluginError }).define<V>({ defaultValues, plugins }).createStore();
+const make = <V, const D extends readonly AnyHookPlugin[]>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
+  createFormsCore({ onPluginError }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
 
 /** A plugin that records every `onWrite` delivery it gets. */
 const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
@@ -61,15 +62,30 @@ describe("install", () => {
     expect(order).toEqual(["shared", "own"]);
   });
 
-  it("returns a plugin's api, typed from the plugin, or undefined when it isn't installed", () => {
+  it("puts each plugin's api on store.plugins under its name", () => {
     const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 3 } }) });
-    expect(pluginApi(make(contact(), [counter]), counter)).toEqual({ count: 3 });
-    expect(pluginApi(make(contact(), []), counter)).toBeUndefined();
+    const silent = definePlugin({ name: "silent", setup: () => ({}) });
+    expect(make(contact(), [counter, silent]).plugins).toEqual({ counter: { count: 3 } });
+    expect(make(contact(), []).plugins).toEqual({});
+    expect(createFormsCore().define({ defaultValues: contact() }).createStore().plugins).toEqual({});
   });
 
   it("throws at store creation on two plugins with one name", () => {
     const one = definePlugin({ name: "one", setup: () => ({}) });
     expect(() => make(contact(), [one, one])).toThrow('Two plugins are named "one".');
+  });
+
+  it("throws at store creation on a shared and a definition plugin with one name", () => {
+    const one = definePlugin({ name: "one", setup: () => ({}) });
+    const form = createFormsCore({ plugins: [one] }).define({ defaultValues: contact(), plugins: [one] });
+    expect(() => form.createStore()).toThrow('Two plugins are named "one".');
+  });
+
+  it("puts the APIs of both lists on store.plugins", () => {
+    const shared = definePlugin({ name: "shared", setup: () => ({ api: 1 }) });
+    const own = definePlugin({ name: "own", setup: () => ({ api: 2 }) });
+    const store = createFormsCore({ plugins: [shared] }).define({ defaultValues: contact(), plugins: [own] }).createStore();
+    expect(store.plugins).toEqual({ shared: 1, own: 2 });
   });
 
   it("throws at store creation on an `after` cycle", () => {
@@ -386,8 +402,8 @@ describe("isolation", () => {
     const store = make(contact(), [meta]);
     const runs = vi.fn<() => void>();
     store.subscribe(["phone"], runs);
-    pluginApi(store, meta)?.set(1);
-    pluginApi(store, meta)?.set(1);
+    store.plugins.m.set(1);
+    store.plugins.m.set(1);
     expect(runs).toHaveBeenCalledOnce();
   });
 });
@@ -462,7 +478,7 @@ describe("timing", () => {
     flushPlugins(store);
     expect([deferred.calls.length, idle.calls.length]).toEqual([1, 1]);
     store.root.at("phone").setValue("2");
-    pluginApi(store, flusher)?.flush();
+    store.plugins.flusher.flush();
     expect([deferred.calls.length, idle.calls.length]).toEqual([2, 2]);
     await Promise.resolve();
     vi.runAllTimers();
@@ -545,7 +561,7 @@ describe("reset and submit", () => {
   it("tells onSubmitted about an invalid submit too", async () => {
     const ended: string[] = [];
     const plugin = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [validation()] })
       .define({
         defaultValues: contact(),
         plugins: [plugin],
@@ -575,7 +591,8 @@ describe("server rendering", () => {
       sameAsBilling: boolean;
       shipping: { street: string };
     }
-    const store = make<Order>({ sameAsBilling: true, shipping: { street: "" } }, [
+    const order: Order = { sameAsBilling: true, shipping: { street: "" } };
+    const store = make(order, [
       rules<Order>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) }),
       history(),
       persist("order", undefined),
@@ -607,23 +624,21 @@ describe("fixtures", () => {
   }
 
   it("rules derives disabled and hidden from the value before listeners run", () => {
-    const store = make<Order>({ sameAsBilling: true, shipping: { street: "" } }, [
-      rules<Order>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) }),
-    ]);
+    const ruleSet = rules<Order>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) });
+    const order: Order = { sameAsBilling: true, shipping: { street: "" } };
+    const store = make(order, [ruleSet]);
     const seen: unknown[] = [];
     store.subscribe(["shipping"], () => {
-      const { disabled, meta } = store.getSnapshot(["shipping"]);
-      seen.push({ disabled, hidden: meta?.rules?.hidden });
+      const snapshot = store.getSnapshot(["shipping"]);
+      seen.push({ disabled: snapshot.disabled, hidden: ruleSet.meta(snapshot)?.hidden });
     });
     store.root.at("sameAsBilling").setValue(false);
     expect(seen).toEqual([{ disabled: false, hidden: false }]);
   });
 
   it("history undoes and redoes user edits a task at a time", async () => {
-    const undo = history();
-    const store = make({ name: "", tags: ["a", "b"] }, [undo]);
-    const api = pluginApi(store, undo);
-    if (!api) throw new Error("history is installed");
+    const store = make({ name: "", tags: ["a", "b"] }, [history()]);
+    const api = store.plugins.history;
     store.root.at("name").setValue("A");
     await Promise.resolve();
     store.root.at("name").setValue("Ab");
@@ -644,10 +659,8 @@ describe("fixtures", () => {
   });
 
   it("history replays array steps as array commands, so items keep their keys and state", async () => {
-    const undo = history();
-    const store = make({ rows: [{ title: "a" }, { title: "b" }, { title: "c" }] }, [undo]);
-    const api = pluginApi(store, undo);
-    if (!api) throw new Error("history is installed");
+    const store = make({ rows: [{ title: "a" }, { title: "b" }, { title: "c" }] }, [history()]);
+    const api = store.plugins.history;
     const rows = store.root.at("rows");
     const keys = rows.peek().keys;
     const [, b] = keys;
@@ -671,13 +684,12 @@ describe("fixtures", () => {
   });
 
   it("history forgets everything on reset", async () => {
-    const undo = history();
-    const store = make(contact(), [undo]);
+    const store = make(contact(), [history()]);
     store.root.at("phone").setValue("1");
     await Promise.resolve();
     store.reset();
     await Promise.resolve();
-    expect(pluginApi(store, undo)?.canUndo).toBe(false);
+    expect(store.plugins.history.canUndo).toBe(false);
   });
 
   it("persist saves on idle and restores at creation without marking anything edited", () => {

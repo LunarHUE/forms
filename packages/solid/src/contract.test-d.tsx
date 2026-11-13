@@ -60,7 +60,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   );
 }
 
-const forms = createForms({ schemas: [valibot()], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [valibot()], fields: { TextField, NumberField } });
 
 // A component that takes an exact field object, with no Draft.
 function ExactCount(props: { field: ExactFieldApi<number>; label: string }) {
@@ -123,7 +123,8 @@ interface SignupDraft {
 type Intent = "save" | "publish" | undefined;
 type SignupResult = { id: string; intent: Intent };
 type Fields = { readonly TextField: typeof TextField; readonly NumberField: typeof NumberField };
-type SignupForm = SolidForm<SignupDraft, FormError, Intent, SignupResult, Fields>;
+type Installed = readonly [ReturnType<typeof valibot>];
+type SignupForm = SolidForm<SignupDraft, FormError, Intent, SignupResult, Fields, Installed>;
 
 const Signup = forms.define({
   schema: signupSchema,
@@ -136,7 +137,7 @@ const GeoShape = forms.fieldset<Geo>();
 
 function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
   const scope = GeoShape.scope(props.field);
-  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields>>();
+  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields, Installed>>();
   return (
     <>
       <scope.NumberField name="lat" label="Latitude" />
@@ -571,7 +572,7 @@ describe("scopes and fieldsets", () => {
   it("makes a scope for any object handle, with names relative to it", () => {
     const form = createForm(Signup);
     const billing = forms.scope(form.root.at("billing"));
-    expectTypeOf(billing).toEqualTypeOf<Scope<Address, FormError, Fields>>();
+    expectTypeOf(billing).toEqualTypeOf<Scope<Address, FormError, Fields, Installed>>();
     void (<billing.TextField name="city" label="City" />);
     void (<billing.Field name="geo.lng">{(field) => <span>{field.value}</span>}</billing.Field>);
     // @ts-expect-error: names are relative to the scope
@@ -585,7 +586,7 @@ describe("scopes and fieldsets", () => {
     expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
     // A fieldset only types the scope: `scope` takes the handle and nothing else.
     expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: FieldHandle<Address>]>();
-    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields>>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields, Installed>>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {

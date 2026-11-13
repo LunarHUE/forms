@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm, useFormContext, useFormState } from "./index.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
+import { defineSchemaPlugin } from "@lunarhue/forms-core/validation";
 
 // Fast Refresh runs an edited module again and keeps the state of its mounted
 // components. These tests do the same: `load` stands for the module body, and
@@ -28,6 +29,13 @@ const minLength = (min: number): StandardSchemaV1<Value> => ({
   },
 });
 
+/** The schema plugin for `minLength`'s schemas. Every form gives its defaultValues. */
+const testSchemas = defineSchemaPlugin<StandardSchemaV1<Value>>({
+  vendor: "test",
+  defaultValue: () => ({ name: "" }),
+  itemValue: () => undefined,
+});
+
 /** The module body: its own field component, `createForms` and `define`. */
 function load(version: string, min: number, onSubmit: (value: Value) => void) {
   function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -38,7 +46,7 @@ function load(version: string, min: number, onSubmit: (value: Value) => void) {
       </label>
     );
   }
-  const forms = createForms({ fields: { TextField } });
+  const forms = createForms({ plugins: [testSchemas], fields: { TextField } });
   return forms.define({ schema: minLength(min), defaultValues: { name: "" }, onSubmit });
 }
 

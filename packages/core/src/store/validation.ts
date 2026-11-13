@@ -1,11 +1,13 @@
 import type { FormError, MapError } from "../errors.js";
 import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorContext, ValidatorInput } from "../validator.js";
+import type { ValidateTiming, ValidatorContext } from "../validator.js";
 import type { PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
+import { addErrors, type Placed } from "./placed.js";
+import type { SchemaOutput, Validation, ValidationOptions } from "./runner.js";
 import { readFields, type Spec, toSpec } from "./validate/inputs.js";
-import { addErrors, place, type Placed, thrownMessage } from "./validate/place.js";
+import { place, thrownMessage } from "./validate/place.js";
 import {
   along,
   below,
@@ -25,64 +27,6 @@ import {
 declare function setTimeout(run: () => void, ms: number): unknown;
 declare function clearTimeout(handle: unknown): void;
 declare const AbortController: new () => { readonly signal: PlatformAbortSignal; abort(): void };
-
-/** The store options validation reads. */
-export interface ValidationOptions<V, E> {
-  /** The definition's validators and their timing. */
-  readonly validate?: {
-    /** When this form's validators first run. Overrides `timing`. */
-    readonly on?: ValidateTiming;
-    /** A validator for the whole value. */
-    readonly form?: FormValidatorInput<V, E>;
-    /** Field validators shaped like the value. */
-    readonly fields?: FieldValidators<V, E>;
-  } | undefined;
-  /** A schema for the whole value. It runs as a form validator, before `validate.form` when both are given. */
-  readonly schema?: StandardSchemaV1 | undefined;
-  /** The shared timing from `createFormsCore`. Defaults to `"blur"`. */
-  readonly timing?: ValidateTiming | undefined;
-  /** Turns schema issues and thrown validators into errors. Without it an error is `{ message }`. */
-  readonly mapError?: MapError<E> | undefined;
-}
-
-/** Field and form validators, their timing, debounce and async runs. */
-export interface Validation<E> {
-  /** Adds a validator at stable path `path`. The returned function removes it and the errors it set. */
-  register(this: void, path: Path, validator: ValidatorInput<unknown, E>): () => void;
-  /** Runs every validator at and below `path` now. Resolves true when the subtree has no validation error. */
-  validate(path: Path): Promise<boolean>;
-  /** Called after a user-edit write at `path` changed the value, inside the write's batch. */
-  written(path: Path): void;
-  /** Called after the field at `path` was blurred, inside the blur's batch. */
-  blurred(path: Path): void;
-  /**
-   * Called when the subtree at `path` is reset, inside the reset's batch and
-   * before the baseline writes, to abort runs and drop pending debounces there.
-   */
-  reset(path: Path): void;
-  /**
-   * Called after writes that were not user edits changed the values at
-   * `paths`, inside their batch. Reruns the validators that already run on
-   * input and touch those paths. It arms nothing.
-   */
-  changed(paths: readonly Path[]): void;
-  /** Runs what submit needs and resolves once no validator is running. */
-  settleForSubmit(): Promise<void>;
-  /**
-   * The value submit passes on and what `onSubmit` gets for it. With a form
-   * schema that is the schema's output, from its last run when that run
-   * passed on the current value. Otherwise the schema runs again now and its
-   * errors land. Without a schema both are the current value. Resolves
-   * undefined when the value fails the schema.
-   */
-  schemaOutput(): Promise<SchemaOutput | undefined>;
-}
-
-/** A value that passed the form schema, and what the schema made of it. */
-export interface SchemaOutput {
-  readonly input: unknown;
-  readonly output: unknown;
-}
 
 /**
  * One validator from the definition or from `register`. Its pattern names
@@ -150,8 +94,10 @@ const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unkno
 const defaultMapError: MapError<FormError> = (raw) => ({ message: raw.message });
 
 /**
- * Makes validation. Making it and registering validators run nothing:
- * validators first run on a write, a blur, a submit or `validate()`.
+ * The validation runner: field and form validators, their timing, debounce
+ * and async runs, and placing their errors on fields. Making it and
+ * registering validators run nothing: validators first run on a write, a
+ * blur, a submit or `validate()`.
  */
 export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, options: ValidationOptions<V, E>): Validation<E> {
   const { core } = context;

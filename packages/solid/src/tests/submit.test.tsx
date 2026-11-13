@@ -14,7 +14,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ schemas: [valibot()], fields: { TextField } });
+const forms = createForms({ plugins: [valibot()], fields: { TextField } });
 const schema = v.object({
   title: v.pipe(v.string(), v.minLength(1, "Required")),
   body: v.pipe(v.string(), v.minLength(1, "Required")),

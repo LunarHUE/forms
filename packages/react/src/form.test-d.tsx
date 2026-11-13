@@ -16,7 +16,7 @@ import {
   type ObjectHandle,
   type Fieldset,
   type ReactFormDefinition,
-  type SchemaAdapter,
+  type SchemaPlugin,
   type StandardSchemaV1,
   type Submission,
   type UnknownForm,
@@ -26,11 +26,11 @@ import {
   useFormState,
 } from "./index.js";
 
-// A schema type an adapter supports, as in core's type tests. No schema library is needed.
+// A schema type a schema plugin accepts, as in core's type tests. No schema library is needed.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
-declare const fakeAdapter: SchemaAdapter<FakeSchema<unknown>>;
+declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
 
 // The app's own field components, registered once in createForms.
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string; readonly placeholder?: string }) {
@@ -54,7 +54,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   );
 }
 
-const forms = createForms({ schemas: [fakeAdapter], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [fakePlugin], fields: { TextField, NumberField } });
 
 interface Address {
   street: string;
@@ -103,7 +103,8 @@ type DraftOrder = {
   channels: ("email" | "sms")[];
 };
 type Fields = { readonly TextField: typeof TextField; readonly NumberField: typeof NumberField };
-type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, Fields>;
+type Installed = readonly [typeof fakePlugin];
+type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, Fields, Installed>;
 
 function OrderPage() {
   const form = useForm(order);
@@ -296,7 +297,7 @@ describe("createForms", () => {
 
   it("carries V, E, I, R and the fields from the definition", () => {
     expectTypeOf(order).toEqualTypeOf<
-      ReactFormDefinition<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, void, Fields>
+      ReactFormDefinition<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, void, Fields, Installed>
     >();
   });
 });
@@ -524,7 +525,7 @@ describe("fieldsets and scopes", () => {
     expectTypeOf(OrderWithFieldsets).toBeFunction();
     expectTypeOf(PlainNumbers).toBeFunction();
     // A fieldset only types the shape: it has no hook and takes no options.
-    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields>>();
+    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields, Installed>>();
     // @ts-expect-error: scope takes the handle only
     AddressShape.scope(emptyHandle, { validate: false });
   });

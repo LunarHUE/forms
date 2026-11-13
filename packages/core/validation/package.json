@@ -1,0 +1,5 @@
+{
+  "main": "../dist/cjs/validation.js",
+  "module": "../dist/esm/validation.js",
+  "types": "../dist/cjs/validation.d.ts"
+}

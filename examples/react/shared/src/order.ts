@@ -20,7 +20,7 @@ import { CheckboxGroupField, NumberField, RadioGroupField, SelectField, TextFiel
  * options against the named field.
  */
 export const forms = createForms({
-  schemas: [valibot()],
+  plugins: [valibot()],
   fields: { TextField, NumberField, SelectField, RadioGroupField, CheckboxGroupField },
 });
 

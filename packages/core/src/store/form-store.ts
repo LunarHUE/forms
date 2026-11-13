@@ -2,15 +2,15 @@ import type { Flags } from "../definition.js";
 import type { FormError, Show } from "../errors.js";
 import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
-import type { AnyPlugin, PluginErrorHandler } from "../plugin.js";
+import type { AnyHookPlugin, AnyPlugin, PluginErrorHandler } from "../plugin.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import { registerStore } from "./baseline/registry.js";
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
+import { noValidation, type Validation, type ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
-import { createValidation, type Validation, type ValidationOptions } from "./validation.js";
 
 /** What `createFormStore` takes. Each module adds the options it reads to its own options type. */
 export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, O = V>
@@ -27,7 +27,11 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   readonly show?: Show | undefined;
   /** The item `push` and `insert` add when called without one. Gets the array's stable path. Defaults to undefined. */
   readonly itemValue?: ((path: Path) => unknown) | undefined;
-  /** The plugins, shared ones first. */
+  /**
+   * The plugins, shared ones first. The hook plugins get a host, and the
+   * first plugin that brings the validation runner gives the store its
+   * validation.
+   */
   readonly plugins?: readonly AnyPlugin[] | undefined;
   /** Called when a plugin hook throws. Defaults to throwing on a later task. */
   readonly onPluginError?: PluginErrorHandler | undefined;
@@ -52,16 +56,19 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     // The core first calls this when something reads, after `baseline` below exists.
     dirty: (path, value) => baseline.dirty(path, value),
   });
-  // Only a store with plugins gets a host. The plugins bring its code with
+  // Only a store with hook plugins gets a host, and only a store with a plugin
+  // that brings the runner gets validation. The plugins bring that code with
   // them, so core neither carries nor runs it for a store without.
-  const { plugins } = options;
-  const host = plugins?.[0]?.host(raw, plugins, options.onPluginError);
+  const plugins = options.plugins ?? [];
+  const hooked = plugins.filter((plugin): plugin is AnyHookPlugin => plugin.setup !== undefined);
+  const host = hooked[0]?.host(raw, hooked, options.onPluginError);
+  const runner = plugins.find((plugin) => plugin.validation)?.validation ?? noValidation;
   // The host's core wraps this store's and keeps its types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = (host?.core ?? raw) as StoreCore<E, I, R>;
   const context: FormContext<V, E, I, R> = { core, store: () => store };
   const baseline = createBaseline(context, options);
-  const validation = createValidation(context, options);
+  const validation = runner(context, options);
   const submit = createSubmit(context, options, validation, host);
 
   const reset = (path: Path, resetOptions?: ResetOptions) => {
@@ -109,6 +116,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     changes: baseline.changes,
     firstInvalid: submit.firstInvalid,
     disabledInvalid: submit.disabledInvalid,
+    plugins: host?.apis ?? {},
   };
   registerStore(store, { core, baseline, validation, host });
   host?.start(store);

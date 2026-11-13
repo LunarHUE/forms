@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createField, createForm, createForms, createItems, createValidator, type FieldApi, type FormOf } from "../index.js";
 import { countSubscriptions, get, mount, settle, typeText } from "./dom.js";
 
-const forms = createForms({ schemas: [valibot()] });
+const forms = createForms({ plugins: [valibot()] });
 const Profile = forms.define({
   schema: v.object({
     first: v.pipe(v.string(), v.minLength(1, "Required")),
