@@ -171,7 +171,7 @@ Type `name="emial"` and the build fails. Same if you pass `schema` or
 | `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
 | `@lunarhue/forms-vue`    | Vue 3 adapter                                    |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
-| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand`          |
+| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
 
 ## Plugins
 
@@ -210,7 +210,8 @@ Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
 once validation is installed. You give `defaultValues` yourself in that case.
 
 Bindings for outside stores follow the same rule. `zustand()` comes from
-`@lunarhue/forms-bind/zustand`, not from core. A binding never replaces the
+`@lunarhue/forms-bind/zustand` and `signal()` for a Solid signal from
+`@lunarhue/forms-bind/solid`, not from core. A binding never replaces the
 form's store. It is a two-way copy of the value, set up per form, so two forms
 can bind to two different stores.
 

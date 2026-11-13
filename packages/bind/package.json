@@ -10,9 +10,21 @@
   },
   "files": [
     "dist",
+    "solid",
     "zustand"
   ],
   "exports": {
+    "./solid": {
+      "@lunarhue/source": "./src/solid.ts",
+      "import": {
+        "types": "./dist/esm/solid.d.ts",
+        "default": "./dist/esm/solid.js"
+      },
+      "require": {
+        "types": "./dist/cjs/solid.d.ts",
+        "default": "./dist/cjs/solid.js"
+      }
+    },
     "./zustand": {
       "@lunarhue/source": "./src/zustand.ts",
       "import": {
@@ -28,15 +40,20 @@
   },
   "peerDependencies": {
     "@lunarhue/forms-core": "workspace:^",
+    "solid-js": "^2.0.0-rc.0",
     "zustand": "^5.0.0"
   },
   "peerDependenciesMeta": {
+    "solid-js": {
+      "optional": true
+    },
     "zustand": {
       "optional": true
     }
   },
   "devDependencies": {
     "@lunarhue/forms-core": "workspace:^",
+    "solid-js": "catalog:",
     "zustand": "catalog:"
   },
   "publishConfig": {
@@ -50,10 +67,25 @@
   },
   "size-limit": [
     {
+      "name": "./solid",
+      "path": "dist/esm/solid.js",
+      "import": "*",
+      "limit": "350 B"
+    },
+    {
       "name": "./zustand",
       "path": "dist/esm/zustand.js",
       "import": "*",
       "limit": "350 B"
+    },
+    {
+      "name": "core + signal()",
+      "import": {
+        "../core/dist/esm/index.js": "{ createFormsCore }",
+        "../core/dist/esm/plugins/bind.js": "{ bind }",
+        "dist/esm/solid.js": "{ signal }"
+      },
+      "limit": "10.4 kB"
     },
     {
       "name": "core + zustand()",
