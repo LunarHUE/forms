@@ -35,12 +35,15 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   per task. It keeps `canUndo` and `canRedo` in its form meta, so an undo
   button can re-render. See below.
 - `mask`: cleans the value written at named fields before the store takes it,
-  with `digits` and `upper` as ready-made cleaners.
+  with `digits` and `upper` as ready-made cleaners. See below.
 - `rules`: sets `disabled` and a `hidden` meta flag on named fields from the
-  form value, after every write.
+  form value, when the store is made and after every write. What it sets
+  when the store is made is in the server HTML, so a field a rule disables
+  or hides renders that way on the server and hydrates with no second render.
 - `persist`: saves the form value to storage and restores it when the store
-  is made. `persist("draft")` uses `localStorage`, and `persist("draft",
-  sessionStorage)` uses the storage you pass. The server has no storage, so
+  first gets a listener, as when a component mounts a field.
+  `persist("draft")` uses `localStorage`, and `persist("draft",
+  sessionStorage)` uses the storage you pass. The server never listens, so
   the restore is a write made after the store starts, not its starting
   value. A server render and the render that hydrates show the defaults, and
   the restored value shows in the render after. Storage that throws, as when
@@ -88,6 +91,43 @@ is undefined until a flag first changes, which means both are false. The
 flags change in the same render as an undo, a redo or a reset. After an
 edit they change a microtask later, when `history` records the step.
 
+### What history can't do
+
+Undoing a remove puts the row back with a new key. Core never brings a
+removed key back, so the row's per-field state starts fresh: touched,
+edited and errors are gone, and a component keyed by the old key mounts
+again. Undoing an insert or a move keeps the keys of the rows that stay, and
+their state with them.
+
+`history` records user writes only. A plugin's writes, resets and rebases
+make no step. A plugin that writes to the store directly, outside
+`ctx.write`, makes a user write, so it does make a step. See "Writes after
+an `await`" below.
+
+### Masks
+
+`mask` takes a map from a dotted stable path to a cleaner. A `*` segment
+matches every array item or object key:
+
+```ts
+mask({ phone: digits, "address.zip": upper, "lines.*.sku": upper });
+```
+
+It cleans every value that reaches a named field, whatever wrote it:
+
+- A write above a field, such as `setValue` on `address`, a root replace
+  from `bind`, or a row that `push` or `insert` adds, is cleaned at each
+  named field below it.
+- The form's starting value is cleaned through `initial`, so the baseline is
+  clean, the form doesn't start dirty, and a reset leaves it clean. When
+  another plugin's `initial` sets the starting value, as `bind` does, put
+  `mask` after it in the list.
+- User edits, resets and other plugins' writes are cleaned. A value
+  `persist` restores is a plugin write, so it comes out clean.
+- Rebases aren't. The incoming value is the server's copy, and the baseline
+  moves to it as it came. Cleaning it would make the form dirty against its
+  own baseline.
+
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 
 ## Writing a plugin
@@ -97,7 +137,95 @@ through `ctx.write`, which runs after every plugin in the round has run.
 Their records have `cause: { plugin: name }`. A plugin that moves the
 baseline to a value from outside, as `rebase` does, can pass `"rebase"`
 instead: `ctx.write(fn, "rebase")`. Those are the only two causes a plugin
-gets. `"user"` and `"reset"` belong to the form.
+gets. `"user"` and `"reset"` belong to the form. The host passes every
+write to every plugin with its cause, and each plugin decides what to do
+with it, as `mask` skips rebases.
+
+### Setup
+
+Setup runs when the store is made, before anything reads it, on the server
+and on the client alike. What it writes, values, flags and meta, is part of
+the store's starting state:
+
+- The server snapshot shows it, so the server HTML and the first render on
+  the client agree, and hydrating renders once. This is how `rules` puts
+  `disabled` and `hidden` in the server HTML.
+- It makes no write records, so no plugin's `onWrite` sees it and no
+  `deferred` or `idle` delivery is scheduled. A store that is made and never
+  written to, as on the server, starts no timer.
+- It doesn't move the baseline. A value written in setup is dirty against
+  the defaults, on the server and the client alike. To start from a value
+  without making the form dirty, use `initial`.
+
+So setup must give the same result on the server and the client. Anything
+that reads the browser or the environment, such as storage, goes in
+`onActive`, which runs when the store gets its first listener. The server
+never listens, so it never runs there. `persist` restores in `onActive`.
+
+### Writes
+
+`beforeWrite` runs before each value write, in plugin order, and returns the
+value to write or `refuse` to stop it. A write of an object comes through
+once, at the object's path, so a plugin that cares about a field below
+walks down to it, as `mask` does. A row that `push` or `insert` adds comes
+through as a write at the row's path, with `before` undefined. The row is
+already in the array by then, since the insert makes its key. Return a
+replacement row, or `refuse` to take the row out again. A form with no
+`beforeWrite` plugin skips all of this.
+
+### Writes after an `await`
+
+Code after an `await` runs once the hook has returned, so the host can't
+tell its writes from the user's. A write made straight to the store there
+is recorded as a user edit: the field is marked edited and `history` makes
+an undo step from it. Write through `ctx.write`, and pass `edited: false`
+when the value isn't the user's:
+
+```ts
+async onSubmit() {
+  const token = await fetchToken();
+  // Wrong: a user edit, with an undo step.
+  ctx.store.root.at("token").setValue(token);
+  // Right: a plugin write, not marked edited.
+  ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
+}
+```
+
+### Refusing a submit
+
+A throw or a rejected promise in `onSubmit` is a bug. It goes to
+`onPluginError` and the submit carries on. To stop a submit on purpose,
+return `refuse`, directly or from the promise. The definition's `onSubmit`
+isn't called, and the submission ends `"invalid"`, as it does when
+validation fails, and `onSubmitted` gets it. Set a form error first so the
+user sees why:
+
+```ts
+import { definePlugin, refuse } from "@lunarhue/forms-react/plugins";
+
+const captcha = definePlugin({
+  name: "captcha",
+  setup: (ctx) => ({
+    async onSubmit() {
+      try {
+        const token = await fetchToken();
+        ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
+        return undefined;
+      } catch {
+        ctx.store.root.setErrors({ message: "We couldn't check the form. Try again." });
+        return refuse;
+      }
+    },
+  }),
+});
+```
+
+`refuse` returned directly stops the plugins after this one from running
+their `onSubmit`. Returned from a promise it can't, since every `onSubmit`
+started when the submit did. A plugin doesn't know the form's error type,
+so the error it sets must fit the form's `mapError`, if it has one.
+
+### Validation and starting values
 
 Writes that aren't user edits rerun the validators that already run on the
 paths they change. A plugin that writes many paths in one `ctx.write` reruns
@@ -121,7 +249,7 @@ starting value whole. It isn't merged with a schema plugin's defaults the
 way `defaultValues` is, though `initial` gets those merged defaults and can
 merge into them itself. A value that differs between server and client,
 such as one read from browser storage, makes hydration fail, so read those
-in `setup` and write them with `ctx.write`, as `persist` does.
+in `onActive` and write them with `ctx.write`, as `persist` does.
 
 ## Third party
 
