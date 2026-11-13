@@ -261,7 +261,8 @@ export interface FormMembers<V, E, I, R, F extends FieldComponents = NoFieldComp
    * first time a getter is read inside a reactive owner, and unsubscribes
    * when the owner `createForm` ran in is disposed. A read outside any owner
    * returns the current form snapshot's member, tracks nothing, and doesn't
-   * subscribe.
+   * subscribe. There is no `form.State` as in React: reading
+   * `form.state.submitting` in JSX already updates only that spot.
    */
   readonly state: FormState<I, R>;
   /** The props for the `<form>` element, the same object `Form` passes to its child first. */

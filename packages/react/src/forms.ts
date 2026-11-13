@@ -19,10 +19,10 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import { createFormsCore } from "@lunarhue/forms-core";
-import { createContext, createElement, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
-import type { HandleLike } from "./field.js";
+import type { HandleLike, IsEqual } from "./field.js";
 import { focusInvalid, formRef } from "./refs.js";
 import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
@@ -60,7 +60,17 @@ export interface FocusTarget<E = FormError> {
 export type FocusOnInvalid<E = FormError> = boolean | ((target: FocusTarget<E>) => void);
 
 /** The names the form object uses itself, which a registered field component can't take. */
-export type ReservedName = "Field" | "Items" | "Form" | "store" | "root" | "id" | "formProps" | "submit" | "handleSubmit";
+export type ReservedName =
+  | "Field"
+  | "Items"
+  | "Form"
+  | "State"
+  | "store"
+  | "root"
+  | "id"
+  | "formProps"
+  | "submit"
+  | "handleSubmit";
 
 /**
  * Checks the `fields` passed to `createForms`: a reserved name, or a
@@ -156,6 +166,8 @@ export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields>
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
   /** The headless provider. See `FormComponent`. */
   readonly Form: FormComponent<FormInstance<V, E, I, R, F>>;
+  /** Renders a selection of the form snapshot. See `FormStateComponent`. */
+  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F>>;
 }
 
 /**
@@ -200,6 +212,24 @@ export interface ReactFormDefinition<
 
 /** The form a definition makes: `FormOf<typeof signUp>`. */
 export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
+
+/** Props for `form.State`, where `T` is the form that owns it. */
+export interface FormStateProps<I, R, S, T> {
+  /** Picks what to render from the form snapshot. It may be an inline function, as `useFormState`'s `select`. */
+  readonly select: (snapshot: FormSnapshot<I, R>) => S;
+  /** Compares two selected values. Return true to skip the re-render. Defaults to `Object.is`. */
+  readonly isEqual?: IsEqual<S>;
+  /** Renders the selected value. Gets the form too. */
+  readonly children: (selected: S, form: T) => ReactNode;
+}
+
+/**
+ * `form.State`: reads the form snapshot inline, as `useFormState` with
+ * `select` does, and renders its children with the result. Only its own
+ * children re-render, and only when the selected value changes by
+ * `isEqual`. It needs no `form.Form` above.
+ */
+export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>) => ReactElement;
 
 /**
  * Makes the form on the first render and returns the same object on every
@@ -340,7 +370,11 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
     const content = typeof children === "function" ? children(formProps, form) : children;
     return createElement(FormContext.Provider, { value: node }, content);
   }
-  const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form };
+  function State(props: FormStateProps<unknown, unknown, unknown, AnyForm>): ReactElement {
+    const selected = useSelected(formSource(store), props.select, props.isEqual);
+    return createElement(Fragment, null, props.children(selected, form));
+  }
+  const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form, State };
   return form;
 }
 

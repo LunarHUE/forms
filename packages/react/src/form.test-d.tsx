@@ -8,6 +8,7 @@ import {
   type FormInstance,
   type FormOf,
   type FormSnapshot,
+  type FormStateComponent,
   type FormStore,
   type HandleOf,
   type ItemHandle,
@@ -218,6 +219,8 @@ describe("createForms", () => {
     createForms({ fields: { Field: TextField } });
     // @ts-expect-error: submit is the form's own member
     createForms({ fields: { submit: TextField } });
+    // @ts-expect-error: State is the form's own member
+    createForms({ fields: { State: TextField } });
     // @ts-expect-error: a field component needs a field prop
     createForms({ fields: { Label: (props: { readonly text: string }) => <span>{props.text}</span> } });
     expectTypeOf(createForms({ fields: { TextField } })).toBeObject();
@@ -465,5 +468,45 @@ describe("fieldsets and scopes", () => {
 
   it("keeps nested forms apart in context", () => {
     expectTypeOf(LineDialog).toBeFunction();
+  });
+});
+
+// form.State, typed from the form's intent and result types.
+function SaveState() {
+  const form = useForm(order);
+  return (
+    <>
+      <form.State select={(snapshot) => snapshot.submission}>
+        {(submission, owner) => {
+          expectTypeOf(submission).toEqualTypeOf<Submission<"save" | "send" | undefined, { id: string }>>();
+          expectTypeOf(owner).toEqualTypeOf<OrderForm>();
+          return submission.status === "succeeded" ? <p>{submission.result.id}</p> : null;
+        }}
+      </form.State>
+      <form.State select={(snapshot) => snapshot.submitCount} isEqual={(a, b) => a === b}>
+        {(count) => {
+          expectTypeOf(count).toEqualTypeOf<number>();
+          return <p>{count}</p>;
+        }}
+      </form.State>
+      {/* @ts-expect-error: isEqual compares what select returns */}
+      <form.State select={(snapshot) => snapshot.submitCount} isEqual={(a: string, b: string) => a === b}>
+        {(count) => <p>{count}</p>}
+      </form.State>
+      {/* @ts-expect-error: the form snapshot has no such member */}
+      <form.State select={(snapshot) => snapshot.missing}>{() => null}</form.State>
+      <form.State select={(snapshot) => snapshot.dirty}>
+        {/* @ts-expect-error: children must be a render function */}
+        <p />
+      </form.State>
+    </>
+  );
+}
+
+describe("form.State", () => {
+  it("types select from the form snapshot and children from what select returns", () => {
+    expectTypeOf(SaveState).toBeFunction();
+    expectTypeOf<OrderForm["State"]>().toEqualTypeOf<FormStateComponent<"save" | "send" | undefined, { id: string }, OrderForm>>();
+    expectTypeOf<UnknownForm["State"]>().toEqualTypeOf<FormStateComponent<unknown, unknown, UnknownForm>>();
   });
 });

@@ -43,6 +43,20 @@ function Account() {
   );
 }
 
+// The same form with its status read inline by form.State and no form.Form.
+function InlineAccount() {
+  const form = useForm(account, { id: "inline" });
+  return (
+    <form {...form.formProps}>
+      <input aria-label="name" {...useInputProps(form.root.at("name"))} />
+      <input aria-label="email" {...useInputProps(form.root.at("email"))} />
+      <form.State select={(snapshot) => `${snapshot.submission.status} ${snapshot.submitCount}`}>
+        {(status, owner) => <p data-testid="status">{`${status} ${owner.id}`}</p>}
+      </form.State>
+    </form>
+  );
+}
+
 const field = (container: HTMLElement, name: string): HTMLInputElement => {
   const found = container.querySelector<HTMLInputElement>(`input[aria-label="${name}"]`);
   if (found === null) throw new Error(`no input ${name}`);
@@ -75,5 +89,21 @@ describe("submit", () => {
     expect(status()).toBe("succeeded 2");
     expect(saved).toEqual([{ name: "Ada", email: "ada@example.com" }]);
     expect(field(container, "name").getAttribute("aria-invalid")).toBe("false");
+  });
+
+  it("reads the form state inline with form.State", async () => {
+    saved.length = 0;
+    const { container } = await render(<InlineAccount />);
+    const status = () => container.querySelector("[data-testid=status]")?.textContent;
+    expect(status()).toBe("idle 0 inline");
+
+    await submit(container);
+    expect(status()).toBe("invalid 1 inline");
+
+    await act(() => fireEvent.change(field(container, "name"), { target: { value: "Ada" } }));
+    await act(() => fireEvent.change(field(container, "email"), { target: { value: "ada@example.com" } }));
+    await submit(container);
+    expect(status()).toBe("succeeded 2 inline");
+    expect(saved).toEqual([{ name: "Ada", email: "ada@example.com" }]);
   });
 });

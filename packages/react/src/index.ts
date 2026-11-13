@@ -14,6 +14,8 @@ export type {
   FormOf,
   Forms,
   FormsOptions,
+  FormStateComponent,
+  FormStateProps,
   ObjectHandleLike,
   ReactFormDefinition,
   ReservedName,
