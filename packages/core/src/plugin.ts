@@ -224,6 +224,12 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
   /** Gives the form's starting value. See `Plugin.initial`. */
   initial?(value: unknown): unknown;
+  /**
+   * The plugin's form meta before it sets any. The `formMeta` reader
+   * returns it until then, on the server and in the browser alike, so the
+   * reader's type has no `undefined`.
+   */
+  readonly initialFormMeta?: F;
 }
 
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
@@ -291,6 +297,13 @@ export interface HookPlugin<A = undefined, N extends string = string, M = unknow
   meta(source: MetaSource): M | undefined;
   /** Reads this plugin's meta from the form snapshot. Undefined until the plugin sets some. */
   formMeta(source: MetaSource): F | undefined;
+}
+
+/** A hook plugin whose definition gave `initialFormMeta`, so its form meta is never undefined. */
+export interface HookPluginWithFormMeta<A = undefined, N extends string = string, M = unknown, F = unknown>
+  extends HookPlugin<A, N, M, F> {
+  /** Reads this plugin's meta from the form snapshot, or its `initialFormMeta` while it has set none. */
+  formMeta(source: MetaSource): F;
 }
 
 /** A plugin that brings a schema adapter for schemas of type `S`, and the validation runner. */

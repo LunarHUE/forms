@@ -18,13 +18,13 @@ describe("history", () => {
     expect(store.root.peek().value).toEqual({ name: "A", tags: ["a", "b"] });
     expect(api.undo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "", tags: ["a", "b"] });
-    expect(undoHistory.formMeta(store.getFormSnapshot())?.canUndo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
     expect(api.redo()).toBe(true);
     expect(api.redo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "Ab", tags: ["b"] });
     // Its own writes never became steps.
     flush();
-    expect(undoHistory.formMeta(store.getFormSnapshot())?.canRedo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot()).canRedo).toBe(false);
     expect(api.undo()).toBe(true);
     expect(errors).toEqual([]);
   });
@@ -62,8 +62,19 @@ describe("history", () => {
     flush();
     store.reset();
     flush();
-    expect(undoHistory.formMeta(store.getFormSnapshot())?.canUndo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
     expect(store.plugins.history.undo()).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  it("has its form meta before any step, the same object on every read", () => {
+    const undoHistory = history();
+    const { store, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
+    const meta = undoHistory.formMeta(store.getFormSnapshot());
+    expect(meta).toEqual({ canUndo: false, canRedo: false });
+    // A selector that returns it stays stable, so React doesn't render again.
+    expect(undoHistory.formMeta(store.getFormSnapshot())).toBe(meta);
+    expect(undoHistory.formMeta(store.getServerFormSnapshot())).toBe(meta);
     expect(errors).toEqual([]);
   });
 
@@ -71,16 +82,15 @@ describe("history", () => {
     const undoHistory = history(2);
     const { store, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
     const flags = () => undoHistory.formMeta(store.getFormSnapshot());
-    const writes: unknown[] = [];
+    const writes: unknown[] = [flags()];
     store.subscribeForm(() => {
       const meta = flags();
       if (meta !== writes[writes.length - 1]) writes.push(meta);
     });
-    expect(flags()).toBeUndefined();
 
     // The flag trails the edit by a microtask, when the step is recorded.
     store.root.at("phone").setValue("1");
-    expect(flags()).toBeUndefined();
+    expect(flags()).toEqual({ canUndo: false, canRedo: false });
     await Promise.resolve();
     expect(flags()).toEqual({ canUndo: true, canRedo: false });
     // A second step changes no flag, so nothing is written.
@@ -88,7 +98,7 @@ describe("history", () => {
     await Promise.resolve();
     store.root.at("phone").setValue("123");
     await Promise.resolve();
-    expect(writes).toHaveLength(1);
+    expect(writes).toHaveLength(2);
 
     // The limit keeps two steps, so the third undo has nothing.
     expect(store.plugins.history.undo()).toBe(true);
@@ -105,7 +115,7 @@ describe("history", () => {
 
     store.reset();
     expect(flags()).toEqual({ canUndo: false, canRedo: false });
-    expect(writes).toHaveLength(6);
+    expect(writes).toHaveLength(7);
     expect(errors).toEqual([]);
   });
 
