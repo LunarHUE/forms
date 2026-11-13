@@ -36,13 +36,13 @@ export interface ValidationOptions<V, E> {
     readonly form?: FormValidatorInput<V, E>;
     /** Field validators shaped like the value. */
     readonly fields?: FieldValidators<V, E>;
-  };
+  } | undefined;
   /** A schema for the whole value. It runs as a form validator, before `validate.form` when both are given. */
-  readonly schema?: StandardSchemaV1;
+  readonly schema?: StandardSchemaV1 | undefined;
   /** The shared timing from `createFormsCore`. Defaults to `"blur"`. */
-  readonly timing?: ValidateTiming;
+  readonly timing?: ValidateTiming | undefined;
   /** Turns schema issues and thrown validators into errors. Without it an error is `{ message }`. */
-  readonly mapError?: MapError<E>;
+  readonly mapError?: MapError<E> | undefined;
 }
 
 /** Field and form validators, their timing, debounce and async runs. */

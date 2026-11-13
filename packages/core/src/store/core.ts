@@ -36,7 +36,7 @@ export interface StoreCoreOptions {
   /** Fields that start read-only, declared the same way as `disabled`. */
   readonly readOnly?: unknown;
   /** When validation errors show. Defaults to `"touched-or-submitted"`. User errors always show. */
-  readonly show?: Show;
+  readonly show?: Show | undefined;
   /**
    * Computes `dirty` for the field at stable path `path` holding `value`.
    * The store calls it when a field's value changes and after `recheckDirty`.

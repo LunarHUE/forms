@@ -15,7 +15,7 @@ declare const AbortController: new () => { readonly signal: PlatformAbortSignal;
 /** The store options submit reads. `O` is what `onSubmit` gets: the schema's output, or the value. */
 export interface SubmitOptions<V, E, I, R, O = V> {
   /** Called when a submit passes validation. What it returns becomes the result, what it throws the error. */
-  readonly onSubmit?: (value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>;
+  readonly onSubmit?: ((value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>) | undefined;
 }
 
 /** Submitting, form-wide user errors and finding invalid fields. */

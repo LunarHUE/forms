@@ -19,13 +19,13 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   /** The starting value. */
   readonly initial: V;
   /** Fields that start disabled. */
-  readonly disabled?: Flags<V>;
+  readonly disabled?: Flags<V> | undefined;
   /** Fields that start read-only. */
-  readonly readOnly?: Flags<V>;
+  readonly readOnly?: Flags<V> | undefined;
   /** When validation errors show. */
-  readonly show?: Show;
+  readonly show?: Show | undefined;
   /** The item `push` and `insert` add when called without one. Gets the array's stable path. Defaults to undefined. */
-  readonly itemValue?: (path: Path) => unknown;
+  readonly itemValue?: ((path: Path) => unknown) | undefined;
 }
 
 /** A form store with the parts it is made of, for tests and internal callers. */
@@ -41,12 +41,9 @@ export interface FormInternals<V, E, I, R> {
 export function createFormInternals<V, E = FormError, I = undefined, R = unknown, O = V>(
   options: FormStoreOptions<V, E, I, R, O>,
 ): FormInternals<V, E, I, R> {
+  // The core reads its own options: id, initial, disabled, readOnly and show.
   const core = createStoreCore<E, I, R>({
-    id: options.id,
-    initial: options.initial,
-    disabled: options.disabled,
-    readOnly: options.readOnly,
-    ...(options.show === undefined ? {} : { show: options.show }),
+    ...options,
     // The core first calls this when something reads, after `baseline` below exists.
     dirty: (path, value) => baseline.dirty(path, value),
   });

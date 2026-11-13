@@ -62,22 +62,22 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
   const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
     const { schema } = definition;
     const adapter = schema === undefined ? undefined : adapterFor(schema);
-    const show = definition.show ?? config.show;
+    // Every store option treats undefined as not given.
     return {
       id: instance?.id ?? defaultId,
       initial: initialValue(definition, adapter),
-      ...(adapter && schema ? { itemValue: (path) => adapter.itemValue(schema, path) } : {}),
-      ...(schema === undefined ? {} : { schema }),
-      ...(definition.validate === undefined ? {} : { validate: definition.validate }),
-      ...(config.validate === undefined ? {} : { timing: config.validate }),
+      itemValue: adapter && schema ? (path) => adapter.itemValue(schema, path) : undefined,
+      schema,
+      validate: definition.validate,
+      timing: config.validate,
       // The error type is erased here. The contract ties `mapError`'s return type to the store's `E`.
-      ...(config.mapError === undefined ? {} : { mapError: config.mapError }),
-      ...(show === undefined ? {} : { show }),
+      mapError: config.mapError,
+      show: definition.show ?? config.show,
       equals: definition.equals,
       sharedEquals: config.equals,
-      ...(definition.disabled === undefined ? {} : { disabled: definition.disabled }),
-      ...(definition.readOnly === undefined ? {} : { readOnly: definition.readOnly }),
-      ...(definition.onSubmit === undefined ? {} : { onSubmit: definition.onSubmit }),
+      disabled: definition.disabled,
+      readOnly: definition.readOnly,
+      onSubmit: definition.onSubmit,
     };
   };
 
