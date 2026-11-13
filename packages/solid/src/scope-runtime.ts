@@ -86,28 +86,6 @@ function addPropValidator(handle: RuntimeHandle, props: OneField): void {
   addValidator(handle, options ? { ...options, validate: run } : run);
 }
 
-/** `scope.Field`: the field object for one field, passed to the children once. */
-function ScopeField(props: FieldProps & { readonly root: RuntimeHandle }): SolidElement {
-  const handle = resolveField(props.root, props);
-  addPropValidator(handle, props);
-  const field = createFieldApi(handle);
-  return untrack(() => props.children(field));
-}
-
-/** `scope.Items`: the items of an array field, keyed by their stable keys. */
-function ScopeItems(props: ItemsProps & { readonly root: RuntimeHandle }): SolidElement {
-  const items = createItemList(resolveField(props.root, props));
-  return createComponent(ForEach, {
-    get each() {
-      return items();
-    },
-    get fallback() {
-      return props.fallback;
-    },
-    children: (item: unknown, index: Accessor<number>) => props.children(item, index),
-  });
-}
-
 /** A registered component bound to a scope: it renders the app's component with `field` filled in. */
 function RegisteredField(props: OneField & { readonly root: RuntimeHandle; readonly component: RuntimeComponent }): SolidElement {
   const handle = resolveField(props.root, props);
@@ -121,8 +99,26 @@ function RegisteredField(props: OneField & { readonly root: RuntimeHandle; reado
 function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, RuntimeComponent>>): RuntimeScope {
   const scope: RuntimeScope = {
     root,
-    Field: (props: FieldProps) => createComponent(ScopeField, merge(props, { root })),
-    Items: (props: ItemsProps) => createComponent(ScopeItems, merge(props, { root })),
+    // `scope.Field`: the field object for one field, passed to the children once.
+    Field: (props: FieldProps) => {
+      const handle = resolveField(root, props);
+      addPropValidator(handle, props);
+      const field = createFieldApi(handle);
+      return untrack(() => props.children(field));
+    },
+    // `scope.Items`: the items of an array field, keyed by their stable keys.
+    Items: (props: ItemsProps) => {
+      const items = createItemList(resolveField(root, props));
+      return createComponent(ForEach, {
+        get each() {
+          return items();
+        },
+        get fallback() {
+          return props.fallback;
+        },
+        children: (item: unknown, index: Accessor<number>) => props.children(item, index),
+      });
+    },
   };
   for (const [name, component] of Object.entries(fields)) {
     scope[name] = (props: OneField) => createComponent(RegisteredField, merge(props, { root, component }));

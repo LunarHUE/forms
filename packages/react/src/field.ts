@@ -53,7 +53,8 @@ export interface UseField {
   <H extends HandleLike, T>(handle: H, select: (snapshot: SnapshotOf<H>) => T, isEqual?: IsEqual<T>): T;
 }
 
-const whole = <S>(snapshot: S): S => snapshot;
+/** Selects the whole snapshot. */
+export const whole = <S>(snapshot: S): S => snapshot;
 
 /** See `UseField`. */
 export const useField: UseField = <H extends HandleLike, T>(
@@ -155,11 +156,21 @@ type AnyValidatorInput = ValidatorInput<unknown, unknown> | undefined | null | f
 const isSchema = (value: unknown): value is StandardSchemaV1 =>
   typeof value === "object" && value !== null && "~standard" in value;
 
-/** The function to call for a run: the latest function given, read when the run starts. */
-function latestFunction(input: AnyValidatorInput): Validator<unknown, unknown> | undefined {
-  if (typeof input === "function") return input;
-  if (input && !isSchema(input) && typeof input.validate === "function") return input.validate;
-  return undefined;
+/** The options object of a validator input, or undefined for a function, a schema or none. */
+function optionsOf(input: AnyValidatorInput) {
+  return input && typeof input === "object" && !isSchema(input) ? input : undefined;
+}
+
+/** The check a validator input gives: its options' `validate`, or the input itself. */
+function checkOf(input: AnyValidatorInput) {
+  const options = optionsOf(input);
+  return options ? options.validate : input;
+}
+
+/** The function a validator input gives. Undefined for a schema or none. */
+function functionOf(input: AnyValidatorInput): Validator<unknown, unknown> | undefined {
+  const check = checkOf(input);
+  return typeof check === "function" ? check : undefined;
 }
 
 /** See `UseValidator`. */
@@ -173,9 +184,11 @@ export const useValidator: UseValidator = (handle, validator) => {
   });
 
   // What decides whether to register again. A function or an options object
-  // may be new on every render, so only these parts of it count.
-  const options = input && typeof input === "object" && !isSchema(input) ? input : undefined;
-  const check = options ? options.validate : input;
+  // may be new on every render, so only these parts of it count. A bare
+  // check and an options object count as different, so switching between
+  // them registers again.
+  const options = optionsOf(input);
+  const check = checkOf(input);
   const schema = isSchema(check) ? check : undefined;
   const active = Boolean(input);
   const withOptions = options !== undefined;
@@ -185,18 +198,12 @@ export const useValidator: UseValidator = (handle, validator) => {
 
   useEffect(() => {
     if (!active) return undefined;
-    const run: Validator<unknown, unknown> = (value, ctx) => latestFunction(latest.current)?.(value, ctx);
-    const validate = schema ?? run;
-    const registered: ValidatorInput<unknown, unknown> = withOptions
-      ? {
-          validate,
-          ...(debounce === undefined ? {} : { debounce }),
-          ...(on === undefined ? {} : { on }),
-          ...(recheckOnSubmit === undefined ? {} : { recheckOnSubmit }),
-        }
-      : validate;
+    // The function to call is the latest one given, read when the run starts.
+    const run: Validator<unknown, unknown> = (value, ctx) => functionOf(latest.current)?.(value, ctx);
+    // Core reads an undefined option as not given, so this one object stands for a bare check too.
+    const spec = { validate: schema ?? run, debounce, on, recheckOnSubmit };
     // The handle's validator type is its own value type, which `validator` was checked against.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return handle.registerValidator(registered as never);
+    return handle.registerValidator(spec as never);
   }, [handle, active, withOptions, schema, debounce, on, recheckOnSubmit]);
 };

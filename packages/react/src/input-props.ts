@@ -2,7 +2,7 @@ import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import { type BaseInputProps, errorId, type FieldRef } from "./input.js";
 import { type NumberText, setNumberText } from "./number-text.js";
-import { fieldRef } from "./refs.js";
+import { refFor } from "./refs.js";
 import { cached } from "./select.js";
 
 /** A handle as the input props use it at runtime. Every core handle fits. */
@@ -64,75 +64,59 @@ function numberShown(value: unknown, text: NumberText | undefined): string {
   return typeof value === "number" && !Number.isNaN(value) ? String(value) : "";
 }
 
-function makeCallbacks(handle: Commands, kind: Kind, option: unknown): Callbacks {
+/** The `onChange` of one element kind on one field. */
+function changeHandler(handle: Commands, kind: Kind, option: unknown): Callbacks["onChange"] {
   const writable = () => !handle.peek().readOnly;
-  const blur = () => handle.handleBlur();
-  const ref = fieldRef(handle);
-
   switch (kind) {
     case "number":
     case "range":
-      return {
-        onChange(event) {
-          const text = event.target.value;
-          const number = text.trim() === "" ? Number.NaN : Number(text);
-          const value = Number.isNaN(number) ? option : number;
-          setNumberText(handle, { value, text });
-          handle.setValue(value);
-        },
-        onBlur() {
-          setNumberText(handle, undefined);
-          handle.handleBlur();
-        },
-        ref,
+      return (event) => {
+        const text = event.target.value;
+        const number = text.trim() === "" ? Number.NaN : Number(text);
+        const value = Number.isNaN(number) ? option : number;
+        setNumberText(handle, { value, text });
+        handle.setValue(value);
       };
     case "checkbox":
-      return {
-        onChange(event) {
-          if (writable()) handle.setValue(event.target.checked);
-        },
-        onBlur: blur,
-        ref,
+      return (event) => {
+        if (writable()) handle.setValue(event.target.checked);
       };
     case "group":
-      return {
-        onChange(event) {
-          const snapshot = handle.peek();
-          if (snapshot.readOnly) return;
-          const list: readonly unknown[] = Array.isArray(snapshot.value) ? snapshot.value : [];
-          const has = list.includes(option);
-          if (event.target.checked && !has) handle.setValue([...list, option]);
-          if (!event.target.checked && has) handle.setValue(list.filter((item) => !Object.is(item, option)));
-        },
-        onBlur: blur,
-        ref,
+      return (event) => {
+        const snapshot = handle.peek();
+        if (snapshot.readOnly) return;
+        const list: readonly unknown[] = Array.isArray(snapshot.value) ? snapshot.value : [];
+        const has = list.includes(option);
+        if (event.target.checked && !has) handle.setValue([...list, option]);
+        if (!event.target.checked && has) handle.setValue(list.filter((item) => !Object.is(item, option)));
       };
     case "radio":
-      return {
-        onChange(event) {
-          if (event.target.checked && writable()) handle.setValue(option);
-        },
-        onBlur: blur,
-        ref,
+      return (event) => {
+        if (event.target.checked && writable()) handle.setValue(option);
       };
     case "select":
-      return {
-        onChange(event) {
-          const value = event.target.value;
-          if (writable()) handle.setValue(value === "" ? option : value);
-        },
-        onBlur: blur,
-        ref,
+      return (event) => {
+        const value = event.target.value;
+        if (writable()) handle.setValue(value === "" ? option : value);
       };
     default:
-      return {
-        onChange(event) {
-          handle.setValue(event.target.value);
-        },
-        onBlur: blur,
-        ref,
+      return (event) => {
+        handle.setValue(event.target.value);
       };
   }
+}
+
+function makeCallbacks(handle: Commands, kind: Kind, option: unknown): Callbacks {
+  const numeric = kind === "number" || kind === "range";
+  return {
+    onChange: changeHandler(handle, kind, option),
+    onBlur: () => {
+      // A number input shows the field's number again once it loses focus.
+      if (numeric) setNumberText(handle, undefined);
+      handle.handleBlur();
+    },
+    ref: refFor(handle),
+  };
 }
 
 function buildProps(
@@ -199,13 +183,9 @@ export function inputPropsFor(
   if (built !== undefined && (!numeric || built.text === text)) return built.props;
 
   const callbacksByOption = cached(cached(callbackCache, handle, () => new Map()), kind, () => new Map());
-  let callbacks = callbacksByOption.get(option);
-  if (callbacks === undefined) {
-    // Every core handle has these commands. `InputHandle` only names what the contract's handle types share.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    callbacks = makeCallbacks(handle as unknown as Commands, kind, option);
-    callbacksByOption.set(option, callbacks);
-  }
+  // Every core handle has these commands. `InputHandle` only names what the contract's handle types share.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const callbacks = cached(callbacksByOption, option, () => makeCallbacks(handle as unknown as Commands, kind, option));
   const props = buildProps(handle, snapshot, numeric ? text : undefined, kind, option, callbacks);
   byOption.set(option, { text, props });
   return props;

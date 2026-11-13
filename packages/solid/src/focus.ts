@@ -8,7 +8,7 @@ export type RuntimeFocus = FocusOnInvalid<unknown>;
 /** Builds the focus target from the store after a submit ends invalid. */
 function focusTarget(store: RuntimeStore): FocusTarget<unknown> {
   const field = store.firstInvalid();
-  const fieldElement = field === undefined ? undefined : elementsOf(store, field.id)[0];
+  const fieldElement = field === undefined ? undefined : elementsOf(field)[0];
   return {
     field,
     disabled: store.disabledInvalid(),

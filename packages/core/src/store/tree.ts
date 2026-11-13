@@ -36,6 +36,11 @@ export function valueAt(root: unknown, path: Path): unknown {
   return node;
 }
 
+// A define, not an assignment, so a `__proto__` key can't change the copy's prototype.
+function define(copy: object, key: PathSegment, value: unknown): void {
+  Object.defineProperty(copy, key, { value, writable: true, enumerable: true, configurable: true });
+}
+
 function copyOf(node: object): object {
   // Spread, not `slice`: V8's `slice` is many times slower on a frozen array,
   // and in development every array in the tree is frozen. Spread turns holes
@@ -57,13 +62,7 @@ export function setAt(root: unknown, path: Path, value: unknown): unknown {
   if (key === undefined) return value;
   const node = isContainer(root) ? root : typeof key === "number" ? [] : {};
   const copy = copyOf(node);
-  // A define, not an assignment, so a `__proto__` key can't change the copy's prototype.
-  Object.defineProperty(copy, key, {
-    value: setAt(childOf(node, key), path.slice(1), value),
-    writable: true,
-    enumerable: true,
-    configurable: true,
-  });
+  define(copy, key, setAt(childOf(node, key), path.slice(1), value));
   return copy;
 }
 
@@ -78,8 +77,7 @@ export function merge(target: unknown, patch: Record<string, unknown>): unknown 
   const keys = Object.keys(patch).filter((key) => !base || !hasOwn(base, key) || !Object.is(base[key], patch[key]));
   if (base && keys.length === 0) return base;
   const copy = copyOf(base ?? {});
-  for (const key of keys)
-    Object.defineProperty(copy, key, { value: patch[key], writable: true, enumerable: true, configurable: true });
+  for (const key of keys) define(copy, key, patch[key]);
   return copy;
 }
 

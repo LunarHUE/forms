@@ -4,12 +4,9 @@ import type { FocusOnInvalid } from "./forms.js";
 import type { FieldRef } from "./input.js";
 import { cached } from "./select.js";
 
-type FormRef = (element: HTMLFormElement | null) => (() => void) | undefined;
-
-// Keyed by field handle for field elements and by store for `<form>` elements.
+// Both keyed by field handle for field elements and by store for `<form>` elements.
 const elements = new WeakMap<object, Set<HTMLElement>>();
-const fieldRefs = new WeakMap<object, FieldRef>();
-const formRefs = new WeakMap<object, FormRef>();
+const refs = new WeakMap<object, FieldRef>();
 
 /** Drops the elements that left the document, so the set can't grow without bound. */
 function connected(set: Set<HTMLElement>): Set<HTMLElement> {
@@ -21,13 +18,15 @@ function connected(set: Set<HTMLElement>): Set<HTMLElement> {
 const refCleanups = Number(version.split(".")[0]) >= 19;
 
 /**
- * Makes a ref callback that records its elements for `key`. On React 19 it
- * returns a cleanup that forgets the element. Earlier versions get no cleanup
- * and call the callback with `null` without saying which element left, so
- * that call does nothing and lookups skip elements that left the document.
+ * The ref callback that records its elements for `key`: a field handle for a
+ * field's elements, or a store for its `<form>` elements. It is the same
+ * function for the life of the key. On React 19 it returns a cleanup that
+ * forgets the element. Earlier versions get no cleanup and call the callback
+ * with `null` without saying which element left, so that call does nothing
+ * and lookups skip elements that left the document.
  */
-function recorder(key: object): FieldRef {
-  return (element) => {
+export function refFor(key: object): FieldRef {
+  return cached(refs, key, () => (element) => {
     if (element === null) return undefined;
     const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
     set.add(element);
@@ -35,17 +34,7 @@ function recorder(key: object): FieldRef {
     return () => {
       set.delete(element);
     };
-  };
-}
-
-/** The ref callback for a field's elements, the same function for the life of the handle. */
-export function fieldRef(handle: object): FieldRef {
-  return cached(fieldRefs, handle, () => recorder(handle));
-}
-
-/** The ref callback that records a store's `<form>` elements, the same function for the life of the store. */
-export function formRef(store: object): FormRef {
-  return cached(formRefs, store, () => recorder(store));
+  });
 }
 
 /** The first connected element, in document order, recorded for `key`. */

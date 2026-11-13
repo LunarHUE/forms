@@ -29,7 +29,7 @@ export interface Handles<E> {
   /** The root handle, made on first call. */
   root(): AnyFieldHandle<E>;
   /** The handle at `path`, or undefined when the path can't name a field. */
-  fieldAt(path: Path): AnyFieldHandle<E> | undefined;
+  fieldAt(this: void, path: Path): AnyFieldHandle<E> | undefined;
 }
 
 const isList = <E>(errors: Many<E>): errors is readonly E[] => Array.isArray(errors);

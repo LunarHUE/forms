@@ -74,8 +74,6 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       return handles.root() as FieldHandle<V, E>;
     },
-    // The parts' commands never read `this`, so the store hands them out as they are.
-    /* oxlint-disable typescript/unbound-method */
     subscribe: core.subscribe,
     getSnapshot: core.getSnapshot,
     getServerSnapshot: core.getServerSnapshot,
@@ -94,7 +92,6 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     changes: baseline.changes,
     firstInvalid: submit.firstInvalid,
     disabledInvalid: submit.disabledInvalid,
-    /* oxlint-enable typescript/unbound-method */
   };
   registerStore(store, { core, baseline, validation });
   return { store, core, baseline, validation, submit };

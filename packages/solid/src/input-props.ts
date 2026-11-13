@@ -152,7 +152,7 @@ function numberProps(source: InputSource, options: AnyInputOptions | undefined):
 /** Puts every radio button of the field back to the field's value. */
 function restoreRadios(handle: InputHandle): void {
   const value = asText(current(handle).value);
-  for (const element of elementsOf(handle.store, handle.id)) {
+  for (const element of elementsOf(handle)) {
     if (element instanceof HTMLInputElement && element.type === "radio") element.checked = element.value === value;
   }
 }

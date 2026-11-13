@@ -23,7 +23,7 @@ import { createContext, createElement, Fragment, type ReactElement, type ReactNo
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
-import { focusInvalid, formRef } from "./refs.js";
+import { focusInvalid, refFor } from "./refs.js";
 import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, PropsOf, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
 import { formSource, storeOf } from "./sources.js";
@@ -373,7 +373,7 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
     onSubmit: (event) => {
       void handleSubmit(event);
     },
-    ref: formRef(store),
+    ref: refFor(store),
   };
   // `Form` only runs after `form` below is made.
   function Form(props: FormComponentProps<AnyForm>): ReactElement {
@@ -393,7 +393,7 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
 
 /** Core's `define` as the runtime calls it, with every type erased. */
 interface LooseCore {
-  define(config: unknown): { createStore(options: unknown, instance: StoreInstance): AnyFormStore<unknown> };
+  define(config: unknown): { createStore(options: unknown, instance?: StoreInstance): AnyFormStore<unknown> };
 }
 
 /** See `CreateForms`. */
@@ -410,18 +410,15 @@ export const createForms: CreateForms = (options = {}) => {
   const defaultFocus = (options.focusOnInvalid ?? true) as FocusOnInvalid<unknown>;
 
   const define = (config: unknown) => {
-    const made = core.define(config);
+    const definition = core.define(config);
     const takesOptions = typeof config === "function";
-    const definition = {
-      createStore: (storeOptions: unknown, instance: StoreInstance = {}) => made.createStore(storeOptions, instance),
-    };
     makers.set(definition, (args, generatedId) => {
       // `useForm` takes the definition's options first only when the definition is a function.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
       const id = instance?.id;
       if (id === undefined) generatedIdUsed();
-      const store = made.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
+      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
       const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
       madeFrom.set(form, definition);
       return form;

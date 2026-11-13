@@ -4,39 +4,6 @@ import { buildInputProps, errorIdOf, optionsKey, type AnyInputOptions, type Inpu
 import { defineGetters, fieldReader } from "./reader.js";
 import { elementRegistrar } from "./refs.js";
 
-/** The members every field snapshot has. Array snapshots add `keys`. */
-const snapshotKeys = [
-  "value",
-  "name",
-  "errors",
-  "shownErrors",
-  "invalid",
-  "touched",
-  "edited",
-  "dirty",
-  "validating",
-  "disabled",
-  "readOnly",
-] as const;
-
-/** The handle commands a field object carries, when the handle has them. */
-const commandNames = [
-  "setValue",
-  "handleBlur",
-  "setTouched",
-  "setErrors",
-  "validate",
-  "reset",
-  "setDisabled",
-  "setReadOnly",
-  "at",
-  "item",
-  "push",
-  "insert",
-  "remove",
-  "move",
-] as const;
-
 /** The input source for a handle, reading through `read`. Its registrar belongs to the current owner. */
 export function inputSourceFor(handle: HandleLike, read: InputSource["read"]): InputSource {
   return {
@@ -44,25 +11,25 @@ export function inputSourceFor(handle: HandleLike, read: InputSource["read"]): I
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     handle: handle as unknown as InputHandle,
     read,
-    register: elementRegistrar(handle.store, handle.id),
+    register: elementRegistrar(handle),
   };
 }
 
 /**
  * Builds the field object for a handle: snapshot getters over one signal,
- * the handle's commands bound to it, `handle`, `errorId`, and `inputProps`,
+ * the handle's commands, `handle`, `errorId`, and `inputProps`,
  * which returns the same props object for the same options.
  */
 export function createFieldApi(handle: HandleLike): object {
   const owner = getOwner();
   const read = fieldReader(handle);
   const field: Record<string, unknown> = {};
-  const initial = handle.store.getSnapshot(handle.path);
-  defineGetters(field, "keys" in initial ? [...snapshotKeys, "keys"] : snapshotKeys, read);
-
-  for (const name of commandNames) {
-    const command: unknown = Reflect.get(handle, name);
-    if (typeof command === "function") field[name] = command.bind(handle);
+  // Array snapshots have `keys` on top of the members every snapshot has.
+  defineGetters(field, Object.keys(handle.store.getSnapshot(handle.path)), read);
+  // Core's handle commands read no `this`, so they are copied as they are. The
+  // field reads state through its getters and validators through `createValidator`.
+  for (const [name, member] of Object.entries(handle)) {
+    if (typeof member === "function" && name !== "peek" && name !== "registerValidator") field[name] = member;
   }
   field.handle = handle;
   field.errorId = errorIdOf(handle);
