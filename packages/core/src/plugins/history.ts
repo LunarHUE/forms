@@ -1,4 +1,4 @@
-import type { HookPlugin, WriteRecord } from "../plugin.js";
+import type { HookPlugin, PluginContext, WriteRecord } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
 
 /** The API of `history`, as `form.plugins.history`. */
@@ -7,92 +7,101 @@ export interface HistoryApi {
   undo(): boolean;
   /** Writes the latest undone step again. False when there is none. */
   redo(): boolean;
-  /** True when there is a step to undo. */
+}
+
+/**
+ * The meta `history` sets on the form. Read it from the form snapshot with
+ * the plugin's reader, as `undoHistory.formMeta(snapshot)?.canUndo`. It is
+ * undefined until a flag first changes. Read that as both false.
+ */
+export interface HistoryMeta {
   readonly canUndo: boolean;
-  /** True when there is an undone step to write again. */
   readonly canRedo: boolean;
 }
 
-type Step = readonly WriteRecord[];
+/** A record a step keeps. Flag changes aren't edits. */
+type Edit = Exclude<WriteRecord, { readonly type: "touched" | "disabled" | "readOnly" }>;
 
-/** The record types a step keeps. Flag changes aren't edits. */
+type Step = readonly Edit[];
+
 const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]);
 
 /**
  * Undo and redo for the user's value and array writes. Its API is
- * `form.plugins.history`, a `HistoryApi`.
+ * `form.plugins.history`, a `HistoryApi`, and it keeps `HistoryMeta` on the
+ * form so an undo button can re-render.
  *
  * A step is one delivery of `deferred` records: everything written in one
  * task, such as one keystroke or one batch. It keeps the latest `limit`
  * steps. Its own writes, resets and rebases aren't recorded, and a reset
  * clears both stacks. Array steps are replayed as array commands, so the
  * items that stay keep their keys and their per-field state.
+ *
+ * The meta changes in the same notification as an undo, a redo or a reset.
+ * After an edit it changes a microtask later, when the step is recorded.
  */
-export function history(limit = 100): HookPlugin<HistoryApi, "history"> {
+export function history(limit = 100): HookPlugin<HistoryApi, "history", never, HistoryMeta> {
   return definePlugin({
     name: "history",
-    setup(ctx) {
+    setup(ctx: PluginContext<never, HistoryMeta>) {
       const { store } = ctx;
       const done: Step[] = [];
       const undone: Step[] = [];
+      let meta: HistoryMeta = { canUndo: false, canRedo: false };
 
-      // Replays a step through the handles, so validation sees it. Going back
-      // writes each record's inverse, newest first.
-      const replay = (step: Step, back: boolean) => {
-        // The lib is ES2020, which has no `toReversed`. The spread keeps the step as it is.
-        // oxlint-disable-next-line unicorn/no-array-reverse
-        const list = back ? [...step].reverse() : step;
-        ctx.write(() => {
-          for (const record of list) {
-            const field = store.fieldAt(record.path);
-            if (!field) continue;
-            if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
-            else if (record.type === "insert") {
-              if (back) field.remove(record.index);
-              else field.insert(record.index, record.item);
-            } else if (record.type === "remove") {
-              if (back) field.insert(record.index, record.item);
-              else field.remove(record.index);
-            } else if (record.type === "move") {
-              if (back) field.move(record.to, record.from);
-              else field.move(record.from, record.to);
-            }
-          }
-        });
+      // Sets the form meta when a flag changed.
+      const show = () => {
+        const canUndo = done.length > 0;
+        const canRedo = undone.length > 0;
+        if (canUndo !== meta.canUndo || canRedo !== meta.canRedo) ctx.setFormMeta((meta = { canUndo, canRedo }));
       };
 
+      // Moves a step from one stack to the other and replays it through the
+      // handles, so validation sees it. Going back writes each record's
+      // inverse, newest first.
       const step = (from: Step[], to: Step[], back: boolean): boolean => {
         // Records still waiting for delivery belong to the step before this one.
         ctx.flush();
         const next = from.pop();
         if (!next) return false;
         to.push(next);
-        replay(next, back);
+        // The lib is ES2020, which has no `toReversed`. The spread keeps the step as it is.
+        // oxlint-disable-next-line unicorn/no-array-reverse
+        const list = back ? [...next].reverse() : next;
+        ctx.write(() => {
+          for (const record of list) {
+            const field = store.fieldAt(record.path);
+            if (!field) continue;
+            if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
+            else if (record.type === "move") field.move(back ? record.to : record.from, back ? record.from : record.to);
+            // Undoing an insert and redoing a remove both take the item out.
+            else if ((record.type === "insert") === back) field.remove(record.index);
+            else field.insert(record.index, record.item);
+          }
+          // Inside the write's batch, so the flags land with the values.
+          show();
+        });
         return true;
       };
 
       return {
         when: "deferred",
         onWrite(records) {
-          const mine = records.filter((record) => record.cause === "user" && edits.has(record.type));
+          const mine = records.filter((record): record is Edit => record.cause === "user" && edits.has(record.type));
           if (mine.length === 0) return;
           done.push(mine);
           if (done.length > limit) done.shift();
           undone.length = 0;
+          show();
         },
         onReset() {
           done.length = 0;
           undone.length = 0;
+          show();
         },
         api: {
           undo: () => step(done, undone, true),
           redo: () => step(undone, done, false),
-          get canUndo() {
-            return done.length > 0;
-          },
-          get canRedo() {
-            return undone.length > 0;
-          },
         },
       };
     },

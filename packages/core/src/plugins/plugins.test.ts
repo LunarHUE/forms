@@ -48,6 +48,19 @@ const metaAtSetup = (name: string, value: number) =>
     },
   });
 
+/** Storage backed by a map. */
+const memory = (saved = new Map<string, string>()) => ({
+  saved,
+  getItem: (key: string) => saved.get(key) ?? null,
+  setItem: (key: string, value: string) => void saved.set(key, value),
+  removeItem: (key: string) => void saved.delete(key),
+});
+
+/** A storage call that throws, as blocked or full storage does. */
+const blocked = () => {
+  throw new Error("blocked");
+};
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -707,7 +720,7 @@ describe("server rendering", () => {
     const store = make(order, [
       rules<Order>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) }),
       history(),
-      persist("order", undefined),
+      persist("order"),
       definePlugin({
         name: "form",
         setup: (ctx) => {
@@ -808,7 +821,8 @@ describe("history, mask, rules and persist", () => {
   });
 
   it("history undoes and redoes user edits a task at a time", async () => {
-    const store = make({ name: "", tags: ["a", "b"] }, [history()]);
+    const undoHistory = history();
+    const store = make({ name: "", tags: ["a", "b"] }, [undoHistory]);
     const api = store.plugins.history;
     store.root.at("name").setValue("A");
     await Promise.resolve();
@@ -819,13 +833,13 @@ describe("history, mask, rules and persist", () => {
     expect(store.root.peek().value).toEqual({ name: "A", tags: ["a", "b"] });
     expect(api.undo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "", tags: ["a", "b"] });
-    expect(api.canUndo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot())?.canUndo).toBe(false);
     expect(api.redo()).toBe(true);
     expect(api.redo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "Ab", tags: ["b"] });
     // Its own writes never became steps.
     await Promise.resolve();
-    expect(api.canRedo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot())?.canRedo).toBe(false);
     expect(api.undo()).toBe(true);
   });
 
@@ -855,21 +869,72 @@ describe("history, mask, rules and persist", () => {
   });
 
   it("history forgets everything on reset", async () => {
-    const store = make(contact(), [history()]);
+    const undoHistory = history();
+    const store = make(contact(), [undoHistory]);
     store.root.at("phone").setValue("1");
     await Promise.resolve();
     store.reset();
     await Promise.resolve();
-    expect(store.plugins.history.canUndo).toBe(false);
+    expect(undoHistory.formMeta(store.getFormSnapshot())?.canUndo).toBe(false);
+    expect(store.plugins.history.undo()).toBe(false);
+  });
+
+  it("history keeps canUndo and canRedo in its form meta, written only when one changes", async () => {
+    const undoHistory = history(2);
+    const store = make(contact(), [undoHistory]);
+    const flags = () => undoHistory.formMeta(store.getFormSnapshot());
+    const writes: unknown[] = [];
+    store.subscribeForm(() => {
+      const meta = flags();
+      if (meta !== writes[writes.length - 1]) writes.push(meta);
+    });
+    expect(flags()).toBeUndefined();
+
+    // The flag trails the edit by a microtask, when the step is recorded.
+    store.root.at("phone").setValue("1");
+    expect(flags()).toBeUndefined();
+    await Promise.resolve();
+    expect(flags()).toEqual({ canUndo: true, canRedo: false });
+    // A second step changes no flag, so nothing is written.
+    store.root.at("phone").setValue("12");
+    await Promise.resolve();
+    store.root.at("phone").setValue("123");
+    await Promise.resolve();
+    expect(writes).toHaveLength(1);
+
+    // The limit keeps two steps, so the third undo has nothing.
+    expect(store.plugins.history.undo()).toBe(true);
+    expect(flags()).toEqual({ canUndo: true, canRedo: true });
+    expect(store.plugins.history.undo()).toBe(true);
+    expect(flags()).toEqual({ canUndo: false, canRedo: true });
+    expect(store.plugins.history.undo()).toBe(false);
+    expect(store.root.peek().value.phone).toBe("1");
+
+    expect(store.plugins.history.redo()).toBe(true);
+    expect(flags()).toEqual({ canUndo: true, canRedo: true });
+    expect(store.plugins.history.redo()).toBe(true);
+    expect(flags()).toEqual({ canUndo: true, canRedo: false });
+
+    store.reset();
+    expect(flags()).toEqual({ canUndo: false, canRedo: false });
+    expect(writes).toHaveLength(6);
+  });
+
+  it("history sets its flags in the same notification as the undo", async () => {
+    const undoHistory = history();
+    const store = make(contact(), [undoHistory]);
+    store.root.at("phone").setValue("1");
+    await Promise.resolve();
+    const seen: unknown[] = [];
+    store.subscribeForm(() => seen.push([store.root.peek().value.phone, undoHistory.formMeta(store.getFormSnapshot())]));
+    store.plugins.history.undo();
+    expect(seen).toEqual([["", { canUndo: false, canRedo: true }]]);
   });
 
   it("persist saves on idle and restores at creation without marking anything edited", () => {
     vi.useFakeTimers();
-    const saved = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => saved.get(key) ?? null,
-      setItem: (key: string, value: string) => void saved.set(key, value),
-    };
+    const storage = memory();
+    const { saved } = storage;
     const first = make(contact(), [persist("contact", storage)]);
     first.root.at("phone").setValue("123");
     expect(saved.size).toBe(0);
@@ -877,6 +942,57 @@ describe("history, mask, rules and persist", () => {
     expect(saved.get("contact")).toBe('{"phone":"123","code":""}');
     const second = make(contact(), [persist("contact", storage)]);
     expect(second.root.peek()).toMatchObject({ value: { phone: "123", code: "" }, edited: false });
+  });
+
+  it("persist starts from the defaults and removes a saved value that doesn't parse", () => {
+    const storage = memory(new Map([["contact", "{not json"]]));
+    const store = make(contact(), [persist("contact", storage)]);
+    expect(store.getSnapshot([]).value).toEqual(contact());
+    expect(storage.saved.has("contact")).toBe(false);
+  });
+
+  it("persist carries on when storage throws", () => {
+    vi.useFakeTimers();
+    const reads = make(contact(), [persist("contact", { ...memory(), getItem: blocked, removeItem: blocked })]);
+    expect(reads.getSnapshot([]).value).toEqual(contact());
+    // A full storage: the write lands and the save is dropped.
+    const writes = make(contact(), [persist("contact", { ...memory(), setItem: blocked })]);
+    writes.root.at("phone").setValue("1");
+    vi.runAllTimers();
+    expect(writes.getSnapshot(["phone"]).value).toBe("1");
+  });
+
+  it("persist uses localStorage when given no storage, and does nothing without it", () => {
+    vi.useFakeTimers();
+    const storage = memory(new Map([["contact", '{"phone":"5","code":""}']]));
+    vi.stubGlobal("localStorage", storage);
+    const store = make(contact(), [persist("contact")]);
+    expect(store.getSnapshot(["phone"]).value).toBe("5");
+    store.root.at("phone").setValue("6");
+    vi.runAllTimers();
+    expect(storage.saved.get("contact")).toBe('{"phone":"6","code":""}');
+
+    vi.stubGlobal("localStorage", undefined);
+    const server = make(contact(), [persist("contact")]);
+    expect(server.getSnapshot(["phone"]).value).toBe("");
+    server.root.at("phone").setValue("7");
+    // No storage means no idle save is scheduled.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("persist carries on when reading the localStorage global throws", () => {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("SecurityError");
+      },
+    });
+    try {
+      const store = make(contact(), [persist("contact")]);
+      expect(store.getSnapshot([]).value).toEqual(contact());
+    } finally {
+      Reflect.deleteProperty(globalThis, "localStorage");
+    }
   });
 });
 

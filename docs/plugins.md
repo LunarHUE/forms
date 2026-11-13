@@ -32,16 +32,22 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   a Standard Schema of a library with no schema plugin. Schema plugins bring
   it, so a form with one doesn't need it.
 - `history`: undo and redo of the user's value and array writes, one step
-  per task.
+  per task. It keeps `canUndo` and `canRedo` in its form meta, so an undo
+  button can re-render. See below.
 - `mask`: cleans the value written at named fields before the store takes it,
   with `digits` and `upper` as ready-made cleaners.
 - `rules`: sets `disabled` and a `hidden` meta flag on named fields from the
   form value, after every write.
-- `persist`: saves the form value to storage such as `localStorage` and
-  restores it when the store is made. The server has no storage, so the
-  restore is a write made after the store starts, not its starting value.
-  A server render and the render that hydrates show the defaults, and the
-  restored value shows in the render after.
+- `persist`: saves the form value to storage and restores it when the store
+  is made. `persist("draft")` uses `localStorage`, and `persist("draft",
+  sessionStorage)` uses the storage you pass. The server has no storage, so
+  the restore is a write made after the store starts, not its starting
+  value. A server render and the render that hydrates show the defaults, and
+  the restored value shows in the render after. Storage that throws, as when
+  it is blocked or full, never breaks the form: a failed save is dropped and
+  the next write tries again. A saved value that doesn't parse is removed,
+  and the form starts from its defaults. To turn saving off, leave `persist`
+  out of the list. Passing `undefined` still means `localStorage`.
 - `rebase`: moves a subtree's baseline to an incoming value, such as a fresh
   server copy, and lets you pick what each changed field keeps.
 - `bind`: keeps the form value in step with a store the app owns, given as
@@ -58,6 +64,29 @@ there. With `initial: "outside"`, the default, the form starts from the
 outside value, on the server too. The server HTML shows it, and hydrating
 renders once. The definition's `defaultValues` still set the value type,
 but the form never shows them.
+
+`form.plugins.history` has `undo` and `redo`. Whether either has a step is
+form meta, read with the plugin's own `formMeta` reader, so keep the object
+`history()` returns:
+
+```tsx
+const undoHistory = history();
+const forms = createForms({ plugins: [undoHistory] });
+
+// Inside a component with a form of those forms.
+<form.State select={(snapshot) => undoHistory.formMeta(snapshot)?.canUndo ?? false}>
+  {(canUndo) => (
+    <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
+      Undo
+    </button>
+  )}
+</form.State>;
+```
+
+In Solid, read `undoHistory.formMeta(form.state)?.canUndo` in JSX. The meta
+is undefined until a flag first changes, which means both are false. The
+flags change in the same render as an undo, a redo or a reset. After an
+edit they change a microtask later, when `history` records the step.
 
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 

@@ -1,8 +1,9 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "./plugins.js";
+import { history } from "./plugins/history.js";
 import { type Rebase, rebase } from "./plugins/rebase.js";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm, useFormState } from "./index.js";
 
 // Shared: stores each written string's length as the field's meta.
@@ -97,5 +98,47 @@ describe("the rebase plugin", () => {
     fireEvent.click(screen.getByText("reload"));
     expect(container.querySelector("output")?.textContent).toBe("b");
     expect(container.querySelector("p")?.textContent).toBe("2");
+  });
+});
+
+const undoHistory = history();
+const note = createForms({ plugins: [undoHistory] }).define({ defaultValues: { text: "" } });
+// Counts renders of the page, so the test can tell only form.State re-rendered.
+const noteRendered = vi.fn<() => void>();
+
+function NotePage() {
+  const form = useForm(note);
+  noteRendered();
+  return (
+    <>
+      <form.Field name="text">{(field) => <input aria-label="text" {...field.inputProps()} />}</form.Field>
+      <form.State select={(snapshot) => undoHistory.formMeta(snapshot)?.canUndo ?? false}>
+        {(canUndo) => (
+          <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
+            Undo
+          </button>
+        )}
+      </form.State>
+    </>
+  );
+}
+
+describe("the history plugin", () => {
+  it("enables an undo button through its form meta and disables it after the undo", async () => {
+    render(<NotePage />);
+    const renders = noteRendered.mock.calls.length;
+    const button = screen.getByText<HTMLButtonElement>("Undo");
+    expect(button.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("text"), { target: { value: "a" } });
+    // The step is recorded a microtask after the write.
+    await act(async () => {});
+    expect(button.disabled).toBe(false);
+
+    fireEvent.click(button);
+    expect(screen.getByLabelText<HTMLInputElement>("text").value).toBe("");
+    expect(button.disabled).toBe(true);
+    // Only form.State re-rendered the button.
+    expect(noteRendered).toHaveBeenCalledTimes(renders);
   });
 });

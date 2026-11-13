@@ -15,7 +15,11 @@ const noopBefore = (name: string) => definePlugin({ name, setup: () => ({ before
 const noopObserver = (name: string, when: When) => definePlugin({ name, setup: () => ({ when, onWrite: () => {} }) });
 
 const memory = new Map<string, string>();
-const storage = { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => void memory.set(key, value) };
+const storage = {
+  getItem: (key: string) => memory.get(key) ?? null,
+  setItem: (key: string, value: string) => void memory.set(key, value),
+  removeItem: (key: string) => void memory.delete(key),
+};
 
 // Item keys are made by the store, so this reads the first one from a store of the same shape.
 const firstKey = createFormsCore().define({ defaultValues: { rows: [{ name: "" }] } }).createStore().root.at("rows").peek().keys[0];
