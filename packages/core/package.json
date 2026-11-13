@@ -115,6 +115,17 @@
         "default": "./dist/cjs/plugins/rules.js"
       }
     },
+    "./plugins/testing": {
+      "@lunarhue/source": "./src/plugins/testing.ts",
+      "import": {
+        "types": "./dist/esm/plugins/testing.d.ts",
+        "default": "./dist/esm/plugins/testing.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/testing.d.ts",
+        "default": "./dist/cjs/plugins/testing.js"
+      }
+    },
     "./plugins/validation": {
       "@lunarhue/source": "./src/plugins/validation.ts",
       "import": {
@@ -197,6 +208,12 @@
       "path": "dist/esm/plugins/rules.js",
       "import": "{ rules }",
       "limit": "2.05 kB"
+    },
+    {
+      "name": "./plugins/testing",
+      "path": "dist/esm/plugins/testing.js",
+      "import": "{ testStore }",
+      "limit": "9 kB"
     },
     {
       "name": "history() + mask()",
