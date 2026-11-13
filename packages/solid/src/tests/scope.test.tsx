@@ -1,7 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type HandleOf } from "../index.js";
+import { createForm, createForms, type FieldApi, type FormOf, type HandleOf } from "../index.js";
 import { get, mount, settle, typeText } from "./dom.js";
 
 const bodies = { text: 0, number: 0, address: 0 };
@@ -64,12 +64,12 @@ const Order = forms.define({
   }),
   defaultValues: { rows: [{ qty: 1, address: { street: "", city: "", geo: { lat: 0 } } }] },
 });
-type OrderForm = ReturnType<typeof Order.createForm>;
+type OrderForm = FormOf<typeof Order>;
 
 function mountOrder() {
   let form: OrderForm | undefined;
   const { host } = mount(() => {
-    form = Order.createForm();
+    form = createForm(Order);
     const f = form;
     return (
       <f.Form>
@@ -150,7 +150,7 @@ describe("fieldsets and scopes", () => {
 
   it("returns the same scope for the same handle", () => {
     mount(() => {
-      const form = Order.createForm();
+      const form = createForm(Order);
       const billing = form.root.at("billing");
       expect(forms.scope(billing)).toBe(Address.scope(billing));
       expect(Address.scope(billing).TextField).toBe(forms.scope(billing).TextField);

@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createEffect, createMemo, createRoot, createSignal, flush, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createField, createForms, createItems, createValidator, type FieldApi } from "../index.js";
+import { createField, createForm, createForms, createItems, createValidator, type FieldApi, type FormOf } from "../index.js";
 import { countSubscriptions, get, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ schemas: [valibot()] });
@@ -17,13 +17,13 @@ const Profile = forms.define({
 
 /** One text input for the first name. */
 function FirstName() {
-  const form = Profile.createForm();
+  const form = createForm(Profile);
   return <form.Field name="first">{(field) => <input {...field.inputProps()} />}</form.Field>;
 }
 
 /** Writes to the store from its body and from a memo. */
 function WritesWhileRendering() {
-  const form = Profile.createForm();
+  const form = createForm(Profile);
   form.root.at("first").setValue("from body");
   const upper = createMemo(() => {
     const last = form.root.at("last");
@@ -57,7 +57,7 @@ describe("fine-grained updates", () => {
     }
     function TwoFields() {
       bodies.page++;
-      const form = Profile.createForm();
+      const form = createForm(Profile);
       return (
         <form.Form>
           <form.Field name="first">{(field) => <Input field={field} which="first" />}</form.Field>
@@ -138,14 +138,14 @@ describe("subscription lifetime", () => {
   });
 
   it("subscribes form state on its first read inside an owner and ends with the form's owner", () => {
-    let form: ReturnType<typeof Profile.createForm> | undefined;
+    let form: FormOf<typeof Profile> | undefined;
     let live = { fields: 0, form: 0 };
     let showCount: (() => void) | undefined;
-    function Count(props: { form: ReturnType<typeof Profile.createForm> }) {
+    function Count(props: { form: FormOf<typeof Profile> }) {
       return <p>{props.form.state.submitCount}</p>;
     }
     const { host, dispose } = mount(() => {
-      form = Profile.createForm();
+      form = createForm(Profile);
       live = countSubscriptions(form.store);
       const [shown, setShown] = createSignal(false);
       showCount = () => setShown(true);
@@ -208,9 +208,9 @@ describe("batching", () => {
   });
 
   it("shows a programmatic write after flush", () => {
-    let form: ReturnType<typeof Profile.createForm> | undefined;
+    let form: FormOf<typeof Profile> | undefined;
     const { host } = mount(() => {
-      form = Profile.createForm();
+      form = createForm(Profile);
       return <form.Field name="last">{(field) => <input {...field.inputProps()} />}</form.Field>;
     });
     form?.root.at("last").setValue("Lovelace");

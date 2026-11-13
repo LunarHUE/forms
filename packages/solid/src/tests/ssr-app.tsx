@@ -1,6 +1,6 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForms, useFormContext, type FieldApi } from "../index.js";
+import { createForm, createForms, useFormContext, type FieldApi } from "../index.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
@@ -23,7 +23,7 @@ function Status() {
 }
 
 export function App() {
-  const form = Order.createForm();
+  const form = createForm(Order);
   return (
     <form.Form>
       {({ submit, ...props }) => (
@@ -42,8 +42,8 @@ export function App() {
 
 /** The app's markup, as `renderToString` returns it without the hydration script. */
 export const serverHtml =
-  '<form _hk=10000 id="0" novalidate tabindex="-1" data-submits="function">' +
-  '<!--$--><label _hk=10001><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
-  '<!--$--><label _hk=1000500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
-  '<label _hk=1000510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
-  "<!--$--><output _hk=10007>idle</output><!--/--></form>";
+  '<form _hk=100 id="0" novalidate tabindex="-1" data-submits="function">' +
+  '<!--$--><label _hk=101><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
+  '<!--$--><label _hk=10500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
+  '<label _hk=10510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
+  "<!--$--><output _hk=107>idle</output><!--/--></form>";

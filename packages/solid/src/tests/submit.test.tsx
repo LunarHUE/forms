@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
-import { createDisabledErrors, createForms, type FocusTarget, type FieldApi } from "../index.js";
+import { createDisabledErrors, createForm, createForms, type FocusTarget, type FieldApi, type FormOf } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -37,9 +37,9 @@ function definePost() {
 /** Mounts a post form inside its `form.Form`. */
 function mountPost(focusOnInvalid?: (target: FocusTarget) => void) {
   const { Post, saved } = definePost();
-  let form: ReturnType<typeof Post.createForm> | undefined;
+  let form: FormOf<typeof Post> | undefined;
   const { host } = mount(() => {
-    form = focusOnInvalid ? Post.createForm({ focusOnInvalid }) : Post.createForm();
+    form = focusOnInvalid ? createForm(Post, { focusOnInvalid }) : createForm(Post);
     const f = form;
     const disabled = createDisabledErrors(f);
     return (
@@ -129,9 +129,9 @@ describe("submit", () => {
 
   it("doesn't focus with focusOnInvalid false", async () => {
     const { Post } = definePost();
-    let form: ReturnType<typeof Post.createForm> | undefined;
+    let form: FormOf<typeof Post> | undefined;
     mount(() => {
-      form = Post.createForm({ focusOnInvalid: false });
+      form = createForm(Post, { focusOnInvalid: false });
       const f = form;
       return (
         <form {...f.formProps}>
@@ -148,9 +148,9 @@ describe("submit", () => {
 describe("the form object with no form.Form", () => {
   it("renders fields, submits and focuses with formProps alone", async () => {
     const { Post, saved } = definePost();
-    let form: ReturnType<typeof Post.createForm> | undefined;
+    let form: FormOf<typeof Post> | undefined;
     const { host } = mount(() => {
-      form = Post.createForm({ id: "standalone" });
+      form = createForm(Post, { id: "standalone" });
       const f = form;
       return (
         <form {...f.formProps}>
@@ -181,7 +181,7 @@ describe("the form object with no form.Form", () => {
     let first: unknown[] = [];
     let second: unknown[] = [];
     mount(() => {
-      const form = Post.createForm();
+      const form = createForm(Post);
       const members = () => [form.Field, form.Items, form.TextField, form.Form, form.submit, form.formProps, form.state, form.root];
       first = members();
       second = members();
@@ -196,7 +196,7 @@ describe("the form object with no form.Form", () => {
     const { Post } = definePost();
     const ids: string[] = [];
     mount(() => {
-      ids.push(Post.createForm().id, Post.createForm().id);
+      ids.push(createForm(Post).id, createForm(Post).id);
       return null;
     });
     expect(new Set(ids).size).toBe(2);

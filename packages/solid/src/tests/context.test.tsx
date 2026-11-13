@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createSignal, Errored, flush, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForms, useFormContext, type AnyForm } from "../index.js";
+import { createForm, createForms, useFormContext, type AnyForm, type FormOf } from "../index.js";
 import { getAs, mount, settle } from "./dom.js";
 
 const forms = createForms({ schemas: [valibot()] });
@@ -22,15 +22,27 @@ function SubmitButton() {
 }
 
 function OrderCustomer() {
-  const form = Order.useFormContext();
+  const form = useFormContext(Order);
   return <form.Field name="customer">{(field) => <span data-order={form.id}>{field.value}</span>}</form.Field>;
+}
+
+// A reusable part for any form: it knows no definition.
+function Controls() {
+  const form = useFormContext();
+  return (
+    <p data-controls={form.id}>
+      <button type="button" data-submit onClick={() => void form.submit()} />
+      <button type="button" data-reset onClick={() => form.store.reset()} />
+      <span>{`${form.state.submitCount} ${form.state.dirty ? "dirty" : "clean"}`}</span>
+    </p>
+  );
 }
 
 describe("context", () => {
   it("gives a submit button the nearest form, reactively", async () => {
-    let form: ReturnType<typeof Order.createForm> | undefined;
+    let form: FormOf<typeof Order> | undefined;
     const { host } = mount(() => {
-      form = Order.createForm({ id: "order" });
+      form = createForm(Order, { id: "order" });
       const f = form;
       return (
         <f.Form>
@@ -59,8 +71,8 @@ describe("context", () => {
 
   it("finds a definition's own form under another form's Form", () => {
     const { host } = mount(() => {
-      const order = Order.createForm({ id: "order" });
-      const note = Note.createForm({ id: "note" });
+      const order = createForm(Order, { id: "order" });
+      const note = createForm(Note, { id: "note" });
       order.root.at("customer").setValue("Grace");
       return (
         <order.Form>
@@ -89,6 +101,58 @@ describe("context", () => {
     ]);
   });
 
+  it("works the same generic controls inside forms of two definitions", async () => {
+    let note: FormOf<typeof Note> | undefined;
+    const { host } = mount(() => {
+      const order = createForm(Order, { id: "order" });
+      note = createForm(Note, { id: "note" });
+      return (
+        <>
+          <order.Form>
+            <Controls />
+          </order.Form>
+          <note.Form>
+            <Controls />
+          </note.Form>
+        </>
+      );
+    });
+    const controls = (id: string) => getAs(host, `[data-controls="${id}"]`, HTMLElement);
+    const text = (id: string) => controls(id).querySelector("span")?.textContent;
+    getAs(controls("order"), "[data-submit]", HTMLButtonElement).click();
+    await settle();
+    expect([text("order"), text("note")]).toEqual(["1 clean", "0 clean"]);
+    note?.root.at("text").setValue("hi");
+    getAs(controls("note"), "[data-submit]", HTMLButtonElement).click();
+    await settle();
+    expect([text("order"), text("note")]).toEqual(["1 clean", "1 dirty"]);
+    getAs(controls("note"), "[data-reset]", HTMLButtonElement).click();
+    await settle();
+    expect([text("order"), text("note")]).toEqual(["1 clean", "1 clean"]);
+    expect(note?.root.at("text").peek().value).toBe("");
+  });
+
+  it("finds the nearest form of the definition past forms of other definitions", () => {
+    const { host } = mount(() => {
+      const outer = createForm(Order, { id: "outer" });
+      const middle = createForm(Note, { id: "middle" });
+      const inner = createForm(Order, { id: "inner" });
+      return (
+        <outer.Form>
+          <OrderCustomer />
+          <middle.Form>
+            <OrderCustomer />
+            <inner.Form>
+              <OrderCustomer />
+            </inner.Form>
+          </middle.Form>
+        </outer.Form>
+      );
+    });
+    const found = [...host.querySelectorAll<HTMLElement>("[data-order]")].map((span) => span.dataset.order);
+    expect(found).toEqual(["outer", "outer", "inner"]);
+  });
+
   it("renders plain children with the context only", () => {
     let seen: AnyForm | undefined;
     function Probe() {
@@ -97,7 +161,7 @@ describe("context", () => {
     }
     let made: unknown;
     mount(() => {
-      const note = Note.createForm();
+      const note = createForm(Note);
       made = note;
       return (
         <note.Form>
@@ -108,21 +172,32 @@ describe("context", () => {
     expect(seen).toBe(made);
   });
 
-  it("throws a clear error with no form.Form above", () => {
-    const { host } = mount(() => (
-      <>
-        <Errored fallback={(error) => <p>{String(error())}</p>}>
-          <SubmitButton />
-        </Errored>
-        <Errored fallback={(error) => <p>{String(error())}</p>}>
-          <OrderCustomer />
-        </Errored>
-      </>
-    ));
+  it("throws a clear error with no form.Form above, or none of the definition", () => {
+    const { host } = mount(() => {
+      const note = createForm(Note);
+      return (
+        <>
+          <Errored fallback={(error) => <p>{String(error())}</p>}>
+            <SubmitButton />
+          </Errored>
+          <Errored fallback={(error) => <p>{String(error())}</p>}>
+            <OrderCustomer />
+          </Errored>
+          <note.Form>
+            <Errored fallback={(error) => <p>{String(error())}</p>}>
+              <OrderCustomer />
+            </Errored>
+          </note.Form>
+        </>
+      );
+    });
     const messages = [...host.querySelectorAll("p")].map((p) => p.textContent);
+    const missing =
+      "Error: @lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.";
     expect(messages).toEqual([
       "Error: @lunarhue/forms-solid: useFormContext() found no form. Render it inside the form's `form.Form`.",
-      "Error: @lunarhue/forms-solid: useFormContext() of a definition found no form. Render it inside the form's `form.Form`.",
+      missing,
+      missing,
     ]);
   });
 
@@ -135,7 +210,7 @@ describe("context", () => {
     }
     const [which, setWhich] = createSignal<"a" | "b">("a");
     const { host } = mount(() => {
-      const form = Pair.createForm();
+      const form = createForm(Pair);
       return (
         <Show when={form.root.at(which())} keyed>
           {(handle) => <TextOf field={handle} />}

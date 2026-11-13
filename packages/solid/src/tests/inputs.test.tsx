@@ -2,7 +2,7 @@ import { errorId as coreErrorId } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForms, createInputProps, errorId, fieldRef } from "../index.js";
+import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf } from "../index.js";
 import { choose, click, get, getAs, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ schemas: [valibot()] });
@@ -19,13 +19,13 @@ const Survey = forms.define({
   }),
   defaultValues: { volume: 5, color: "red" },
 });
-type SurveyForm = ReturnType<typeof Survey.createForm>;
+type SurveyForm = FormOf<typeof Survey>;
 
 /** Mounts a form and returns it with the host element. */
 function mountSurvey(render: (form: SurveyForm) => ReturnType<SurveyForm["Form"]>) {
   let form: SurveyForm | undefined;
   const { host } = mount(() => {
-    form = Survey.createForm({ id: "survey" });
+    form = createForm(Survey, { id: "survey" });
     return render(form);
   });
   if (!form) throw new Error("The form was not created.");
@@ -170,9 +170,9 @@ describe("checkbox", () => {
 
   it("binds a group of numbers", async () => {
     const Sizes = forms.define({ defaultValues: { sizes: [] as number[] } });
-    let form: ReturnType<typeof Sizes.createForm> | undefined;
+    let form: FormOf<typeof Sizes> | undefined;
     const { host } = mount(() => {
-      form = Sizes.createForm();
+      form = createForm(Sizes);
       return <input {...createInputProps(form.root.at("sizes"), { kind: "checkbox", value: 3 })} />;
     });
     click(get(host, "input"));
@@ -243,9 +243,9 @@ describe("ids", () => {
    * `k0` too.
    */
   function mountPicker() {
-    let form: ReturnType<typeof Picker.createForm> | undefined;
+    let form: FormOf<typeof Picker> | undefined;
     const { host } = mount(() => {
-      const f = Picker.createForm({ id: "pick" });
+      const f = createForm(Picker, { id: "pick" });
       form = f;
       const small = createInputProps(f.root.at("size"), { kind: "radio", value: "s" });
       const large = createInputProps(f.root.at("size"), { kind: "radio", value: "m l" });

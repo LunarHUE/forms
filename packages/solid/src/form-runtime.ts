@@ -1,7 +1,7 @@
 import type { FormSnapshot, FormStore } from "@lunarhue/forms-core";
 import { isServer } from "@solidjs/web";
 import { createComponent, getOwner, isDisposed, runWithOwner, type Element as SolidElement } from "solid-js";
-import { ProvideForm, type FormChildren, type FormContext, type RuntimeForm } from "./context.js";
+import { ProvideForm, type FormChildren, type RuntimeForm } from "./context.js";
 import { focusInvalid, type RuntimeFocus } from "./focus.js";
 import { defineGetters, formReader } from "./reader.js";
 import { registerFormElement } from "./refs.js";
@@ -40,14 +40,12 @@ export interface FormParts {
   readonly store: RuntimeStore;
   /** The scope at the store's root. Its members become the form's. */
   readonly scope: RuntimeScope;
-  /** The definition's own context. */
-  readonly context: FormContext;
   readonly focusOnInvalid: RuntimeFocus;
 }
 
 /** Builds the form object. Call it in the owner the form's subscriptions belong to. */
 export function buildForm(parts: FormParts): RuntimeForm {
-  const { store, scope, context, focusOnInvalid } = parts;
+  const { store, scope, focusOnInvalid } = parts;
 
   const submit = async (...args: [intent?: unknown]) => {
     const submission = await store.submit(...args);
@@ -83,7 +81,6 @@ export function buildForm(parts: FormParts): RuntimeForm {
   form.Form = (props: { readonly children: FormChildren }): SolidElement =>
     createComponent(ProvideForm, {
       form,
-      context,
       renderProps,
       get children() {
         return props.children;
