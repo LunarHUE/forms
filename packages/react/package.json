@@ -2,7 +2,10 @@
   "name": "@lunarhue/forms-react",
   "version": "0.0.0",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/*/legacy.js",
+    "./src/legacy.ts"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LunarHUE/forms.git",
@@ -10,6 +13,7 @@
   },
   "files": [
     "dist",
+    "legacy",
     "plugins"
   ],
   "main": "./dist/cjs/index.js",
@@ -25,6 +29,17 @@
       "require": {
         "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
+      }
+    },
+    "./legacy": {
+      "@lunarhue/source": "./src/legacy.ts",
+      "import": {
+        "types": "./dist/esm/legacy.d.ts",
+        "default": "./dist/esm/legacy.js"
+      },
+      "require": {
+        "types": "./dist/cjs/legacy.d.ts",
+        "default": "./dist/cjs/legacy.js"
       }
     },
     "./plugins": {
@@ -158,6 +173,7 @@
   },
   "size-limit": [
     {
+      "name": "react",
       "path": "dist/esm/index.js",
       "import": "*",
       "limit": "10.8 kB"
@@ -177,6 +193,20 @@
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
       "limit": "11.05 kB"
+    },
+    {
+      "name": "react/legacy",
+      "path": "dist/esm/legacy.js",
+      "import": "*",
+      "limit": "11 kB"
+    },
+    {
+      "name": "react/legacy + valibot()",
+      "import": {
+        "dist/esm/legacy.js": "*",
+        "../schema/dist/esm/valibot.js": "{ valibot }"
+      },
+      "limit": "13.75 kB"
     }
   ]
 }

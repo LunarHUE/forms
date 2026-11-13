@@ -179,8 +179,19 @@ definitions.
 
 > a form was server rendered without an `id`. React before 18 has no `useId`, so the generated id can't match on the client. Pass `id` to `useForm`.
 
-A warning, logged in development only. React 16.8 and 17 have no `useId`,
+A warning, logged in development only, from `@lunarhue/forms-react/legacy`.
+React 16.8 and 17 have no `useId`,
 so the generated id can't match on the client. Pass `id` to `useForm`.
+
+<a id="react:entry:legacy"></a>
+
+### `entry:legacy`
+
+> React before 18 needs @lunarhue/forms-react/legacy.
+
+An app on React 16.8 or 17 imported `@lunarhue/forms-react`, which needs
+React 18. Import from `@lunarhue/forms-react/legacy` instead. It has the
+same API.
 
 ## Solid
 

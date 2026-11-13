@@ -4,8 +4,8 @@ export default defineConfig({
   test: {
     // The Solid adapter compiles JSX differently for its server rendering and
     // hydration tests, so each has a project of its own. The React adapter's
-    // compatibility suite has one project per React version. Examples join
-    // only when they have a vitest config.
+    // compatibility suite has one project per React version and entry.
+    // Examples join only when they have a vitest config.
     projects: [
       "packages/*",
       "packages/react/vitest.react-*.config.ts",

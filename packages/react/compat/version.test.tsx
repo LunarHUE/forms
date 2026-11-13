@@ -7,6 +7,7 @@ import { render } from "./render.js";
 declare module "vitest" {
   interface ProvidedContext {
     reactMajor: number;
+    entry: "main" | "legacy";
   }
 }
 

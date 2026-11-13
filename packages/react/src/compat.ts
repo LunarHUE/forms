@@ -1,28 +1,9 @@
 import * as React from "react";
-import { useEffect, useLayoutEffect, useReducer, useState } from "react";
 import { problem } from "./problem.js";
 
-// React's own hooks where it has them, and small fallbacks for React 16.8 and
-// 17. Each choice is made once, here at load, so a component calls the same
-// hooks on every render.
-
-// The package has no node types, so this declares the one global the warning reads.
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
-
-/** The hooks React 18 added, which React 16.8 and 17 lack. */
-type Added = Partial<Pick<typeof React, "useId" | "useSyncExternalStore">>;
-
-const added: Added = React;
-
-/**
- * Reads a hook React may lack. The name is a parameter, not a property
- * written in the source, so a bundler can't check it against React's exports
- * and fail the build on React 17.
- */
-const optional = <K extends keyof Added>(name: K): Added[K] => added[name];
-
-/** True when there is no DOM, as in server rendering. */
-const onServer = typeof document === "undefined";
+// The hooks that differ between React versions. Every module calls them
+// through `hooks`, which holds React 18's own. The legacy entry replaces them
+// once, at load, with ones that also work on React 16.8 and 17.
 
 /** `useSyncExternalStore` as the adapter calls it. */
 export type UseSyncExternalStore = <S>(
@@ -31,92 +12,31 @@ export type UseSyncExternalStore = <S>(
   getServerSnapshot?: () => S,
 ) => S;
 
-/**
- * The snapshot a component last committed and the function that read it.
- * The fallback keeps one per component and changes it only in effects.
- */
-class Committed<S> {
-  constructor(
-    private value: S,
-    private read: () => S,
-  ) {}
-
-  /** Records what the latest render read. */
-  record(value: S, read: () => S): void {
-    this.value = value;
-    this.read = read;
-  }
-
-  /** True when the store holds a different snapshot from the recorded one, or reading it throws. */
-  stale(): boolean {
-    try {
-      return !Object.is(this.value, this.read());
-    } catch {
-      return true;
-    }
-  }
+/** The version-specific hooks. */
+export interface Hooks {
+  useSyncExternalStore: UseSyncExternalStore;
+  useId: () => string;
+  /** Called when a form takes its id from `useId`. */
+  generatedIdUsed?: () => void;
 }
 
-const bump = (count: number): number => count + 1;
+/** The hooks React 18 added, which React 16.8 and 17 lack. */
+export type Added = Partial<Pick<typeof React, "useId" | "useSyncExternalStore">>;
+
+const added: Added = React;
 
 /**
- * The fallback on the client. It renders the current snapshot, then checks it
- * again in a layout effect, since a store write can land between render and
- * commit before the component subscribes. After that the subscription
- * re-renders it whenever the snapshot changes.
+ * Reads a hook React may lack. The name is a parameter, not a property
+ * written in the source, so a bundler can't check it against React's exports
+ * and fail the build on React 17.
  */
-function useStoreOnClient<S>(subscribe: (onChange: () => void) => () => void, getSnapshot: () => S): S {
-  const value = getSnapshot();
-  const [committed] = useState(() => new Committed(value, getSnapshot));
-  const [, rerender] = useReducer(bump, 0);
-  useLayoutEffect(() => {
-    committed.record(value, getSnapshot);
-    if (committed.stale()) rerender();
-  }, [committed, value, getSnapshot]);
-  useEffect(() => {
-    const check = () => {
-      if (committed.stale()) rerender();
-    };
-    // A write between the layout effect and this one has no listener yet.
-    check();
-    return subscribe(check);
-  }, [committed, subscribe]);
-  return value;
-}
+export const optional = <K extends keyof Added>(name: K): Added[K] => added[name];
 
-/**
- * The fallback on the server. It reads the server snapshot once and uses no
- * effects, since React before 18 warns about `useLayoutEffect` there.
- */
-const useStoreOnServer: UseSyncExternalStore = (_subscribe, getSnapshot, getServerSnapshot) =>
-  (getServerSnapshot ?? getSnapshot)();
+const missing = (): never => {
+  throw new Error(problem("entry:legacy"));
+};
 
-/** React's `useSyncExternalStore`, or a fallback with the same contract on React 16.8 and 17. */
-export const useSyncExternalStore: UseSyncExternalStore =
-  optional("useSyncExternalStore") ?? (onServer ? useStoreOnServer : useStoreOnClient);
-
-const nativeId = optional("useId");
-
-let lastId = 0;
-const newId = (): string => `:f${(lastId += 1).toString(36)}:`;
-
-/** The fallback id: a count, kept for the life of the component. Server and client counts differ. */
-const useCountedId = (): string => useState(newId)[0];
-
-/** React's `useId`, or a counted id on React 16.8 and 17, which doesn't match between server and client. */
-export const useId: () => string = nativeId ?? useCountedId;
-
-let warned = false;
-
-/**
- * Called when a form takes its id from `useId`. On React 16.8 and 17 during
- * server rendering, warns once in development that the id won't match the
- * client's.
- */
-export function generatedIdUsed(): void {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-    if (nativeId !== undefined || !onServer || warned) return;
-    warned = true;
-    console.warn(problem("id:server"));
-  }
-}
+export const hooks: Hooks = {
+  useSyncExternalStore: optional("useSyncExternalStore") ?? missing,
+  useId: optional("useId") ?? missing,
+};

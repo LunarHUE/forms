@@ -23,7 +23,7 @@ import type {
 import { createFormsCore } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
-import { generatedIdUsed, useId } from "./compat.js";
+import { hooks } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
@@ -120,8 +120,8 @@ export interface UseFormOptions<E = FormError, V = unknown, X extends Plugins = 
   /**
    * The store id, which prefixes every handle id and so every DOM id.
    * Defaults to an id from `useId`, which matches between server and client.
-   * React 16.8 and 17 have no `useId`, so there the default is a counter that
-   * doesn't match. Pass `id` to server render a form on those versions.
+   * React 16.8 and 17 have no `useId`, so there the legacy entry's default is
+   * a counter that doesn't match. Pass `id` to server render a form on those versions.
    */
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
@@ -469,7 +469,7 @@ export const createForms: CreateForms = (options = {}) => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
       const id = instance?.id;
-      if (id === undefined) generatedIdUsed();
+      if (id === undefined) hooks.generatedIdUsed?.();
       const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId, plugins: instance?.plugins });
       const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
       madeFrom.set(form, definition);
@@ -486,7 +486,7 @@ export const createForms: CreateForms = (options = {}) => {
 
 /** See `UseForm`. */
 export const useForm: UseForm = (definition, ...args) => {
-  const generatedId = useId();
+  const generatedId = hooks.useId();
   const make = () => {
     const maker = makers.get(definition);
     if (maker === undefined) throw new Error(problem("form:definition"));
