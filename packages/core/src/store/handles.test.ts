@@ -137,9 +137,10 @@ describe("user edits", () => {
     root.at("a").at("b").setErrors(err("u"));
     const runs = count(store, [["a", "b"], ["a"], [], "form"]);
     root.at("a").at("b").setValue(2);
-    expect(runs).toEqual([1, 1, 1, 0]);
+    // The first edit also makes the form dirty. The second leaves it dirty, so the form listener stays put.
+    expect(runs).toEqual([1, 1, 1, 1]);
     root.at("a").at("b").setValue(3);
-    expect(runs).toEqual([2, 2, 2, 0]);
+    expect(runs).toEqual([2, 2, 2, 1]);
   });
 });
 

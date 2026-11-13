@@ -4,6 +4,7 @@ import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
+import { registerStore } from "./baseline/registry.js";
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
@@ -94,6 +95,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     changes: (path) => baseline.changes(path),
     firstInvalid: () => submit.firstInvalid(),
   };
+  registerStore(store, { core, baseline });
   return { store, core, baseline, validation, submit };
 }
 
