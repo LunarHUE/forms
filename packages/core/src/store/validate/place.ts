@@ -1,15 +1,17 @@
-import type { ErrorMap, MapError, Many } from "../../errors.js";
+import type { ErrorMap, MapError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { ValidatorResult } from "../../validator.js";
 import type { StoreCore } from "../core.js";
+import { errorList } from "../handles.js";
 import type { Spec } from "./inputs.js";
 import { keyOf } from "./paths.js";
 
 /** Errors one run puts on each field, by path key. */
 export type Placed<E> = Map<string, { readonly path: Path; readonly errors: E[] }>;
 
-const add = <E>(placed: Placed<E>, path: Path, errors: readonly E[]) => {
+/** Adds `errors` to the field at `path`, after the ones it already has. */
+export const addErrors = <E>(placed: Placed<E>, path: Path, errors: readonly E[]) => {
   if (errors.length === 0) return;
   const key = keyOf(path);
   const entry = placed.get(key);
@@ -17,12 +19,8 @@ const add = <E>(placed: Placed<E>, path: Path, errors: readonly E[]) => {
   else placed.set(key, { path, errors: [...errors] });
 };
 
-const isList = <E>(errors: Many<E>): errors is readonly E[] => Array.isArray(errors);
-
-const listOf = <E>(errors: ValidatorResult<E>): readonly E[] => {
-  if (errors === undefined || errors === null) return [];
-  return isList(errors) ? errors : [errors];
-};
+const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
+  errors === undefined || errors === null ? [] : errorList(errors);
 
 const segmentOf = (seg: PropertyKey | StandardSchemaV1.PathSegment): string =>
   String(typeof seg === "object" ? seg.key : seg);
@@ -62,21 +60,21 @@ export function place<E, I, R>(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     for (const issue of (result as StandardSchemaV1.Result<unknown>).issues ?? []) {
       const path = resolve(core, base, issue) ?? base;
-      add(placed, path, [mapError({ source: "schema", message: issue.message, path, issue })]);
+      addErrors(placed, path, [mapError({ source: "schema", message: issue.message, path, issue })]);
     }
   } else if (spec.kind === "form") {
     // A form validator returns an `ErrorMap`, and `base` is the root.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const map = result as ErrorMap<E>;
-    add(placed, base, listOf(map.form));
+    addErrors(placed, base, listOf(map.form));
     for (const [name, errors] of Object.entries(map.fields ?? {})) {
       // A name that resolves to no field lands on the root after the form errors, so it still blocks submit.
-      add(placed, core.pathOf(name) ?? base, listOf(errors));
+      addErrors(placed, core.pathOf(name) ?? base, listOf(errors));
     }
   } else {
     // A validator's own errors are already the form's error type.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    add(placed, base, listOf(result as ValidatorResult<E>));
+    addErrors(placed, base, listOf(result as ValidatorResult<E>));
   }
   return placed;
 }

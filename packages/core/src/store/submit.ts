@@ -1,12 +1,12 @@
 import type { SubmitContext } from "../definition.js";
 import type { ErrorMap } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
-import type { Path } from "../path.js";
 import type { Submission } from "../snapshot.js";
 import type { DisabledInvalid, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
+import { addErrors, type Placed } from "./validate/place.js";
 import type { Validation } from "./validation.js";
 
 // Core has no DOM or node types, so this declares the platform global submit uses.
@@ -115,17 +115,11 @@ export function createSubmit<V, E, I, R, O = V>(
     },
     setErrors(errors) {
       // Errors for one field from `form` and `fields` are joined, `form` first.
-      const lists = new Map<string, { path: Path; errors: E[] }>();
-      const add = (path: Path, more: readonly E[]) => {
-        const id = JSON.stringify(path);
-        const entry = lists.get(id);
-        if (entry) entry.errors.push(...more);
-        else lists.set(id, { path, errors: [...more] });
-      };
-      if (errors.form !== undefined) add([], errorList(errors.form));
+      const lists: Placed<E> = new Map();
+      if (errors.form !== undefined) addErrors(lists, [], errorList(errors.form));
       // A name that resolves to no field lands on the root after the form errors, as validation does.
       for (const [name, entry] of Object.entries(errors.fields ?? {}))
-        if (entry !== undefined) add(core.pathOf(name) ?? [], errorList(entry));
+        if (entry !== undefined) addErrors(lists, core.pathOf(name) ?? [], errorList(entry));
       core.batch(() => {
         core.clearUserErrors([]);
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);

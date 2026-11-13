@@ -5,7 +5,7 @@ import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorCont
 import type { PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { readFields, type Spec, toSpec } from "./validate/inputs.js";
-import { place, type Placed, thrownMessage } from "./validate/place.js";
+import { addErrors, place, type Placed, thrownMessage } from "./validate/place.js";
 import {
   along,
   below,
@@ -294,8 +294,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     if (run.reg === schemaReg) captured = undefined;
     run.thrown = true;
     const placed: Placed<E> = new Map();
-    const error = mapError({ source: "thrown", message: thrownMessage(cause), path: run.path, cause });
-    placed.set(run.key, { path: run.path, errors: [error] });
+    addErrors(placed, run.path, [mapError({ source: "thrown", message: thrownMessage(cause), path: run.path, cause })]);
     write(run, placed);
   };
 
