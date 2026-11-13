@@ -38,6 +38,15 @@ function Controls() {
   );
 }
 
+// A part shared by every form of `forms`. `otherForms` is another `createForms` call.
+const otherForms = createForms();
+const Comment = otherForms.define({ defaultValues: { body: "" } });
+
+function SharedId() {
+  const form = useFormContext(forms);
+  return <span data-shared={form.id} />;
+}
+
 describe("context", () => {
   it("gives a submit button the nearest form, reactively", async () => {
     let form: FormOf<typeof Order> | undefined;
@@ -199,6 +208,44 @@ describe("context", () => {
       missing,
       missing,
     ]);
+  });
+
+  it("finds the nearest form of the forms past forms of other createForms calls", () => {
+    const { host } = mount(() => {
+      const outer = createForm(Note, { id: "outer" });
+      const inner = createForm(Comment, { id: "comment" });
+      return (
+        <outer.Form>
+          <SharedId />
+          <inner.Form>
+            <SharedId />
+          </inner.Form>
+        </outer.Form>
+      );
+    });
+    const found = [...host.querySelectorAll<HTMLElement>("[data-shared]")].map((span) => span.dataset.shared);
+    expect(found).toEqual(["outer", "outer"]);
+  });
+
+  it("throws a clear error for forms with only another createForms call's form above, or none", () => {
+    const { host } = mount(() => {
+      const comment = createForm(Comment);
+      return (
+        <>
+          <Errored fallback={(error) => <p>{String(error())}</p>}>
+            <SharedId />
+          </Errored>
+          <comment.Form>
+            <Errored fallback={(error) => <p>{String(error())}</p>}>
+              <SharedId />
+            </Errored>
+          </comment.Form>
+        </>
+      );
+    });
+    const missing =
+      "Error: @lunarhue/forms-solid: useFormContext(forms) found no form made from those forms. It skips forms of other `createForms` calls. Render it inside the `form.Form` of a form made from one of their definitions.";
+    expect([...host.querySelectorAll("p")].map((p) => p.textContent)).toEqual([missing, missing]);
   });
 
   it("re-keys a fieldset under Show keyed", () => {

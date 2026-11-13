@@ -1,6 +1,6 @@
 import { createFormsCore, type FormsConfig, type Plugins } from "@lunarhue/forms-core";
 import { createUniqueId } from "solid-js";
-import { madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
+import { madeBy, madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
 import type { RuntimeFocus } from "./focus.js";
 import { buildForm, type RuntimeStore } from "./form-runtime.js";
 import { scopeCache, type RuntimeComponent, type RuntimeHandle } from "./scope-runtime.js";
@@ -58,6 +58,7 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
         focusOnInvalid: settings.focusOnInvalid ?? options.focusOnInvalid ?? true,
       });
       madeFrom.set(form, definition);
+      madeBy.set(form, forms);
       return form;
     });
     return definition;
@@ -66,5 +67,6 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
   /** A fieldset is a token whose `scope` is `forms.scope`, typed to the shape. */
   const fieldset = () => ({ scope: scopeOf });
 
-  return { define, scope: (handle: RuntimeHandle) => scopeOf(handle), fieldset };
+  const forms = { define, scope: (handle: RuntimeHandle) => scopeOf(handle), fieldset };
+  return forms;
 }

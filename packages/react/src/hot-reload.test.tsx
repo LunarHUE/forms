@@ -145,3 +145,44 @@ describe("hot reload", () => {
     expect(screen.getByRole<HTMLInputElement>("textbox").value).toBe("");
   });
 });
+
+// A shared part reads the form by its `createForms` result, which a reload of the page module keeps.
+const shared = createForms({ plugins: [testSchemas] });
+const remake = (min: number) => shared.define({ schema: minLength(min), defaultValues: { name: "" } });
+let draft = remake(1);
+const reads: unknown[] = [];
+
+function SharedReader() {
+  const form = useFormContext(shared);
+  useEffect(() => {
+    reads.push(form);
+  });
+  return null;
+}
+
+function DraftPage(props: { readonly render: number }) {
+  const form = useForm(draft);
+  useEffect(() => {
+    reads.push(form);
+  });
+  return (
+    <form.Form>
+      <p data-render={props.render} />
+      <SharedReader />
+    </form.Form>
+  );
+}
+
+describe("hot reload under the same forms", () => {
+  it("finds the form made from the remade definition", () => {
+    const { rerender } = render(<DraftPage render={1} />);
+    const [, old] = reads;
+    expect(old).toBeDefined();
+    draft = remake(3);
+    reads.length = 0;
+    rerender(<DraftPage render={2} />);
+    const [child, page] = reads;
+    expect(page).not.toBe(old);
+    expect(child).toBe(page);
+  });
+});

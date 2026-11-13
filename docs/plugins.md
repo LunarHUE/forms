@@ -102,3 +102,31 @@ Anyone can publish a plugin. Name the package `forms-plugin-<name>` and build
 it with `definePlugin` from `@lunarhue/forms-core/plugins`, with core as a
 peer dependency. We may list community plugins, but a listing doesn't mean we
 reviewed the code.
+
+## Plugins in a shared component
+
+A form's `plugins` member holds the API of each plugin it has. A component
+shared by many forms, such as an undo button, can't name one definition.
+Pass the object `createForms` returned to `useFormContext` instead. It returns
+the nearest form above that one of its definitions made, and skips forms from
+other `createForms` calls:
+
+```tsx
+export const forms = createForms({ plugins: [valibot(), history()], fields: { TextField } });
+
+function UndoButton() {
+  const form = useFormContext(forms);
+  return (
+    <button type="button" onClick={() => form.plugins.history.undo()}>
+      Undo
+    </button>
+  );
+}
+```
+
+The form's type knows the shared plugins, the error type and the registered
+field components, so `form.plugins.history`, the `validate` prop and
+`form.TextField` all type check. Its value type is unknown, and plugins
+added by a definition or by one form are not in its type. To pass this form
+as a prop, type it `FormOf<typeof forms>`. Solid's `useFormContext` works the
+same way. It throws when no form of those forms is above.
