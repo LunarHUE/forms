@@ -153,11 +153,11 @@ describe("array items", () => {
 
 // A bound component and a `Field`, each with an inline validate prop, under a switch that unmounts both.
 const contact = forms.define({ defaultValues: { email: "", phone: "" } });
-const contactHolder: { form?: ReturnType<typeof contact.useForm> } = {};
+const contactHolder: { form?: FormOf<typeof contact> } = {};
 const emailIs = (value: string) => (value.endsWith("@x.io") ? undefined : { message: "work email" });
 
 function Contact() {
-  const form = contact.useForm();
+  const form = useForm(contact);
   const [shown, setShown] = useState(true);
   useEffect(() => {
     contactHolder.form = form;

@@ -215,7 +215,7 @@ function WrongUsage() {
 
 // The validate prop, typed from the field on Field, on bound components and on scope components.
 function ValidateProps() {
-  const form = order.useForm();
+  const form = useForm(order);
   const billing = AddressShape.scope(form.root.at("billing"));
   const qty = form.root.at("lines").item("k").at("qty");
   return (

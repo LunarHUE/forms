@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, type HandleOf, type ValidatorInput } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -25,7 +25,7 @@ const signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
 });
-type SignupForm = ReturnType<typeof signup.useForm>;
+type SignupForm = FormOf<typeof signup>;
 
 const holder: { form?: SignupForm } = {};
 const current = (): SignupForm => {
@@ -41,7 +41,7 @@ const toError = (message: string | undefined) => (message === undefined ? undefi
 
 /** A form with one bound field and one `Field`, each with a validate prop, and a switch to unmount both. */
 function Signup(props: { readonly check?: Check; readonly debounce?: number }) {
-  const form = signup.useForm();
+  const form = useForm(signup);
   const [shown, setShown] = useState(true);
   useEffect(() => {
     holder.form = form;
@@ -81,7 +81,7 @@ function HomeFields(props: { readonly field: HandleOf<typeof Home> }) {
   return <scope.TextField name="city" label="City" validate={(value) => (value.length < 3 ? { message: "short city" } : undefined)} />;
 }
 function WithHome() {
-  const form = signup.useForm();
+  const form = useForm(signup);
   return <HomeFields field={form.root.at("home")} />;
 }
 

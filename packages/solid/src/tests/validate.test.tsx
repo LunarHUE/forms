@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, type HandleOf, type ValidatorInput } from "../index.js";
+import { createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
 import { get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
@@ -22,7 +22,7 @@ const Signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
 });
-type SignupForm = ReturnType<typeof Signup.createForm>;
+type SignupForm = FormOf<typeof Signup>;
 
 const errorsOf = (host: HTMLElement, label: string): string => host.querySelector(`[data-errors="${label}"]`)?.textContent ?? "";
 const messages = (form: SignupForm, name: "email" | "name"): string[] => form.root.at(name).peek().errors.map((error) => error.message);
@@ -44,7 +44,7 @@ function mountSignup(check: () => Check, debounce?: number) {
     return debounce === undefined ? validate : { validate, debounce };
   };
   function Page() {
-    const own = Signup.createForm();
+    const own = createForm(Signup);
     holder.form = own;
     return (
       <Show when={shown()}>
@@ -73,7 +73,7 @@ function HomeFields(props: { field: HandleOf<typeof Home> }) {
   return <scope.TextField name="city" label="City" validate={(value) => (value.length < 3 ? { message: "short city" } : undefined)} />;
 }
 function WithHome() {
-  const form = Signup.createForm();
+  const form = createForm(Signup);
   return <HomeFields field={form.root.at("home")} />;
 }
 
