@@ -1,4 +1,4 @@
-import type { LeafHandle } from "@lunarhue/forms-core";
+import type { ItemOf, ShapeOf, ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import type { HandleLike } from "./field.js";
 import { notImplemented } from "./not-implemented.js";
@@ -6,8 +6,8 @@ import { notImplemented } from "./not-implemented.js";
 /**
  * The ref callback the adapter puts on a field's element. It records the
  * element for focus after an invalid submit and returns the cleanup that
- * forgets it. React 19 calls the cleanup. React 18 and older call the
- * callback again with `null`, which forgets it too.
+ * forgets it. React 19 calls the cleanup. React 18 calls the callback again
+ * with `null`, which forgets it too.
  */
 export type FieldRef = (element: HTMLElement | null) => (() => void) | undefined;
 
@@ -15,7 +15,10 @@ export type FieldRef = (element: HTMLElement | null) => (() => void) | undefined
 export interface BaseInputProps {
   /** The field's dotted name from its snapshot, such as `rows.0.title`. */
   readonly name: string;
-  /** The handle's id, for `<label htmlFor>`. Radios add the option to it. */
+  /**
+   * The handle's id, for `<label htmlFor>`. A radio or a checkbox of a group
+   * adds its option, encoded with core's `encodeSegment`.
+   */
   readonly id: string;
   /** Marks the field touched and runs blur validation. */
   readonly onBlur: () => void;
@@ -39,9 +42,10 @@ export interface TextInputProps extends BaseInputProps {
   readonly onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
-/** Props for `<input type="number">`. */
+/** Props for `<input type="number">` and `<input type="range">`. */
 export interface NumberInputProps extends BaseInputProps {
-  readonly type: "number";
+  /** The option's `kind`. */
+  readonly type: "number" | "range";
   /** The number as text, with `null`, `undefined` and `NaN` shown as `""`. */
   readonly value: string;
   /** The snapshot's `readOnly`. */
@@ -51,24 +55,27 @@ export interface NumberInputProps extends BaseInputProps {
 }
 
 /**
- * Props for `<input type="checkbox">` on a boolean field. Browsers ignore
- * `readOnly` on checkboxes, so it is `aria-readonly` here and `onChange`
- * writes nothing while the field is read-only.
+ * Props for `<input type="checkbox">`. Browsers ignore `readOnly` on
+ * checkboxes, so it is `aria-readonly` here and `onChange` writes nothing
+ * while the field is read-only. The same holds for radios and selects.
  */
 export interface CheckboxInputProps extends BaseInputProps {
   readonly type: "checkbox";
-  /** True when the value is `true`. */
+  /** On a boolean field, the value. On a group, whether the array holds this box's option. */
   readonly checked: boolean;
   /** The snapshot's `readOnly`. */
   readonly "aria-readonly": boolean;
-  /** Writes `checked` as a user edit, unless the field is read-only. */
+  /** On a boolean field, writes `checked`. On a group, adds or removes the option. */
   readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-/**
- * Props for one `<input type="radio">` of a group. Every radio of a field
- * shares `name`. Read-only works as on checkboxes.
- */
+/** Props for one checkbox of a group over an array field. */
+export interface CheckboxGroupInputProps extends CheckboxInputProps {
+  /** `String(option)`. */
+  readonly value: string;
+}
+
+/** Props for one `<input type="radio">` of a group. Every radio of a field shares `name`. */
 export interface RadioInputProps extends BaseInputProps {
   readonly type: "radio";
   /** `String(option)`. */
@@ -81,10 +88,7 @@ export interface RadioInputProps extends BaseInputProps {
   readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-/**
- * Props for a single `<select>`. Browsers ignore `readOnly` on selects, so
- * it works as on checkboxes.
- */
+/** Props for a single `<select>`. `<select multiple>` is not covered. */
 export interface SelectProps extends BaseInputProps {
   /** The value, with `null` and `undefined` shown as `""`. */
   readonly value: string;
@@ -99,21 +103,25 @@ export interface SelectProps extends BaseInputProps {
  * writes. It defaults to `undefined`, so it is required when the field's
  * type has no `undefined`.
  */
-export type EmptyOption<V> = undefined extends V
-  ? { readonly empty?: V }
-  : { readonly empty: V };
+export type EmptyOption<V> = undefined extends V ? { readonly empty?: V } : { readonly empty: V };
 
-/** Options for a text input. `kind` defaults to `"text"`. */
+/** Options for a text input or textarea. `kind` defaults to `"text"`. */
 export interface TextInputOptions {
   readonly kind?: "text";
 }
 
-/** Options for a number input. */
-export type NumberInputOptions<V> = { readonly kind: "number" } & EmptyOption<V>;
+/** Options for a number or range input. */
+export type NumberInputOptions<V> = { readonly kind: "number" | "range" } & EmptyOption<V>;
 
-/** Options for a checkbox. */
+/** Options for a checkbox on a boolean field. */
 export interface CheckboxInputOptions {
   readonly kind: "checkbox";
+}
+
+/** Options for one checkbox of a group over an array of strings or numbers. `value` is this box's option. */
+export interface CheckboxGroupOptions<T> {
+  readonly kind: "checkbox";
+  readonly value: T;
 }
 
 /** Options for one radio. `value` is the option this radio writes. */
@@ -125,31 +133,57 @@ export interface RadioInputOptions<V> {
 /** Options for a select. */
 export type SelectOptions<V> = { readonly kind: "select" } & EmptyOption<V>;
 
-/** What `useInputProps` needs from a handle: a leaf handle of value type `V`. */
-export type InputHandle<V, E> = LeafHandle<V, E>;
+/** True when every member of `V` is one of `T`, `null` or `undefined`. */
+type Only<V, T> = [V] extends [T | null | undefined] ? true : false;
 
 /**
- * Returns the props that bind one element to a leaf field. The kind is
- * checked against the field's value type: text and select need a string
- * field, number a number field, checkbox a boolean field, radio a field
- * whose type includes the option. Errors show in `aria-invalid` and
- * `aria-describedby` only while they are in `shownErrors`.
- *
- * The callbacks keep their identity for the life of the handle. The props
- * object changes only when the field's snapshot does.
+ * The input options a field of value type `V` accepts. Text and select need
+ * a string field, number and range a number field, a plain checkbox a
+ * boolean field, a radio a string, number or boolean field, and a checkbox
+ * with `value` an array of strings or numbers. Other fields accept none.
+ */
+export type InputOptionsFor<V> =
+  | (Only<V, string> extends true ? TextInputOptions | SelectOptions<V> : never)
+  | (Only<V, number> extends true ? NumberInputOptions<V> : never)
+  | (Only<V, boolean> extends true ? CheckboxInputOptions : never)
+  | (Only<V, string | number | boolean> extends true ? RadioInputOptions<V> : never)
+  | (ShapeOf<V> extends "array" ? (Only<ItemOf<V>, string | number> extends true ? CheckboxGroupOptions<ItemOf<V>> : never) : never);
+
+/** The props an options object gives. */
+export type InputPropsFor<O> = O extends { readonly kind: "number" | "range" }
+  ? NumberInputProps
+  : O extends { readonly kind: "checkbox"; readonly value: unknown }
+    ? CheckboxGroupInputProps
+    : O extends { readonly kind: "checkbox" }
+      ? CheckboxInputProps
+      : O extends { readonly kind: "radio" }
+        ? RadioInputProps
+        : O extends { readonly kind: "select" }
+          ? SelectProps
+          : TextInputProps;
+
+/**
+ * The rest argument of a call with no options: empty when the field takes a
+ * text input, and an impossible argument otherwise, so the call fails.
+ */
+export type NoOptionsArgs<V> = TextInputOptions extends InputOptionsFor<V> ? [] : [options: never];
+
+/** What `useInputProps` needs from a handle. */
+export interface InputHandleLike extends HandleLike {
+  /** Writes the value. */
+  readonly setValue: unknown;
+}
+
+/**
+ * Returns the props that bind one element to a field. The options are
+ * checked against the field's value type, see `InputOptionsFor`. Errors show
+ * in `aria-invalid` and `aria-describedby` only while they are in
+ * `shownErrors`. The callbacks keep their identity for the life of the
+ * handle. The props object changes only when the field's snapshot does.
  */
 export interface UseInputProps {
-  <V extends string | null | undefined, E>(handle: InputHandle<V, E>, options?: TextInputOptions): TextInputProps;
-  <V extends number | null | undefined, E>(
-    handle: InputHandle<V, E>,
-    options: NumberInputOptions<NoInfer<V>>,
-  ): NumberInputProps;
-  <V extends boolean | null | undefined, E>(handle: InputHandle<V, E>, options: CheckboxInputOptions): CheckboxInputProps;
-  <V extends string | number | boolean | null | undefined, E>(
-    handle: InputHandle<V, E>,
-    options: RadioInputOptions<NoInfer<V>>,
-  ): RadioInputProps;
-  <V extends string | null | undefined, E>(handle: InputHandle<V, E>, options: SelectOptions<NoInfer<V>>): SelectProps;
+  <H extends InputHandleLike, const O extends InputOptionsFor<ValueOf<H>>>(handle: H, options: O): InputPropsFor<O>;
+  <H extends InputHandleLike>(handle: H, ...options: NoOptionsArgs<ValueOf<H>>): TextInputProps;
 }
 
 /** See `UseInputProps`. Not implemented yet: it throws. */

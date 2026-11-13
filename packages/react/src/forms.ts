@@ -2,19 +2,24 @@ import type {
   AnyFieldHandle,
   AnyFormStore,
   DefinedValue,
-  DisabledInvalid,
   Definition,
-  FieldHandle,
+  DisabledInvalid,
+  ErrorOf,
   FormDefinition,
   FormError,
   FormsConfig,
   FormStore,
   IntentArgs,
   SchemaAdapter,
+  SchemaValue,
   StandardSchemaV1,
   Submission,
+  ValueOf,
 } from "@lunarhue/forms-core";
+import type { ReactElement, ReactNode } from "react";
+import type { HandleLike } from "./field.js";
 import { notImplemented } from "./not-implemented.js";
+import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope, SchemaFieldset } from "./scope.js";
 
 /**
  * What a failed submit leaves to focus. The adapter builds it from core's
@@ -32,8 +37,8 @@ export interface FocusTarget<E = FormError> {
   /**
    * The element the default focuses: the first element, in document order,
    * recorded for `field`. When `field` is undefined or has no element
-   * mounted, it is the `<form>` element from `formProps.ref`. Undefined only
-   * when no form element is mounted either.
+   * mounted, it is the `<form>` element from the form props' `ref`.
+   * Undefined only when no form element is mounted either.
    */
   readonly element: HTMLElement | undefined;
 }
@@ -47,17 +52,39 @@ export interface FocusTarget<E = FormError> {
  */
 export type FocusOnInvalid<E = FormError> = boolean | ((target: FocusTarget<E>) => void);
 
+/** The names the form object uses itself, which a registered field component can't take. */
+export type ReservedName = "Field" | "Items" | "Form" | "store" | "root" | "id" | "formProps" | "submit" | "handleSubmit";
+
+/**
+ * Checks the `fields` passed to `createForms`: a reserved name, or a
+ * component with no `field` prop, becomes `never`, which is a compile error
+ * at that entry.
+ */
+export type CheckedFields<F extends FieldComponentMap> = {
+  readonly [K in keyof F]: K extends ReservedName ? never : [FieldPropOf<F[K]>] extends [never] ? never : F[K];
+};
+
 /** Settings for `createForms`: core's settings plus the adapter's. */
-export interface FormsOptions<A extends readonly SchemaAdapter<never>[] = [], E = FormError> extends FormsConfig<A, E> {
+export interface FormsOptions<
+  A extends readonly SchemaAdapter<never>[] = [],
+  E = FormError,
+  F extends FieldComponentMap = NoFields,
+> extends FormsConfig<A, E> {
   /** What happens after a submit ends invalid. Defaults to `true`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
+  /**
+   * The app's field components. Each is an ordinary component with a
+   * `field: FieldApi<T>` prop and any props of its own, and shows up bound,
+   * under the same name, on every form and scope.
+   */
+  readonly fields?: F & CheckedFields<F>;
 }
 
 /** Per-form settings for `useForm`. Read on the first render only. */
 export interface UseFormOptions<E = FormError> {
   /**
-   * The store id, which prefixes every handle id and so every DOM id. Defaults
-   * to an id from `useId`, which matches between server and client.
+   * The store id, which prefixes every handle id and so every DOM id.
+   * Defaults to an id from `useId`, which matches between server and client.
    */
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
@@ -84,84 +111,162 @@ export interface FormElementProps {
   readonly ref: (element: HTMLFormElement | null) => (() => void) | undefined;
 }
 
+/** What `form.Form` passes to a function child: the form element props and `submit`. */
+export interface FormRenderProps<I, R> extends FormElementProps {
+  /** The form's `submit`, for buttons that submit with an intent. */
+  readonly submit: (...args: IntentArgs<I>) => Promise<Submission<I, R>>;
+}
+
+/** Props for `form.Form`. */
+export interface FormComponentProps<I, R> {
+  /**
+   * A function gets the form element props and `submit`, to spread on a real
+   * `<form>`. Plain nodes are rendered as they are, with the context only.
+   */
+  readonly children?: ((props: FormRenderProps<I, R>) => ReactNode) | ReactNode;
+}
+
 /**
- * A form mounted in a component. It is created once per mounted form and
- * keeps its identity, as do all its members. It holds no state: read state
- * with `useField` and `useFormState`.
+ * `form.Form`: renders no element. It provides the form to everything
+ * below, for `useFormContext` and the definition's `useFormContext`.
  */
-export interface FormInstance<V, E = FormError, I = undefined, R = unknown> {
+export type FormComponent<I, R> = (props: FormComponentProps<I, R>) => ReactElement;
+
+/** The form's own members, on top of the scope at its root. */
+export interface FormMembers<V, E, I, R> {
   /** The core store. Every handle's `store` is this object. */
   readonly store: FormStore<V, E, I, R>;
-  /** The handle for the whole value, the same object as `store.root`. */
-  readonly root: FieldHandle<V, E>;
   /** The store id. */
   readonly id: string;
+  /** The form element props, the same object `form.Form` passes to its child without `submit`. */
+  readonly formProps: FormElementProps;
   /**
    * Submits with an intent, as `store.submit` does, then applies
    * `focusOnInvalid` when the submit ends invalid. `store.submit` itself
-   * never moves focus.
+   * never moves focus. Bound, so it can be passed on as it is.
    */
   readonly submit: (...args: IntentArgs<I>) => Promise<Submission<I, R>>;
-  /**
-   * As `store.handleSubmit`, then applies `focusOnInvalid` when the submit
-   * ends invalid. Bound, like `submit`, so it can be passed on as it is.
-   */
+  /** As `store.handleSubmit`, then applies `focusOnInvalid` when the submit ends invalid. Bound. */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
-  /** Spread onto the `<form>` element. */
-  readonly formProps: FormElementProps;
+  /** The headless provider. See `FormComponent`. */
+  readonly Form: FormComponent<I, R>;
 }
 
-/** A form instance of any value, error, intent and result type, as context holds it. */
-// `any` lets FormInstance of every V, E, I and R fit, whatever their variance.
-// oxlint-disable-next-line typescript/no-explicit-any
-export type AnyFormInstance = FormInstance<any, any, any, any>;
+/**
+ * A form mounted in a component: the scope at its root plus the submit
+ * members. It is made once per mounted form, together with its store and its
+ * bound components, so every member keeps its identity for the life of the
+ * form. It holds no state: read state with `useField`, `useFormState` and
+ * the bound components. Every member works with no `form.Form` above.
+ */
+export type FormInstance<
+  V,
+  E = FormError,
+  I = undefined,
+  R = unknown,
+  F extends FieldComponentMap = NoFields,
+> = Scope<V, E, F> & FormMembers<V, E, I, R>;
+
+/** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
+export type UnknownForm = FormInstance<unknown, unknown, unknown>;
 
 /** The arguments `useForm` takes: the definition's options unless they are `void`, then per-form settings. */
 export type UseFormArgs<O, E> = [O] extends [void]
   ? [instance?: UseFormOptions<E>]
   : [options: O, instance?: UseFormOptions<E>];
 
-/**
- * A form definition for React. It still has core's `createStore`, for tests
- * and code outside components.
- */
-export interface ReactFormDefinition<V, E = FormError, I = undefined, R = unknown, O = void>
-  extends FormDefinition<V, E, I, R, O> {
+/** A form definition for React. It still has core's `createStore`, for tests and code outside components. */
+export interface ReactFormDefinition<
+  V,
+  E = FormError,
+  I = undefined,
+  R = unknown,
+  O = void,
+  F extends FieldComponentMap = NoFields,
+> extends FormDefinition<V, E, I, R, O> {
   /**
-   * Creates the form's store on the first render and returns the same
-   * instance on every render after. The store lives in a `useState`
-   * initialiser, so it survives re-renders and is dropped with the
-   * component. StrictMode may run the initialiser twice and keep one
-   * result: creating a store has no side effects, so the other is garbage.
+   * Makes the form on the first render and returns the same object on every
+   * render after. The store and the bound components are made in a
+   * `useState` initialiser, so they survive re-renders and are dropped with
+   * the component. StrictMode may run the initialiser twice and keep one
+   * result. Making a store has no side effects, so the other is garbage.
    * `options` and `instance` are read on the first render only.
    */
-  useForm(...args: UseFormArgs<O, E>): FormInstance<V, E, I, R>;
+  useForm(...args: UseFormArgs<O, E>): FormInstance<V, E, I, R, F>;
   /**
-   * Returns the form from the nearest `FormProvider`, typed by this
-   * definition. Throws when there is no provider, or when the provided form
-   * was made by another definition.
+   * Returns the form of this definition from the nearest `form.Form` that
+   * provides one, skipping forms of other definitions nearer to it. Throws
+   * when there is none.
    */
-  useFormContext(): FormInstance<V, E, I, R>;
+  useFormContext(): FormInstance<V, E, I, R, F>;
+}
+
+/** What `forms.scope` needs: an object handle. */
+export interface ObjectHandleLike extends HandleLike {
+  /** Returns a child handle. */
+  at(key: never): unknown;
 }
 
 /**
- * Defines forms for React. The same three cases as core's `define` decide
- * the value type, and `E`, `I` and `R` are inferred the same way.
+ * What `createForms` returns: `define` for forms, `scope` for the bound
+ * components of any object handle, and `fieldset` for reusable shapes.
  */
-export interface Forms<A extends readonly SchemaAdapter<never>[] = [], E = FormError> {
-  /** As core's `FormsCore.define`, returning a definition with React hooks. */
+export interface Forms<
+  A extends readonly SchemaAdapter<never>[] = [],
+  E = FormError,
+  F extends FieldComponentMap = NoFields,
+> {
+  /**
+   * As core's `FormsCore.define`, returning a definition with React hooks.
+   * The same three cases decide the value type, and `E`, `I` and `R` are
+   * inferred the same way.
+   */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
     config: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
-  ): ReactFormDefinition<DefinedValue<V, S, A>, E, I, R, O>;
+  ): ReactFormDefinition<DefinedValue<V, S, A>, E, I, R, O, F>;
+  /**
+   * Returns the scope rooted at an object handle of any form made here.
+   * Scopes are cached per handle, so one handle always gives the same object
+   * and the same components. It is a cached lookup, not a hook: it reads no
+   * state, so it can be called anywhere, render included, and needs no
+   * `form.Form` above.
+   */
+  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F>;
+  /**
+   * Makes a reusable shape from a schema. The shape is the schema's value
+   * type as `define` would type it: the `Draft` of its input when a
+   * registered adapter supports the schema, its input otherwise.
+   */
+  fieldset<S extends StandardSchemaV1>(schema: S): SchemaFieldset<SchemaValue<S, A>, E, F>;
+  /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
+  fieldset<V>(): Fieldset<V, E, F>;
 }
 
 /**
- * The adapter's entry point. It wraps `createFormsCore` and returns
- * `define`. Call it once at module scope. `E` is inferred from `mapError`.
+ * The adapter's entry point. It wraps `createFormsCore`. Call it once at
+ * module scope. `E` is inferred from `mapError` and `F` from `fields`.
  */
-export type CreateForms = <const A extends readonly SchemaAdapter<never>[] = [], E = FormError>(
-  options?: FormsOptions<A, E>,
-) => Forms<A, E>;
+export type CreateForms = <
+  const A extends readonly SchemaAdapter<never>[] = [],
+  E = FormError,
+  F extends FieldComponentMap = NoFields,
+>(
+  options?: FormsOptions<A, E, F>,
+) => Forms<A, E, F>;
+
+/** See `CreateForms`. Not implemented yet: it throws. */
+export const createForms: CreateForms = notImplemented("createForms");
+
+/**
+ * Returns the form from the nearest `form.Form`, whatever its definition.
+ * Throws when there is none. Enough for `submit`, `formProps`,
+ * `useFormState` and handle props. The definition's own `useFormContext`
+ * returns it typed.
+ */
+export type UseFormContext = () => UnknownForm;
+
+/** See `UseFormContext`. Not implemented yet: it throws. */
+export const useFormContext: UseFormContext = notImplemented("useFormContext");
 
 /**
  * Returns the disabled fields whose errors blocked the last submit that
@@ -169,8 +274,8 @@ export type CreateForms = <const A extends readonly SchemaAdapter<never>[] = [],
  * core's `disabledInvalid()` when the form snapshot's submission becomes
  * `invalid`, whoever started the submit, and empties it when the submission
  * leaves `invalid` (the next submit starts, or the form resets). The list
- * keeps its identity in between. Takes the form instance or any store, such
- * as `handle.store`.
+ * keeps its identity in between. Takes the form or any store, such as
+ * `handle.store`.
  */
 export type UseDisabledErrors = <E>(
   form: AnyFormStore<E> | { readonly store: AnyFormStore<E> },
@@ -178,6 +283,3 @@ export type UseDisabledErrors = <E>(
 
 /** See `UseDisabledErrors`. Not implemented yet: it throws. */
 export const useDisabledErrors: UseDisabledErrors = notImplemented("useDisabledErrors");
-
-/** See `CreateForms`. Not implemented yet: it throws. */
-export const createForms: CreateForms = notImplemented("createForms");

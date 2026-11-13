@@ -1,21 +1,56 @@
 // Binds React to the form store in @lunarhue/forms-core. The exports below are
 // the contract only: every runtime export is a stub that throws until it is implemented.
 export * from "@lunarhue/forms-core";
-export { createForms, useDisabledErrors } from "./forms.js";
+export { createForms, useDisabledErrors, useFormContext } from "./forms.js";
 export type {
-  AnyFormInstance,
+  CheckedFields,
   CreateForms,
   FocusOnInvalid,
   FocusTarget,
+  FormComponent,
+  FormComponentProps,
   FormElementProps,
   FormInstance,
+  FormMembers,
+  FormRenderProps,
   Forms,
   FormsOptions,
+  ObjectHandleLike,
   ReactFormDefinition,
+  ReservedName,
+  UnknownForm,
   UseDisabledErrors,
   UseFormArgs,
+  UseFormContext,
   UseFormOptions,
 } from "./forms.js";
+export type {
+  BoundField,
+  BoundFieldComponent,
+  BoundFieldComponents,
+  BoundItems,
+  FieldApi,
+  FieldApiOf,
+  FieldByHandle,
+  FieldByName,
+  FieldComponentMap,
+  FieldComponentType,
+  FieldPropOf,
+  Fieldset,
+  FieldsetScopeOptions,
+  HandleOf,
+  InputPropsMethod,
+  ItemsByHandle,
+  ItemsByName,
+  NameFitting,
+  NoFields,
+  OwnPropsOf,
+  PropsOf,
+  SchemaFieldset,
+  Scope,
+  ScopeMembers,
+} from "./scope.js";
+export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { useField, useFormState, useItems, useValidator } from "./field.js";
 export type {
   ArrayHandleLike,
@@ -32,12 +67,17 @@ export type {
 export { errorId, useFieldRef, useInputProps } from "./input.js";
 export type {
   BaseInputProps,
+  CheckboxGroupInputProps,
+  CheckboxGroupOptions,
   CheckboxInputOptions,
   CheckboxInputProps,
   EmptyOption,
   ErrorId,
   FieldRef,
-  InputHandle,
+  NoOptionsArgs,
+  InputHandleLike,
+  InputOptionsFor,
+  InputPropsFor,
   NumberInputOptions,
   NumberInputProps,
   RadioInputOptions,
@@ -49,13 +89,3 @@ export type {
   UseFieldRef,
   UseInputProps,
 } from "./input.js";
-export { Field, FormProvider, Items, useFormContext } from "./components.js";
-export type {
-  FieldComponent,
-  FieldProps,
-  FormProviderComponent,
-  FormProviderProps,
-  ItemsComponent,
-  ItemsProps,
-  UseFormContext,
-} from "./components.js";
