@@ -22,9 +22,6 @@ only keeps the two in step. A change in the form is copied out to your store,
 and a change in your store is copied into the form. Take the binding away and
 the form works exactly the same.
 
-Fair warning: this is where the API is headed. The plugin list, `rebase()` as
-a plugin and the Zustand binding are still in open pull requests and issues.
-
 ```tsx
 import { z } from "zod";
 import { create } from "zustand";
@@ -174,6 +171,7 @@ Type `name="emial"` and the build fails. Same if you pass `schema` or
 | `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
 | `@lunarhue/forms-vue`    | Vue 3 adapter                                    |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
+| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand`          |
 
 ## Plugins
 
@@ -211,27 +209,22 @@ entry per library. Each brings validation with it, so you don't list
 Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
 once validation is installed. You give `defaultValues` yourself in that case.
 
-Bindings for outside stores follow the same rule. `zustand()` will ship from
+Bindings for outside stores follow the same rule. `zustand()` comes from
 `@lunarhue/forms-bind/zustand`, not from core. A binding never replaces the
 form's store. It is a two-way copy of the value, set up per form, so two forms
 can bind to two different stores.
-
-### Where they stand
-
-- Validation, `zod()` and `valibot()` work today, in the open pull request for
-  the plugin list.
-- `history()`, `mask()`, `rules()` and `persist()` exist as test fixtures that
-  prove the plugin hooks. They aren't exported yet.
-- `rebase` works today as a plain function and is being moved to a plugin.
-- `bind()` and `zustand()` are designed and not built.
 
 ### Writing your own
 
 `definePlugin` gives you hooks for writes, resets and submit, your own slot for
 field and form state, and an API that shows up typed at `form.plugins.<name>`.
 Plugins can't step on each other: a write made inside a hook is queued, and
-each plugin sees the records frozen. If you publish one, call it
+each plugin sees the records frozen. A plugin depends on core and never on an
+adapter, so it works under React and Solid alike. If you publish one, call it
 `forms-plugin-<name>`.
+
+The full rules are in [docs/plugins.md](docs/plugins.md), and every error code
+is listed in [docs/errors.md](docs/errors.md).
 
 ## Scripts
 
