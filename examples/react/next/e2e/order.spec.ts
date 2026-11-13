@@ -52,12 +52,7 @@ test("typing in the name moves only the name's badge", async ({ page }) => {
     summary: await badge(page, "OrderSummary"),
   };
   console.log("badges after load", before);
-  // The bound field components commit twice on load, not once: hydration
-  // renders them with the server snapshot, and the adapter hands back a
-  // different field object for the same client snapshot, so React renders
-  // them again. That is a bug in the adapter, not in this page. Components
-  // that select a plain value, like the summary, commit once.
-  expect(before).toEqual({ name: 2, email: 2, page: 1, summary: 1 });
+  expect(before).toEqual({ name: 1, email: 1, page: 1, summary: 1 });
 
   const name = page.getByRole("textbox", { name: "Name" });
   await name.click();
