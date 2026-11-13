@@ -33,7 +33,8 @@
     "@lunarhue/forms-core": "workspace:^"
   },
   "devDependencies": {
-    "@lunarhue/forms-core": "workspace:^"
+    "@lunarhue/forms-core": "workspace:^",
+    "valibot": "catalog:"
   },
   "publishConfig": {
     "access": "public"
