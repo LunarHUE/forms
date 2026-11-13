@@ -234,6 +234,29 @@ describe("records", () => {
     expect(calls.map((records) => records.map((record) => record.cause))).toEqual([["user"], ["reset"], ["rebase"]]);
     expect(causes).toEqual(["user", "reset", "rebase"]);
   });
+
+  it('take the cause a plugin passes to ctx.write, which can only be "rebase"', () => {
+    const { plugin, calls } = watcher("watch");
+    let write: ((cause: unknown) => void) | undefined;
+    const writer = definePlugin({
+      name: "rebase",
+      setup: (ctx) => {
+        // Cast past the types, as untyped code could.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        write = (cause) => ctx.write(() => ctx.store.root.at("phone").setValue(String(cause), { edited: false }), cause as "rebase");
+        return {};
+      },
+    });
+    make(contact(), [plugin, writer]);
+    for (const cause of [undefined, "rebase", "user", "reset", { plugin: "watch" }]) write?.(cause);
+    expect(calls.map((records) => records.map((record) => record.cause))).toEqual([
+      [{ plugin: "rebase" }],
+      ["rebase"],
+      [{ plugin: "rebase" }],
+      [{ plugin: "rebase" }],
+      [{ plugin: "rebase" }],
+    ]);
+  });
 });
 
 /** A plugin that hands out its context's baseline, for tests of `ctx.baseline`. */
@@ -703,6 +726,65 @@ describe("server rendering", () => {
     expect("meta" in store.getServerFormSnapshot()).toBe(false);
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("revalidation", () => {
+  it("reruns a form validator once for every path one ctx.write changed", async () => {
+    let fill: (() => void) | undefined;
+    const filler = definePlugin({
+      name: "filler",
+      setup: (ctx) => {
+        fill = () =>
+          ctx.write(() => {
+            ctx.store.root.at("phone").setValue("1", { edited: false });
+            ctx.store.root.at("code").setValue("2", { edited: false });
+          });
+        return {};
+      },
+    });
+    const form = vi.fn<(value: Contact) => undefined>(() => undefined);
+    const store = createFormsCore({ plugins: [validation()] })
+      .define({ defaultValues: contact(), validate: { form }, plugins: [filler] })
+      .createStore();
+    await store.validate();
+    form.mockClear();
+    fill?.();
+    expect(form).toHaveBeenCalledTimes(1);
+    expect(form.mock.calls[0]?.[0]).toEqual({ phone: "1", code: "2" });
+  });
+});
+
+/** A plugin that starts the form from `value`, and pushes the value it was given to `seen`. */
+const starts = (name: string, value: Contact | undefined, seen?: unknown[]) =>
+  definePlugin({ name, initial: (given) => (seen?.push(given), value), setup: () => ({}) });
+
+describe("initial", () => {
+  it("starts the store, its baseline and its server snapshot from the value, with no record", () => {
+    const { plugin, calls } = watcher("watch");
+    const store = make(contact(), [starts("start", { phone: "5", code: "x" }), plugin]);
+    expect(store.getSnapshot([]).value).toEqual({ phone: "5", code: "x" });
+    expect(store.getServerSnapshot(["phone"]).value).toBe("5");
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(store.changes()).toEqual([]);
+    expect(store.getSnapshot(["phone"]).edited).toBe(false);
+    flushPlugins(store);
+    expect(calls).toEqual([]);
+    store.root.at("phone").setValue("6");
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ phone: "5", code: "x" });
+  });
+
+  it("gives each plugin the value the one before returned, so the last one wins", () => {
+    const seen: unknown[] = [];
+    const first = { phone: "1", code: "" };
+    const store = make(contact(), [
+      starts("a", first),
+      starts("b", { phone: "2", code: "" }, seen),
+      starts("c", undefined, seen),
+    ]);
+    expect(seen).toEqual([first, { phone: "2", code: "" }]);
+    expect(store.getSnapshot(["phone"]).value).toBe("2");
   });
 });
 

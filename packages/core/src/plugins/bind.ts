@@ -24,7 +24,8 @@ export interface BindOptions<T> {
   readonly incoming?: "replace" | "rebase" | Resolve;
   /**
    * Where the starting value comes from. `"outside"`, the default, starts
-   * the form with `get()` as its value and baseline. `"form"` keeps the
+   * the form from `get()`: its value, its baseline and the server snapshot,
+   * so a server render shows the outside value. `"form"` keeps the
    * form's defaults and sends them out with `set` when the form is first
    * listened to.
    */
@@ -55,23 +56,25 @@ const none = {};
  */
 export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
   const { get, set, subscribe, incoming = "replace", initial = "outside" } = options;
+  const outside = initial === "outside";
   return definePlugin({
     name: "bind",
+    // The store starts from the outside value, so the server renders it too.
+    initial: () => (outside ? get() : undefined),
     setup(ctx) {
       const { store } = ctx;
       const current = () => store.getSnapshot([]).value;
       // The outside value and the form value as of the last sync.
-      let seen: unknown = none;
-      let sent: unknown = none;
+      let seen: unknown = outside ? get() : none;
+      let sent: unknown = outside ? current() : none;
       // True while `set` runs, so the outside store's own notice is ignored.
       let sending = false;
 
-      const take = (value: unknown, start: boolean) => {
+      const take = (value: unknown) => {
         seen = value;
         ctx.write(() => {
-          if (start || incoming === "replace") store.root.setValue(() => value, { replace: true, edited: false });
+          if (incoming === "replace") store.root.setValue(() => value, { replace: true, edited: false });
           else rebaseTo(ctx, [], value, incoming === "rebase" ? edited : incoming);
-          if (start) ctx.baseline.move([], value);
           sent = current();
         });
       };
@@ -94,10 +97,8 @@ export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
       const listener = () => {
         if (sending) return;
         const value = get();
-        if (value !== seen) take(value, false);
+        if (value !== seen) take(value);
       };
-
-      if (initial === "outside") take(get(), true);
 
       return {
         onWrite(records) {

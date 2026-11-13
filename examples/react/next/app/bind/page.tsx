@@ -29,11 +29,10 @@ function TextField({ field, label }: TextFieldProps) {
   );
 }
 
-// 2. The definition. The server renders a bound form with its defaults, so
-// they are the store's starting state and the HTML matches what the client
-// shows once the binding takes over.
+// 2. The definition. The binding starts the form from the store's state, on
+// the server too, so these defaults only give the form its value type.
 const forms = createForms({ fields: { TextField } });
-const profile = forms.define({ defaultValues: useProfileStore.getInitialState() });
+const profile = forms.define<Profile>({ defaultValues: { name: "", email: "" } });
 
 // 3. The store's state as zustand sees it, and a change made outside the form.
 function StorePanel() {

@@ -8,8 +8,9 @@ import type { CreateValidation } from "./store/runner.js";
 
 /**
  * What made a write. `"user"` is a write from outside any plugin, `"reset"`
- * is a write reset made, `"rebase"` is a write the `rebase` plugin made, and
- * `{ plugin }` is a write any other plugin made through `ctx.write`.
+ * is a write reset made, `"rebase"` is a write a plugin made through
+ * `ctx.write(fn, "rebase")`, as the `rebase` plugin does, and `{ plugin }`
+ * is a write any plugin made through `ctx.write(fn)`.
  */
 export type WriteCause = "user" | "reset" | "rebase" | { readonly plugin: string };
 
@@ -140,12 +141,15 @@ export interface PluginContext<M = unknown, F = unknown> {
   /** Sets this plugin's meta on the form. It lands when `setMeta` would. */
   setFormMeta(this: void, value: F): void;
   /**
-   * Runs `fn`, whose store writes get `cause: { plugin: name }`. Inside a
-   * hook, setup included, it is queued and runs once every plugin in the
-   * round has run, before listeners. Outside a hook it runs now, in a batch.
-   * Writing to the store any other way from inside a hook throws.
+   * Runs `fn`, whose store writes get `cause: { plugin: name }`. Pass
+   * `"rebase"` to give them `cause: "rebase"` instead, for writes that move
+   * the form to a value from outside. A plugin can't claim `"user"` or
+   * `"reset"`. Inside a hook, setup included, it is queued and runs once
+   * every plugin in the round has run, before listeners. Outside a hook it
+   * runs now, in a batch. Writing to the store any other way from inside a
+   * hook throws.
    */
-  write(this: void, fn: () => void): void;
+  write(this: void, fn: () => void, cause?: "rebase"): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(this: void): void;
   /** Reads and moves the form's baseline. */
@@ -194,6 +198,8 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   readonly after?: readonly string[];
   /** Runs once per store, when the store is made, and returns the plugin's hooks. */
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
+  /** Gives the form's starting value. See `Plugin.initial`. */
+  initial?(value: unknown): unknown;
 }
 
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
@@ -222,6 +228,15 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
   readonly after?: readonly string[];
   /** A hook plugin's: runs once per store and returns its hooks. */
   setup?(ctx: PluginContext<M, F>): PluginHooks<A>;
+  /**
+   * Gives the form's starting value. It runs before the store is made, with
+   * the value the store would start from, and returns the value to start
+   * from instead, or undefined to keep it. The store, its baseline and its
+   * server snapshot all start there, and no write is recorded. When several
+   * plugins have it, each gets the value the one before returned, so the
+   * last one that returns a value wins.
+   */
+  initial?(value: unknown): unknown;
   /** A hook plugin's: makes the store's plugin host. Internal. */
   readonly host?: CreateHost;
   /** A hook plugin's: reads its meta from a field. */

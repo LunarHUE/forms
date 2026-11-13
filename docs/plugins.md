@@ -38,7 +38,10 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
 - `rules`: sets `disabled` and a `hidden` meta flag on named fields from the
   form value, after every write.
 - `persist`: saves the form value to storage such as `localStorage` and
-  restores it when the store is made.
+  restores it when the store is made. The server has no storage, so the
+  restore is a write made after the store starts, not its starting value.
+  A server render and the render that hydrates show the defaults, and the
+  restored value shows in the render after.
 - `rebase`: moves a subtree's baseline to an incoming value, such as a fresh
   server copy, and lets you pick what each changed field keeps.
 - `bind`: keeps the form value in step with a store the app owns, given as
@@ -51,11 +54,45 @@ The form's state never moves into the bound store. The form keeps its own
 store with errors, touched, dirty, disabled and the rest, and only the value
 is copied both ways. The binding listens to the outside store while the form
 has listeners, so a form a render made and threw away holds no listener
-there. On the server, and in the render that hydrates, a bound form shows
-its definition's defaults, so give it defaults that match the outside
-store's starting state.
+there. With `initial: "outside"`, the default, the form starts from the
+outside value, on the server too. The server HTML shows it, and hydrating
+renders once. The definition's `defaultValues` still set the value type,
+but the form never shows them.
 
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
+
+## Writing a plugin
+
+A plugin's `setup` runs once per store and returns its hooks. Writes go
+through `ctx.write`, which runs after every plugin in the round has run.
+Their records have `cause: { plugin: name }`. A plugin that moves the
+baseline to a value from outside, as `rebase` does, can pass `"rebase"`
+instead: `ctx.write(fn, "rebase")`. Those are the only two causes a plugin
+gets. `"user"` and `"reset"` belong to the form.
+
+Writes that aren't user edits rerun the validators that already run on the
+paths they change. A plugin that writes many paths in one `ctx.write` reruns
+each validator once, after the last write, so a form validator over those
+paths runs once and an async one isn't restarted.
+
+A plugin can give the form its starting value with `initial`. It runs
+before the store is made, gets the value the store would start from, and
+returns the value to start from instead, or undefined to keep it:
+
+```ts
+// Starts the form from a value the server and the client both have.
+const startFrom = (value: Profile) => definePlugin({ name: "start", initial: () => value, setup: () => ({}) });
+```
+
+The store, its baseline and its server snapshot all start from that value.
+Nothing is written, so the form isn't dirty and no plugin sees a record.
+When several plugins have `initial`, each gets the value the one before
+returned, so the last one in the list wins. The value replaces the store's
+starting value whole. It isn't merged with a schema plugin's defaults the
+way `defaultValues` is, though `initial` gets those merged defaults and can
+merge into them itself. A value that differs between server and client,
+such as one read from browser storage, makes hydration fail, so read those
+in `setup` and write them with `ctx.write`, as `persist` does.
 
 ## Third party
 

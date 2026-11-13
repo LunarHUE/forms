@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import type { FormError } from "../errors.js";
 import type { AnyPlugin } from "../plugin.js";
 import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals } from "../store/form-store.js";
+import type { ValidatorContext } from "../validator.js";
 import { validation as runner } from "./validation.js";
 import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
 
@@ -24,6 +26,11 @@ function count(store: FormStore<unknown>, paths: (Path | "form")[]) {
   }
   return runs;
 }
+
+/** The rebase API of a store the rebase plugin is on. */
+// The internals' store has no typed plugin APIs.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+const apiOf = (store: FormStore<unknown>) => (store.plugins as { readonly rebase: Rebase }).rebase;
 
 /** A field validator that fails on an empty string with `label`. */
 const check = (label: string) =>
@@ -188,6 +195,43 @@ describe("rebase", () => {
     // b is still waiting for its blur.
     store.fieldAt(["b"])?.setValue("");
     expect(b).not.toHaveBeenCalled();
+  });
+
+  it("runs a form validator once for a rebase that takes several paths", async () => {
+    const form = vi.fn<(value: unknown) => undefined>(() => undefined);
+    const { store } = createFormInternals<unknown>({
+      id: "f",
+      initial: { a: "x", b: "x" },
+      plugins: [runner(), rebasePlugin()],
+      validate: { form },
+    });
+    await store.validate();
+    form.mockClear();
+    expect(apiOf(store)(store.root, { a: "y", b: "y" }, () => "take").taken).toHaveLength(2);
+    expect(form).toHaveBeenCalledTimes(1);
+    expect(form).toHaveBeenCalledWith({ a: "y", b: "y" }, expect.anything());
+  });
+
+  it("starts an async form validator once for a rebase, without aborting it", async () => {
+    const signals: ValidatorContext<FormError>["signal"][] = [];
+    const form = vi.fn<(value: unknown, ctx: ValidatorContext<FormError>) => Promise<undefined>>(async (_value, ctx) => {
+      signals.push(ctx.signal);
+      await Promise.resolve();
+      return undefined;
+    });
+    const { store } = createFormInternals<unknown>({
+      id: "f",
+      initial: { a: "x", b: "x" },
+      plugins: [runner(), rebasePlugin()],
+      validate: { form },
+    });
+    await store.validate();
+    form.mockClear();
+    signals.length = 0;
+    apiOf(store)(store.root, { a: "y", b: "y" }, () => "take");
+    expect(form).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(store.getFormSnapshot().validating).toBe(false));
+    expect(signals.map((signal) => signal.aborted)).toEqual([false]);
   });
 
   it("rejects a handle from something that isn't a form store", () => {
