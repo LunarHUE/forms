@@ -2,6 +2,40 @@ export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
+
+// The meta interfaces are declared here, in the entry module itself, because
+// module augmentation of "@lunarhue/forms-core" only reaches an interface the
+// entry module declares, not one it re-exports.
+
+/**
+ * Per-field plugin state, by plugin name. It starts empty. A plugin adds its
+ * slot with module augmentation:
+ *
+ *     declare module "@lunarhue/forms-core" {
+ *       interface FieldMeta {
+ *         readonly upload: { readonly progress: number };
+ *       }
+ *     }
+ */
+// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type
+export interface FieldMeta {}
+
+/** Form-wide plugin state, by plugin name. A plugin adds its slot the same way as on `FieldMeta`. */
+// oxlint-disable-next-line typescript/no-empty-interface, typescript/no-empty-object-type
+export interface FormMeta {}
+
+export type {
+  AnyPlugin,
+  Plugin,
+  PluginContext,
+  PluginDefinition,
+  PluginErrorHandler,
+  PluginHooks,
+  When,
+  Write,
+  WriteCause,
+  WriteRecord,
+} from "./plugin.js";
 export type { Path, PathSegment } from "./path.js";
 export type { StandardSchemaV1 } from "./standard-schema.js";
 export type { Choice, ChoiceHandle, ChoiceValue, HasChoice, WithChoice } from "./choice.js";

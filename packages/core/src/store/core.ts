@@ -122,6 +122,11 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   setSubmission(submission: Submission<I, R>): boolean;
   /** Sets the form's submit count. */
   setSubmitCount(count: number): boolean;
+  /**
+   * Sets slot `slot` of the meta on the field at `path`, or on the form
+   * without a path. The meta object is replaced, so the snapshot changes.
+   */
+  setMeta(slot: string, value: unknown, path?: Path): boolean;
   /** Asks the `dirty` option again for every field and the form, after the baseline changed. */
   recheckDirty(): void;
   /**
@@ -225,7 +230,12 @@ interface Node<E> extends Cell<Snapshot<E>> {
   dirty: boolean;
   /** The value `dirty` was computed for. */
   dirtyFor: unknown;
+  /** Plugin meta by plugin name. Undefined until a plugin sets some, and the snapshot has it only then. */
+  meta: Meta;
 }
+
+/** Plugin meta by plugin name, or undefined while no plugin has set any. */
+type Meta = Readonly<Record<string, unknown>> | undefined;
 
 /** A node's live children in value order: items by index, object keys in key order, then keys the value lacks. */
 function inValueOrder<E>(node: Node<E>): Node<E>[] {
@@ -283,6 +293,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let serverForm: FormSnapshot<I, R> | undefined;
   let formDirty = false;
   let formDirtyFor: unknown = stale;
+  // The form's plugin meta.
+  let formMeta: Meta;
 
   // Where `node` sits now, from its parent's value and key list.
   const place = (node: Node<E>) => {
@@ -356,6 +368,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       validating: node.validating !== undefined,
       disabled: node.disabled.on,
       readOnly: node.readOnly.on,
+      ...(node.meta && { meta: node.meta }),
     });
   };
 
@@ -384,6 +397,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       submitting: submission.status === "submitting",
       submission,
       submitCount,
+      ...(formMeta && { meta: formMeta }),
     };
   };
 
@@ -531,6 +545,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       errors: none,
       dirty: false,
       dirtyFor: stale,
+      meta: undefined,
     };
     place(node);
     node.name = nameOf(node);
@@ -945,6 +960,18 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       // Only fields with validation errors can show something different. A
       // rebuild that changes nothing keeps the snapshot.
       for (const node of withErrors) rebuild(node);
+      return finish(true);
+    },
+    setMeta(slot, value, path) {
+      if (!path) {
+        if (Object.is(formMeta?.[slot], value)) return false;
+        formMeta = freeze({ ...formMeta, [slot]: value });
+        return finish(true);
+      }
+      const node = fieldAt(path);
+      if (!node || Object.is(node.meta?.[slot], value)) return false;
+      node.meta = freeze({ ...node.meta, [slot]: value });
+      rebuild(node);
       return finish(true);
     },
     recheckDirty() {
