@@ -15,7 +15,7 @@ interface Rows {
 }
 
 // A hand-written Standard Schema with the old benchmark's rule: every name is required.
-const schema: StandardSchemaV1<Rows> = {
+export const schema: StandardSchemaV1<Rows> = {
   "~standard": {
     version: 1,
     vendor: "bench",
