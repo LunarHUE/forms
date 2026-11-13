@@ -386,6 +386,28 @@ describe("abort on reset", () => {
   });
 });
 
+describe("submit after a field reset", () => {
+  // Both validators sit above the reset field, so they already ran, and the reset clears their errors on it.
+  const above: Options<unknown>[] = [
+    { validate: { form: (value) => (value.name === "" ? { fields: { name: err("Required") } } : undefined) } },
+    { validate: { fields: { rows: (rows) => (rows.some((row) => row.title === "") ? err("Untitled") : undefined) } } },
+  ];
+
+  it.each(above)("runs the validators above the field again when its baseline is invalid (%#)", async (options) => {
+    const onSubmit = vi.fn<() => void>();
+    const { store } = make({ ...options, onSubmit }, { name: "", rows: [{ title: "" }] });
+    store.root.at("name").setValue("ada");
+    store.root.at("rows").item("k0").at("title").setValue("a");
+    expect(await store.submit()).toEqual({ status: "succeeded", result: undefined });
+    store.root.at("name").reset();
+    store.root.at("rows").item("k0").at("title").reset();
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const path = options.validate?.form ? ["name"] : ["rows"];
+    expect(store.getSnapshot(path).shownErrors).toHaveLength(1);
+  });
+});
+
 describe("handleSubmit", () => {
   it("prevents the default and submits with an undefined intent", async () => {
     const intents: unknown[] = [];

@@ -111,7 +111,7 @@ interface Run {
   armed: boolean;
   /** Before it is armed, the subtrees blurred below it. A run writes errors only inside them. */
   scopes: Map<string, Path> | undefined;
-  /** True once it ran while armed. */
+  /** True once it ran while armed. A reset at or below its field clears it. */
   ran: boolean;
   thrown: boolean;
   timer: unknown;
@@ -499,14 +499,17 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         // The baseline clears the errors.
         run.written.clear();
       }
-      // A run above the subtree forgets the blurs inside it.
+      // A run above the subtree forgets the blurs inside it. The baseline clears
+      // its errors there without running it, so the next submit runs it again.
       const above = new Set<Run>();
       along(runsAt, path, false, above);
-      for (const run of above)
+      for (const run of above) {
+        run.ran = false;
         if (run.scopes) {
           for (const [key, scope] of run.scopes) if (startsWith(scope, path)) run.scopes.delete(key);
           if (run.scopes.size === 0) run.scopes = undefined;
         }
+      }
       if (path.length === 0) for (const reg of patterns) reg.armedAll = false;
     },
     changed(paths) {
