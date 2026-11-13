@@ -2,6 +2,7 @@
 import { Inspector } from "@lunarhue/forms-example-react";
 import { zustand } from "@lunarhue/forms-bind/zustand";
 import { createForms, type FieldApi, useForm } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { create } from "zustand";
 
 interface Profile {
@@ -31,7 +32,8 @@ function TextField({ field, label }: TextFieldProps) {
 
 // 2. The definition. The binding starts the form from the store's state, on
 // the server too, so these defaults only give the form its value type.
-const forms = createForms({ fields: { TextField } });
+// `dirty()` gives the inspector its dirty flags.
+const forms = createForms({ plugins: [dirty()], fields: { TextField } });
 const profile = forms.define<Profile>({ defaultValues: { name: "", email: "" } });
 
 // 3. The store's state as zustand sees it, and a change made outside the form.
