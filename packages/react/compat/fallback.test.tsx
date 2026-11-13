@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useLayoutEffect } from "react";
 import { expect, it } from "vitest";
-import { createForms, type LeafHandle, useField } from "../src/index.js";
+import { createForms, type LeafHandle, useField, useForm } from "../src/index.js";
 import { modern, render } from "./render.js";
 
 const profile = createForms().define({ defaultValues: { name: "before" } });
@@ -16,7 +16,7 @@ function Writer(props: { readonly name: LeafHandle<string> }) {
 }
 
 function Reader() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   const name = form.root.at("name");
   const value = useField(name, (snapshot) => snapshot.value);
   return (

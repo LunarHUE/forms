@@ -6,7 +6,7 @@ import {
   orderValidate,
   type SaveOrder,
 } from "@lunarhue/forms-example-order";
-import { createForms, type DeepPartial } from "@lunarhue/forms-react";
+import { createForms, type DeepPartial, type FormOf } from "@lunarhue/forms-react";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import type * as v from "valibot";
 import { NumberField, TextField } from "./fields.js";
@@ -60,5 +60,5 @@ export const order = forms.define((options: OrderOptions) => ({
   onSubmit: orderOnSubmitWith(options.save),
 }));
 
-/** A mounted order form, as `order.useForm` returns it. */
-export type OrderFormInstance = ReturnType<typeof order.useForm>;
+/** A mounted order form, as `useForm(order, options)` returns it. */
+export type OrderFormInstance = FormOf<typeof order>;

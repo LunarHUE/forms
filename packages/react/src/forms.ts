@@ -19,7 +19,7 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import { createFormsCore } from "@lunarhue/forms-core";
-import { type Context, createContext, createElement, type ReactElement, type ReactNode, useContext, useState } from "react";
+import { createContext, createElement, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike } from "./field.js";
@@ -138,7 +138,7 @@ export interface FormComponentProps<I, R> {
 
 /**
  * `form.Form`: renders no element. It provides the form to everything
- * below, for `useFormContext` and the definition's `useFormContext`.
+ * below, for `useFormContext`.
  */
 export type FormComponent<I, R> = (props: FormComponentProps<I, R>) => ReactElement;
 
@@ -180,12 +180,16 @@ export type FormInstance<
 /** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
 export type UnknownForm = FormInstance<unknown, unknown, unknown>;
 
-/** The arguments `useForm` takes: the definition's options unless they are `void`, then per-form settings. */
+/** The arguments `useForm` takes after the definition: its options unless they are `void`, then per-form settings. */
 export type UseFormArgs<O, E> = [O] extends [void]
   ? [instance?: UseFormOptions<E>]
   : [options: O, instance?: UseFormOptions<E>];
 
-/** A form definition for React. It still has core's `createStore`, for tests and code outside components. */
+/**
+ * A form definition for React: what `useForm` and `useFormContext` take. It
+ * carries the schema, the validators and the registered field components,
+ * and still has core's `createStore`, for tests and code outside components.
+ */
 export interface ReactFormDefinition<
   V,
   E = FormError,
@@ -194,21 +198,47 @@ export interface ReactFormDefinition<
   O = void,
   F extends FieldComponentMap = NoFields,
 > extends FormDefinition<V, E, I, R, O> {
+  /** Type information only, always undefined at runtime: the form `useForm` makes from this definition. */
+  readonly "~form"?: FormInstance<V, E, I, R, F>;
+}
+
+/** The form a definition makes: `FormOf<typeof signUp>`. */
+export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
+
+/**
+ * Makes the form on the first render and returns the same object on every
+ * render after. The store and the bound components are made in a `useState`
+ * initialiser, so they survive re-renders and are dropped with the
+ * component. StrictMode may run the initialiser twice and keep one result.
+ * Making a store has no side effects, so the other is garbage. `options` is
+ * required when the definition was made with the function form of `define`,
+ * and absent otherwise. `options` and `instance` are read on the first render
+ * only.
+ */
+export type UseForm = <V, E, I, R, O, F extends FieldComponentMap>(
+  definition: ReactFormDefinition<V, E, I, R, O, F>,
+  ...args: NoInfer<UseFormArgs<O, E>>
+) => FormInstance<V, E, I, R, F>;
+
+/**
+ * Reads a form from the nearest `form.Form` above. Every `form.Form`
+ * provides the same context, and each remembers the `form.Form` above it.
+ */
+export interface UseFormContext {
   /**
-   * Makes the form on the first render and returns the same object on every
-   * render after. The store and the bound components are made in a
-   * `useState` initialiser, so they survive re-renders and are dropped with
-   * the component. StrictMode may run the initialiser twice and keep one
-   * result. Making a store has no side effects, so the other is garbage.
-   * `options` and `instance` are read on the first render only.
+   * Returns the form from the nearest `form.Form`, whatever its definition,
+   * with its types unknown. Enough for reusable parts such as a submit
+   * button: `submit`, `handleSubmit`, `formProps`, `store`, `useFormState`
+   * and `useDisabledErrors`. Throws when no `form.Form` is above.
    */
-  useForm(...args: UseFormArgs<O, E>): FormInstance<V, E, I, R, F>;
+  (): UnknownForm;
   /**
-   * Returns the form of this definition from the nearest `form.Form` that
-   * provides one, skipping forms of other definitions nearer to it. Throws
-   * when there is none.
+   * Returns the form made from `definition`, fully typed, from the nearest
+   * `form.Form` of that definition. Forms of other definitions nearer to it,
+   * such as a dialog's form inside a page's form, are skipped. Throws when no
+   * form of that definition is above.
    */
-  useFormContext(): FormInstance<V, E, I, R, F>;
+  <V, E, I, R, O, F extends FieldComponentMap>(definition: ReactFormDefinition<V, E, I, R, O, F>): FormInstance<V, E, I, R, F>;
 }
 
 /** What `forms.scope` needs: an object handle. */
@@ -227,9 +257,9 @@ export interface Forms<
   F extends FieldComponentMap = NoFields,
 > {
   /**
-   * As core's `FormsCore.define`, returning a definition with React hooks.
-   * The same three cases decide the value type, and `E`, `I` and `R` are
-   * inferred the same way.
+   * As core's `FormsCore.define`, returning a definition for `useForm` and
+   * `useFormContext`. The same three cases decide the value type, and `E`,
+   * `I` and `R` are inferred the same way.
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
     config: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
@@ -269,29 +299,23 @@ export type CreateForms = <
 /** A form as the runtime builds it. */
 type AnyForm = AnyScope & { readonly store: AnyFormStore<unknown> };
 
+/** What a `form.Form` provides: its form, and what the `form.Form` above it provides. */
+interface FormNode {
+  readonly form: AnyForm;
+  readonly parent: FormNode | null;
+}
+
 /** The context every `form.Form` provides, whatever its definition. */
-const SharedContext = createContext<AnyForm | null>(null);
+const FormContext = createContext<FormNode | null>(null);
 
-/** Returns the form a context holds, or throws when no `form.Form` is above. */
-function useProvidedForm(context: Context<AnyForm | null>): AnyForm {
-  const form = useContext(context);
-  if (form === null) {
-    throw new Error(
-      "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop.",
-    );
-  }
-  return form;
-}
+/** The definition each form was made from. */
+const madeFrom = new WeakMap<AnyForm, object>();
 
-/** Makes a form on the first render and returns the same one after. */
-function useNewForm(make: (generatedId: string) => AnyForm): AnyForm {
-  const generatedId = useId();
-  const [form] = useState(() => make(generatedId));
-  return form;
-}
+/** How each definition makes a form, from `useForm`'s arguments after the definition and the generated id. */
+const makers = new WeakMap<object, (args: readonly unknown[], generatedId: string) => AnyForm>();
 
 /** Builds the form object around a new store. */
-function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, own: Context<AnyForm | null>, focus: FocusOnInvalid<unknown>): AnyForm {
+function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnInvalid<unknown>): AnyForm {
   const submit = async (...args: [intent?: unknown]) => {
     const submission = await store.submit(...args);
     if (submission.status === "invalid") focusInvalid(store, focus);
@@ -314,8 +338,10 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, own: Context<An
   // `Form` only runs after `form` below is made.
   function Form(props: FormComponentProps<unknown, unknown>): ReactElement {
     const { children } = props;
+    const parent = useContext(FormContext);
+    const node = useMemo(() => ({ form, parent }), [parent]);
     const content = typeof children === "function" ? children(renderProps) : children;
-    return createElement(SharedContext.Provider, { value: form }, createElement(own.Provider, { value: form }, content));
+    return createElement(FormContext.Provider, { value: node }, content);
   }
   const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form };
   return form;
@@ -340,42 +366,59 @@ export const createForms: CreateForms = (options = {}) => {
   const defaultFocus = (options.focusOnInvalid ?? true) as FocusOnInvalid<unknown>;
 
   const define = (config: unknown) => {
-    const definition = core.define(config);
-    const own = createContext<AnyForm | null>(null);
+    const made = core.define(config);
     const takesOptions = typeof config === "function";
-    const createForm = (args: readonly unknown[], generatedId: string): AnyForm => {
+    const definition = {
+      createStore: (storeOptions: unknown, instance: StoreInstance = {}) => made.createStore(storeOptions, instance),
+    };
+    makers.set(definition, (args, generatedId) => {
       // `useForm` takes the definition's options first only when the definition is a function.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
       const id = instance?.id;
       if (id === undefined) generatedIdUsed();
-      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
-      return makeForm(store, scope(store.root), own, instance?.focusOnInvalid ?? defaultFocus);
-    };
-    return {
-      createStore: (storeOptions: unknown, instance: StoreInstance = {}) => definition.createStore(storeOptions, instance),
-      useForm: (...args: unknown[]) => useNewForm((generatedId) => createForm(args, generatedId)),
-      useFormContext: () => useProvidedForm(own),
-    };
+      const store = made.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
+      const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
+      madeFrom.set(form, definition);
+      return form;
+    });
+    return definition;
   };
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return { define, scope, fieldset: () => ({ scope }) } as never;
 };
 
-/**
- * Returns the form from the nearest `form.Form`, whatever its definition.
- * Throws when there is none. Enough for `submit`, `formProps`,
- * `useFormState` and handle props. The definition's own `useFormContext`
- * returns it typed.
- */
-export type UseFormContext = () => UnknownForm;
+/** See `UseForm`. */
+export const useForm: UseForm = (definition, ...args) => {
+  const generatedId = useId();
+  const [form] = useState(() => {
+    const make = makers.get(definition);
+    if (make === undefined) throw new Error("@lunarhue/forms-react: useForm takes a definition from forms.define.");
+    return make(args, generatedId);
+  });
+  // The runtime form is the one the definition's types describe.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return form as never;
+};
 
 /** See `UseFormContext`. */
-export const useFormContext: UseFormContext = () =>
-  // The shared context holds forms of every definition, which `UnknownForm` covers.
+export const useFormContext: UseFormContext = (definition?: object) => {
+  let node = useContext(FormContext);
+  if (definition !== undefined) {
+    while (node !== null && madeFrom.get(node.form) !== definition) node = node.parent;
+  }
+  if (node === null) {
+    throw new Error(
+      definition === undefined
+        ? "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop."
+        : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
+    );
+  }
+  // A form found by its definition is that definition's form. With no definition the caller gets `UnknownForm`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  useProvidedForm(SharedContext) as unknown as UnknownForm;
+  return node.form as never;
+};
 
 /**
  * Returns the disabled fields whose errors blocked the last submit that

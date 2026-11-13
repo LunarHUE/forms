@@ -3,7 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { errorId as coreErrorId } from "@lunarhue/forms-core";
-import { createForms, errorId, optionId, useInputProps } from "./index.js";
+import { createForms, errorId, type FormOf, optionId, useForm, useInputProps } from "./index.js";
 
 interface Settings {
   title: string;
@@ -28,7 +28,7 @@ const initial: Settings = {
 const forms = createForms();
 const settings = forms.define({ defaultValues: initial });
 
-type SettingsForm = ReturnType<typeof settings.useForm>;
+type SettingsForm = FormOf<typeof settings>;
 const holder: { form?: SettingsForm } = {};
 const current = (): SettingsForm => {
   if (holder.form === undefined) throw new Error("no form rendered");
@@ -37,7 +37,7 @@ const current = (): SettingsForm => {
 const values = () => current().root.peek().value;
 
 function Settings() {
-  const form = settings.useForm({ id: "settings" });
+  const form = useForm(settings, { id: "settings" });
   useEffect(() => {
     holder.form = form;
   });
@@ -65,7 +65,7 @@ function Settings() {
 // jsdom clears text such as `1.` from a number input. A text input stands in
 // for a browser that reports the text as typed.
 function RawAge() {
-  const form = settings.useForm();
+  const form = useForm(settings);
   useEffect(() => {
     holder.form = form;
   });
@@ -112,7 +112,7 @@ describe("text and textarea", () => {
 });
 
 const picker = forms.define({ defaultValues: { size: "s", picks: ["a"] as string[] } });
-const pickHolder: { form?: ReturnType<typeof picker.useForm> } = {};
+const pickHolder: { form?: FormOf<typeof picker> } = {};
 const picked = () => {
   if (pickHolder.form === undefined) throw new Error("no form rendered");
   return pickHolder.form;
@@ -121,7 +121,7 @@ const picked = () => {
 // A radio group, a checkbox group over an array, and the array's first item,
 // whose key is `k0`, as its own input. The group has an option named `k0` too.
 function Picker() {
-  const form = picker.useForm({ id: "pick" });
+  const form = useForm(picker, { id: "pick" });
   useEffect(() => {
     pickHolder.form = form;
   });

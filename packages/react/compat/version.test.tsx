@@ -1,7 +1,7 @@
 import { useState, version as reactVersion } from "react";
 import { version as domVersion } from "react-dom";
 import { expect, inject, it } from "vitest";
-import { createForms, useField } from "../src/index.js";
+import { createForms, useField, useForm } from "../src/index.js";
 import { render } from "./render.js";
 
 declare module "vitest" {
@@ -13,7 +13,7 @@ declare module "vitest" {
 const profile = createForms().define({ defaultValues: { name: "Ada" } });
 
 function Name() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   const [count] = useState(1);
   return <p>{`${useField(form.root.at("name")).value} ${count}`}</p>;
 }

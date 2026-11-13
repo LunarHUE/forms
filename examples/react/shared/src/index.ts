@@ -26,4 +26,5 @@ export type { OrderDefaults, OrderFormInstance, OrderOptions } from "./order.js"
 export { OrderForm } from "./order-form.js";
 export { OrderPage } from "./order-page.js";
 export type { OrderPageProps } from "./order-page.js";
-export { DisabledErrors, FormErrors, FormStatus, OrderSummary, SubmitButton } from "./status.js";
+export { DisabledErrors, FormErrors, FormStatus, OrderSummary, SaveOutcome, SubmitButton } from "./status.js";
+export type { FormStatusProps } from "./status.js";
