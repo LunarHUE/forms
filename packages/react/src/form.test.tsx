@@ -15,6 +15,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
+import { dirty as dirtyPlugin } from "./plugins/dirty.js";
 import { validation } from "./plugins/validation.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -26,7 +27,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ plugins: [validation()], fields: { TextField } });
+const forms = createForms({ plugins: [validation(), dirtyPlugin()], fields: { TextField } });
 const required = (value: string) => (value === "" ? { message: "required" } : undefined);
 
 const saved: { value: unknown; intent: unknown }[] = [];

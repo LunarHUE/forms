@@ -1,9 +1,10 @@
 import { useLayoutEffect } from "react";
 import { expect, it } from "vitest";
 import { createForms, type FormOf, useField, useForm, useFormState } from "../src/index.js";
+import { dirty as dirtyPlugin } from "../src/plugins/dirty.js";
 import { modern, render } from "./render.js";
 
-const profile = createForms().define({ defaultValues: { name: "" } });
+const profile = createForms({ plugins: [dirtyPlugin()] }).define({ defaultValues: { name: "" } });
 type ProfileForm = FormOf<typeof profile>;
 const holder: { form?: ProfileForm } = {};
 const shown: string[] = [];

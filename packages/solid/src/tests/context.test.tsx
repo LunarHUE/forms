@@ -3,9 +3,10 @@ import { createSignal, Errored, flush, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createForm, createForms, useFormContext, type AnyForm, type FormOf } from "../index.js";
+import { dirty } from "../plugins/dirty.js";
 import { getAs, mount, settle } from "./dom.js";
 
-const forms = createForms({ plugins: [valibot()] });
+const forms = createForms({ plugins: [valibot(), dirty()] });
 const Order = forms.define({
   schema: v.object({ customer: v.pipe(v.string(), v.minLength(1, "Required")) }),
   onSubmit: () => "saved",

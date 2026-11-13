@@ -1,4 +1,5 @@
 import { createFormsCore } from "@lunarhue/forms-core";
+import { dirty } from "@lunarhue/forms-core/plugins/dirty";
 import { describe, expect, it, vi } from "vitest";
 import { createStore } from "zustand/vanilla";
 import { zustand } from "./zustand.js";
@@ -9,7 +10,7 @@ interface Profile {
 }
 
 const defaults: Profile = { name: "", email: "" };
-const profile = createFormsCore().define({ defaultValues: defaults });
+const profile = createFormsCore({ plugins: [dirty()] }).define({ defaultValues: defaults });
 
 describe("zustand", () => {
   it("binds the whole state", () => {

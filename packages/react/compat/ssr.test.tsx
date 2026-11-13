@@ -5,10 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { FieldApi } from "../src/index.js";
 import { act, hydrate, modern } from "./render.js";
 
-type Adapter = typeof import("../src/index.js") & typeof import("../src/plugins/rules.js");
+type Adapter = typeof import("../src/index.js") &
+  typeof import("../src/plugins/rules.js") &
+  typeof import("../src/plugins/dirty.js");
 
 /**
- * Loads a fresh copy of the adapter, with `rules` from the same copy of core.
+ * Loads a fresh copy of the adapter, with `rules` and `dirty` from the same copy of core.
  * With `server`, it loads with no `document`, as on a server, so on React 16
  * and 17 it picks its server fallback. React itself stays the one copy,
  * since Node loads it.
@@ -17,7 +19,11 @@ async function loadAdapter(server: boolean): Promise<Adapter> {
   vi.resetModules();
   if (server) vi.stubGlobal("document", undefined);
   try {
-    return { ...(await import("../src/index.js")), ...(await import("../src/plugins/rules.js")) };
+    return {
+      ...(await import("../src/index.js")),
+      ...(await import("../src/plugins/rules.js")),
+      ...(await import("../src/plugins/dirty.js")),
+    };
   } finally {
     vi.unstubAllGlobals();
   }
@@ -51,7 +57,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 
 /** Two order forms, built on one copy of the adapter. `ids` gives each form an `id`. */
 function makeApp(adapter: Adapter, ids: boolean) {
-  const order = adapter.createForms({ fields: { TextField } }).define({ defaultValues: initial });
+  const order = adapter.createForms({ plugins: [adapter.dirty()], fields: { TextField } }).define({ defaultValues: initial });
 
   function Plan() {
     const plan = adapter.useFormContext(order).root.at("plan");
