@@ -1,7 +1,9 @@
 import {
   createForms,
+  errorId,
   type FieldApi,
   type HandleOf,
+  useField,
   useForm,
   useFormContext,
   useFormState,
@@ -91,10 +93,21 @@ function SubmitButton() {
 
 export default function SignUpForm() {
   const form = useForm(signUp);
+  // Errors on the form as a whole sit on the root, such as a
+  // server's. Without this list nothing would show them.
+  const formErrors = useField(
+    form.root,
+    (snapshot) => snapshot.shownErrors,
+  );
   return (
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
+          <ul id={errorId(form.root)}>
+            {formErrors.map((error) => (
+              <li key={error.message}>{error.message}</li>
+            ))}
+          </ul>
           <form.TextField name="name" label="Name" />
           <form.TextField name="email" label="Email" />
           <AddressFields field={form.root.at("address")} />
