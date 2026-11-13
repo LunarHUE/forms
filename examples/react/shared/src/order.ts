@@ -9,17 +9,19 @@ import {
 import { createForms, type DeepPartial, type FormOf } from "@lunarhue/forms-react";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import type * as v from "valibot";
-import { NumberField, TextField } from "./fields.js";
+import { CheckboxGroupField, NumberField, RadioGroupField, SelectField, TextField } from "./fields.js";
 
 /**
  * The app's one `createForms` call, at module scope. The valibot adapter
  * gives every schema form its starting values, so `defaultValues` is
- * optional. `TextField` and `NumberField` are registered, so every form and
- * scope made here has them bound: `form.TextField name="customer.name"`.
+ * optional. The field components are registered, so every form and scope
+ * made here has them bound: `form.TextField name="customer.name"`. The
+ * option components are written with `Choice`, so each use checks its
+ * options against the named field.
  */
 export const forms = createForms({
   schemas: [valibot()],
-  fields: { TextField, NumberField },
+  fields: { TextField, NumberField, SelectField, RadioGroupField, CheckboxGroupField },
 });
 
 /** A shape for `AddressFields`. The schema only types it: the order schema validates. */

@@ -1,11 +1,5 @@
 import type { Option } from "@lunarhue/forms-example-order";
-import type {
-  CheckboxGroupInputProps,
-  FieldApi,
-  FormError,
-  RadioInputProps,
-  SelectProps,
-} from "@lunarhue/forms-react";
+import type { Choice, FieldApi, FormError } from "@lunarhue/forms-react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 
 // The field components. Every one takes a field object as its `field` prop,
@@ -109,40 +103,22 @@ export function NumberField(props: NumberFieldProps) {
   );
 }
 
-// The option fields below are generic over their option values, so a radio
-// group for the delivery method only accepts delivery methods. A generic
-// component can't be registered with `createForms`: registration reads the
-// props with `T` at its constraint, `string`, and a `"GB" | "FR"` field
-// doesn't fit a component whose `setValue` takes any string. So the form
-// renders them through `form.Field`, which hands its children the field
-// object, and TypeScript infers `T` at each use.
-//
-// They also can't call `field.inputProps` themselves. Its options are a
-// conditional type on the field's value type, which TypeScript leaves
-// unresolved while `T` is a type parameter, so no options object type-checks
-// inside a generic component. The caller, where `T` is concrete, passes a
-// function that makes one option's input props instead.
-
-/** The members of a field object an option field reads. Every field object fits. */
-export interface OptionFieldApi {
-  readonly id: string;
-  readonly name: string;
-  readonly errorId: string;
-  readonly shownErrors: readonly FormError[];
-}
+// The option fields below are written with `Choice` where the option type
+// goes. Each is registered once and works on any field of string options:
+// on `delivery`, `options` takes delivery methods only, and on `country`,
+// countries only. Inside the component `Choice` is a plain string, and the
+// only values of it come from `options`, so the component writes nothing
+// else to the field.
 
 /** Props for `RadioGroupField`. */
-export interface RadioGroupFieldProps<T extends string> {
-  /** The field object `form.Field` passes its children. */
-  readonly field: OptionFieldApi;
+export interface RadioGroupFieldProps {
+  readonly field: FieldApi<Choice>;
   readonly label: string;
-  readonly options: readonly Option<T>[];
-  /** One radio's props: `(value) => field.inputProps({ kind: "radio", value })`. */
-  readonly radio: (value: T) => RadioInputProps;
+  readonly options: readonly Option<Choice>[];
 }
 
 /** A radio group. Each radio gets its own id from `inputProps`, so each label can point at it. */
-export function RadioGroupField<T extends string>(props: RadioGroupFieldProps<T>) {
+export function RadioGroupField(props: RadioGroupFieldProps) {
   const { field } = props;
   const badge = useRenderBadge();
   return (
@@ -153,7 +129,7 @@ export function RadioGroupField<T extends string>(props: RadioGroupFieldProps<T>
       </div>
       <div className="option-group">
         {props.options.map((option) => {
-          const input = props.radio(option.value);
+          const input = field.inputProps({ kind: "radio", value: option.value });
           return (
             <label key={option.value} className="option" htmlFor={input.id}>
               <input {...input} />
@@ -168,17 +144,15 @@ export function RadioGroupField<T extends string>(props: RadioGroupFieldProps<T>
 }
 
 /** Props for `CheckboxGroupField`. */
-export interface CheckboxGroupFieldProps<T extends string> {
-  /** The field object of an array of option values. */
-  readonly field: OptionFieldApi;
+export interface CheckboxGroupFieldProps {
+  /** An array of option values. */
+  readonly field: FieldApi<Choice[]>;
   readonly label: string;
-  readonly options: readonly Option<T>[];
-  /** One checkbox's props: `(value) => field.inputProps({ kind: "checkbox", value })`. */
-  readonly checkbox: (value: T) => CheckboxGroupInputProps;
+  readonly options: readonly Option<Choice>[];
 }
 
 /** A checkbox group over an array field. Ticking a box adds its value to the array, unticking removes it. */
-export function CheckboxGroupField<T extends string>(props: CheckboxGroupFieldProps<T>) {
+export function CheckboxGroupField(props: CheckboxGroupFieldProps) {
   const { field } = props;
   const badge = useRenderBadge();
   return (
@@ -189,7 +163,7 @@ export function CheckboxGroupField<T extends string>(props: CheckboxGroupFieldPr
       </div>
       <div className="option-group">
         {props.options.map((option) => {
-          const input = props.checkbox(option.value);
+          const input = field.inputProps({ kind: "checkbox", value: option.value });
           return (
             <label key={option.value} className="option" htmlFor={input.id}>
               <input {...input} />
@@ -204,16 +178,14 @@ export function CheckboxGroupField<T extends string>(props: CheckboxGroupFieldPr
 }
 
 /** Props for `SelectField`. */
-export interface SelectFieldProps<T extends string> {
-  readonly field: OptionFieldApi;
+export interface SelectFieldProps {
+  readonly field: FieldApi<Choice>;
   readonly label: string;
-  readonly options: readonly Option<T>[];
-  /** The select's props: `field.inputProps({ kind: "select" })`. The empty option writes `undefined`. */
-  readonly select: SelectProps;
+  readonly options: readonly Option<Choice>[];
 }
 
 /** A select with an empty first option, which writes `undefined`. */
-export function SelectField<T extends string>(props: SelectFieldProps<T>) {
+export function SelectField(props: SelectFieldProps) {
   const { field } = props;
   const badge = useRenderBadge();
   return (
@@ -222,7 +194,7 @@ export function SelectField<T extends string>(props: SelectFieldProps<T>) {
         <label htmlFor={field.id}>{props.label}</label>
         <RenderBadge counter={badge} name={field.name} />
       </div>
-      <select {...props.select}>
+      <select {...field.inputProps({ kind: "select" })}>
         <option value="">Choose one</option>
         {props.options.map((option) => (
           <option key={option.value} value={option.value}>

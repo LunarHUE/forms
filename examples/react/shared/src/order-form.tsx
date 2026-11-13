@@ -2,7 +2,6 @@ import { deliveryMethods, notificationChannels } from "@lunarhue/forms-example-o
 import { useFormContext } from "@lunarhue/forms-react";
 import { AddressFields, SameAsBilling } from "./address.js";
 import { RenderBadge, useRenderBadge } from "./badge.js";
-import { CheckboxGroupField, RadioGroupField } from "./fields.js";
 import { LineItems } from "./line-items.js";
 import { order } from "./order.js";
 import { DisabledErrors, FormErrors, FormStatus, OrderSummary, SaveOutcome, SubmitButton } from "./status.js";
@@ -36,31 +35,9 @@ function DeliveryFields() {
       <legend>
         Delivery <RenderBadge counter={badge} name="Delivery fieldset" />
       </legend>
-      {/*
-        The `Field` render form: `form.Field` reads the field and passes its
-        field object to the function. The option components are generic, so
-        they are rendered here instead of being registered.
-      */}
-      <form.Field name="delivery">
-        {(field) => (
-          <RadioGroupField
-            field={field}
-            label="Delivery method"
-            options={deliveryMethods}
-            radio={(value) => field.inputProps({ kind: "radio", value })}
-          />
-        )}
-      </form.Field>
-      <form.Field name="notifications">
-        {(field) => (
-          <CheckboxGroupField
-            field={field}
-            label="Notify the customer by"
-            options={notificationChannels}
-            checkbox={(value) => field.inputProps({ kind: "checkbox", value })}
-          />
-        )}
-      </form.Field>
+      {/* Registered option components: `options` must be the field's own options. */}
+      <form.RadioGroupField name="delivery" label="Delivery method" options={deliveryMethods} />
+      <form.CheckboxGroupField name="notifications" label="Notify the customer by" options={notificationChannels} />
       {/*
         The `select` form, for reading one thing about a field. The children
         get what `select` returns and the field's handle, and re-render only
