@@ -38,6 +38,17 @@
         "default": "./dist/cjs/plugins.js"
       }
     },
+    "./plugins/bind": {
+      "@lunarhue/source": "./src/plugins/bind.ts",
+      "import": {
+        "types": "./dist/esm/plugins/bind.d.ts",
+        "default": "./dist/esm/plugins/bind.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/bind.d.ts",
+        "default": "./dist/cjs/plugins/bind.js"
+      }
+    },
     "./plugins/history": {
       "@lunarhue/source": "./src/plugins/history.ts",
       "import": {

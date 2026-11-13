@@ -17,11 +17,12 @@ interface RuntimeOptions extends FormsConfig<Plugins, unknown> {
 interface RuntimeSettings {
   readonly id?: string;
   readonly focusOnInvalid?: RuntimeFocus;
+  readonly plugins?: Plugins;
 }
 
 /** A core definition with its types erased. */
 interface RuntimeDefinition {
-  createStore(options: unknown, instance?: { readonly id?: string }): RuntimeStore;
+  createStore(options: unknown, instance?: { readonly id: string; readonly plugins: Plugins | undefined }): RuntimeStore;
 }
 
 /** How each definition makes a form, from `createForm`'s arguments after the definition. */
@@ -50,7 +51,7 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
       // `CreateFormArgs` types the settings argument.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const settings = (settingsArg ?? {}) as RuntimeSettings;
-      const store = definition.createStore(formOptions, { id: settings.id ?? createUniqueId() });
+      const store = definition.createStore(formOptions, { id: settings.id ?? createUniqueId(), plugins: settings.plugins });
       const form = buildForm({
         store,
         scope: scopeOf(store.root),

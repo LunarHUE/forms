@@ -61,8 +61,8 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
 
   const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
     const { schema } = definition;
-    // The shared plugins run first, then the definition's own.
-    const plugins = definition.plugins ? [...shared, ...definition.plugins] : shared;
+    // The shared plugins run first, then the definition's own, then the instance's.
+    const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])];
     // The first schema plugin with the schema's vendor wins, so a later one with the same vendor is never asked.
     // An adapter only ever gets schemas whose vendor it named, which are the schemas it supports.
     const adapter: SchemaAdapter | undefined =

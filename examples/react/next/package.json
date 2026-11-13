@@ -11,6 +11,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@lunarhue/forms-bind": "workspace:*",
     "@lunarhue/forms-example-order": "workspace:*",
     "@lunarhue/forms-example-react": "workspace:*",
     "@lunarhue/forms-react": "workspace:*",
@@ -18,7 +19,8 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "valibot": "catalog:"
+    "valibot": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
