@@ -1,3 +1,5 @@
+export { createFormsCore } from "./forms-core.js";
+export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export type { Path, PathSegment } from "./path.js";
 export type { StandardSchemaV1 } from "./standard-schema.js";

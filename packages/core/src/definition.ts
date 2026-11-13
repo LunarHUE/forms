@@ -129,7 +129,11 @@ export type PlainDefinition<V, E, I, R> = {
 
 /** Per-instance settings for `createStore`. */
 export interface StoreInstance {
-  /** The store id, which prefixes every handle id. Give one that is stable across server and client. */
+  /**
+   * The store id, which prefixes every handle id. Give one that is stable
+   * across server and client. Defaults to `"form"`, so two stores on one page
+   * need distinct ids for their DOM ids to be unique.
+   */
   readonly id?: string;
 }
 
