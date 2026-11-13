@@ -7,6 +7,7 @@ import type {
   PluginApis,
   PluginErrorHandler,
   Plugins,
+  PluginsFor,
   SchemaNeedsValidation,
 } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
@@ -177,14 +178,20 @@ export type PlainDefinition<V, E, I, R, P extends Plugins = []> = {
   readonly defaultValues: V;
 } & DefinitionOptions<NoInfer<V>, NoInfer<V>, E, I, R, P>;
 
-/** Per-instance settings for `createStore`. */
-export interface StoreInstance {
+/** Per-instance settings for `createStore`. `X` is the instance's own plugins. */
+export interface StoreInstance<X extends Plugins = Plugins> {
   /**
    * The store id, which prefixes every handle id. Give one that is stable
    * across server and client. Defaults to `"form"`, so two stores on one page
    * need distinct ids for their DOM ids to be unique.
    */
   readonly id?: string;
+  /**
+   * Plugins for this store only, such as a binding to a store one component
+   * made. They run after the shared plugins and the definition's, and their
+   * APIs are on the store's `plugins` too.
+   */
+  readonly plugins?: X;
 }
 
 /**
@@ -197,7 +204,10 @@ export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O 
    * definition made from a plain config has `O` of `void`, so it takes no
    * options.
    */
-  createStore(options: O, instance?: StoreInstance): FormStore<V, E, I, R, PluginApis<P>>;
+  createStore<const X extends Plugins = []>(
+    options: O,
+    instance?: StoreInstance<X & PluginsFor<V>>,
+  ): FormStore<V, E, I, R, PluginApis<Combined<P, X>>>;
 }
 
 /** A definition's config with `plugins`, the plugins it installs for itself. */

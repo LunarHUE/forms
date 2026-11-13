@@ -21,6 +21,7 @@ import type {
   ObjectHandle,
   PluginApis,
   Plugins,
+  PluginsFor,
   SchemaValue,
   StandardSchemaV1,
   Submission,
@@ -443,8 +444,8 @@ export type SolidForm<
  */
 export type AnyForm = SolidForm<unknown, unknown, unknown>;
 
-/** Per-form settings for `createForm`. */
-export interface FormSettings<E = FormError> {
+/** Per-form settings for `createForm`. `V` is the form's value type and `X` its own plugins. */
+export interface FormSettings<E = FormError, V = unknown, X extends Plugins = Plugins> {
   /**
    * The store id, which prefixes every handle id and so every DOM id.
    * Defaults to `createUniqueId()`, which matches between server and client.
@@ -452,10 +453,24 @@ export interface FormSettings<E = FormError> {
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
+  /**
+   * Plugins for this form only, such as `zustand(store)` from
+   * `@lunarhue/forms-bind/zustand` with a store this component made. They
+   * run after the shared plugins and the definition's. The list is read
+   * once, when the form is made. A plugin that names a value type, as a
+   * binding does, must name the form's.
+   */
+  readonly plugins?: X & PluginsFor<V>;
 }
 
-/** The arguments `createForm` takes after the definition: its options unless they are `void`, then per-form settings. */
-export type CreateFormArgs<O, E> = [O] extends [void] ? [settings?: FormSettings<E>] : [options: O, settings?: FormSettings<E>];
+/**
+ * The arguments `createForm` takes after the definition: its options unless
+ * they are `void`, then per-form settings. `V` is the form's value type and
+ * `X` its own plugins.
+ */
+export type CreateFormArgs<O, E, V = unknown, X extends Plugins = Plugins> = [O] extends [void]
+  ? [settings?: FormSettings<E, V, X>]
+  : [options: O, settings?: FormSettings<E, V, X>];
 
 /**
  * A form definition for Solid: what `createForm` and `useFormContext` take.
@@ -484,10 +499,10 @@ export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
  * with that owner. `options` is required when the definition was made with
  * the function form of `define`, and absent otherwise.
  */
-export type CreateForm = <V, E, I, R, O, F extends FieldComponents, P extends Plugins>(
+export type CreateForm = <V, E, I, R, O, F extends FieldComponents, P extends Plugins, const X extends Plugins = []>(
   definition: SolidFormDefinition<V, E, I, R, O, F, P>,
-  ...args: NoInfer<CreateFormArgs<O, E>>
-) => SolidForm<V, E, I, R, F, P>;
+  ...args: CreateFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
+) => SolidForm<V, E, I, R, F, Combined<P, X>>;
 
 /** See `CreateForm`. */
 // The runtime builds the form the definition's types describe.

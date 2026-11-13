@@ -14,9 +14,9 @@ import type {
   IntentArgs,
   PluginApis,
   Plugins,
+  PluginsFor,
   SchemaValue,
   StandardSchemaV1,
-  StoreInstance,
   Submission,
   ValueOf,
 } from "@lunarhue/forms-core";
@@ -111,8 +111,11 @@ export interface FormsOptions<P extends Plugins = [], E = FormError, F extends F
   readonly fields?: F & CheckedFields<F>;
 }
 
-/** Per-form settings for `useForm`. Read when the form is made. */
-export interface UseFormOptions<E = FormError> {
+/**
+ * Per-form settings for `useForm`. Read when the form is made. `V` is the
+ * form's value type and `X` its own plugins.
+ */
+export interface UseFormOptions<E = FormError, V = unknown, X extends Plugins = Plugins> {
   /**
    * The store id, which prefixes every handle id and so every DOM id.
    * Defaults to an id from `useId`, which matches between server and client.
@@ -122,6 +125,15 @@ export interface UseFormOptions<E = FormError> {
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
+  /**
+   * Plugins for this form only, such as `zustand(store)` from
+   * `@lunarhue/forms-bind/zustand` with a store this component made. They
+   * run after the shared plugins and the definition's. The list is read
+   * once, when the form is made: a later render with a different list
+   * changes nothing. A plugin that names a value type, as a binding does,
+   * must name the form's.
+   */
+  readonly plugins?: X & PluginsFor<V>;
 }
 
 /** Props for the `<form>` element. */
@@ -208,10 +220,14 @@ export type FormInstance<
 /** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
 export type UnknownForm = FormInstance<unknown, unknown, unknown>;
 
-/** The arguments `useForm` takes after the definition: its options unless they are `void`, then per-form settings. */
-export type UseFormArgs<O, E> = [O] extends [void]
-  ? [instance?: UseFormOptions<E>]
-  : [options: O, instance?: UseFormOptions<E>];
+/**
+ * The arguments `useForm` takes after the definition: its options unless
+ * they are `void`, then per-form settings. `V` is the form's value type and
+ * `X` its own plugins.
+ */
+export type UseFormArgs<O, E, V = unknown, X extends Plugins = Plugins> = [O] extends [void]
+  ? [instance?: UseFormOptions<E, V, X>]
+  : [options: O, instance?: UseFormOptions<E, V, X>];
 
 /**
  * A form definition for React: what `useForm` and `useFormContext` take. It
@@ -264,10 +280,10 @@ export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>)
  * does, `useForm` makes a new form from it with the current arguments and
  * returns that one from then on. The old form's values are dropped.
  */
-export type UseForm = <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
+export type UseForm = <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins, const X extends Plugins = []>(
   definition: ReactFormDefinition<V, E, I, R, O, F, P>,
-  ...args: NoInfer<UseFormArgs<O, E>>
-) => FormInstance<V, E, I, R, F, P>;
+  ...args: UseFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
+) => FormInstance<V, E, I, R, F, Combined<P, X>>;
 
 /**
  * Reads a form from the nearest `form.Form` above. Every `form.Form`
@@ -396,7 +412,9 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
 
 /** Core's `define` as the runtime calls it, with every type erased. */
 interface LooseCore {
-  define(config: unknown): { createStore(options: unknown, instance?: StoreInstance): AnyFormStore<unknown> };
+  define(config: unknown): {
+    createStore(options: unknown, instance?: { readonly id: string; readonly plugins: Plugins | undefined }): AnyFormStore<unknown>;
+  };
 }
 
 /** See `CreateForms`. */
@@ -421,7 +439,7 @@ export const createForms: CreateForms = (options = {}) => {
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
       const id = instance?.id;
       if (id === undefined) generatedIdUsed();
-      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
+      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId, plugins: instance?.plugins });
       const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
       madeFrom.set(form, definition);
       return form;

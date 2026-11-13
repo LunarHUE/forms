@@ -85,6 +85,8 @@ interface Entry {
   /** The cause its `ctx.write` writes get. */
   readonly cause: WriteCause;
   hooks: PluginHooks<unknown>;
+  /** The cleanup its `onActive` returned. */
+  off?: (() => void) | undefined;
 }
 
 /** Records waiting for one timing's observers. */
@@ -274,12 +276,32 @@ export function createPluginHost(
         return true;
       });
 
+  // Listeners on the store. `onActive` runs at the first, and its cleanup after the last.
+  let listeners = 0;
+  const counted =
+    <A extends unknown[]>(subscribe: (...args: A) => () => void) =>
+    (...args: A) => {
+      let off: (() => void) | undefined = subscribe(...args);
+      if (listeners++ === 0) {
+        for (const entry of entries) entry.off = call(entry, () => entry.hooks.onActive?.(), undefined);
+        if (queue.length > 0) batch(() => {});
+      }
+      return () => {
+        if (!off) return;
+        off();
+        off = undefined;
+        if (--listeners === 0) for (const entry of entries) if (entry.off) call(entry, entry.off, undefined);
+      };
+    };
+
   const valueAt = (path: Path) => raw.getSnapshot(path).value;
   const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
 
   const core: StoreCore<unknown, unknown> = {
     ...raw,
     batch,
+    subscribe: counted(raw.subscribe),
+    subscribeForm: counted(raw.subscribeForm),
     set: (path, input) =>
       recorded(() => {
         const before = valueAt(path);

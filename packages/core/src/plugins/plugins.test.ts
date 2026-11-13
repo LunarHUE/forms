@@ -797,3 +797,58 @@ describe("history, mask, rules and persist", () => {
     expect(second.root.peek()).toMatchObject({ value: { phone: "123", code: "" }, edited: false });
   });
 });
+
+describe("onActive", () => {
+  it("runs at the first listener and cleans up after the last", () => {
+    const events: string[] = [];
+    const plugin = definePlugin({
+      name: "active",
+      setup: () => ({
+        onActive() {
+          events.push("on");
+          return () => void events.push("off");
+        },
+      }),
+    });
+    const store = make(contact(), [plugin]);
+    expect(events).toEqual([]);
+    const field = store.subscribe(["phone"], () => {});
+    const form = store.subscribeForm(() => {});
+    expect(events).toEqual(["on"]);
+    field();
+    field();
+    expect(events).toEqual(["on"]);
+    form();
+    expect(events).toEqual(["on", "off"]);
+    store.subscribeForm(() => {});
+    expect(events).toEqual(["on", "off", "on"]);
+  });
+
+  it("runs writes it makes before the subscribe returns, and reports throws", () => {
+    const errors: string[] = [];
+    const writer = definePlugin({
+      name: "writer",
+      setup: (ctx) => ({
+        onActive() {
+          ctx.write(() => ctx.store.root.at("code").setValue("on"));
+          return () => {
+            throw new Error("cleanup");
+          };
+        },
+      }),
+    });
+    const thrower = definePlugin({
+      name: "thrower",
+      setup: () => ({
+        onActive() {
+          throw new Error("start");
+        },
+      }),
+    });
+    const store = make(contact(), [thrower, writer], (error) => void errors.push(String(error)));
+    const stop = store.subscribeForm(() => {});
+    expect(store.root.peek().value.code).toBe("on");
+    stop();
+    expect(errors).toEqual(["Error: start", "Error: cleanup"]);
+  });
+});

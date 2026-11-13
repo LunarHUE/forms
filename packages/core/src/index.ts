@@ -21,6 +21,7 @@ export type {
   PluginHooks,
   Plugins,
   PluginSchemas,
+  PluginsFor,
   SchemaNeedsValidation,
   SchemaPlugin,
   ValidationNotInstalled,

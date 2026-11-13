@@ -175,6 +175,13 @@ export interface PluginHooks<A = undefined> {
   onSubmit?(): unknown;
   /** Runs once a submit has ended, with how it ended. */
   onSubmitted?(submission: Submission<unknown>): void;
+  /**
+   * Runs when the store gets its first listener, as when a component mounts
+   * a field. The function it returns runs when the last listener goes. Use
+   * it to listen to something outside the form, so a store nobody reads,
+   * such as one a render made and threw away, holds no outside listener.
+   */
+  onActive?(): (() => void) | undefined;
   /** The plugin's own API. The form has it as `form.plugins[name]`, and so does the store. */
   readonly api?: A;
 }
@@ -258,6 +265,12 @@ export interface ValidationPlugin extends Plugin<undefined, "validation"> {
 // `any` lets a plugin of every `A`, `N`, `M` and `F` fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
 export type AnyPlugin = Plugin<any, any, any, any>;
+
+/**
+ * Plugins that fit a form of value type `V`. A plugin that names the value
+ * type it works on, as `bind` does, must name `V`. Every other plugin fits.
+ */
+export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: V) => V })[];
 
 /** A hook plugin of any API, name and meta. */
 // oxlint-disable-next-line typescript/no-explicit-any
