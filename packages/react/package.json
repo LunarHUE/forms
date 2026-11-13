@@ -40,7 +40,7 @@
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
     "typecheck": "tsc -p tsconfig.json",
-    "check:package": "publint --strict && attw --pack .",
+    "check:package": "publint --strict --pack npm && attw --pack .",
     "size": "size-limit"
   },
   "size-limit": [
