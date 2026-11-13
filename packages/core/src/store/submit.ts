@@ -6,6 +6,7 @@ import type { DisabledInvalid, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
+import type { PluginHost } from "./plugins.js";
 import { addErrors, type Placed } from "./validate/place.js";
 import type { Validation } from "./validation.js";
 
@@ -41,6 +42,7 @@ export function createSubmit<V, E, I, R, O = V>(
   context: FormContext<V, E, I, R>,
   options: SubmitOptions<V, E, I, R, O>,
   validation: Validation<E>,
+  host?: PluginHost,
 ): Submit<E, I, R> {
   const { core } = context;
   // The running submit, by its controller, which belongs to that run alone.
@@ -57,6 +59,7 @@ export function createSubmit<V, E, I, R, O = V>(
     if (idle) return idle;
     running = undefined;
     core.setSubmission(submission);
+    host?.submitted(submission);
     return submission;
   };
 
@@ -97,6 +100,8 @@ export function createSubmit<V, E, I, R, O = V>(
       core.setSubmitCount(++count);
       core.setSubmission({ status: "submitting", intent });
       settled = validation.settleForSubmit();
+      // Plugins' submit work runs alongside validation, and the schema output waits for both.
+      if (host) settled = host.submitting(settled);
     });
     const promise = execute(controller, intent, settled);
     running = { controller, promise };

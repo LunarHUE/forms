@@ -18,7 +18,8 @@ import { isPlainObject } from "./store/tree.js";
 type AnyStoreOptions = FormStoreOptions<unknown, unknown, unknown, unknown, unknown>;
 
 /** A definition's config as the runtime reads it. */
-interface AnyConfig extends Pick<AnyStoreOptions, "schema" | "validate" | "show" | "equals" | "disabled" | "readOnly" | "onSubmit"> {
+interface AnyConfig
+  extends Pick<AnyStoreOptions, "schema" | "validate" | "show" | "equals" | "disabled" | "readOnly" | "onSubmit" | "plugins"> {
   readonly defaultValues?: unknown;
 }
 
@@ -62,7 +63,7 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
   const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
     const { schema } = definition;
     const adapter = schema === undefined ? undefined : adapterFor(schema);
-    // The definition's own keys pass through: schema, validate, equals, disabled, readOnly and onSubmit.
+    // The definition's own keys pass through: schema, validate, equals, disabled, readOnly, onSubmit and plugins.
     // Every store option treats undefined as not given.
     return {
       ...definition,
@@ -74,6 +75,9 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
       mapError: config.mapError,
       show: definition.show ?? config.show,
       sharedEquals: config.equals,
+      // The shared plugins run first, then the definition's own.
+      plugins: config.plugins ? [...config.plugins, ...(definition.plugins ?? [])] : definition.plugins,
+      onPluginError: config.onPluginError,
     };
   };
 

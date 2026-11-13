@@ -1,5 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
+import type { AnyPlugin, PluginErrorHandler } from "./plugin.js";
 import type { HasAdapter, SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
@@ -56,6 +57,18 @@ export interface FormsConfig<A extends readonly SchemaAdapter<never>[] = [], E =
   readonly show?: Show;
   /** The dirty comparison. A form's own `equals` runs first and reaches this one through `next`. */
   readonly equals?: Equals;
+  /**
+   * Plugins every form gets, from `definePlugin` in
+   * `@lunarhue/forms-core/plugins`. They run in this order, except where a
+   * plugin's `after` says otherwise, and before a definition's own plugins.
+   */
+  readonly plugins?: readonly AnyPlugin[];
+  /**
+   * Called when a plugin hook throws, with the plugin's name. The write and
+   * the other plugins carry on. Defaults to throwing the error on a later
+   * task, where the page's error handler sees it.
+   */
+  readonly onPluginError?: PluginErrorHandler;
 }
 
 /** The context `onSubmit` gets. Each submit gets a new one. */
@@ -96,6 +109,8 @@ export interface DefinitionOptions<V, O, E, I, R> {
    * `failed.error`, untouched.
    */
   readonly onSubmit?: (value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>;
+  /** Plugins for this form only. They run after the shared ones. */
+  readonly plugins?: readonly AnyPlugin[];
 }
 
 /**

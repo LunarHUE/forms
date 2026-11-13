@@ -10,6 +10,7 @@
   },
   "files": [
     "dist",
+    "plugins",
     "rebase"
   ],
   "main": "./dist/cjs/index.js",
@@ -38,6 +39,17 @@
         "default": "./dist/cjs/rebase.js"
       }
     },
+    "./plugins": {
+      "@lunarhue/source": "./src/plugins.ts",
+      "import": {
+        "types": "./dist/esm/plugins.d.ts",
+        "default": "./dist/esm/plugins.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins.d.ts",
+        "default": "./dist/cjs/plugins.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -61,6 +73,12 @@
       "path": "dist/esm/rebase.js",
       "import": "*",
       "limit": "1.5 kB"
+    },
+    {
+      "name": "./plugins",
+      "path": "dist/esm/plugins.js",
+      "import": "*",
+      "limit": "1.7 kB"
     }
   ]
 }

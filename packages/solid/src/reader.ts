@@ -66,9 +66,13 @@ export function formReader<I, R>(store: FormSource<I, R>): () => FormSnapshot<I,
   );
 }
 
-/** Adds an enumerable getter to `target` for each key, reading that member of `read()`. */
+/**
+ * Adds an enumerable getter to `target` for each key, reading that member of
+ * `read()`. It adds one for `meta` too, since a plugin can add `meta` to a
+ * snapshot after the getters are made.
+ */
 export function defineGetters(target: object, keys: readonly string[], read: () => object): void {
-  for (const key of keys) {
+  for (const key of new Set([...keys, "meta"])) {
     Object.defineProperty(target, key, {
       enumerable: true,
       get: (): unknown => Reflect.get(read(), key),
