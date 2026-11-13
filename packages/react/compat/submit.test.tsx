@@ -31,7 +31,7 @@ function Account() {
   const form = useForm(account, { id: "account" });
   return (
     <form.Form>
-      {({ submit: _submit, ...props }) => (
+      {(props) => (
         <form {...props}>
           <Text name="name" />
           <Text name="email" />

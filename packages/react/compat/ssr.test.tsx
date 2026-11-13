@@ -73,7 +73,7 @@ function makeApp(adapter: Adapter, ids: boolean) {
     const form = adapter.useForm(order, ids ? { id: props.id } : {});
     return (
       <form.Form>
-        {({ submit: _submit, ...formProps }) => (
+        {(formProps) => (
           <form {...formProps}>
             <form.TextField name="customer" label="Customer" />
             <Plan />

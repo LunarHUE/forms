@@ -75,13 +75,13 @@ function Account(props: { readonly focusOnInvalid?: (target: FocusTarget) => voi
   });
   return (
     <form.Form>
-      {({ submit, ...formProps }) => (
+      {(formProps, owner) => (
         <form aria-label="account" {...formProps}>
           <form.TextField name="name" label="Name" />
           <form.TextField name="email" label="Email" />
           <form.TextField name="code" label="Code" />
           <SubmitButton />
-          <button type="button" onClick={() => void submit("publish")}>
+          <button type="button" onClick={() => void owner.submit("publish")}>
             Publish
           </button>
           <DisabledErrors />
@@ -272,7 +272,22 @@ class Boundary extends Component<{ readonly children: ReactNode }, { message: st
   }
 }
 
+// Shows whether `form.Form` passed its function child this form's props and this form.
+function Probe() {
+  const form = useForm(account, { id: "probe" });
+  return (
+    <form.Form>
+      {(formProps, owner) => <p data-testid="probe">{`${String(formProps === form.formProps)} ${String(owner === form)}`}</p>}
+    </form.Form>
+  );
+}
+
 describe("context", () => {
+  it("passes a function child the form element props and the form", () => {
+    render(<Probe />);
+    expect(screen.getByTestId("probe").textContent).toBe("true true");
+  });
+
   it("keeps a dialog form apart from the form around it", async () => {
     render(<Page />);
     expect(screen.getByTestId("ids").textContent).toBe("note outer note");

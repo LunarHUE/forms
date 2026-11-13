@@ -27,7 +27,6 @@ export type {
   FormElementProps,
   FormMembers,
   FormOf,
-  FormRenderProps,
   FormSettings,
   FormsOptions,
   HandleOf,

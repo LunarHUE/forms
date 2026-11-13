@@ -115,7 +115,7 @@ function OrderPage() {
 
   return (
     <form.Form>
-      {({ submit, ...props }) => (
+      {(props, owner) => (
         <form {...props}>
           <form.TextField name="customer" label="Customer" placeholder="Name" />
           <form.TextField name="billing.city" label="City" />
@@ -142,7 +142,7 @@ function OrderPage() {
             }}
           </form.Items>
           <SubmitButton />
-          <button type="button" onClick={() => void submit("send")}>
+          <button type="button" onClick={() => void owner.submit("send")}>
             Send
           </button>
         </form>
@@ -237,11 +237,12 @@ describe("the form object", () => {
     expectTypeOf(WrongUsage).toBeFunction();
   });
 
-  it("gives form.Form's child the form element props", () => {
-    type RenderProps = Parameters<Extract<ComponentProps<OrderForm["Form"]>["children"], (...args: never[]) => unknown>>[0];
-    type ElementProps = Omit<RenderProps, "submit">;
-    expectTypeOf<ElementProps>().toExtend<ComponentProps<"form">>();
-    expectTypeOf<OrderForm["formProps"]>().toExtend<ComponentProps<"form">>();
+  it("gives form.Form's child the form element props, then the form", () => {
+    type RenderArgs = Parameters<Extract<ComponentProps<OrderForm["Form"]>["children"], (...args: never[]) => unknown>>;
+    expectTypeOf<RenderArgs[0]>().toExtend<ComponentProps<"form">>();
+    expectTypeOf<RenderArgs[0]>().toEqualTypeOf<OrderForm["formProps"]>();
+    expectTypeOf<RenderArgs[1]>().toEqualTypeOf<OrderForm>();
+    expectTypeOf<Parameters<Extract<ComponentProps<UnknownForm["Form"]>["children"], (...args: never[]) => unknown>>[1]>().toEqualTypeOf<UnknownForm>();
   });
 
   it("reads the form state from the generic and the typed context", () => {

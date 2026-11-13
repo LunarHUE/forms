@@ -44,12 +44,12 @@ function mountPost(focusOnInvalid?: (target: FocusTarget) => void) {
     const disabled = createDisabledErrors(f);
     return (
       <f.Form>
-        {({ submit, ...props }) => (
+        {(props, owner) => (
           <form {...props}>
             <f.TextField name="title" label="Title" />
             <f.TextField name="body" label="Body" />
             <For each={disabled()}>{(entry) => <p class="disabled-error">{entry.name}</p>}</For>
-            <button type="button" onClick={() => void submit("publish")}>
+            <button type="button" onClick={() => void owner.submit("publish")}>
               Publish
             </button>
           </form>

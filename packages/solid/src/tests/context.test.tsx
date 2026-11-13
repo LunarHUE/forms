@@ -46,10 +46,10 @@ describe("context", () => {
       const f = form;
       return (
         <f.Form>
-          {({ submit, ...props }) => (
+          {(props, owner) => (
             <form {...props}>
               <SubmitButton />
-              <button type="button" onClick={() => void submit()}>
+              <button type="button" onClick={() => void owner.submit()}>
                 Go
               </button>
             </form>
