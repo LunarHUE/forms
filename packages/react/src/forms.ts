@@ -217,8 +217,21 @@ export type FormInstance<
   P extends Plugins = [],
 > = Scope<V, E, F, P> & FormMembers<V, E, I, R, F, P>;
 
-/** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
-export type UnknownForm = FormInstance<unknown, unknown, unknown>;
+/**
+ * A form of unknown value, intent and result type, as the generic context
+ * reader returns it. With no arguments its error type is unknown too, and it
+ * has no plugins or field components. `useFormContext(forms)` fills in the
+ * shared plugins `P`, the error type `E` and the field components `F` of
+ * that `createForms` call.
+ */
+export type UnknownForm<P extends Plugins = [], E = unknown, F extends FieldComponentMap = NoFields> = FormInstance<
+  unknown,
+  E,
+  unknown,
+  unknown,
+  F,
+  P
+>;
 
 /**
  * The arguments `useForm` takes after the definition: its options unless
@@ -247,7 +260,10 @@ export interface ReactFormDefinition<
   readonly "~form"?: FormInstance<V, E, I, R, F, P>;
 }
 
-/** The form a definition makes: `FormOf<typeof signUp>`. */
+/**
+ * The form a definition makes, `FormOf<typeof signUp>`, or the form
+ * `useFormContext(forms)` returns, `FormOf<typeof forms>`.
+ */
 export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
 
 /** Props for `form.State`, where `T` is the form that owns it. */
@@ -306,6 +322,15 @@ export interface UseFormContext {
   <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
     definition: ReactFormDefinition<V, E, I, R, O, F, P>,
   ): FormInstance<V, E, I, R, F, P>;
+  /**
+   * Returns the nearest form defined by `forms`, the object `createForms`
+   * returned, for a part shared by its forms such as an undo button. Its
+   * value type is unknown. Its plugins are the shared ones, its error type
+   * and field components those of `forms`. Plugins a definition or a form
+   * adds are not in its type. Forms from other `createForms` calls are
+   * skipped. Throws when no form of `forms` is above.
+   */
+  <P extends Plugins, E, F extends FieldComponentMap>(forms: Forms<P, E, F>): UnknownForm<P, E, F>;
 }
 
 /** What `forms.scope` needs: an object handle. */
@@ -319,6 +344,8 @@ export interface ObjectHandleLike extends HandleLike {
  * components of any object handle, and `fieldset` for reusable shapes.
  */
 export interface Forms<P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields> {
+  /** Type information only, always undefined at runtime: the form `useFormContext` returns for these forms. */
+  readonly "~form"?: UnknownForm<P, E, F>;
   /**
    * As core's `FormsCore.define`, returning a definition for `useForm` and
    * `useFormContext`. The same cases decide the value type, and `E`, `I`,
@@ -370,6 +397,9 @@ const FormContext = createContext<FormNode | null>(null);
 
 /** The definition each form was made from. */
 const madeFrom = new WeakMap<AnyForm, object>();
+
+/** The `createForms` result each form was defined by. */
+const madeBy = new WeakMap<AnyForm, object>();
 
 /** How each definition makes a form, from `useForm`'s arguments after the definition and the generated id. */
 const makers = new WeakMap<object, (args: readonly unknown[], generatedId: string) => AnyForm>();
@@ -442,13 +472,15 @@ export const createForms: CreateForms = (options = {}) => {
       const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId, plugins: instance?.plugins });
       const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
       madeFrom.set(form, definition);
+      madeBy.set(form, forms);
       return form;
     });
     return definition;
   };
 
+  const forms = { define, scope, fieldset: () => ({ scope }) };
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return { define, scope, fieldset: () => ({ scope }) } as never;
+  return forms as never;
 };
 
 /** See `UseForm`. */
@@ -472,16 +504,18 @@ export const useForm: UseForm = (definition, ...args) => {
 export const useFormContext: UseFormContext = (definition?: object) => {
   let node = useContext(FormContext);
   if (definition !== undefined) {
-    while (node !== null && madeFrom.get(node.form) !== definition) node = node.parent;
+    while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
   }
   if (node === null) {
     throw new Error(
       definition === undefined
         ? "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop."
-        : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
+        : "define" in definition
+          ? "@lunarhue/forms-react: no form.Form of these forms is mounted above this component. Forms of other createForms calls don't count. Render it inside the form.Form of a form made from one of their definitions."
+          : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
     );
   }
-  // A form found by its definition is that definition's form. With no definition the caller gets `UnknownForm`.
+  // A form found by its definition or its forms is the form their types describe. With neither the caller gets `UnknownForm`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return node.form as never;
 };

@@ -1,8 +1,8 @@
-import type { SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
+import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin } from "./plugins.js";
 import { validation } from "./plugins/validation.js";
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, useForm } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -129,5 +129,39 @@ describe("plugins on the definition", () => {
     expectTypeOf(Page).toBeFunction();
     expectTypeOf<FormOf<typeof checked>["plugins"]["counter"]["count"]>().toEqualTypeOf<() => number>();
     expectTypeOf(forms.define({ schema: profileSchema, plugins: [fakePlugin] })).toBeObject();
+  });
+});
+
+describe("useFormContext(forms)", () => {
+  const forms = createForms({ plugins: [validation(), counter], fields: { TextField } });
+  const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) });
+  forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
+
+  interface SharedProps {
+    readonly name: LeafHandle<string>;
+  }
+
+  function Shared({ name }: SharedProps) {
+    const form = useFormContext(forms);
+    expectTypeOf(form.plugins).toEqualTypeOf<{ readonly counter: { count: () => number } }>();
+    // A definition's own plugins are not shared.
+    expectTypeOf(form.plugins).not.toHaveProperty("tagger");
+    return (
+      <>
+        <form.Field handle={name} validate={required}>
+          {(field) => field.value}
+        </form.Field>
+        <form.TextField handle={name} label="Name" validate={required} />
+        <button type="button" onClick={() => form.plugins.counter.count()}>
+          Count
+        </button>
+      </>
+    );
+  }
+
+  it("types the shared plugins, the validate prop and the registered fields", () => {
+    expectTypeOf(Shared).toBeFunction();
+    expectTypeOf(useFormContext(forms)).toEqualTypeOf<FormOf<typeof forms>>();
+    expectTypeOf<FormOf<typeof forms>>().toEqualTypeOf<UnknownForm<[ReturnType<typeof validation>, typeof counter], FormError, { readonly TextField: typeof TextField }>>();
   });
 });
