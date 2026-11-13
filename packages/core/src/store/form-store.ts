@@ -94,6 +94,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     fieldAt: (path) => handles.fieldAt(path),
     changes: (path) => baseline.changes(path),
     firstInvalid: () => submit.firstInvalid(),
+    disabledInvalid: () => submit.disabledInvalid(),
   };
   registerStore(store, { core, baseline, validation });
   return { store, core, baseline, validation, submit };

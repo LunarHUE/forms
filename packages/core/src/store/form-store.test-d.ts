@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { FormError } from "../errors.js";
 import type { AnyFieldHandle, ArrayHandle, LeafHandle, ObjectHandle } from "../handle.js";
-import type { FormStore } from "../store.js";
+import type { DisabledInvalid, FormStore } from "../store.js";
 import { branch } from "./branch.js";
 import { createFormStore } from "./form-store.js";
 import type { AnyItemHandle, Handles } from "./handles.js";
@@ -30,6 +30,20 @@ describe("createFormStore", () => {
     expectTypeOf(store.root).toEqualTypeOf<ObjectHandle<{ tags: string[] }>>();
     // @ts-expect-error: the value has no key "nope"
     createFormStore({ id: "f", initial: { tags: ["a"] }, disabled: { nope: true } });
+  });
+
+  it("types disabledInvalid with the form's error type", () => {
+    const store = createFormStore<Profile, string>({ id: "f", initial });
+    expectTypeOf(store.disabledInvalid()).toEqualTypeOf<readonly DisabledInvalid<string>[]>();
+    expectTypeOf<DisabledInvalid<string>>().toEqualTypeOf<{
+      readonly field: AnyFieldHandle<string>;
+      readonly name: string;
+      readonly errors: readonly string[];
+    }>();
+    expectTypeOf<DisabledInvalid["errors"]>().toEqualTypeOf<readonly FormError[]>();
+    const list = store.disabledInvalid();
+    // @ts-expect-error: the list is read-only
+    list.push(...list);
   });
 
   it("makes runtime handles that are AnyFieldHandle", () => {

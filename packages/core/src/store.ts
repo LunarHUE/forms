@@ -14,6 +14,16 @@ export interface Change {
   readonly value: unknown;
 }
 
+/** A disabled field with a validation error, as `disabledInvalid` lists it. */
+export interface DisabledInvalid<E = FormError> {
+  /** The field's handle. */
+  readonly field: AnyFieldHandle<E>;
+  /** The field's dotted value path, as the snapshot's `name`. */
+  readonly name: string;
+  /** Every error on the field, as the snapshot's `errors`. The form's `show` setting doesn't filter it. */
+  readonly errors: readonly E[];
+}
+
 /**
  * The arguments `submit` takes. When `undefined` is a valid intent the
  * argument is optional. Otherwise `submit()` with no argument is a type error.
@@ -50,7 +60,9 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
   /**
    * Returns the snapshot of the field at stable path `path`. It returns the
    * identical object until that field changes. A path whose item was removed
-   * keeps returning that item's last snapshot.
+   * keeps returning that item's last snapshot, so a component that is still
+   * unmounting can read it. The store keeps those snapshots until the store
+   * itself is freed.
    */
   getSnapshot(path: Path): FieldSnapshot<unknown, E>;
   /** Returns the snapshot the field had when the store was created, for server rendering and hydration. */
@@ -122,11 +134,20 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
   changes(path?: Path): readonly Change[];
   /**
    * Returns the first enabled field, in value order, that has a validation
-   * error, for the adapter to focus after an invalid submit. Returns
+   * error, for the adapter to focus after an invalid submit. Read-only fields
+   * count. Disabled ones don't: `disabledInvalid` lists those. Returns
    * `undefined` when there is none. A read for event handlers and effects,
    * not render.
    */
   firstInvalid(): AnyFieldHandle<E> | undefined;
+  /**
+   * Returns every disabled field, in value order, that has a validation
+   * error. Their errors still block submit, but `firstInvalid` skips them, so
+   * after an invalid submit the adapter can show these at form level. A field
+   * counts as disabled when it or a field above it is. Returns an empty list
+   * when there is none. A read for event handlers and effects, not render.
+   */
+  disabledInvalid(): readonly DisabledInvalid<E>[];
 }
 
 /**

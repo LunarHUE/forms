@@ -73,7 +73,7 @@ export type {
   ValueOf,
   WriteOptions,
 } from "./handle.js";
-export type { AnyFormStore, Change, FormStore, IntentArgs } from "./store.js";
+export type { AnyFormStore, Change, DisabledInvalid, FormStore, IntentArgs } from "./store.js";
 export type { AdapterSchema, HasAdapter, SchemaAdapter } from "./schema-adapter.js";
 export type {
   CreateFormsCore,

@@ -3,7 +3,7 @@ import type { ErrorMap } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import type { Submission } from "../snapshot.js";
-import type { IntentArgs } from "../store.js";
+import type { DisabledInvalid, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
@@ -18,7 +18,7 @@ export interface SubmitOptions<V, E, I, R, O = V> {
   readonly onSubmit?: (value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>;
 }
 
-/** Submitting, form-wide user errors and finding the first invalid field. */
+/** Submitting, form-wide user errors and finding invalid fields. */
 export interface Submit<E, I, R> {
   /** As `FormStore.submit`. */
   submit(...args: IntentArgs<I>): Promise<Submission<I, R>>;
@@ -28,6 +28,8 @@ export interface Submit<E, I, R> {
   setErrors(errors: ErrorMap<E>): void;
   /** As `FormStore.firstInvalid`. */
   firstInvalid(): AnyFieldHandle<E> | undefined;
+  /** As `FormStore.disabledInvalid`. */
+  disabledInvalid(): DisabledInvalid<E>[];
   /** Called when the whole form is reset, inside the reset's batch, to abort a running submit. */
   abort(): void;
 }
@@ -132,6 +134,16 @@ export function createSubmit<V, E, I, R, O = V>(
     firstInvalid() {
       const path = core.firstInvalid();
       return path && context.store().fieldAt(path);
+    },
+    disabledInvalid() {
+      const found: DisabledInvalid<E>[] = [];
+      for (const path of core.disabledInvalid()) {
+        const field = context.store().fieldAt(path);
+        if (!field) continue;
+        const { name, errors } = core.getSnapshot(path);
+        found.push({ field, name, errors });
+      }
+      return found;
     },
     abort() {
       const run = running;

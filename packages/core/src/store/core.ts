@@ -142,6 +142,8 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   invalidAt(path: Path): boolean;
   /** The stable path of the first enabled field, in value order, with a validation error. */
   firstInvalid(): Path | undefined;
+  /** The stable paths of the disabled fields with a validation error, in value order. Makes no nodes. */
+  disabledInvalid(): Path[];
 
   /** How many paths have a node, and how many of those hold subscriber state. For tests and leak checks. */
   stats(): { readonly nodes: number; readonly subscribed: number };
@@ -1047,6 +1049,16 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       };
       const found = root && visit(root);
       return found && stablePathOf(found);
+    },
+    disabledInvalid() {
+      const paths: Path[] = [];
+      const visit = (node: Node<E>) => {
+        if (node.invalidCount === 0) return;
+        if (node.validation.length > 0 && node.disabled.on) paths.push(stablePathOf(node));
+        for (const child of inValueOrder(node)) visit(child);
+      };
+      if (root) visit(root);
+      return paths;
     },
 
     stats() {

@@ -464,6 +464,96 @@ describe("firstInvalid", () => {
   });
 });
 
+const title = (store: FormStore<Value, FormError, Intent>, i: number) => store.root.at("rows").item(keys(store)[i] ?? "").at("title");
+
+describe("disabledInvalid", () => {
+  const options: Options<unknown> = { validate: { fields: { name: required, rows: [{ title: required }] } } };
+
+  it("lists the only invalid fields when they are disabled, with errors the show setting hides", async () => {
+    const onSubmit = vi.fn<() => void>();
+    const { store } = make(
+      { ...options, onSubmit, show: "touched", disabled: { name: true } },
+      { name: "", rows: [{ title: "a" }, { title: "b" }] },
+    );
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(store.firstInvalid()).toBeUndefined();
+    // The field was never touched, so `show: "touched"` hides its error from the snapshot.
+    expect(store.getSnapshot(["name"]).shownErrors).toEqual([]);
+    expect(store.disabledInvalid()).toEqual([{ field: store.root.at("name"), name: "name", errors: [err("Required")] }]);
+    expect(store.disabledInvalid()[0]?.field).toBe(store.root.at("name"));
+  });
+
+  it("lists only the disabled ones when enabled fields are invalid too", async () => {
+    const { store } = make(options, { name: "", rows: [{ title: "" }, { title: "b" }] });
+    title(store, 0).setDisabled(true);
+    await store.submit();
+    expect(store.firstInvalid()).toBe(store.root.at("name"));
+    expect(store.disabledInvalid()).toEqual([{ field: title(store, 0), name: "rows.0.title", errors: [err("Required")] }]);
+  });
+
+  it("lists the fields of a disabled array row, by their current name", async () => {
+    const { store } = make(options, { name: "ok", rows: [{ title: "" }, { title: "" }] });
+    const second = title(store, 1);
+    store.root.at("rows").item(keys(store)[1] ?? "").setDisabled(true);
+    await store.submit();
+    expect(store.firstInvalid()).toBe(title(store, 0));
+    expect(store.disabledInvalid()).toEqual([{ field: second, name: "rows.1.title", errors: [err("Required")] }]);
+    store.root.at("rows").move(1, 0);
+    expect(store.disabledInvalid()).toEqual([{ field: second, name: "rows.0.title", errors: [err("Required")] }]);
+  });
+
+  it("lists the invalid children of a disabled parent, in value order, and not the parent", async () => {
+    const { store } = make({ ...options, disabled: { rows: true } }, { name: "ok", rows: [{ title: "" }, { title: "" }] });
+    await store.submit();
+    expect(store.firstInvalid()).toBeUndefined();
+    expect(store.disabledInvalid().map((entry) => entry.name)).toEqual(["rows.0.title", "rows.1.title"]);
+    expect(store.disabledInvalid().map((entry) => entry.field)).toEqual([title(store, 0), title(store, 1)]);
+  });
+
+  it("drops a field enabled again after the failed submit, which firstInvalid then finds", async () => {
+    const { store } = make({ ...options, disabled: { name: true } }, { name: "", rows: [{ title: "a" }] });
+    await store.submit();
+    expect(store.disabledInvalid()).toHaveLength(1);
+    store.root.at("name").setDisabled(false);
+    expect(store.disabledInvalid()).toEqual([]);
+    expect(store.firstInvalid()).toBe(store.root.at("name"));
+  });
+
+  it("lists a whole-form schema issue that sits on a disabled field", async () => {
+    const schema: StandardSchemaV1<Value> = {
+      "~standard": { version: 1, vendor: "fake", validate: () => ({ issues: [{ message: "Bad name", path: ["name"] }] }) },
+    };
+    const onSubmit = vi.fn<() => void>();
+    const { store } = make({ schema, onSubmit, disabled: { name: true } });
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(store.firstInvalid()).toBeUndefined();
+    expect(store.disabledInvalid()).toEqual([{ field: store.root.at("name"), name: "name", errors: [err("Bad name")] }]);
+  });
+
+  it("leaves read-only fields to firstInvalid", async () => {
+    const { store } = make({ ...options, readOnly: { name: true } }, { name: "", rows: [] });
+    await store.submit();
+    expect(store.firstInvalid()).toBe(store.root.at("name"));
+    expect(store.disabledInvalid()).toEqual([]);
+  });
+
+  it("is empty for a form without disabled invalid fields, and reading it changes nothing", async () => {
+    const { store, core } = make(options, { name: "", rows: [{ title: "" }] });
+    await store.submit();
+    const form = store.getFormSnapshot();
+    const name = store.getSnapshot(["name"]);
+    const nodes = core.stats().nodes;
+    const runs = count(store, [["name"], []]);
+    expect(store.disabledInvalid()).toEqual([]);
+    expect(runs).toEqual({ form: 0, fields: [0, 0] });
+    expect(store.getFormSnapshot()).toBe(form);
+    expect(store.getSnapshot(["name"])).toBe(name);
+    expect(core.stats().nodes).toBe(nodes);
+  });
+});
+
 describe("store rules", () => {
   it("wakes each subscription once per phase", async () => {
     const gate = deferred<string>();
