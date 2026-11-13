@@ -8,6 +8,7 @@ import {
   useFormContext,
   useFormState,
 } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 
@@ -98,9 +99,10 @@ function NumberField({ field, label }: NumberFieldProps) {
 // 3. One `createForms` call for the app, then one definition per form.
 // Registering the field components puts them on every form, so a form
 // has `form.TextField` and `form.NumberField`. What `onSubmit` returns
-// becomes the submit's result.
+// becomes the submit's result. `dirty()` gives the inspector its dirty
+// flags.
 const forms = createForms({
-  plugins: [valibot()],
+  plugins: [valibot(), dirty()],
   fields: { TextField, NumberField },
 });
 

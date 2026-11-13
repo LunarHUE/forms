@@ -1,5 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin, refuse } from "../plugins.js";
+import { dirty } from "../plugins/dirty.js";
 import { history } from "../plugins/history.js";
 import { mask, upper as upperCase } from "../plugins/mask.js";
 import { type Rebase, rebase } from "../plugins/rebase.js";
@@ -135,7 +136,7 @@ describe("the history plugin", () => {
   });
 });
 
-const Lines = createForms().define({
+const Lines = createForms({ plugins: [dirty()] }).define({
   defaultValues: { lines: [{ sku: "ab-1" }] },
   plugins: [mask({ "lines.*.sku": upperCase })],
 });

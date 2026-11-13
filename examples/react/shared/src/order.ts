@@ -7,6 +7,7 @@ import {
   type SaveOrder,
 } from "@lunarhue/forms-example-order";
 import { createForms, type DeepPartial, type FormOf } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { rules } from "@lunarhue/forms-react/plugins/rules";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import type * as v from "valibot";
@@ -15,13 +16,14 @@ import { CheckboxGroupField, NumberField, RadioGroupField, SelectField, TextFiel
 /**
  * The app's one `createForms` call, at module scope. The `valibot()` plugin
  * gives every schema form its starting values, so `defaultValues` is
- * optional. The field components are registered, so every form and scope
- * made here has them bound: `form.TextField name="customer.name"`. The
+ * optional. `dirty()` gives each field and the form the `dirty` flag the
+ * inspector shows. The field components are registered, so every form and
+ * scope made here has them bound: `form.TextField name="customer.name"`. The
  * option components are written with `Choice`, so each use checks its
  * options against the named field.
  */
 export const forms = createForms({
-  plugins: [valibot()],
+  plugins: [valibot(), dirty()],
   fields: { TextField, NumberField, SelectField, RadioGroupField, CheckboxGroupField },
 });
 

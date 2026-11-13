@@ -72,7 +72,7 @@ export interface ShowContext {
   readonly touched: boolean;
   /** True once the field has had a user edit. */
   readonly edited: boolean;
-  /** True when the field's value differs from its baseline. */
+  /** True when the field's value differs from its baseline. Always false without `dirty()`. */
   readonly dirty: boolean;
   /** How many submits the form has started. */
   readonly submitCount: number;

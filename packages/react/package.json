@@ -49,6 +49,17 @@
         "default": "./dist/cjs/plugins/bind.js"
       }
     },
+    "./plugins/dirty": {
+      "@lunarhue/source": "./src/plugins/dirty.ts",
+      "import": {
+        "types": "./dist/esm/plugins/dirty.d.ts",
+        "default": "./dist/esm/plugins/dirty.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/dirty.d.ts",
+        "default": "./dist/cjs/plugins/dirty.js"
+      }
+    },
     "./plugins/history": {
       "@lunarhue/source": "./src/plugins/history.ts",
       "import": {
@@ -158,6 +169,14 @@
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
       "limit": "13.55 kB"
+    },
+    {
+      "name": "react + dirty()",
+      "import": {
+        "dist/esm/index.js": "*",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "11.05 kB"
     }
   ]
 }

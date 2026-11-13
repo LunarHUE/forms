@@ -3,12 +3,15 @@ import type {
   CreateFormsCore,
   DeepPartial,
   DefinedValue,
+  DirtyPlugin,
   Draft,
+  Equals,
   FieldSnapshot,
   Flags,
   FormDefinition,
   FormError,
   FormStore,
+  HasDirty,
   HasSchemaPlugin,
   HasValidation,
   ItemHandle,
@@ -33,6 +36,7 @@ interface OtherSchema<I, O = I> extends StandardSchemaV1<I, O> {
 declare const createFormsCore: CreateFormsCore;
 declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
 declare const validation: () => ValidationPlugin;
+declare const dirty: () => DirtyPlugin;
 
 interface User {
   name: string;
@@ -202,6 +206,26 @@ describe("a schema with no validation runner", () => {
         readonly "Add validation() or a schema plugin such as valibot() to plugins to use schema": never;
       }
     >();
+  });
+});
+
+const equals: Equals = (a, b, _ctx, next) => next(a, b);
+
+describe("dirty tracking", () => {
+  it("is needed for equals, shared or the definition's", () => {
+    // @ts-expect-error: no plugin brings dirty tracking
+    createFormsCore({ equals });
+    // @ts-expect-error: no plugin brings dirty tracking
+    createFormsCore().define({ defaultValues: { name: "" }, equals });
+    createFormsCore({ plugins: [dirty()], equals }).define({ defaultValues: { name: "" }, equals });
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [dirty()], equals });
+    expectTypeOf<HasDirty<[]>>().toEqualTypeOf<false>();
+    expectTypeOf<HasDirty<readonly [DirtyPlugin]>>().toEqualTypeOf<true>();
+  });
+
+  it("names the plugin to install in the type of equals", () => {
+    type Bare = NonNullable<PlainDefinition<{ name: string }, FormError, undefined, unknown>["equals"]>;
+    expectTypeOf<Bare>().toExtend<{ readonly "Add dirty() to plugins to use equals": never }>();
   });
 });
 

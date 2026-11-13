@@ -28,6 +28,9 @@ export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V>, reso
 /**
  * The rebase plugin. Its API is `form.plugins.rebase`, a `Rebase`.
  *
+ * Values are compared by the form's dirty comparison when `dirty()` is
+ * installed, and by `Object.is` alone when it isn't.
+ *
  * Objects are walked key by key. An array is walked item by item when its
  * items still have the keys and order of its baseline and the incoming
  * array has as many items. Otherwise it is one leaf.

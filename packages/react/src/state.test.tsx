@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createForms, type FormOf, useForm } from "./index.js";
+import { dirty } from "./plugins/dirty.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
 
 const commits: Commits = new Map();
@@ -9,7 +10,7 @@ beforeEach(() => commits.clear());
 
 // Lets a test hold a submit open, so `submitting` stays true until it calls `release`.
 const gate: { release?: () => void } = {};
-const post = createForms().define({
+const post = createForms({ plugins: [dirty()] }).define({
   defaultValues: { title: "", body: "" },
   onSubmit: async (value) => {
     await new Promise<void>((resolve) => {

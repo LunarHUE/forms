@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/cjs/plugins/dirty.js",
+  "module": "../../dist/esm/plugins/dirty.js",
+  "types": "../../dist/cjs/plugins/dirty.d.ts"
+}

@@ -1,4 +1,5 @@
 import { type AnyFormStore, createFormsCore, type Path } from "@lunarhue/forms-core";
+import { dirty } from "@lunarhue/forms-core/plugins/dirty";
 import {
   createServerSettings,
   invalidOrder,
@@ -12,7 +13,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mountInspector } from "./index.js";
 
-const definition = createFormsCore({ plugins: [valibot()] }).define({
+const definition = createFormsCore({ plugins: [valibot(), dirty()] }).define({
   schema: OrderSchema,
   defaultValues: loadOrder(),
   validate: orderValidate,

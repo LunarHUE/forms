@@ -9,6 +9,7 @@ import {
   useFormContext,
   useFormState,
 } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { rebase } from "@lunarhue/forms-react/plugins/rebase";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
@@ -47,8 +48,9 @@ function TextField({ field, label }: TextFieldProps) {
 
 // One plugin list. Zod brings validation.
 // Rebase merges fresh server data.
+// Dirty gives the inspector its dirty flags.
 const forms = createForms({
-  plugins: [zod(), rebase()],
+  plugins: [zod(), rebase(), dirty()],
   fields: { TextField },
 });
 
