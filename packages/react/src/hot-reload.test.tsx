@@ -74,7 +74,7 @@ function Page(props: { readonly render: number }) {
   });
   return (
     <form.Form>
-      {({ submit: _submit, ...formProps }) => (
+      {(formProps) => (
         <form aria-label="sign up" data-render={props.render} {...formProps}>
           <form.TextField name="name" label="Name" />
           <Status />

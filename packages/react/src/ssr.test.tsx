@@ -44,7 +44,7 @@ function Order() {
   const form = useForm(order);
   return (
     <form.Form>
-      {({ submit: _submit, ...props }) => (
+      {(props) => (
         <form {...props}>
           <form.TextField name="customer" label="Customer" />
           <Plan />

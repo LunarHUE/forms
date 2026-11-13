@@ -75,21 +75,16 @@ export interface FormElementProps {
   readonly ref: (element: HTMLFormElement) => void;
 }
 
-/** What `form.Form` passes to a function child: the form element props plus `submit`. */
-export interface FormRenderProps<I = undefined, R = unknown> extends FormElementProps {
-  /** The form's `submit`, for buttons that submit with an intent. */
-  readonly submit: (...args: IntentArgs<I>) => Promise<Submission<I, R>>;
-}
-
 /**
  * Provides the form through context to everything below it. It renders no
- * element. A function child gets the form element props and `submit`, to
- * spread on the real `<form>`: `{({ submit, ...props }) => <form {...props}>}`.
- * Every member is fixed for the life of the form, so destructuring them
- * loses nothing. Plain children get the context only. The child runs once.
+ * element. `T` is the form that owns it. A function child gets the form
+ * element props and the form: `{(formProps, form) => <form {...formProps}>}`.
+ * Spread the first on the real `<form>` as it is. Every member is fixed for
+ * the life of the form, so destructuring them loses nothing. Plain children
+ * get the context only. The child runs once.
  */
-export type FormComponent<I = undefined, R = unknown> = (props: {
-  readonly children: ((props: FormRenderProps<I, R>) => SolidElement) | SolidElement;
+export type FormComponent<T> = (props: {
+  readonly children: ((formProps: FormElementProps, form: T) => SolidElement) | SolidElement;
 }) => SolidElement;
 
 /** Props `Field` takes besides `name` or `handle`. */
@@ -255,7 +250,7 @@ export type Scope<V, E = FormError, F extends FieldComponents = NoFieldComponent
   BoundFieldComponents<V, E, F>;
 
 /** What a form has beyond its root scope. */
-export interface FormMembers<V, E, I, R> {
+export interface FormMembers<V, E, I, R, F extends FieldComponents = NoFieldComponents> {
   /** The core store. Every handle's `store` is this object. */
   readonly store: FormStore<V, E, I, R>;
   /** The store id. */
@@ -269,7 +264,7 @@ export interface FormMembers<V, E, I, R> {
    * subscribe.
    */
   readonly state: FormState<I, R>;
-  /** The props for the `<form>` element, the same ones `Form` passes to its child. */
+  /** The props for the `<form>` element, the same object `Form` passes to its child first. */
   readonly formProps: FormElementProps;
   /**
    * Submits with an intent, as `store.submit` does, then applies
@@ -283,7 +278,7 @@ export interface FormMembers<V, E, I, R> {
    */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
   /** Provides this form through context. See `FormComponent`. */
-  readonly Form: FormComponent<I, R>;
+  readonly Form: FormComponent<SolidForm<V, E, I, R, F>>;
 }
 
 /**
@@ -297,7 +292,7 @@ export type SolidForm<V, E = FormError, I = undefined, R = unknown, F extends Fi
   E,
   F
 > &
-  FormMembers<V, E, I, R>;
+  FormMembers<V, E, I, R, F>;
 
 /**
  * A form with its value, error, intent and result types unknown, as the

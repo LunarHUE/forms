@@ -35,29 +35,28 @@ export function useAnyForm(definition?: object): RuntimeForm {
   return node.form;
 }
 
-/** The children `form.Form` takes: a function of the render props, or plain children. */
-export type FormChildren = ((props: object) => SolidElement) | SolidElement;
+/** The children `form.Form` takes: a function of the form element props and the form, or plain children. */
+export type FormChildren = ((formProps: unknown, form: RuntimeForm) => SolidElement) | SolidElement;
 
 /** The props of `form.Form`, with the form filled in. */
 interface ProvideFormProps {
   readonly form: RuntimeForm;
-  readonly renderProps: object;
   readonly children: FormChildren;
 }
 
-/** Calls a function child with the render props, or returns plain children as they are. */
-function renderChildren(children: FormChildren, renderProps: object): SolidElement {
-  if (typeof children === "function") return untrack(() => children(renderProps));
+/** Calls a function child with the form element props and the form, or returns plain children as they are. */
+function renderChildren(children: FormChildren, form: RuntimeForm): SolidElement {
+  if (typeof children === "function") return untrack(() => children(form.formProps, form));
   return children;
 }
 
 /** `form.Form`: provides the form, linked to the form above, and renders no element of its own. */
 export function ProvideForm(props: ProvideFormProps): SolidElement {
-  const { form, renderProps } = props;
+  const { form } = props;
   return createComponent(formContext, {
     value: { form, parent: useContext(formContext) },
     get children() {
-      return renderChildren(props.children, renderProps);
+      return renderChildren(props.children, form);
     },
   });
 }

@@ -26,8 +26,8 @@ export function App() {
   const form = createForm(Order);
   return (
     <form.Form>
-      {({ submit, ...props }) => (
-        <form {...props} data-submits={typeof submit}>
+      {(props, owner) => (
+        <form {...props} data-submits={typeof owner.submit}>
           <form.TextField name="customer" label="Customer" />
           <form.Items name="rows">{(row) => <form.TextField handle={row.at("title")} label="Title" />}</form.Items>
           <Status />
