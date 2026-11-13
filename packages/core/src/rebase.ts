@@ -61,7 +61,7 @@ const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : 
 export const rebase: Rebase = (handle, incoming, resolve) => {
   const parts = partsOf(handle.store);
   if (!parts) throw new TypeError("rebase: the handle does not belong to a form store");
-  const { core, baseline } = parts;
+  const { core, baseline, validation } = parts;
   const path = handle.path.map(String);
   if (!core.isLive(path)) return freeze({ taken: freeze([]) });
 
@@ -109,6 +109,7 @@ export const rebase: Rebase = (handle, incoming, resolve) => {
     visit(path, core.getSnapshot(path).value, incoming, old.value, old.keys);
     baseline.move(path, incoming, keysFor);
     core.recheckDirty();
+    if (taken.length > 0) validation.changed(taken);
     return freeze({ taken: freeze(taken) });
   });
 };

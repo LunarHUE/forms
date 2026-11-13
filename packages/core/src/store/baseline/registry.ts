@@ -1,10 +1,12 @@
 import type { Baseline } from "../baseline.js";
 import type { StoreCore } from "../core.js";
+import type { Validation } from "../validation.js";
 
 /** The parts of a form store that commands outside the main entry need. */
 export interface StoreParts {
   readonly core: StoreCore<unknown, unknown>;
   readonly baseline: Baseline;
+  readonly validation: Validation<unknown>;
 }
 
 // The build keeps one output file per source file, so the main entry and the

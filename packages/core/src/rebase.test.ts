@@ -20,6 +20,10 @@ function count(store: FormStore<unknown>, paths: (Path | "form")[]) {
   return runs;
 }
 
+/** A field validator that fails on an empty string with `label`. */
+const check = (label: string) =>
+  vi.fn<(value: unknown) => { message: string } | undefined>((value) => (value === "" ? { message: label } : undefined));
+
 const paths = (resolve: { mock: { calls: Parameters<Resolve>[] } }) => resolve.mock.calls.map(([leaf]) => leaf.path);
 
 describe("rebase", () => {
@@ -151,6 +155,34 @@ describe("rebase", () => {
     const resolve = vi.fn<Resolve>(() => "take");
     expect(rebase(item, "b", resolve).taken).toEqual([]);
     expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("reruns armed validators on the taken paths, in its batch, and arms nothing", () => {
+    const a = check("a");
+    const b = check("b");
+    const c = check("c");
+    const { store, root } = make({ a: "x", b: "x", c: "x" });
+    store.registerValidator(["a"], a);
+    store.registerValidator(["b"], b);
+    store.registerValidator(["c"], c);
+    // Armed by blur: a and c. b never armed.
+    store.fieldAt(["a"])?.handleBlur();
+    store.fieldAt(["c"])?.handleBlur();
+    a.mockClear();
+    c.mockClear();
+    const runs = count(store, [["a"], ["b"]]);
+    const { taken } = rebase(root, { a: "", b: "", c: "" }, (leaf) => (leaf.path[0] === "c" ? "keep" : "take"));
+    expect(taken).toEqual([["a"], ["b"]]);
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).not.toHaveBeenCalled();
+    expect(c).not.toHaveBeenCalled();
+    expect(store.getSnapshot(["a"]).errors).toEqual([{ message: "a" }]);
+    expect(store.getSnapshot(["b"]).errors).toEqual([]);
+    // The value and the error land in one wake.
+    expect(runs).toEqual([1, 1]);
+    // b is still waiting for its blur.
+    store.fieldAt(["b"])?.setValue("");
+    expect(b).not.toHaveBeenCalled();
   });
 
   it("rejects a handle from something that isn't a form store", () => {
