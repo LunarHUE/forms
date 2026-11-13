@@ -8,8 +8,14 @@ export const metadata: Metadata = {
   title: "Forms, Next.js example",
 };
 
+/** Props for `RootLayout`. */
+interface RootLayoutProps {
+  /** The page. */
+  readonly children: ReactNode;
+}
+
 /** The root layout: a nav between the pages. The shared stylesheet is the only styling. */
-export default function RootLayout(props: { readonly children: ReactNode }) {
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body>
@@ -18,7 +24,7 @@ export default function RootLayout(props: { readonly children: ReactNode }) {
           <a href="/basic">Basic example</a>
           <a href="/bind">Bind example</a>
         </nav>
-        {props.children}
+        {children}
       </body>
     </html>
   );

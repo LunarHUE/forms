@@ -1,10 +1,10 @@
 "use client";
-// The "New order" example for React, shared by the Next.js, TanStack Start
-// and Vite apps. The package exports only this module, so this one directive
-// makes everything here client code under React Server Components: a server
-// component can render `OrderPage` and pass it plain data and server
-// actions. Bundlers without React Server Components ignore the directive.
-// Vite's production build warns once that it drops it, which is harmless.
+// The "New order" example for React, written to be shared by React apps.
+// The Next.js app is the only one so far. The package exports only this
+// module, so this one directive makes everything here client code under
+// React Server Components: a server component can render `OrderPage` and
+// pass it plain data and server actions. Bundlers without React Server
+// Components ignore the directive.
 export { AddressFields, SameAsBilling } from "./address.js";
 export type { AddressFieldsProps } from "./address.js";
 export { RenderBadge, useRenderBadge } from "./badge.js";

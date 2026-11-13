@@ -87,7 +87,7 @@ export type Order = v.InferOutput<typeof OrderSchema>;
 
 /**
  * The value the form holds while the user fills it in. A form defined with
- * `OrderSchema` and the valibot adapter has this value type: numbers, the
+ * `OrderSchema` and the `valibot()` plugin has this value type: numbers, the
  * delivery method and countries may be undefined.
  */
 export type OrderDraft = Draft<v.InferInput<typeof OrderSchema>>;
