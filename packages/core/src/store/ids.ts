@@ -9,19 +9,10 @@ const escape = (char: string) => `_${(char.codePointAt(0) ?? 0).toString(16)}_`;
  * to another `-`, so a segment never contains the `--` that joins segments.
  */
 export function encodeSegment(segment: string | number): string {
-  // Code points, not grapheme clusters: each one is escaped on its own.
-  const chars = Array.from(String(segment));
-  return chars
-    .map((char, i) => {
-      if (/^[A-Za-z0-9]$/.test(char)) return char;
-      if (char === "-") {
-        const edge = i === 0 || i === chars.length - 1;
-        const doubled = chars[i - 1] === "-" || chars[i + 1] === "-";
-        return edge || doubled ? escape(char) : char;
-      }
-      return escape(char);
-    })
-    .join("");
+  // Matches anything but a letter, digit or `-`, then a `-` at either end or
+  // next to another `-`. With `u` a match is a code point, not a grapheme
+  // cluster, so each one is escaped on its own.
+  return String(segment).replace(/[^A-Za-z0-9-]|^-|-$|-(?=-)|(?<=-)-/gu, escape);
 }
 
 /** The id of the field at `path`: the form id and each encoded segment, joined with `--`. */
