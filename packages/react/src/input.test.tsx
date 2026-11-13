@@ -262,6 +262,23 @@ describe("number and range", () => {
     expect(values().age).toBeUndefined();
   });
 
+  it("leaves the stored value while the text isn't a number yet", () => {
+    render(<Settings />);
+    const age = input("age");
+    act(() => current().root.at("age").setValue(3));
+    // jsdom never sets `badInput`. A browser sets it for text such as `-` and reports an empty value.
+    Object.defineProperty(age, "validity", { configurable: true, value: { badInput: true } });
+    fireEvent.change(age, { target: { value: "" } });
+    expect(values().age).toBe(3);
+    expect(age.value).toBe("");
+
+    Reflect.deleteProperty(age, "validity");
+    fireEvent.change(age, { target: { value: "4" } });
+    expect(values().age).toBe(4);
+    fireEvent.change(age, { target: { value: "" } });
+    expect(values().age).toBeUndefined();
+  });
+
   it("writes a range's number, and its empty option", () => {
     render(<Settings />);
     const volume = input("volume");

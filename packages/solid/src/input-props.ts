@@ -48,20 +48,6 @@ function inputOf(event: Event): HTMLInputElement | HTMLTextAreaElement | undefin
 }
 
 /**
- * The text a number input shows. While the element's text reads as the
- * field's number, or is text the browser can't read as a number yet (such
- * as `-`), the element keeps it. Otherwise it is the field's number.
- */
-function numberText(element: HTMLInputElement | undefined, value: unknown): string {
-  if (element !== undefined) {
-    const text = element.value;
-    const keep = text === "" ? element.validity.badInput : Number(text) === value;
-    if (keep) return text;
-  }
-  return asText(value);
-}
-
-/**
  * Adds the props every input kind shares to `own` and returns it. The
  * getters read the field's signal, so each is a reactive read. `id` is the
  * element's id, the handle's unless the element is one option of the field.
@@ -89,7 +75,8 @@ function withControl(source: InputSource, options: AnyInputOptions | undefined, 
       return ids.length > 0 ? ids.join(" ") : undefined;
     },
   };
-  return Object.defineProperties(own, Object.getOwnPropertyDescriptors(control));
+  // A prop of `own` wins over the shared one of the same name.
+  return Object.defineProperties(own, { ...Object.getOwnPropertyDescriptors(control), ...Object.getOwnPropertyDescriptors(own) });
 }
 
 /** The current snapshot from the store, for event handlers. */
@@ -119,10 +106,15 @@ function textProps(source: InputSource, options: AnyInputOptions | undefined, te
 function numberProps(source: InputSource, options: AnyInputOptions | undefined): object {
   const { handle, read, register } = source;
   let element: HTMLInputElement | undefined;
+  // The value the last edit left in the field, until the input loses focus.
+  // While the field still holds it, the input keeps the text as typed, so
+  // `2.50` or `1.` isn't rewritten under the cursor.
+  let typed: { readonly value: unknown } | undefined;
   const own = {
     type: options?.type ?? "number",
     get value() {
-      return numberText(element, read().value);
+      const value = read().value;
+      return element !== undefined && typed !== undefined && Object.is(typed.value, value) ? element.value : asText(value);
     },
     get readonly() {
       return read().readOnly;
@@ -130,13 +122,21 @@ function numberProps(source: InputSource, options: AnyInputOptions | undefined):
     onInput: (event: Event) => {
       const input = inputOf(event);
       if (!(input instanceof HTMLInputElement)) return;
-      if (input.value === "") {
-        // An empty value with `badInput` is text such as `-` that isn't a number yet.
-        if (!input.validity.badInput) handle.setValue(options?.empty);
+      let value: unknown = Number.isNaN(input.valueAsNumber) ? Number(input.value) : input.valueAsNumber;
+      // An empty value with `badInput` is text such as `-` that isn't a number yet.
+      if (input.value === "") value = input.validity.badInput ? Number.NaN : options?.empty;
+      if (Number.isNaN(value)) {
+        typed = { value: current(handle).value };
         return;
       }
-      const number = Number.isNaN(input.valueAsNumber) ? Number(input.value) : input.valueAsNumber;
-      if (!Number.isNaN(number)) handle.setValue(number);
+      typed = { value };
+      handle.setValue(value);
+    },
+    onBlur: () => {
+      // Once the input loses focus it shows the field's number again.
+      typed = undefined;
+      if (element !== undefined) element.value = asText(current(handle).value);
+      handle.handleBlur();
     },
   };
   const tracked: InputSource = {

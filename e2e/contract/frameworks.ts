@@ -24,19 +24,11 @@ export const frameworks: readonly Framework[] = [
     name: "react",
     port: 4311,
     rerendersOnChange: true,
-    knownFailures: {
-      "inputs.spec.ts > number inputs > text that isn't a number yet, such as a lone minus sign, leaves the stored value":
-        "React stores undefined while the input holds text such as '-' that isn't a number yet. Solid checks validity.badInput and keeps the stored value.",
-    },
   },
   {
     name: "solid",
     port: 4312,
     rerendersOnChange: false,
-    knownFailures: {
-      "inputs.spec.ts > number inputs > typed text is kept while typing, and the stored number shows once the input loses focus":
-        "Solid keeps the typed text ('2.50') after blur. React shows the stored number ('2.5') again once the input loses focus.",
-    },
   },
 ];
 
