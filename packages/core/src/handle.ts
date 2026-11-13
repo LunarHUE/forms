@@ -68,8 +68,20 @@ export interface HandleBase<V, E = FormError> {
    * render. Rendering reads go through the adapter.
    */
   peek(): FieldSnapshot<V, E>;
-  /** Marks the field touched and runs blur validation. Pass it to the input's blur event. */
+  /**
+   * Marks the field touched and runs blur validation. Pass it to the input's
+   * blur event. To set only the touched flag, without validation, use
+   * `setTouched`.
+   */
   handleBlur(): void;
+  /**
+   * Sets this field's touched flag, or clears it with false. It sets only
+   * this field's own flag: fields above and below keep theirs, as with
+   * `handleBlur`. Use `reset` to clear a whole subtree. It runs no validator
+   * and arms none. With `show: "touched"` the field's validation errors
+   * show while the flag is set.
+   */
+  setTouched(touched?: boolean): void;
   /**
    * Replaces this field's user errors. User errors show in `errors` after
    * validation errors, don't block submit, and clear when the field's value

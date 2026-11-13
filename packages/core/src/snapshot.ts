@@ -19,7 +19,7 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly shownErrors: readonly E[];
   /** True when this field has a validation error. User-set errors don't count. */
   readonly invalid: boolean;
-  /** True once the field has been blurred. Reset clears it. */
+  /** True once the field has been blurred or `setTouched` set it. Reset clears it. */
   readonly touched: boolean;
   /** True once a write counted as a user edit at or below this field. Reset clears it. */
   readonly edited: boolean;

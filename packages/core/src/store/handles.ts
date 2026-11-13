@@ -96,6 +96,9 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
           validation.blurred(path);
         });
       },
+      setTouched(touched = true) {
+        core.setTouched(path, touched);
+      },
       setErrors(errors) {
         core.setUserErrors(path, errorList(errors));
       },

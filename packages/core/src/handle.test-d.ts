@@ -210,8 +210,20 @@ describe("handle commands", () => {
   it("peek returns the snapshot, the other members return nothing", () => {
     expectTypeOf(nameHandle.peek()).toEqualTypeOf<FieldSnapshot<string, { code: string }>>();
     expectTypeOf(nameHandle.handleBlur()).toEqualTypeOf<void>();
+    expectTypeOf(nameHandle.setTouched()).toEqualTypeOf<void>();
     expectTypeOf(nameHandle.validate()).toEqualTypeOf<Promise<boolean>>();
     expectTypeOf(nameHandle.id).toEqualTypeOf<string>();
+  });
+
+  it("setTouched takes an optional boolean on every handle kind", () => {
+    nameHandle.setTouched();
+    nameHandle.setTouched(false);
+    expectTypeOf<(typeof nameHandle)["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<HandleBase<number>["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<AnyFieldHandle["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<FieldHandle<Row[]>["setTouched"]>().returns.toEqualTypeOf<void>();
+    // @ts-expect-error: the flag is a boolean
+    nameHandle.setTouched("yes");
   });
 
   it("setErrors takes one error or a list of the form's error type", () => {

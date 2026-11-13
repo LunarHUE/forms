@@ -299,6 +299,7 @@ describe("array commands", () => {
     expect(updater).not.toHaveBeenCalled();
     a.at("t").setValue("x");
     a.handleBlur();
+    a.setTouched();
     a.setErrors(err("u"));
     a.setDisabled(true);
     a.setReadOnly(true);
@@ -333,6 +334,77 @@ describe("field state commands", () => {
     expect(blurred).toHaveBeenCalledTimes(1);
     expect(blurred).toHaveBeenCalledWith(["a"]);
     expect(runs).toEqual([1]);
+  });
+
+  it("setTouched sets only this field's flag, waking its listener once", () => {
+    const { store, root, blurred } = make({ a: { b: { c: 1 } }, d: 1 });
+    const above = root.at("a").peek();
+    const below = root.at("a").at("b").at("c").peek();
+    const sibling = root.at("d").peek();
+    const form = store.getFormSnapshot();
+    const runs = count(store, [["a", "b"], ["a", "b", "c"], ["a"], ["d"], [], "form"]);
+    root.at("a").at("b").setTouched();
+    expect(root.at("a").at("b").peek().touched).toBe(true);
+    expect(root.at("a").peek()).toBe(above);
+    expect(root.at("a").at("b").at("c").peek()).toBe(below);
+    expect(root.at("d").peek()).toBe(sibling);
+    expect(store.getFormSnapshot()).toBe(form);
+    expect(runs).toEqual([1, 0, 0, 0, 0, 0]);
+    expect(blurred).not.toHaveBeenCalled();
+  });
+
+  it("setTouched(false) clears only this field's flag", () => {
+    const { store, root } = make({ a: { b: 1 } });
+    root.at("a").handleBlur();
+    root.at("a").at("b").handleBlur();
+    const runs = count(store, [["a"], ["a", "b"]]);
+    root.at("a").setTouched(false);
+    expect(root.at("a").peek().touched).toBe(false);
+    expect(root.at("a").at("b").peek().touched).toBe(true);
+    expect(runs).toEqual([1, 0]);
+  });
+
+  it("setTouched makes no snapshot and wakes no listener when the flag doesn't change", () => {
+    const { store, root } = make({ a: 1, b: 1 });
+    root.at("a").setTouched(true);
+    const a = root.at("a").peek();
+    const b = root.at("b").peek();
+    const form = store.getFormSnapshot();
+    const runs = count(store, [["a"], ["b"], [], "form"]);
+    root.at("a").setTouched();
+    root.at("a").setTouched(true);
+    root.at("b").setTouched(false);
+    expect(root.at("a").peek()).toBe(a);
+    expect(root.at("b").peek()).toBe(b);
+    expect(store.getFormSnapshot()).toBe(form);
+    expect(runs).toEqual([0, 0, 0, 0]);
+  });
+
+  it("setTouched runs and arms no blur validator", () => {
+    const rule = vi.fn<() => FormError>(() => err("No"));
+    const { root } = make({ a: "" });
+    root.at("a").registerValidator({ validate: rule, on: "blur" });
+    root.at("a").setTouched();
+    expect(rule).not.toHaveBeenCalled();
+    // An armed validator would run on this edit.
+    root.at("a").setValue("x");
+    expect(rule).not.toHaveBeenCalled();
+    expect(root.at("a").peek()).toMatchObject({ touched: true, errors: [] });
+    root.at("a").handleBlur();
+    expect(rule).toHaveBeenCalledTimes(1);
+  });
+
+  it("setTouched shows the errors already on the field under show: touched", () => {
+    const { core, store, root } = make({ a: 1 }, { show: "touched" });
+    core.setValidationErrors("v", ["a"], [err("x")]);
+    expect(root.at("a").peek().shownErrors).toEqual([]);
+    const runs = count(store, [["a"]]);
+    root.at("a").setTouched();
+    expect(root.at("a").peek().shownErrors).toEqual([err("x")]);
+    root.at("a").setTouched(false);
+    expect(root.at("a").peek().shownErrors).toEqual([]);
+    expect(root.at("a").peek().errors).toEqual([err("x")]);
+    expect(runs).toEqual([2]);
   });
 
   it("setErrors takes one error or a list and replaces the field's user errors", () => {
