@@ -1,5 +1,5 @@
 import { createFormsCore, type AnyFormStore, type FieldSnapshot, type Path } from "@lunarhue/forms-core";
-import { valibot } from "@lunarhue/forms-valibot";
+import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createEffect, createRoot, createSignal, flush, onCleanup } from "solid-js";
 import * as v from "valibot";
 

@@ -1,0 +1,5 @@
+{
+  "main": "../dist/cjs/valibot.js",
+  "module": "../dist/esm/valibot.js",
+  "types": "../dist/cjs/valibot.d.ts"
+}

@@ -2,7 +2,7 @@ import { createFormsCore } from "@lunarhue/forms-core";
 import type { Path } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { valibot, type ValibotSchema } from "./index.js";
+import { valibot, type ValibotSchema } from "./valibot.js";
 
 const defaultValue = (schema: ValibotSchema) => valibot().defaultValue(schema);
 const itemValue = (schema: ValibotSchema, path: Path) => valibot().itemValue(schema, path);

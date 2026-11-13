@@ -1,0 +1,5 @@
+{
+  "main": "../dist/cjs/zod.js",
+  "module": "../dist/esm/zod.js",
+  "types": "../dist/cjs/zod.d.ts"
+}

@@ -1,0 +1,82 @@
+{
+  "name": "@lunarhue/forms-schema",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunarHUE/forms.git",
+    "directory": "packages/schema"
+  },
+  "files": [
+    "dist",
+    "valibot",
+    "zod"
+  ],
+  "exports": {
+    "./valibot": {
+      "@lunarhue/source": "./src/valibot.ts",
+      "import": {
+        "types": "./dist/esm/valibot.d.ts",
+        "default": "./dist/esm/valibot.js"
+      },
+      "require": {
+        "types": "./dist/cjs/valibot.d.ts",
+        "default": "./dist/cjs/valibot.js"
+      }
+    },
+    "./zod": {
+      "@lunarhue/source": "./src/zod.ts",
+      "import": {
+        "types": "./dist/esm/zod.d.ts",
+        "default": "./dist/esm/zod.js"
+      },
+      "require": {
+        "types": "./dist/cjs/zod.d.ts",
+        "default": "./dist/cjs/zod.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@lunarhue/forms-core": "workspace:^",
+    "valibot": "^1.0.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "valibot": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@lunarhue/forms-core": "workspace:^",
+    "valibot": "catalog:",
+    "zod": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:package": "publint --strict --pack npm && attw --pack .",
+    "size": "size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "./valibot",
+      "path": "dist/esm/valibot.js",
+      "import": "*",
+      "limit": "1 kB"
+    },
+    {
+      "name": "./zod",
+      "path": "dist/esm/zod.js",
+      "import": "*",
+      "limit": "1 kB"
+    }
+  ]
+}

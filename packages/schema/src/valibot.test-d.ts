@@ -1,7 +1,7 @@
 import { createFormsCore, type FormStore, type HasAdapter, type StandardSchemaV1 } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
-import { valibot, type ValibotSchema } from "./index.js";
+import { valibot, type ValibotSchema } from "./valibot.js";
 
 type Adapters = readonly [ReturnType<typeof valibot>];
 

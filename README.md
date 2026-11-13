@@ -3,13 +3,13 @@
 A form library that doesn't depend on any UI framework. The core holds the form
 logic, and small adapters connect it to each framework or schema library.
 
-| Package                   | What it is                                       |
-| ------------------------- | ------------------------------------------------ |
-| `@lunarhue/forms-core`    | Framework-independent core                       |
-| `@lunarhue/forms-react`   | React adapter (React 16.8 and later)             |
-| `@lunarhue/forms-solid`   | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
-| `@lunarhue/forms-vue`     | Vue 3 adapter                                    |
-| `@lunarhue/forms-valibot` | Valibot schema adapter                           |
+| Package                  | What it is                                                |
+| ------------------------ | --------------------------------------------------------- |
+| `@lunarhue/forms-core`   | Framework-independent core                                |
+| `@lunarhue/forms-react`  | React adapter (React 16.8 and later)                      |
+| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1`          |
+| `@lunarhue/forms-vue`    | Vue 3 adapter                                             |
+| `@lunarhue/forms-schema` | Schema adapters: Valibot at `./valibot`, Zod 4 at `./zod` |
 
 The repo is in early setup. The packages build and publish-check, but none has a
 real API yet and nothing is published.
