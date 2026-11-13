@@ -2,7 +2,7 @@ import { defineConfig } from "oxlint";
 
 // React Compiler rules, as named in eslint-plugin-react-hooks 7 `recommended-latest`.
 // oxlint ports most of them natively under `react/`; the upstream plugin also runs
-// through jsPlugins so packages/react and examples/react follow the compiler's own implementation.
+// through jsPlugins so the React code here follows the compiler's own implementation.
 const compilerRules = [
   "rules-of-hooks",
   "exhaustive-deps",
@@ -49,8 +49,9 @@ export default defineConfig({
   },
   overrides: [
     {
-      // The adapter and the React examples follow the same rules.
-      files: ["packages/react/**", "examples/react/**"],
+      // The adapter, the React examples and the parked inspector's React
+      // wrapper follow the same rules.
+      files: ["packages/react/**", "examples/react/**", "parked/inspector/src/react.tsx"],
       // An override's `plugins` replaces the base list.
       plugins: [...basePlugins, "react"],
       // `react` is a reserved plugin name, so the upstream plugin gets an alias.
@@ -63,5 +64,5 @@ export default defineConfig({
       },
     },
   ],
-  ignorePatterns: ["**/dist/**", "**/coverage/**", "**/.next/**", "**/next-env.d.ts", "**/test-results/**", "**/playwright-report/**"],
+  ignorePatterns: ["**/dist/**", "**/coverage/**"],
 });

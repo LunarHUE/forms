@@ -1,0 +1,236 @@
+/*
+ * Styles for the inspector. Plain CSS, light and dark through
+ * `color-scheme` and the custom properties on :root.
+ *
+ *   .inspector, .inspector-section, .inspector-heading
+ *   .inspector-state    the form state <dl>
+ *   .inspector-controls, .inspector-toggle, .inspector-flags
+ *   .inspector-list, .inspector-empty
+ *   .inspector-table-wrap, .inspector-table; cells get .is-true, .is-false, .flash
+ *   .inspector-log, .log-name, .log-member, .log-change
+ *   .button, .button-small  the panel's buttons
+ *   .flash              restarts a cell's flash; see restartFlash
+ */
+
+:root {
+  color-scheme: light dark;
+  --surface: #ffffff;
+  --surface-muted: #efefec;
+  --text: #1d1d1b;
+  --muted: #6b6b66;
+  --border: #d6d6d0;
+  --flash: #ffe58a;
+  --true: #1f7a3d;
+  --radius: 6px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #20201e;
+    --surface-muted: #2a2a27;
+    --text: #e8e8e3;
+    --muted: #9a9a93;
+    --border: #3a3a36;
+    --flash: #6b5a12;
+    --true: #6fd391;
+  }
+}
+
+/* Buttons */
+
+.button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--surface-muted);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button-small {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+}
+
+@keyframes flash {
+  from {
+    background: var(--flash);
+  }
+}
+
+.flash {
+  animation: flash 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+  }
+}
+
+/* Inspector */
+
+.inspector {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.inspector-section {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.inspector-state {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.inspector-state dt {
+  color: var(--muted);
+}
+
+.inspector-state dd {
+  margin: 0;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.inspector-controls,
+.inspector-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-controls + .inspector-controls,
+.inspector-controls + .inspector-flags {
+  margin-top: 8px;
+}
+
+.inspector-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.inspector-flags select {
+  min-width: 10rem;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.inspector-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.inspector-empty {
+  color: var(--muted);
+}
+
+.inspector-table-wrap {
+  overflow-x: auto;
+}
+
+.inspector-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.inspector-table th,
+.inspector-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.inspector-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.inspector-table td.is-true {
+  color: var(--true);
+  font-weight: 600;
+}
+
+.inspector-table td.is-false {
+  color: var(--muted);
+}
+
+.inspector-log {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.inspector-log li {
+  display: flex;
+  gap: 12px;
+  padding: 1px 0;
+  border-bottom: 1px solid var(--surface-muted);
+}
+
+.log-name {
+  min-width: 10ch;
+}
+
+.log-member {
+  min-width: 9ch;
+  color: var(--muted);
+}
+
+.log-change {
+  overflow-wrap: anywhere;
+}
