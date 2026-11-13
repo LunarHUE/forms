@@ -1,5 +1,7 @@
+import type { FormError, Show } from "../errors.js";
 import type { Path, PathSegment } from "../path.js";
-import { blank, entries, settle, type Snapshot } from "./entries.js";
+import type { FormSnapshot, Submission } from "../snapshot.js";
+import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, dev } from "./freeze.js";
 import {
   createKeyList,
@@ -7,6 +9,7 @@ import {
   initialIndex,
   initialKeys,
   insertKey,
+  keyAt,
   keysView,
   type KeyList,
   moveKey,
@@ -23,21 +26,49 @@ export interface StoreCoreOptions {
   readonly id: string;
   /** The starting value. Frozen in development on first use. */
   readonly initial: unknown;
+  /**
+   * Fields that start disabled, as a `Flags<V>` declaration: a boolean for a
+   * subtree, a record at an object, a one-element tuple at an array. It is
+   * read a level at a time as nodes are made.
+   */
+  readonly disabled?: unknown;
+  /** Fields that start read-only, declared the same way as `disabled`. */
+  readonly readOnly?: unknown;
+  /** When validation errors show. Defaults to `"touched-or-submitted"`. User errors always show. */
+  readonly show?: Show;
+  /**
+   * Computes `dirty` for the field at stable path `path` holding `value`.
+   * The store calls it when a field's value changes and after `recheckDirty`.
+   * The form's `dirty` is its answer for the root. Without it nothing is dirty.
+   */
+  readonly dirty?: (path: Path, value: unknown) => boolean;
 }
 
 /**
- * The value store under a form store: the value tree, item keys, field
- * snapshots and listeners. Every path here is a stable path.
+ * The value store under a form store: the value tree, item keys, per-field
+ * state, field and form snapshots, and listeners. Every path here is a
+ * stable path.
+ *
+ * Every command updates the snapshots it changes, then runs listeners before
+ * it returns unless a batch is open. One that changes nothing wakes nobody.
+ * Commands that set state return false and do nothing at a path that names
+ * no field or whose item was removed.
  */
-export interface StoreCore {
+export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /** The store id. */
   readonly id: string;
   /** Calls `listener` after a write that changes the snapshot at `path`. Returns the function that unsubscribes. */
   subscribe(path: Path, listener: () => void): () => void;
   /** The snapshot at `path`, the identical object until one of its members changes. */
-  getSnapshot(path: Path): Snapshot;
+  getSnapshot(path: Path): Snapshot<E>;
   /** The snapshot `path` had when the store was created. */
-  getServerSnapshot(path: Path): Snapshot;
+  getServerSnapshot(path: Path): Snapshot<E>;
+  /** Calls `listener` after a write that changes the form snapshot. Returns the function that unsubscribes. */
+  subscribeForm(listener: () => void): () => void;
+  /** The form snapshot, the identical object until one of its members changes. Built on first read. */
+  getFormSnapshot(): FormSnapshot<I, R>;
+  /** The form snapshot the store started with, the identical object on every call. */
+  getServerFormSnapshot(): FormSnapshot<I, R>;
   /** Runs `fn`, holding listeners until the outermost batch returns. */
   batch<T>(fn: () => T): T;
   /**
@@ -56,6 +87,46 @@ export interface StoreCore {
   remove(path: Path, index: number): string | undefined;
   /** Moves the item at `from` to `to`, clamping `to`. Returns false when nothing moved. */
   move(path: Path, from: number, to: number): boolean;
+
+  /** Sets the field's own touched flag. */
+  setTouched(path: Path, touched: boolean): boolean;
+  /** Marks the field edited. It stays edited, and so does every field above it, until `clearState` reaches it. */
+  markEdited(path: Path): boolean;
+  /** Sets the field's own disabled flag. The field and everything below it are disabled while it or a flag above is set. */
+  setDisabled(path: Path, disabled: boolean): boolean;
+  /** Sets the field's own read-only flag, inherited the same way as disabled. */
+  setReadOnly(path: Path, readOnly: boolean): boolean;
+  /**
+   * Gives `owner` its place in the order validation errors are joined in.
+   * Owners added earlier come first. A command for an owner the store hasn't
+   * seen adds it, so a validator registration should call this first.
+   */
+  addOwner(owner: string): void;
+  /** Says whether `owner` is validating the field. The field is validating while any owner says so. */
+  setValidating(owner: string, path: Path, validating: boolean): boolean;
+  /** Replaces `owner`'s validation errors on the field. The list is copied. */
+  setValidationErrors(owner: string, path: Path, errors: readonly E[]): boolean;
+  /** Replaces the field's user errors. The list is copied. */
+  setUserErrors(path: Path, errors: readonly E[]): boolean;
+  /**
+   * Clears touched, edited and user errors at and below `path`, and
+   * validation errors too with `validation: true`. Flags and validating stay.
+   */
+  clearState(path: Path, options?: { readonly validation?: boolean }): boolean;
+  /** Drops every validating mark and validation error `owner` set, and its place in the order. */
+  removeOwner(owner: string): boolean;
+  /** Sets the form's submission. */
+  setSubmission(submission: Submission<I, R>): boolean;
+  /** Sets the form's submit count. */
+  setSubmitCount(count: number): boolean;
+  /** Asks the `dirty` option again for every field and the form, after the baseline changed. */
+  recheckDirty(): void;
+  /**
+   * The stable path of the field with dotted name `name` (`rows.0.title`),
+   * or undefined when an index is out of range or a step goes into a leaf.
+   */
+  pathOf(name: string): Path | undefined;
+
   /** How many paths have a node, and how many of those hold subscriber state. For tests and leak checks. */
   stats(): { readonly nodes: number; readonly subscribed: number };
 }
@@ -63,17 +134,41 @@ export interface StoreCore {
 interface Subscription {
   readonly listener: () => void;
   /** The snapshot this listener last saw. It isn't called again until the snapshot differs. */
-  seen: Snapshot;
+  seen: unknown;
   active: boolean;
 }
+
+/** Something listeners watch: a field node or the form. */
+interface Cell<S> {
+  snapshot: S;
+  /** The snapshot from before the first change since listeners last ran. Set only while the cell waits to wake them. */
+  before: S | undefined;
+  subscriptions: Set<Subscription> | undefined;
+}
+
+/** A disabled or read-only flag on one node. */
+interface Flag {
+  /** The part of the `Flags` declaration at this node. */
+  readonly decl: unknown;
+  /** The node's own flag. */
+  own: boolean;
+  /** The own flag or the parent's `on`: what the snapshot shows. */
+  on: boolean;
+}
+
+type FlagKind = "disabled" | "readOnly";
+
+/** Counts of nodes at and below a node that are edited, invalid or validating. */
+type Count = "editedCount" | "invalidCount" | "validatingCount";
 
 /**
  * One stable path the store knows about. A node exists once something read,
  * subscribed or wrote at its path or below it. Every live node is brought up
- * to date on each write that reaches it, so reads only look nodes up.
+ * to date on each write that reaches it, so reads only look nodes up. Field
+ * state lives here, so it follows an item when the item moves.
  */
-interface Node {
-  readonly parent: Node | undefined;
+interface Node<E> extends Cell<Snapshot<E>> {
+  readonly parent: Node<E> | undefined;
   /** The stable segment under the parent, as a string. */
   readonly seg: string;
   value: unknown;
@@ -84,33 +179,83 @@ interface Node {
   /** True once the item at or above this node was removed. A dead node never changes again. */
   dead: boolean;
   name: string;
-  snapshot: Snapshot;
-  /** The snapshot from before the first change since listeners last ran. Set only while the node waits to wake them. */
-  before: Snapshot | undefined;
-  server: Snapshot | undefined;
+  server: Snapshot<E> | undefined;
   /** The item keys, once the value here has been an array. */
   list: KeyList | undefined;
   /** Live child nodes by stable segment. */
-  children: Map<string, Node> | undefined;
+  children: Map<string, Node<E>> | undefined;
   /** Dead child nodes by item key, kept so their last snapshot stays readable. */
-  removed: Map<string, Node> | undefined;
-  subscriptions: Set<Subscription> | undefined;
+  removed: Map<string, Node<E>> | undefined;
+
+  touched: boolean;
+  /** This node's own edited mark. */
+  marked: boolean;
+  editedCount: number;
+  invalidCount: number;
+  validatingCount: number;
+  disabled: Flag;
+  readOnly: Flag;
+  /** The owners validating this field. Undefined when none is. */
+  validating: Set<string> | undefined;
+  /** Validation errors by owner. */
+  byOwner: Map<string, readonly E[]> | undefined;
+  /** Every owner's validation errors, joined in owner order. */
+  validation: readonly E[];
+  user: readonly E[];
+  /** `validation` then `user`. */
+  errors: readonly E[];
+  dirty: boolean;
+  /** The value `dirty` was computed for. */
+  dirtyFor: unknown;
 }
 
 const clamp = (index: number, max: number) => Math.max(0, Math.min(index, max));
 
+/** A value no field holds, so `dirty` is computed again. */
+const stale: unknown = Symbol("stale");
+
+const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
+
+const idleSubmission: Submission<never, never> = freeze({ status: "idle" });
+
+// The part of a `Flags` declaration under one child. A tuple's entry applies to every item.
+const declUnder = (decl: unknown, seg: string): unknown =>
+  Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined;
+
+const flagFrom = (decl: unknown, parent: Flag | undefined): Flag => {
+  const own = decl === true;
+  return { decl, own, on: own || (parent?.on ?? false) };
+};
+
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
-export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
+export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
+  const { id, initial } = options;
+  const show = options.show ?? "touched-or-submitted";
+  const dirtyHook = options.dirty;
   let current = initial;
-  let root: Node | undefined;
-  // How many writes have changed the value. While it is 0 the current snapshot is the server snapshot.
-  let writes = 0;
+  let root: Node<E> | undefined;
+  // How many commands have changed something. While it is 0 the current snapshot is the server snapshot.
+  let changes = 0;
   let batchDepth = 0;
-  // Nodes whose snapshot changed and whose listeners haven't run yet.
-  const pending = new Set<Node>();
+  // Cells whose snapshot changed and whose listeners haven't run yet.
+  const pending = new Set<Cell<unknown>>();
+  // Each owner's place in the error order.
+  const ownerRank = new Map<string, number>();
+  let nextRank = 0;
+  // The live nodes where each owner is validating or has errors.
+  const ownerNodes = new Map<string, Set<Node<E>>>();
+  // Live nodes with validation errors, the only ones whose shown errors depend on the submit count.
+  const withErrors = new Set<Node<E>>();
+
+  let submission: Submission<I, R> = idleSubmission;
+  let submitCount = 0;
+  let formCell: Cell<FormSnapshot<I, R>> | undefined;
+  let serverForm: FormSnapshot<I, R> | undefined;
+  let formDirty = false;
+  let formDirtyFor: unknown = stale;
 
   // Where `node` sits now, from its parent's value and key list.
-  const place = (node: Node) => {
+  const place = (node: Node<E>) => {
     const parent = node.parent;
     if (!parent) {
       node.value = current;
@@ -132,30 +277,191 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     else if (holder !== undefined && holder !== null) node.blocked = true;
   };
 
-  const nameOf = (node: Node) => {
+  const nameOf = (node: Node<E>) => {
     const parent = node.parent;
     if (!parent) return "";
     const segment = node.index >= 0 ? String(node.index) : node.seg;
     return parent.name === "" ? segment : `${parent.name}.${segment}`;
   };
 
-  const bury = (node: Node) => {
+  const stablePathOf = (node: Node<E>): Path => {
+    const path: string[] = [];
+    for (let n = node; n.parent; n = n.parent) path.unshift(n.seg);
+    return path;
+  };
+
+  const dirtyOf = (node: Node<E>): boolean => {
+    if (!dirtyHook) return false;
+    if (!Object.is(node.dirtyFor, node.value)) {
+      node.dirty = dirtyHook(stablePathOf(node), node.value);
+      node.dirtyFor = node.value;
+    }
+    return node.dirty;
+  };
+
+  // True when `show` lets the node's validation errors through.
+  const showsValidation = (node: Node<E>, dirty: boolean): boolean => {
+    const touched = node.touched;
+    const submitted = submitCount > 0;
+    if (typeof show === "function") return show({ touched, edited: node.editedCount > 0, dirty, submitCount });
+    if (show === "always") return true;
+    if (show === "touched") return touched;
+    if (show === "submitted") return submitted;
+    return touched || submitted;
+  };
+
+  const build = (node: Node<E>): Snapshot<E> => {
+    const dirty = dirtyOf(node);
+    const invalid = node.validation.length > 0;
+    // User errors always show: something set them on purpose.
+    const shownErrors = invalid && showsValidation(node, dirty) ? node.errors : node.user;
+    return entries(node.value, node.name, Array.isArray(node.value) && node.list ? keysView(node.list) : undefined, {
+      errors: node.errors,
+      shownErrors,
+      invalid,
+      touched: node.touched,
+      edited: node.editedCount > 0,
+      dirty,
+      validating: node.validating !== undefined,
+      disabled: node.disabled.on,
+      readOnly: node.readOnly.on,
+    });
+  };
+
+  // Gives `cell` its new snapshot and queues its listeners.
+  const replace = <S>(cell: Cell<S>, next: S) => {
+    const previous = cell.snapshot;
+    if (next === previous) return;
+    cell.snapshot = next;
+    if (cell.subscriptions && !pending.has(cell)) {
+      cell.before = previous;
+      pending.add(cell);
+    }
+  };
+
+  const rebuild = (node: Node<E>) => replace(node, settle(build(node), node.snapshot, node.before));
+
+  const buildForm = (): FormSnapshot<I, R> => {
+    if (dirtyHook && !Object.is(formDirtyFor, current)) {
+      formDirty = dirtyHook([], current);
+      formDirtyFor = current;
+    }
+    return {
+      valid: (root?.invalidCount ?? 0) === 0,
+      validating: (root?.validatingCount ?? 0) > 0,
+      dirty: formDirty,
+      submitting: submission.status === "submitting",
+      submission,
+      submitCount,
+    };
+  };
+
+  const serverFormSnapshot = (): FormSnapshot<I, R> =>
+    (serverForm ??= freeze({
+      valid: true,
+      validating: false,
+      dirty: false,
+      submitting: false,
+      submission: idleSubmission,
+      submitCount: 0,
+    }));
+
+  // The form snapshot is only kept up to date once something has read it.
+  const refreshForm = () => {
+    if (formCell) replace(formCell, settle(buildForm(), formCell.snapshot, formCell.before));
+  };
+
+  // Adds `delta` to `count` on `from` and every node above it. A node whose
+  // edited state flips gets a new snapshot. The other counts only show on the form.
+  const bump = (from: Node<E> | undefined, count: Count, delta: number) => {
+    if (delta === 0) return;
+    for (let n = from; n; n = n.parent) {
+      const was = n[count] > 0;
+      n[count] += delta;
+      if (count === "editedCount" && was !== n[count] > 0) rebuild(n);
+    }
+  };
+
+  const track = (owner: string, node: Node<E>) => {
+    let nodes = ownerNodes.get(owner);
+    if (!nodes) ownerNodes.set(owner, (nodes = new Set()));
+    nodes.add(node);
+  };
+
+  const untrack = (owner: string, node: Node<E>) => {
+    if (node.validating?.has(owner) || node.byOwner?.has(owner)) return;
+    ownerNodes.get(owner)?.delete(node);
+  };
+
+  const rankOf = (owner: string): number => {
+    let rank = ownerRank.get(owner);
+    if (rank === undefined) ownerRank.set(owner, (rank = nextRank++));
+    return rank;
+  };
+
+  // Joins the owners' lists in owner order, keeping the current list when nothing in it changed.
+  const joinValidation = (node: Node<E>): readonly E[] => {
+    const byOwner = node.byOwner;
+    if (!byOwner || byOwner.size === 0) return none;
+    if (byOwner.size === 1) for (const list of byOwner.values()) return list;
+    // Few owners share a field, so an insertion sort is enough.
+    const ordered: { rank: number; list: readonly E[] }[] = [];
+    for (const [owner, list] of byOwner) {
+      const rank = rankOf(owner);
+      let at = ordered.length;
+      while (at > 0 && (ordered[at - 1]?.rank ?? -1) > rank) at--;
+      ordered.splice(at, 0, { rank, list });
+    }
+    const joined = ordered.flatMap((entry) => entry.list);
+    return sameList(joined, node.validation) ? node.validation : freeze(joined);
+  };
+
+  // Recomputes the node's error lists and counts from `byOwner` and `user`, then its snapshot.
+  const refreshErrors = (node: Node<E>) => {
+    const validation = joinValidation(node);
+    const was = node.validation.length > 0;
+    const is = validation.length > 0;
+    node.validation = validation;
+    if (was !== is) {
+      bump(node, "invalidCount", is ? 1 : -1);
+      if (is) withErrors.add(node);
+      else withErrors.delete(node);
+    }
+    const { user } = node;
+    if (validation.length === 0) node.errors = user;
+    else if (user.length === 0) node.errors = validation;
+    else {
+      const joined = [...validation, ...user];
+      if (!sameList(joined, node.errors)) node.errors = freeze(joined);
+    }
+    rebuild(node);
+  };
+
+  // Marks `node` and its subtree dead and drops them from the store-wide indexes.
+  const bury = (node: Node<E>) => {
     node.dead = true;
+    withErrors.delete(node);
+    if (node.validating) for (const owner of node.validating) ownerNodes.get(owner)?.delete(node);
+    if (node.byOwner) for (const owner of node.byOwner.keys()) ownerNodes.get(owner)?.delete(node);
     if (node.children) for (const child of node.children.values()) bury(child);
   };
 
-  // Moves the child at item key `key` to `removed` and marks its subtree dead.
-  // Its snapshots are current as of the last write, so they stay the last ones.
-  const kill = (node: Node, key: string) => {
+  // Moves the child at item key `key` to `removed`, takes its state out of the
+  // counts above it and marks its subtree dead. Its snapshots are current as
+  // of the last change, so they stay the last ones.
+  const kill = (node: Node<E>, key: string) => {
     const child = node.children?.get(key);
     if (!child) return;
     node.children?.delete(key);
     (node.removed ??= new Map()).set(key, child);
+    bump(node, "editedCount", -child.editedCount);
+    bump(node, "invalidCount", -child.invalidCount);
+    bump(node, "validatingCount", -child.validatingCount);
     bury(child);
   };
 
   // Fits the key list to the value. Keys are made here the first time the value is an array.
-  const syncKeys = (node: Node) => {
+  const syncKeys = (node: Node<E>) => {
     const length = Array.isArray(node.value) ? node.value.length : 0;
     if (!node.list) {
       if (Array.isArray(node.value)) node.list = createKeyList(length);
@@ -164,23 +470,8 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     for (const key of resizeKeys(node.list, length)) kill(node, key);
   };
 
-  // Step 3 adds per-field state to the snapshot here.
-  const build = (node: Node) =>
-    entries(node.value, node.name, Array.isArray(node.value) && node.list ? keysView(node.list) : undefined);
-
-  const rebuild = (node: Node) => {
-    const previous = node.snapshot;
-    const next = settle(build(node), previous, node.before);
-    if (next === previous) return;
-    node.snapshot = next;
-    if (node.subscriptions && !pending.has(node)) {
-      node.before = previous;
-      pending.add(node);
-    }
-  };
-
-  const createNode = (parent: Node | undefined, seg: string): Node => {
-    const node: Node = {
+  const createNode = (parent: Node<E> | undefined, seg: string): Node<E> => {
+    const node: Node<E> = {
       parent,
       seg,
       value: undefined,
@@ -195,12 +486,26 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
       children: undefined,
       removed: undefined,
       subscriptions: undefined,
+      touched: false,
+      marked: false,
+      editedCount: 0,
+      invalidCount: 0,
+      validatingCount: 0,
+      disabled: parent ? flagFrom(declUnder(parent.disabled.decl, seg), parent.disabled) : flagFrom(options.disabled, undefined),
+      readOnly: parent ? flagFrom(declUnder(parent.readOnly.decl, seg), parent.readOnly) : flagFrom(options.readOnly, undefined),
+      validating: undefined,
+      byOwner: undefined,
+      validation: none,
+      user: none,
+      errors: none,
+      dirty: false,
+      dirtyFor: stale,
     };
     place(node);
     node.name = nameOf(node);
     syncKeys(node);
     node.snapshot = settle(build(node), undefined, undefined);
-    if (writes === 0) node.server = node.snapshot;
+    if (changes === 0) node.server = node.snapshot;
     return node;
   };
 
@@ -214,7 +519,7 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     return root;
   };
 
-  const nodeAt = (path: Path): Node => {
+  const nodeAt = (path: Path): Node<E> => {
     let node = rootNode();
     for (const segment of path) {
       const seg = String(segment);
@@ -228,10 +533,27 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     return node;
   };
 
+  // The node at `path` when it exists, without making any.
+  const findNode = (path: Path): Node<E> | undefined => {
+    let node = root;
+    for (const segment of path) {
+      if (!node) return undefined;
+      const seg = String(segment);
+      node = node.children?.get(seg) ?? node.removed?.get(seg);
+    }
+    return node;
+  };
+
+  // The node at `path` when state can be set there.
+  const fieldAt = (path: Path): Node<E> | undefined => {
+    const node = nodeAt(path);
+    return node.dead || node.blocked ? undefined : node;
+  };
+
   // Brings `node` and its subtree up to date. A child whose value, index and
   // reach didn't change is skipped with everything below it, so a write only
   // visits nodes it can have changed.
-  const update = (node: Node, renamed: boolean) => {
+  const update = (node: Node<E>, renamed: boolean) => {
     const { value, index, blocked } = node;
     place(node);
     const moved = renamed || node.index !== index;
@@ -243,7 +565,7 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
   };
 
   // Updates `node` and its ancestors, root first, without visiting their other children.
-  const refreshDown = (node: Node): void => {
+  const refreshDown = (node: Node<E>): void => {
     if (node.parent) refreshDown(node.parent);
     place(node);
     syncKeys(node);
@@ -252,18 +574,18 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
 
   const flush = () => {
     if (pending.size === 0) return;
-    const nodes = [...pending];
+    const cells = [...pending];
     pending.clear();
     let failed = false;
     let error: unknown;
-    for (const node of nodes) {
-      node.before = undefined;
-      if (!node.subscriptions) continue;
+    for (const cell of cells) {
+      cell.before = undefined;
+      if (!cell.subscriptions) continue;
       // A Set skips entries deleted during the loop. One added during the loop
       // has already seen the current snapshot, so the check below skips it.
-      for (const subscription of node.subscriptions) {
-        if (!subscription.active || subscription.seen === node.snapshot) continue;
-        subscription.seen = node.snapshot;
+      for (const subscription of cell.subscriptions) {
+        if (!subscription.active || subscription.seen === cell.snapshot) continue;
+        subscription.seen = cell.snapshot;
         try {
           subscription.listener();
         } catch (caught) {
@@ -277,28 +599,36 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     if (failed) throw error;
   };
 
+  // Ends a command: brings the form snapshot up to date and runs listeners unless a batch is open.
+  const finish = (changed: boolean): boolean => {
+    if (!changed) return false;
+    changes++;
+    refreshForm();
+    if (batchDepth === 0) flush();
+    return true;
+  };
+
   // Makes `next` the value, updates the written node's ancestors and subtree,
   // then runs listeners unless a batch is open.
-  const commit = (next: unknown, target: Node) => {
+  const commit = (next: unknown, target: Node<E>) => {
     // Written values are frozen in development. This stops at frozen nodes,
     // so it freezes the new copies on the written path and the written value.
     current = dev ? deepFreeze(next) : next;
-    writes++;
     if (target.parent) refreshDown(target.parent);
     update(target, false);
-    if (batchDepth === 0) flush();
+    finish(true);
   };
 
-  const valuePathOf = (node: Node): PathSegment[] => {
+  const valuePathOf = (node: Node<E>): PathSegment[] => {
     const path: PathSegment[] = [];
     for (let n = node; n.parent; n = n.parent) path.unshift(n.index >= 0 ? n.index : n.seg);
     return path;
   };
 
-  const writeAt = (node: Node, value: unknown) => commit(setAt(current, valuePathOf(node), value), node);
+  const writeAt = (node: Node<E>, value: unknown) => commit(setAt(current, valuePathOf(node), value), node);
 
   // The array node at `path` when it can take an array write: an array, or missing.
-  const arrayAt = (path: Path): { node: Node; items: readonly unknown[] } | undefined => {
+  const arrayAt = (path: Path): { node: Node<E>; items: readonly unknown[] } | undefined => {
     const node = nodeAt(path);
     if (node.dead || node.blocked) return undefined;
     if (Array.isArray(node.value)) return { node, items: node.value };
@@ -306,53 +636,103 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
     return undefined;
   };
 
+  interface InitialPlace {
+    readonly value: unknown;
+    readonly name: string;
+    readonly blocked: boolean;
+    readonly disabled: Flag;
+    readonly readOnly: Flag;
+  }
+
   // Where `node` sat in the initial value, using the positional keys every
-  // key list starts with.
-  const initialPlace = (node: Node): { value: unknown; name: string; blocked: boolean } => {
-    if (!node.parent) return { value: initial, name: "", blocked: false };
+  // key list starts with, and the flags it started with.
+  const initialPlace = (node: Node<E>): InitialPlace => {
+    if (!node.parent) {
+      const disabled = flagFrom(options.disabled, undefined);
+      const readOnly = flagFrom(options.readOnly, undefined);
+      return { value: initial, name: "", blocked: false, disabled, readOnly };
+    }
     const parent = initialPlace(node.parent);
-    const join = (segment: string) => (parent.name === "" ? segment : `${parent.name}.${segment}`);
+    const disabled = flagFrom(declUnder(parent.disabled.decl, node.seg), parent.disabled);
+    const readOnly = flagFrom(declUnder(parent.readOnly.decl, node.seg), parent.readOnly);
+    const at = (value: unknown, segment: string, blocked: boolean): InitialPlace => ({
+      value,
+      name: parent.name === "" ? segment : `${parent.name}.${segment}`,
+      blocked,
+      disabled,
+      readOnly,
+    });
     const holder = parent.value;
-    if (parent.blocked) return { value: undefined, name: join(node.seg), blocked: true };
+    if (parent.blocked) return at(undefined, node.seg, true);
     if (Array.isArray(holder)) {
       const index = initialIndex(node.seg, holder.length);
-      if (index < 0) return { value: undefined, name: join(node.seg), blocked: true };
+      if (index < 0) return at(undefined, node.seg, true);
       const item: unknown = holder[index];
-      return { value: item, name: join(String(index)), blocked: false };
+      return at(item, String(index), false);
     }
-    if (isPlainObject(holder)) return { value: childOf(holder, node.seg), name: join(node.seg), blocked: false };
-    return { value: undefined, name: join(node.seg), blocked: holder !== undefined && holder !== null };
+    if (isPlainObject(holder)) return at(childOf(holder, node.seg), node.seg, false);
+    return at(undefined, node.seg, holder !== undefined && holder !== null);
   };
 
-  // The snapshot `node` had at creation, built from the initial value.
-  const serverOf = (node: Node): Snapshot => {
+  // The snapshot `node` had at creation, built from the initial value and flags.
+  const serverOf = (node: Node<E>): Snapshot<E> => {
     if (node.server) return node.server;
-    const { value, name } = initialPlace(node);
+    const { value, name, disabled, readOnly } = initialPlace(node);
     const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
-    node.server = settle(entries(value, name, keys && dev ? Object.freeze(keys) : keys), undefined, undefined);
+    const state = { ...idle, disabled: disabled.on, readOnly: readOnly.on };
+    node.server = settle(entries(value, name, keys && dev ? Object.freeze(keys) : keys, state), undefined, undefined);
     return node.server;
   };
 
+  // Sets the own flag and brings the existing nodes below up to date. A node
+  // made later reads its parent's flag when it is made.
+  const setFlag = (kind: FlagKind, path: Path, on: boolean): boolean => {
+    const node = fieldAt(path);
+    if (!node || node[kind].own === on) return false;
+    node[kind].own = on;
+    const inherit = (n: Node<E>) => {
+      const flag = n[kind];
+      const next = flag.own || (n.parent?.[kind].on ?? false);
+      if (next === flag.on) return;
+      flag.on = next;
+      rebuild(n);
+      if (n.children) for (const child of n.children.values()) inherit(child);
+    };
+    inherit(node);
+    return finish(true);
+  };
+
+  const listen = <S>(cell: Cell<S>, listener: () => void): (() => void) => {
+    const subscription: Subscription = { listener, seen: cell.snapshot, active: true };
+    (cell.subscriptions ??= new Set()).add(subscription);
+    return () => {
+      if (!subscription.active) return;
+      subscription.active = false;
+      cell.subscriptions?.delete(subscription);
+      // The set and the pending entry only serve subscribers, so they go with the last one.
+      if (cell.subscriptions?.size === 0) {
+        cell.subscriptions = undefined;
+        cell.before = undefined;
+        pending.delete(cell);
+      }
+    };
+  };
+
+  const form = (): Cell<FormSnapshot<I, R>> =>
+    (formCell ??= {
+      snapshot: settle(buildForm(), serverFormSnapshot(), undefined),
+      before: undefined,
+      subscriptions: undefined,
+    });
+
   return {
     id,
-    subscribe(path, listener) {
-      const node = nodeAt(path);
-      const subscription: Subscription = { listener, seen: node.snapshot, active: true };
-      (node.subscriptions ??= new Set()).add(subscription);
-      return () => {
-        if (!subscription.active) return;
-        subscription.active = false;
-        node.subscriptions?.delete(subscription);
-        // The set and the pending entry only serve subscribers, so they go with the last one.
-        if (node.subscriptions?.size === 0) {
-          node.subscriptions = undefined;
-          node.before = undefined;
-          pending.delete(node);
-        }
-      };
-    },
+    subscribe: (path, listener) => listen(nodeAt(path), listener),
     getSnapshot: (path) => nodeAt(path).snapshot,
     getServerSnapshot: (path) => serverOf(nodeAt(path)),
+    subscribeForm: (listener) => listen(form(), listener),
+    getFormSnapshot: () => form().snapshot,
+    getServerFormSnapshot: serverFormSnapshot,
     batch(fn) {
       batchDepth++;
       try {
@@ -400,10 +780,180 @@ export function createStoreCore({ id, initial }: StoreCoreOptions): StoreCore {
       writeAt(node, next);
       return true;
     },
+
+    setTouched(path, touched) {
+      const node = fieldAt(path);
+      if (!node || node.touched === touched) return false;
+      node.touched = touched;
+      rebuild(node);
+      return finish(true);
+    },
+    markEdited(path) {
+      const node = fieldAt(path);
+      if (!node || node.marked) return false;
+      node.marked = true;
+      bump(node, "editedCount", 1);
+      return finish(true);
+    },
+    setDisabled: (path, disabled) => setFlag("disabled", path, disabled),
+    setReadOnly: (path, readOnly) => setFlag("readOnly", path, readOnly),
+    addOwner(owner) {
+      rankOf(owner);
+    },
+    setValidating(owner, path, validating) {
+      const node = fieldAt(path);
+      if (!node) return false;
+      rankOf(owner);
+      const was = node.validating !== undefined;
+      if ((node.validating?.has(owner) ?? false) === validating) return false;
+      if (validating) {
+        (node.validating ??= new Set()).add(owner);
+        track(owner, node);
+      } else {
+        node.validating?.delete(owner);
+        if (node.validating?.size === 0) node.validating = undefined;
+        untrack(owner, node);
+      }
+      const is = node.validating !== undefined;
+      if (was !== is) {
+        bump(node, "validatingCount", is ? 1 : -1);
+        rebuild(node);
+      }
+      return finish(true);
+    },
+    setValidationErrors(owner, path, errors) {
+      const node = fieldAt(path);
+      if (!node) return false;
+      rankOf(owner);
+      if (sameList(node.byOwner?.get(owner) ?? none, errors)) return false;
+      if (errors.length === 0) {
+        node.byOwner?.delete(owner);
+        untrack(owner, node);
+      } else {
+        (node.byOwner ??= new Map()).set(owner, listOf(errors));
+        track(owner, node);
+      }
+      refreshErrors(node);
+      return finish(true);
+    },
+    setUserErrors(path, errors) {
+      const node = fieldAt(path);
+      if (!node || sameList(node.user, errors)) return false;
+      node.user = listOf(errors);
+      refreshErrors(node);
+      return finish(true);
+    },
+    clearState(path, clearOptions) {
+      const start = findNode(path);
+      if (!start || start.dead) return false;
+      const validation = clearOptions?.validation === true;
+      let changed = false;
+      const visit = (node: Node<E>) => {
+        let dirty = false;
+        if (node.touched) {
+          node.touched = false;
+          dirty = true;
+        }
+        if (node.marked) {
+          node.marked = false;
+          changed = true;
+          // Rebuilds this node and those above it whose edited state flips.
+          bump(node, "editedCount", -1);
+        }
+        if (node.user.length > 0) {
+          node.user = none;
+          dirty = true;
+        }
+        if (validation && node.byOwner && node.byOwner.size > 0) {
+          const owners = [...node.byOwner.keys()];
+          node.byOwner = undefined;
+          for (const owner of owners) untrack(owner, node);
+          dirty = true;
+        }
+        if (dirty) {
+          changed = true;
+          refreshErrors(node);
+        }
+        if (node.children) for (const child of node.children.values()) visit(child);
+      };
+      visit(start);
+      return finish(changed);
+    },
+    removeOwner(owner) {
+      ownerRank.delete(owner);
+      const nodes = ownerNodes.get(owner);
+      ownerNodes.delete(owner);
+      if (!nodes || nodes.size === 0) return false;
+      for (const node of nodes) {
+        if (node.validating?.delete(owner)) {
+          if (node.validating.size === 0) {
+            node.validating = undefined;
+            bump(node, "validatingCount", -1);
+          }
+        }
+        node.byOwner?.delete(owner);
+        refreshErrors(node);
+      }
+      return finish(true);
+    },
+    setSubmission(next) {
+      if (Object.is(next, submission)) return false;
+      submission = freeze(next);
+      return finish(true);
+    },
+    setSubmitCount(count) {
+      if (count === submitCount) return false;
+      const was = submitCount;
+      submitCount = count;
+      // Only fields with validation errors can show something different.
+      const matters = typeof show === "function" || ((show === "submitted" || show === "touched-or-submitted") && was > 0 !== count > 0);
+      if (matters) for (const node of withErrors) rebuild(node);
+      return finish(true);
+    },
+    recheckDirty() {
+      if (!dirtyHook) return;
+      formDirtyFor = stale;
+      const visit = (node: Node<E>) => {
+        node.dirtyFor = stale;
+        rebuild(node);
+        if (node.children) for (const child of node.children.values()) visit(child);
+      };
+      if (root) visit(root);
+      finish(true);
+    },
+    pathOf(name) {
+      // A property name that contains a dot can't be told apart from two
+      // steps, so such a field resolves to the wrong path or to none.
+      if (name === "") return [];
+      const path: string[] = [];
+      let value = current;
+      let node = root;
+      for (const part of name.split(".")) {
+        let seg: string | undefined;
+        if (Array.isArray(value)) {
+          if (!/^(0|[1-9]\d*)$/.test(part)) return undefined;
+          const at = Number(part);
+          if (at >= value.length) return undefined;
+          seg = keyAt(node?.list, at);
+          value = value[at];
+        } else if (isPlainObject(value)) {
+          seg = part;
+          value = childOf(value, part);
+        } else if (value === undefined || value === null) {
+          // A missing object's fields are still fields, as reads and writes treat them.
+          seg = part;
+        } else return undefined;
+        if (seg === undefined) return undefined;
+        path.push(seg);
+        node = node?.children?.get(seg);
+      }
+      return path;
+    },
+
     stats() {
       let nodes = 0;
       let subscribed = 0;
-      const count = (node: Node) => {
+      const count = (node: Node<E>) => {
         nodes++;
         if (node.subscriptions) subscribed++;
         if (node.children) for (const child of node.children.values()) count(child);

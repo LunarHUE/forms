@@ -30,6 +30,15 @@ export function initialKeys(length: number): readonly string[] {
   return createKeyList(length).keys;
 }
 
+/**
+ * The key of the item at `index`. Without a list it is the positional key
+ * the list will get when it is made, since lists are made from the current
+ * value.
+ */
+export function keyAt(list: KeyList | undefined, index: number): string | undefined {
+  return list ? list.keys[index] : keyFor(index);
+}
+
 /** The index `key` had when its list was made for an array of `length` items, or -1. */
 export function initialIndex(key: string, length: number): number {
   const match = /^k(0|[1-9]\d*)$/.exec(key);
