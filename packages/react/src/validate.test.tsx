@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
+import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -85,6 +85,38 @@ function WithHome() {
   return <HomeFields field={form.root.at("home")} />;
 }
 
+/** A registered radio group written with `Choice`. */
+function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly options: readonly Choice[] }) {
+  return (
+    <>
+      {props.options.map((option) => (
+        <label key={option}>
+          {option}
+          <input {...props.field.inputProps({ kind: "radio", value: option })} />
+        </label>
+      ))}
+    </>
+  );
+}
+
+const choiceForms = createForms({ fields: { RadioGroupField } });
+const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
+const delivery = choiceForms.define({ defaultValues: deliveryStart });
+const deliveryHolder: { form?: FormOf<typeof delivery> } = {};
+function Delivery() {
+  const form = useForm(delivery);
+  useEffect(() => {
+    deliveryHolder.form = form;
+  });
+  return (
+    <form.RadioGroupField
+      name="method"
+      options={["post", "pickup"]}
+      validate={(value) => (value === "pickup" ? { message: "no pickup" } : undefined)}
+    />
+  );
+}
+
 describe("the validate prop", () => {
   it("runs on the form's timing, shows its errors, and never reaches the registered component", () => {
     given.length = 0;
@@ -98,6 +130,17 @@ describe("the validate prop", () => {
     expect(errorsOf("Email")).toBe("");
     expect(given.length).toBeGreaterThan(0);
     for (const props of given) expect(new Set(Object.keys(props))).toEqual(new Set(["field", "label"]));
+  });
+
+  it("works on a registered component written with Choice", async () => {
+    render(<Delivery />);
+    fireEvent.click(screen.getByLabelText("pickup"));
+    const form = deliveryHolder.form;
+    if (form === undefined) throw new Error("no form rendered");
+    await act(async () => {
+      await form.store.validate();
+    });
+    expect(form.root.at("method").peek().errors.map((error) => error.message)).toEqual(["no pickup"]);
   });
 
   it("works on a scope's components", () => {

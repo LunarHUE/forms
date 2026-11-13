@@ -290,17 +290,25 @@ export type NameFittingChoice<V, E, T> =
  * TypeScript reports the error of the last signature only, so the `name`
  * signature comes last: a wrong name lists the names that fit, and a wrong
  * option lists the field's options. A handle that doesn't fit is reported
- * against that signature too, as not assignable to `never`.
+ * against that signature too, as not assignable to `never`. `validate`
+ * works as on `BoundFieldComponent`.
  */
 export interface BoundChoiceComponent<V, E, T, P> {
   <H extends HandleLike>(
     props: WithChoice<P, ChoiceValue<T, ValueOf<H>>> & {
       readonly handle: H & ChoiceHandle<T, ValueOf<H>, E>;
       readonly name?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
     },
   ): ReactElement;
   <N extends NameFittingChoice<V, E, T>>(
-    props: WithChoice<P, ChoiceValue<T, ValueAt<V, N>>> & { readonly name: N; readonly handle?: never },
+    props: WithChoice<P, ChoiceValue<T, ValueAt<V, N>>> & {
+      readonly name: N;
+      readonly handle?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueAt<V, N>, E>;
+    },
   ): ReactElement;
 }
 

@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
-import { type CheckableProps, type Choice, createForms, createInputProps, type FieldApi } from "./index.js";
+import { type Choice, createForm, createForms, type FieldApi } from "./index.js";
 
 interface Option<T> {
   readonly value: T;
@@ -76,7 +76,7 @@ const countries = [
 
 // Stands for the field's options.
 function RightUses() {
-  const form = profile.createForm();
+  const form = createForm(profile);
   return (
     <>
       <form.SelectField name="country" label="Country" options={countries} />
@@ -96,21 +96,45 @@ function RightUses() {
   );
 }
 
-// Takes a checkbox of a picklist array, whose items start undefined.
-function PicklistArray() {
-  const form = profile.createForm();
-  const channels = form.root.at("channels");
-  expectTypeOf(createInputProps(channels, { kind: "checkbox", value: "sms" })).toEqualTypeOf<CheckableProps>();
-  // @ts-expect-error: push is not a channel
-  createInputProps(channels, { kind: "checkbox", value: "push" });
-  // @ts-expect-error: a box's value is an option, never undefined
-  createInputProps(channels, { kind: "checkbox", value: undefined });
-  return null;
+// Takes a validate prop typed with the named field's own value.
+function ValidateUses() {
+  const form = createForm(profile);
+  return (
+    <>
+      <form.SelectField
+        name="country"
+        label="Country"
+        options={countries}
+        validate={(value) => (expectTypeOf(value).toEqualTypeOf<"GB" | "IE" | undefined>(), null)}
+      />
+      <form.CheckboxGroupField
+        name="channels"
+        options={[{ value: "sms", label: "SMS" }]}
+        validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), debounce: 300 }}
+      />
+      <form.SelectField
+        handle={form.root.at("country")}
+        label="Country"
+        options={countries}
+        validate={(value) => (expectTypeOf(value).toEqualTypeOf<"GB" | "IE" | undefined>(), null)}
+      />
+      <form.RadioGroupField name="country" options={countries} validate={false} />
+      {/* @ts-expect-error: country holds its options, not numbers */}
+      <form.SelectField name="country" label="Country" options={countries} validate={(value: number) => (value > 0 ? null : { message: "No" })} />
+      {/* @ts-expect-error: channels is an array */}
+      <form.CheckboxGroupField name="channels" options={[]} validate={(value: string) => (value === "" ? null : { message: "No" })} />
+    </>
+  );
+}
+
+// A registered option component that declares a validate prop of its own.
+function OwnValidateSelect(props: { field: FieldApi<Choice>; options: readonly Option<Choice>[]; validate?: boolean }) {
+  return <select {...props.field.inputProps({ kind: "select" })} data-validate={props.validate} />;
 }
 
 // Rejects options and fields that don't fit.
 function WrongUses() {
-  const form = profile.createForm();
+  const form = createForm(profile);
   return (
     <>
       {/* @ts-expect-error: FR is not one of the country options */}
@@ -144,8 +168,14 @@ describe("Choice", () => {
     expectTypeOf(RightUses).toBeFunction();
   });
 
-  it("takes a checkbox of a picklist array, whose items start undefined", () => {
-    expectTypeOf(PicklistArray).toBeFunction();
+  it("takes a validate prop typed with the named field's own value", () => {
+    expectTypeOf(ValidateUses).toBeFunction();
+  });
+
+  it("rejects a registered option component that declares validate", () => {
+    // @ts-expect-error: validate is the bound component's own prop
+    createForms({ fields: { OwnValidateSelect } });
+    expectTypeOf(createForms({ fields: { SelectField } })).toBeObject();
   });
 
   it("rejects options and fields that don't fit", () => {

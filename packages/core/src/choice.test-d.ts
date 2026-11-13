@@ -16,7 +16,7 @@ interface Props {
 describe("Choice", () => {
   it("drafts like a union of literals", () => {
     expectTypeOf<Draft<Choice>>().toEqualTypeOf<Choice | undefined>();
-    expectTypeOf<Draft<Choice[]>>().toEqualTypeOf<(Choice | undefined)[]>();
+    expectTypeOf<Draft<Choice[]>>().toEqualTypeOf<Choice[]>();
   });
 
   it("is found in a field type", () => {
