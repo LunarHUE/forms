@@ -115,11 +115,21 @@ describe("install", () => {
     expect(() => make(contact(), [a, b])).toThrow(/part of an `after` cycle/);
   });
 
-  it("throws the package and a short code in production", () => {
+  it("ends each error with a link to its code in development", () => {
+    const one = definePlugin({ name: "one", setup: () => ({}) });
+    expect(() => make(contact(), [one, one])).toThrow(
+      /^@lunarhue\/forms-core: Two plugins are named "one"\. https:\/\/\S+#core:plugins:name$/,
+    );
+  });
+
+  it("throws the package, a short code and its value in production", () => {
     vi.stubEnv("NODE_ENV", "production");
     try {
       const one = definePlugin({ name: "one", setup: () => ({}) });
-      expect(() => make(contact(), [one, one])).toThrow(/^@lunarhue\/forms-core: plugins:name$/);
+      expect(() => make(contact(), [one, one])).toThrow(/^@lunarhue\/forms-core: plugins:name one$/);
+      const a = definePlugin({ name: "a", after: ["b"], setup: () => ({}) });
+      const b = definePlugin({ name: "b", after: ["a"], setup: () => ({}) });
+      expect(() => make(contact(), [a, b])).toThrow(/^@lunarhue\/forms-core: plugins:cycle a$/);
       const { rebase: api } = make(contact(), [rebase()]).plugins;
       expect(() => api(make(contact(), []).root, contact(), () => "keep")).toThrow(/^@lunarhue\/forms-core: rebase:store$/);
     } finally {
@@ -137,7 +147,11 @@ describe("install", () => {
     // Another copy's plugin carries that copy's host.
     const copy = { ...two, "~host": (...args: Parameters<(typeof two)["~host"]>) => two["~host"](...args) };
     make(contact(), [one, copy]);
-    expect(warn).toHaveBeenCalledWith("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^@lunarhue\/forms-core: This store's plugins come from two copies of @lunarhue\/forms-core\. Install one copy\. https:\/\/\S+#core:plugins:copies$/,
+      ),
+    );
   });
 
   it("ignores a name in `after` that isn't installed", () => {
@@ -475,6 +489,14 @@ describe("isolation", () => {
     // The store still works.
     store.root.at("code").setValue("after");
     expect(store.root.at("code").peek().value).not.toBe("");
+    // Production keeps the names after the code.
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      store.root.at("phone").setValue("again");
+      expect(String(errors[errors.length - 1]?.[0])).toMatch(/^Error: @lunarhue\/forms-core: plugins:loop ping, pong$/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("reports a throwing hook, and the write and the other plugins carry on", () => {
@@ -550,10 +572,8 @@ describe("isolation", () => {
     });
     const store = make(contact(), [rude, ruder], (error) => errors.push(error));
     store.root.at("phone").setValue("1");
-    expect(errors.map(String)).toEqual([
-      "Error: A plugin wrote to the store from inside a hook. Write through `ctx.write`.",
-      "Error: A plugin wrote to the store from inside a hook. Write through `ctx.write`.",
-    ]);
+    const wrote = /^Error: @lunarhue\/forms-core: A plugin wrote to the store from inside a hook\. Write through `ctx\.write`\. https:\/\/\S+#core:plugins:write$/;
+    expect(errors.map(String)).toEqual([expect.stringMatching(wrote), expect.stringMatching(wrote)]);
     expect(store.root.at("code").peek()).toMatchObject({ value: "", touched: false });
   });
 

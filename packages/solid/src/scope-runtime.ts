@@ -2,6 +2,7 @@ import type { AnyFieldHandle, Validator, ValidatorInput } from "@lunarhue/forms-
 import { createComponent, For, merge, omit, untrack, type Accessor, type Element as SolidElement } from "solid-js";
 import { createFieldApi } from "./field-api.js";
 import { createItemList } from "./items.js";
+import { problem } from "./problem.js";
 import { addValidator } from "./validator.js";
 
 /** A handle with its types erased, as the runtime uses it. */
@@ -51,7 +52,7 @@ interface ItemsProps extends FieldTarget {
 function resolveField(root: RuntimeHandle, props: FieldTarget): RuntimeHandle {
   return untrack(() => {
     if (props.handle !== undefined) return props.handle;
-    if (props.name === undefined) throw new Error("@lunarhue/forms-solid: give a bound component a `name` or a `handle`.");
+    if (props.name === undefined) throw new Error(problem("field:target"));
     let handle = root;
     for (const segment of props.name.split(".")) handle = handle.at(segment);
     return handle;

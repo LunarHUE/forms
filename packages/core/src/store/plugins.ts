@@ -14,37 +14,15 @@ import type { AnyFormStore } from "../store.js";
 import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
 import type { Validation } from "./runner.js";
+import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 
-// Core has no DOM or node types, so this declares the platform globals the host uses.
+// Core has no DOM types, so this declares the platform globals the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
 declare const scheduler: { postTask?(fn: () => void, options: { readonly priority: string }): unknown } | undefined;
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** How many rounds of plugin writes one batch may set off before the host stops them. */
 const maxRounds = 10;
-
-/** What went wrong, as the short code a production build reports. */
-type Problem = "name" | "cycle" | "write" | "loop";
-
-/**
- * The error for `problem`. Development gets a sentence, built from `detail`.
- * A bundler replaces the read of NODE_ENV with "production", folds the check
- * to false and drops the sentences, so production gets
- * `@lunarhue/forms-core: plugins:<problem>`, which docs/errors.md lists.
- */
-function failure(problem: Problem, detail: string): Error {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-    const sentences: Record<Problem, string> = {
-      name: `Two plugins are named "${detail}".`,
-      cycle: `Plugin "${detail}" is part of an \`after\` cycle.`,
-      write: "A plugin wrote to the store from inside a hook. Write through `ctx.write`.",
-      loop: `Plugins kept answering each other's writes for ${maxRounds} rounds: ${detail}.`,
-    };
-    return new Error(sentences[problem]);
-  }
-  return new Error(`@lunarhue/forms-core: plugins:${problem}`);
-}
 
 /** Returned from `beforeWrite` to stop the write. */
 export const refuse: unique symbol = Symbol("refuse");
@@ -113,7 +91,7 @@ interface Bucket {
 function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
   const byName = new Map<string, AnyHookPlugin>();
   for (const plugin of plugins) {
-    if (byName.has(plugin.name)) throw failure("name", plugin.name);
+    if (byName.has(plugin.name)) throw new Error(problem("plugins:name", plugin.name));
     byName.set(plugin.name, plugin);
   }
   const ordered: AnyHookPlugin[] = [];
@@ -122,7 +100,7 @@ function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
   const visit = (plugin: AnyHookPlugin) => {
     const state = placed.get(plugin);
     if (state) return;
-    if (state === false) throw failure("cycle", plugin.name);
+    if (state === false) throw new Error(problem("plugins:cycle", plugin.name));
     placed.set(plugin, false);
     for (const name of plugin.after ?? []) {
       const before = byName.get(name);
@@ -235,7 +213,7 @@ export function createPluginHost(
           const names = [...writers].join(", ");
           records = [];
           queue = [];
-          report(failure("loop", names), names);
+          report(new Error(problem("plugins:loop", names)), names);
           break;
         }
         if (paths.length > 0) changed?.(paths.splice(0));
@@ -276,7 +254,7 @@ export function createPluginHost(
 
   // Every wrapped write runs in a batch, so its records reach the `sync` observers before listeners run.
   const recorded = <T>(fn: () => T): T => {
-    if (inHook > 0) throw failure("write", "");
+    if (inHook > 0) throw new Error(problem("plugins:write"));
     return batch(fn);
   };
 

@@ -86,7 +86,8 @@ describe("defaults", () => {
     expect(() => form.createStore()).toThrow(/vendor "other".*defaultValues/);
     vi.stubEnv("NODE_ENV", "production");
     try {
-      expect(() => form.createStore()).toThrow(/^@lunarhue\/forms-core: schema:defaults$/);
+      // The code and the vendor. Core leaves the sentence and the link out of production.
+      expect(() => form.createStore()).toThrow(/^@lunarhue\/forms-core: schema:defaults other$/);
     } finally {
       vi.unstubAllEnvs();
     }
