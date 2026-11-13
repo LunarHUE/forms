@@ -1,0 +1,48 @@
+{
+  "name": "@lunarhue/forms-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": {
+    "packages": [
+      "packages/*",
+      "apps/*",
+      "examples/*/*"
+    ],
+    "catalog": {
+      "@arethetypeswrong/cli": "0.18.5",
+      "@changesets/cli": "3.0.3",
+      "@size-limit/preset-small-lib": "14.3.0",
+      "eslint-plugin-react-hooks": "7.1.1",
+      "oxlint": "1.93.0",
+      "oxlint-tsgolint": "7.0.2007",
+      "publint": "0.3.25",
+      "size-limit": "14.3.0",
+      "tsdown": "0.23.7",
+      "typescript": "7.0.2",
+      "vite": "8.3.8",
+      "vitest": "5.1.0"
+    }
+  },
+  "scripts": {
+    "build": "bun run --filter './packages/*' build",
+    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' typecheck",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "check:package": "bun run --filter './packages/*' check:package",
+    "size": "bun run --filter './packages/*' size"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@changesets/cli": "catalog:",
+    "@size-limit/preset-small-lib": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "publint": "catalog:",
+    "size-limit": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
