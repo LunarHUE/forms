@@ -4,7 +4,7 @@ import { ownKeys } from "./store/baseline/equality.js";
 import { childKeys, keysOf, locate, type KeysFor, type KeyTrie } from "./store/baseline/keys.js";
 import { partsOf } from "./store/baseline/registry.js";
 import { sameList } from "./store/entries.js";
-import { dev } from "./store/freeze.js";
+import { freeze } from "./store/freeze.js";
 import { childOf, isPlainObject } from "./store/tree.js";
 
 /** One leaf whose current value differs from the incoming one. `Resolve` decides what it becomes. */
@@ -46,8 +46,6 @@ export interface RebaseResult {
 // whether a handle with a concrete error type is assignable to that depended
 // on the order the checker met the types in.
 export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V>, resolve: Resolve) => RebaseResult;
-
-const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
 
 /**
  * Implements `Rebase`. Objects are walked key by key. An array is walked item

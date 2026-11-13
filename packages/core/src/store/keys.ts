@@ -1,4 +1,4 @@
-import { dev } from "./freeze.js";
+import { freeze } from "./freeze.js";
 
 /** The stable item keys of one array, in item order. */
 export interface KeyList {
@@ -108,6 +108,6 @@ export function moveKey(list: KeyList, from: number, to: number): void {
 
 /** The keys as an immutable array. The same array until the list changes. */
 export function keysView(list: KeyList): readonly string[] {
-  list.view ??= dev ? Object.freeze(list.keys.slice()) : list.keys.slice();
+  list.view ??= freeze(list.keys.slice());
   return list.view;
 }

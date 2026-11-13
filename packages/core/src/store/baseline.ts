@@ -15,7 +15,7 @@ import {
 } from "./baseline/keys.js";
 import type { FormContext } from "./context.js";
 import { none, sameList } from "./entries.js";
-import { deepFreeze, dev, freezePath } from "./freeze.js";
+import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import { childOf, isPlainObject, setAt } from "./tree.js";
 
 /** The store options the baseline reads. */
@@ -71,14 +71,12 @@ export interface Baseline {
   readonly currentKeys: KeysFor;
 }
 
-const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
-
 // A copy of `container` with `inner` at `key`. In development the copy is
 // frozen as it is made, and so is `inner` when it is the written value.
 // Everything else is shared with the frozen baseline.
 const put = (container: unknown, key: PathSegment, inner: unknown): unknown => {
   const copy = setAt(container, [key], inner);
-  return dev ? freezePath(copy, [key]) : copy;
+  return freezePath(copy, [key]);
 };
 
 const emptyTrie = (): KeyTrie => ({ list: undefined, children: undefined });
@@ -105,7 +103,7 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
     forget();
     const built = buildKeys(p, value, keysFor);
     if (p.length === 0) {
-      root = dev ? deepFreeze(value) : value;
+      root = deepFreeze(value);
       trie = built;
       return;
     }
@@ -149,7 +147,7 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
     };
     // The shared branches must be frozen already. The initial value is frozen
     // here on the first move unless the core froze it first.
-    if (dev) deepFreeze(root);
+    deepFreeze(root);
     root = place(root, (trie ??= emptyTrie()), 0);
   };
 

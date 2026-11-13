@@ -1,5 +1,5 @@
 import type { FieldSnapshot, FieldSnapshotBase } from "../snapshot.js";
-import { dev } from "./freeze.js";
+import { freeze } from "./freeze.js";
 
 /** A field snapshot as the store core makes it. */
 export type Snapshot<E = unknown> = FieldSnapshot<unknown, E>;
@@ -8,7 +8,7 @@ export type Snapshot<E = unknown> = FieldSnapshot<unknown, E>;
 export type FieldState<E> = Omit<FieldSnapshotBase<unknown, E>, "value" | "name">;
 
 /** The one empty list every snapshot uses. */
-export const none: readonly never[] = dev ? Object.freeze([]) : [];
+export const none: readonly never[] = freeze([]);
 
 /** The state of a field nothing has touched. */
 export const idle: FieldState<never> = {
@@ -54,7 +54,7 @@ export const blank: Snapshot<never> = entries(undefined, "", undefined, idle);
 export function settle<S extends object>(candidate: S, previous: S | undefined, before: S | undefined): S {
   if (previous && sameMembers(candidate, previous)) return previous;
   if (before && sameMembers(candidate, before)) return before;
-  return dev ? Object.freeze(candidate) : candidate;
+  return freeze(candidate);
 }
 
 /** True when both lists hold the same elements in the same order, by `Object.is`. */
@@ -72,5 +72,5 @@ export function sameList(a: readonly unknown[], b: readonly unknown[]): boolean 
  */
 export function listOf<E>(list: readonly E[]): readonly E[] {
   if (list.length === 0) return none;
-  return dev ? Object.freeze(list.slice()) : list.slice();
+  return freeze(list.slice());
 }

@@ -2,7 +2,7 @@ import type { FormError, Show } from "../errors.js";
 import type { Path, PathSegment } from "../path.js";
 import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
-import { deepFreeze, dev, freezePath } from "./freeze.js";
+import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import {
   createKeyList,
   hadKey,
@@ -245,8 +245,6 @@ const clamp = (index: number, max: number) => Math.max(0, Math.min(index, max));
 
 /** A value no field holds, so `dirty` is computed again. */
 const stale: unknown = Symbol("stale");
-
-const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
 
 const idleSubmission: Submission<never, never> = freeze({ status: "idle" });
 
@@ -545,7 +543,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     if (!root) {
       // The caller's initial value is frozen in development, here on first
       // use rather than at creation, so creating a store changes nothing.
-      if (dev) deepFreeze(current);
+      deepFreeze(current);
       root = createNode(undefined, "");
     }
     return root;
@@ -660,7 +658,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   const writeAt = (node: Node<E>, value: unknown) => {
     const path = valuePathOf(node);
     const next = setAt(current, path, value);
-    commit(dev ? freezePath(next, path) : next, node);
+    commit(freezePath(next, path), node);
   };
 
   // The array node at `path` when it can take an array write: an array, or missing.
@@ -716,7 +714,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const { value, name, disabled, readOnly } = initialPlace(node);
     const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
     const state = { ...idle, disabled: disabled.on, readOnly: readOnly.on };
-    node.server = settle(entries(value, name, keys && dev ? Object.freeze(keys) : keys, state), undefined, undefined);
+    node.server = settle(entries(value, name, keys && freeze(keys), state), undefined, undefined);
     return node.server;
   };
 

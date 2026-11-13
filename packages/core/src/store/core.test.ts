@@ -25,6 +25,39 @@ function unfrozen(value: unknown, path: Path = []): Path[] {
   return [...own, ...children.flat()];
 }
 
+/** Loads a fresh copy of the core under `stub`, writes to it, and reports what is frozen. */
+async function frozenAfterWrites(stub: () => void) {
+  vi.resetModules();
+  stub();
+  try {
+    const fresh = await import("./core.js");
+    const initial = { rows: [{ t: "a" }], meta: { n: 1 } };
+    const store = fresh.createStoreCore({ id: "f", initial });
+    const written = { t: "b", tags: [] };
+    store.insert(["rows"], 1, written);
+    store.set(["rows", "k0", "t"], "z");
+    store.set(["meta"], { n: 2 });
+    const root = store.getSnapshot([]);
+    return {
+      root: Object.isFrozen(root),
+      initial: Object.isFrozen(initial),
+      written: Object.isFrozen(written),
+      unfrozen: unfrozen(root.value),
+    };
+  } finally {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
+}
+
+const nothingFrozen = {
+  root: false,
+  initial: false,
+  written: false,
+  unfrozen: [[], ["rows"], ["rows", 0], ["rows", 1], ["rows", 1, "tags"], ["meta"]],
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 /** `target[key] = value` on a value typed readonly or unknown. Module code is strict, so a frozen target throws. */
@@ -548,25 +581,11 @@ describe("immutability through writes", () => {
   });
 
   it("freezes nothing in production", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.resetModules();
-    try {
-      const prod = await import("./core.js");
-      const initial = { rows: [{ t: "a" }], meta: { n: 1 } };
-      const store = prod.createStoreCore({ id: "f", initial });
-      const written = { t: "b", tags: [] };
-      store.insert(["rows"], 1, written);
-      store.set(["rows", "k0", "t"], "z");
-      store.set(["meta"], { n: 2 });
-      const root = store.getSnapshot([]);
-      expect(Object.isFrozen(root)).toBe(false);
-      expect(Object.isFrozen(initial)).toBe(false);
-      expect(Object.isFrozen(written)).toBe(false);
-      expect(unfrozen(root.value)).toEqual([[], ["rows"], ["rows", 0], ["rows", 1], ["rows", 1, "tags"], ["meta"]]);
-    } finally {
-      vi.unstubAllEnvs();
-      vi.resetModules();
-    }
+    expect(await frozenAfterWrites(() => vi.stubEnv("NODE_ENV", "production"))).toEqual(nothingFrozen);
+  });
+
+  it("freezes nothing and doesn't throw where process doesn't exist", async () => {
+    expect(await frozenAfterWrites(() => vi.stubGlobal("process", undefined))).toEqual(nothingFrozen);
   });
 });
 

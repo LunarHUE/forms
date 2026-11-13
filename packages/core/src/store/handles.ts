@@ -4,7 +4,7 @@ import type { Path, PathSegment } from "../path.js";
 import type { AnyFormStore } from "../store.js";
 import type { ValidatorInput } from "../validator.js";
 import type { StoreCore } from "./core.js";
-import { dev } from "./freeze.js";
+import { freeze } from "./freeze.js";
 import { fieldId } from "./ids.js";
 import { isPlainObject, merge } from "./tree.js";
 import type { Validation } from "./validation.js";
@@ -152,7 +152,7 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
         write(path, options, () => core.move(path, from, to));
       },
     };
-    return dev ? Object.freeze(handle) : handle;
+    return freeze(handle);
   }
 
   let root: AnyFieldHandle<E> | undefined;
