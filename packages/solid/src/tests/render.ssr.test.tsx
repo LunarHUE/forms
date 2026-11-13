@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { renderToString } from "@solidjs/web";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createDisabledErrors, createField, createForms, createItems } from "../index.js";
+import { createDisabledErrors, createField, createForm, createForms, createItems } from "../index.js";
 import { App, serverHtml } from "./ssr-app.js";
 
 describe("server rendering", () => {
@@ -16,7 +16,7 @@ describe("server rendering", () => {
       defaultValues: { name: "initial", tags: ["a"] },
     });
     function Page() {
-      const form = Profile.createForm({ id: "profile" });
+      const form = createForm(Profile, { id: "profile" });
       const name = createField(form.root.at("name"));
       const tags = createItems(form.root.at("tags"));
       const disabled = createDisabledErrors(form);

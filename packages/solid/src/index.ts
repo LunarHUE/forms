@@ -1,6 +1,6 @@
 // Binds Solid 2 (solid-js 2 with @solidjs/web).
 export * from "@lunarhue/forms-core";
-export { createDisabledErrors, createForms, useFormContext } from "./forms.js";
+export { createDisabledErrors, createForm, createForms, useFormContext } from "./forms.js";
 export type {
   AnyComponent,
   AnyForm,
@@ -11,6 +11,7 @@ export type {
   CheckedFields,
   ComponentHandle,
   CreateDisabledErrors,
+  CreateForm,
   CreateFormArgs,
   CreateForms,
   DefineFieldset,
@@ -25,6 +26,7 @@ export type {
   FormComponent,
   FormElementProps,
   FormMembers,
+  FormOf,
   FormRenderProps,
   FormSettings,
   FormsOptions,

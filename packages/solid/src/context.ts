@@ -1,40 +1,46 @@
-import { createComponent, createContext, untrack, useContext, type Context, type Element as SolidElement } from "solid-js";
+import { createComponent, createContext, untrack, useContext, type Element as SolidElement } from "solid-js";
 
 /** A form object with its types erased, as context holds it. */
 export type RuntimeForm = Readonly<Record<string, unknown>>;
 
-/** A context that holds a form, or null with no `form.Form` above. */
-export type FormContext = Context<RuntimeForm | null>;
-
-/** Makes a context for forms. `null` is its default, so reading it with no provider above doesn't throw. */
-export function createFormContext(): FormContext {
-  return createContext<RuntimeForm | null>(null);
+/** What a `form.Form` provides: its form, and what the `form.Form` above it provides. */
+interface FormNode {
+  readonly form: RuntimeForm;
+  readonly parent: FormNode | null;
 }
 
-/** Holds the nearest form of any definition. */
-const anyForm = createFormContext();
+/** The one context every `form.Form` provides. `null` is its default, so reading it with no provider above doesn't throw. */
+const formContext = createContext<FormNode | null>(null);
 
-/** Reads a form context and throws a clear error when no `form.Form` is above. */
-export function readForm(context: FormContext, caller: string): RuntimeForm {
-  const form = useContext(context);
-  if (form === null) {
-    throw new Error(`@lunarhue/forms-solid: ${caller} found no form. Render it inside the form's \`form.Form\`.`);
+/** The definition each form was made from. */
+export const madeFrom = new WeakMap<RuntimeForm, object>();
+
+/**
+ * See `UseFormContext`. With a definition it walks up from the nearest
+ * `form.Form` to the first form made from that definition. Throws a clear
+ * error when there is none.
+ */
+export function useAnyForm(definition?: object): RuntimeForm {
+  let node = useContext(formContext);
+  if (definition !== undefined) {
+    while (node !== null && madeFrom.get(node.form) !== definition) node = node.parent;
   }
-  return form;
-}
-
-/** See `UseFormContext`. */
-export function useAnyForm(): RuntimeForm {
-  return readForm(anyForm, "useFormContext()");
+  if (node === null) {
+    throw new Error(
+      definition === undefined
+        ? "@lunarhue/forms-solid: useFormContext() found no form. Render it inside the form's `form.Form`."
+        : "@lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.",
+    );
+  }
+  return node.form;
 }
 
 /** The children `form.Form` takes: a function of the render props, or plain children. */
 export type FormChildren = ((props: object) => SolidElement) | SolidElement;
 
-/** The props of `form.Form`, with the form and its definition's context filled in. */
+/** The props of `form.Form`, with the form filled in. */
 interface ProvideFormProps {
   readonly form: RuntimeForm;
-  readonly context: FormContext;
   readonly renderProps: object;
   readonly children: FormChildren;
 }
@@ -45,18 +51,13 @@ function renderChildren(children: FormChildren, renderProps: object): SolidEleme
   return children;
 }
 
-/** `form.Form`: provides the form through both contexts and renders no element of its own. */
+/** `form.Form`: provides the form, linked to the form above, and renders no element of its own. */
 export function ProvideForm(props: ProvideFormProps): SolidElement {
-  const { form, context, renderProps } = props;
-  return createComponent(anyForm, {
-    value: form,
+  const { form, renderProps } = props;
+  return createComponent(formContext, {
+    value: { form, parent: useContext(formContext) },
     get children() {
-      return createComponent(context, {
-        value: form,
-        get children() {
-          return renderChildren(props.children, renderProps);
-        },
-      });
+      return renderChildren(props.children, renderProps);
     },
   });
 }
