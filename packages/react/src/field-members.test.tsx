@@ -1,8 +1,21 @@
+import type { PluginContext } from "@lunarhue/forms-core";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createForms, type ExactFieldApi, useForm } from "./index.js";
+import { definePlugin } from "./plugins.js";
 
-const forms = createForms();
+// A snapshot has `meta` only once a plugin sets some, so this sets it on
+// every field the test renders. Without it a field object would lack `meta`.
+const marked = definePlugin({
+  name: "marked",
+  setup(ctx: PluginContext<boolean>) {
+    const keys = ctx.store.getSnapshot(["rows"]).keys ?? [];
+    for (const path of [["name"], ["address"], ["rows"], ...keys.map((key) => ["rows", key])]) ctx.setMeta(path, true);
+    return {};
+  },
+});
+
+const forms = createForms({ plugins: [marked] });
 const order = forms.define({
   defaultValues: { name: "", address: { city: "" }, rows: [{ title: "a" }] },
 });
@@ -24,6 +37,7 @@ const snapshotMembers = {
   validating: true,
   disabled: true,
   readOnly: true,
+  meta: true,
 } as const;
 const commonMembers = {
   ...snapshotMembers,

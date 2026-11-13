@@ -1,6 +1,8 @@
-import { createRoot } from "solid-js";
+import type { PluginContext } from "@lunarhue/forms-core";
+import { createMemo, createRoot, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf } from "../index.js";
+import { definePlugin } from "../plugins.js";
 import { getAs, mount } from "./dom.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -116,6 +118,7 @@ const snapshotMembers = {
   validating: true,
   disabled: true,
   readOnly: true,
+  meta: true,
 } as const;
 const commonMembers = {
   ...snapshotMembers,
@@ -171,6 +174,33 @@ describe("a field object's members", () => {
     expect(ownMembers(createField(rows))).toEqual(expectedMembers(arrayMembers));
     // An item's field type is the field type of its value, which has no `key` yet.
     expect(ownMembers(createField(rows.item(firstKey(form))))).toEqual(expectedMembers(objectMembers, ["key"]));
+    dispose();
+  });
+});
+
+// Stores each written string's length as the field's meta.
+const chars = definePlugin({
+  name: "chars",
+  setup: (ctx: PluginContext<number>) => ({
+    onWrite(records) {
+      for (const record of records) if (record.type === "value") ctx.setMeta(record.path, String(record.after).length);
+    },
+  }),
+});
+
+describe("a field object's meta", () => {
+  it("is reactive, so a plugin's meta reader tracks it", () => {
+    const Named = createForms({ plugins: [chars] }).define({ defaultValues: { name: "" } });
+    const { field, length, dispose } = createRoot((stop) => {
+      const name = createField(createForm(Named).root.at("name"));
+      return { field: name, length: createMemo(() => chars.meta(name)), dispose: stop };
+    });
+    expect(Object.keys(field)).toContain("meta");
+    expect(length()).toBeUndefined();
+
+    field.setValue("ada");
+    flush();
+    expect(length()).toBe(3);
     dispose();
   });
 });
