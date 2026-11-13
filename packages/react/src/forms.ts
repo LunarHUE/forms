@@ -88,7 +88,7 @@ export interface FormsOptions<
   readonly fields?: F & CheckedFields<F>;
 }
 
-/** Per-form settings for `useForm`. Read on the first render only. */
+/** Per-form settings for `useForm`. Read when the form is made. */
 export interface UseFormOptions<E = FormError> {
   /**
    * The store id, which prefixes every handle id and so every DOM id.
@@ -213,7 +213,9 @@ export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
  * Making a store has no side effects, so the other is garbage. `options` is
  * required when the definition was made with the function form of `define`,
  * and absent otherwise. `options` and `instance` are read on the first render
- * only.
+ * only. When a later render passes a different definition, as a hot reload
+ * does, `useForm` makes a new form from it with the current arguments and
+ * returns that one from then on. The old form's values are dropped.
  */
 export type UseForm = <V, E, I, R, O, F extends FieldComponentMap>(
   definition: ReactFormDefinition<V, E, I, R, O, F>,
@@ -392,11 +394,15 @@ export const createForms: CreateForms = (options = {}) => {
 /** See `UseForm`. */
 export const useForm: UseForm = (definition, ...args) => {
   const generatedId = useId();
-  const [form] = useState(() => {
-    const make = makers.get(definition);
-    if (make === undefined) throw new Error("@lunarhue/forms-react: useForm takes a definition from forms.define.");
-    return make(args, generatedId);
-  });
+  const make = () => {
+    const maker = makers.get(definition);
+    if (maker === undefined) throw new Error("@lunarhue/forms-react: useForm takes a definition from forms.define.");
+    return maker(args, generatedId);
+  };
+  const [form, setForm] = useState(make);
+  // A hot reload runs the module again and passes a new definition while React keeps the old form.
+  // Swap in a form from the new definition. React renders again at once, before any child sees the old one.
+  if (madeFrom.get(form) !== definition) setForm(make());
   // The runtime form is the one the definition's types describe.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return form as never;
