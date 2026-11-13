@@ -3,6 +3,8 @@
   "compilerOptions": {
     "lib": ["es2020", "dom"],
     "noEmit": true,
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
     "customConditions": ["@lunarhue/source"]
   },
   "include": ["src"]

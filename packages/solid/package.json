@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@lunarhue/forms-schema": "workspace:^",
+    "@solidjs/web": "catalog:",
     "solid-js": "catalog:",
     "valibot": "catalog:"
   },
