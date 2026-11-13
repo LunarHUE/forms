@@ -1,10 +1,10 @@
 import { errorId as coreErrorId, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import { useSyncExternalStore } from "./compat.js";
-import { type HandleLike, useField } from "./field.js";
+import { fieldViewSource } from "./field-api.js";
+import { type HandleLike, whole } from "./field.js";
 import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
-import { numberTextSource } from "./number-text.js";
-import { fieldRef } from "./refs.js";
+import { refFor } from "./refs.js";
+import { useSelected } from "./select.js";
 
 /**
  * The ref callback the adapter puts on a field's element. It records the
@@ -194,9 +194,8 @@ export interface UseInputProps {
 
 /** See `UseInputProps`. */
 export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: AnyInputOptions) => {
-  const snapshot = useField(handle);
-  const texts = numberTextSource(handle);
-  const text = useSyncExternalStore(texts.subscribe, texts.get, texts.server);
+  // The view holds the snapshot and the number text, and changes when either does.
+  const { snapshot, text } = useSelected(fieldViewSource(handle), whole);
   // The props match the options by kind, which the overloads check against the value type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return inputPropsFor(handle, snapshot, text, options) as never;
@@ -210,7 +209,7 @@ export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: 
 export type UseFieldRef = (handle: HandleLike) => FieldRef;
 
 /** See `UseFieldRef`. It reads no state, so it is a plain lookup. */
-export const useFieldRef: UseFieldRef = (handle) => fieldRef(handle);
+export const useFieldRef: UseFieldRef = (handle) => refFor(handle);
 
 /**
  * The id of the element that shows a field's errors, core's

@@ -32,37 +32,36 @@ interface LastSelection<S, T> {
   readonly value: T;
 }
 
+/** Reads a snapshot through a selector. See `newSelection`. */
+type Selection<S, T> = (snapshot: S, select: (snapshot: S) => T, isEqual: IsEqual<T>) => T;
+
 /**
  * Remembers one component's last selection. The same snapshot and selector
  * give the same value, so `getSnapshot` is stable. A new selection that
  * equals the last one by `isEqual` returns the last one, so React sees no
  * change and skips the re-render.
  */
-class Selection<S, T> {
-  private last: LastSelection<S, T> | undefined;
-
-  read(snapshot: S, select: (snapshot: S) => T, isEqual: IsEqual<T>): T {
-    const last = this.last;
+function newSelection<S, T>(): Selection<S, T> {
+  let last: LastSelection<S, T> | undefined;
+  return (snapshot, select, isEqual) => {
     if (last !== undefined && last.snapshot === snapshot && last.select === select) return last.value;
     const picked = select(snapshot);
     const value = last !== undefined && isEqual(last.value, picked) ? last.value : picked;
-    this.last = { snapshot, select, value };
+    last = { snapshot, select, value };
     return value;
-  }
+  };
 }
-
-const newSelection = <S, T>(): Selection<S, T> => new Selection<S, T>();
 
 /**
  * Reads `source` through `useSyncExternalStore` and re-renders only when the
- * selected value changes by `isEqual`. The last selection lives in an object
+ * selected value changes by `isEqual`. The last selection lives in a closure
  * made once by `useState`, not in a ref, and only `getSnapshot` touches it.
  */
 export function useSelected<S, T>(source: Source<S>, select: (snapshot: S) => T, isEqual: IsEqual<T> = Object.is): T {
-  const [selection] = useState<Selection<S, T>>(newSelection);
+  const [read] = useState<Selection<S, T>>(newSelection);
   return useSyncExternalStore(
     source.subscribe,
-    () => selection.read(source.get(), select, isEqual),
-    () => selection.read(source.server(), select, isEqual),
+    () => read(source.get(), select, isEqual),
+    () => read(source.server(), select, isEqual),
   );
 }
