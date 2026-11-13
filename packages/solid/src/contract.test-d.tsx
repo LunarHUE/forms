@@ -507,7 +507,7 @@ describe("registered field components", () => {
   });
 
   it("take a validate prop typed by the field, by name, by handle and on a scope", () => {
-    const form = Signup.createForm();
+    const form = createForm(Signup);
     const billing = AddressShape.scope(form.root.at("billing"));
     const qty = form.root.at("rows").item("k").at("qty");
     void (
