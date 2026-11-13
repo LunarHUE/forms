@@ -1,27 +1,23 @@
 # forms
 
-A form library that doesn't depend on any UI framework. The core holds the form
-logic, and small adapters connect it to each framework or schema library.
+Forms for React, Solid and Vue, with the form logic in one small core that
+knows nothing about any of them.
 
-| Package                  | What it is                                                |
-| ------------------------ | --------------------------------------------------------- |
-| `@lunarhue/forms-core`   | Framework-independent core                                |
-| `@lunarhue/forms-react`  | React adapter (React 16.8 and later)                      |
-| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1`          |
-| `@lunarhue/forms-vue`    | Vue 3 adapter                                             |
-| `@lunarhue/forms-schema` | Schema adapters: Valibot at `./valibot`, Zod 4 at `./zod` |
+We wrote it because we wanted three things at once: field names the compiler
+checks, a bundle well under what the big form libraries ship, and a way to add
+features without everyone paying for them. So the core does values, arrays and
+submit. Validation, undo, masks and the rest are plugins you install.
 
 Nothing is published yet.
 
 ## What it looks like
 
-A profile form in React. It validates with Zod, keeps its values in a Zustand
-store, reuses an address fieldset, and merges a fresh server copy without
-losing what the user typed.
+A profile form in React. Zod validates it, a Zustand store holds its values,
+the address is a reusable fieldset, and Refresh pulls the server's copy without
+wiping what the user has typed.
 
-This is the API the library is being built toward. The plugin list, `rebase()`
-as a plugin and the Zustand binding are in open pull requests and issues, not
-on `main` yet.
+Fair warning: this is where the API is headed. The plugin list, `rebase()` as
+a plugin and the Zustand binding are still in open pull requests and issues.
 
 ```tsx
 import { z } from "zod";
@@ -158,8 +154,74 @@ export function ProfileForm() {
 }
 ```
 
-`name="emial"` is a compile error. So is `schema` or `validate` with no
-validation plugin in the list.
+Type `name="emial"` and the build fails. Same if you pass `schema` or
+`validate` with no validation plugin in the list.
+
+## Packages
+
+| Package                  | What it is                                       |
+| ------------------------ | ------------------------------------------------ |
+| `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
+| `@lunarhue/forms-react`  | React adapter, React 16.8 and later              |
+| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
+| `@lunarhue/forms-vue`    | Vue 3 adapter                                    |
+| `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
+
+## Plugins
+
+Everything goes in one list, on `createForms` for every form or on `define`
+for one form. A plugin you don't install costs you no bytes.
+
+We sort them by one question: does it need someone else's library?
+
+### First class
+
+No dependencies beyond core. They live in core and each adapter re-exports
+them, so you import from the package you already have.
+
+| Plugin         | What it does                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| `validation()` | Runs validators and collects errors. Use it alone when you validate by hand, with no schema.   |
+| `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
+| `mask()`       | Cleans a value on its way into the store: digits only, upper case, or your own function.       |
+| `rules()`      | Works out `disabled` and `hidden` for a field from the rest of the form's value.               |
+| `persist()`    | Saves the draft to storage when the page is idle and restores it on load.                      |
+| `rebase()`     | Takes a fresh copy of the data and lets you decide, leaf by leaf, whether to keep the user's edit. |
+| `bind()`       | Keeps the form's value in a store you own, in both directions.                                 |
+
+### Schema
+
+These work with a schema library, so they sit in `@lunarhue/forms-schema`, one
+entry per library. Each brings validation with it, so you don't list
+`validation()` as well.
+
+| Plugin      | Import                           | What it does                                           |
+| ----------- | -------------------------------- | ------------------------------------------------------ |
+| `zod()`     | `@lunarhue/forms-schema/zod`     | Validates with Zod 4 and types the form from the schema. |
+| `valibot()` | `@lunarhue/forms-schema/valibot` | The same for Valibot.                                  |
+
+Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
+once validation is installed. You give `defaultValues` yourself in that case.
+
+Bindings for outside stores follow the same rule. `zustand()` will ship from
+`@lunarhue/forms-bind/zustand`, not from core.
+
+### Where they stand
+
+- Validation, `zod()` and `valibot()` work today, in the open pull request for
+  the plugin list.
+- `history()`, `mask()`, `rules()` and `persist()` exist as test fixtures that
+  prove the plugin hooks. They aren't exported yet.
+- `rebase` works today as a plain function and is being moved to a plugin.
+- `bind()` and `zustand()` are designed and not built.
+
+### Writing your own
+
+`definePlugin` gives you hooks for writes, resets and submit, your own slot for
+field and form state, and an API that shows up typed at `form.plugins.<name>`.
+Plugins can't step on each other: a write made inside a hook is queued, and
+each plugin sees the records frozen. If you publish one, call it
+`forms-plugin-<name>`.
 
 ## Scripts
 
