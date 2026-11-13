@@ -1,0 +1,78 @@
+{
+  "name": "@lunarhue/forms-solid",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunarHUE/forms.git",
+    "directory": "packages/solid"
+  },
+  "files": [
+    "dist",
+    "v1"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "@lunarhue/source": "./src/index.ts",
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./v1": {
+      "@lunarhue/source": "./src/v1.ts",
+      "import": {
+        "types": "./dist/esm/v1.d.ts",
+        "default": "./dist/esm/v1.js"
+      },
+      "require": {
+        "types": "./dist/cjs/v1.d.ts",
+        "default": "./dist/cjs/v1.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@lunarhue/forms-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.0 || ^2.0.0-rc.0",
+    "@solidjs/web": "^2.0.0-rc.0"
+  },
+  "peerDependenciesMeta": {
+    "@solidjs/web": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:package": "publint --strict && attw --pack .",
+    "size": "size-limit"
+  },
+  "size-limit": [
+    {
+      "name": ".",
+      "path": "dist/esm/index.js",
+      "import": "*",
+      "limit": "1 kB"
+    },
+    {
+      "name": "./v1",
+      "path": "dist/esm/v1.js",
+      "import": "*",
+      "limit": "1 kB"
+    }
+  ]
+}
