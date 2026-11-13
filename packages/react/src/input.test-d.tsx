@@ -10,6 +10,7 @@ import {
   type NumberInputProps,
   type RadioInputProps,
   type SelectProps,
+  type TextareaProps,
   type TextInputProps,
   useField,
   useFieldRef,
@@ -20,10 +21,15 @@ function Text({ name, bio }: { readonly name: LeafHandle<string>; readonly bio: 
   const props = useInputProps(name);
   expectTypeOf(props).toEqualTypeOf<TextInputProps>();
   expectTypeOf(useInputProps(name, { kind: "text" })).toEqualTypeOf<TextInputProps>();
+  const bioProps = useInputProps(bio, { kind: "textarea" });
+  expectTypeOf(bioProps).toEqualTypeOf<TextareaProps>();
+  // @ts-expect-error: a text input's type holds a string
+  useInputProps(name, { type: "number" });
   return (
     <>
-      <input type="email" {...props} />
-      <textarea {...useInputProps(bio)} />
+      <input {...props} />
+      <input {...useInputProps(name, { type: "email" })} />
+      <textarea {...bioProps} />
     </>
   );
 }

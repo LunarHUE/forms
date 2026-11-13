@@ -126,7 +126,7 @@ function OrderPage() {
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<string>();
               expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string>>();
-              return <input type="email" {...field.inputProps()} />;
+              return <input {...field.inputProps({ type: "email" })} />;
             }}
           </form.Field>
           <form.Field name="channels">

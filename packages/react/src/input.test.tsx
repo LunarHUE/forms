@@ -45,7 +45,7 @@ function Settings() {
   return (
     <>
       <input aria-label="title" {...useInputProps(root.at("title"))} />
-      <textarea aria-label="bio" {...useInputProps(root.at("bio"))} />
+      <textarea aria-label="bio" {...useInputProps(root.at("bio"), { kind: "textarea" })} />
       <input aria-label="age" {...useInputProps(root.at("age"), { kind: "number" })} />
       <input aria-label="volume" {...useInputProps(root.at("volume"), { kind: "range", empty: 0 })} />
       <input aria-label="newsletter" {...useInputProps(root.at("newsletter"), { kind: "checkbox" })} />
@@ -70,6 +70,11 @@ function RawAge() {
     holder.form = form;
   });
   return <input aria-label="raw age" {...useInputProps(form.root.at("age"), { kind: "number" })} type="text" />;
+}
+
+function Email() {
+  const form = useForm(settings);
+  return <input aria-label="email" {...useInputProps(form.root.at("title"), { type: "email" })} />;
 }
 
 const input = (label: string) => screen.getByLabelText<HTMLInputElement>(label);
@@ -99,7 +104,7 @@ describe("text and textarea", () => {
     const title = input("title");
     expect(title.name).toBe("title");
     expect(title.id).toBe("settings--title");
-    expect(title.getAttribute("aria-invalid")).toBe("false");
+    expect(title.hasAttribute("aria-invalid")).toBe(false);
     expect(title.getAttribute("aria-describedby")).toBeNull();
     act(() => {
       current().root.at("title").setErrors({ message: "taken" });
@@ -108,6 +113,29 @@ describe("text and textarea", () => {
     expect(title.getAttribute("aria-invalid")).toBe("true");
     expect(title.getAttribute("aria-describedby")).toBe(errorId(current().root.at("title")));
     expect(input("pro").id).toBe(optionId("settings--plan", "pro"));
+  });
+
+  it("writes type on text inputs only, and ARIA states only while they are on", () => {
+    render(<Settings />);
+    const bio = screen.getByLabelText("bio");
+    const country = screen.getByLabelText("country");
+    expect(input("title").getAttribute("type")).toBe("text");
+    expect(bio.hasAttribute("type")).toBe(false);
+    expect(country.hasAttribute("type")).toBe(false);
+    const all = [input("title"), bio, input("age"), input("newsletter"), input("urgent"), input("pro"), country];
+    for (const element of all) {
+      expect(element.hasAttribute("aria-invalid")).toBe(false);
+      expect(element.hasAttribute("aria-readonly")).toBe(false);
+    }
+    act(() => current().root.setReadOnly(true));
+    for (const element of [input("newsletter"), input("urgent"), input("pro"), country]) {
+      expect(element.getAttribute("aria-readonly")).toBe("true");
+    }
+  });
+
+  it("takes the type of a text input from the options", () => {
+    render(<Email />);
+    expect(input("email").type).toBe("email");
   });
 });
 

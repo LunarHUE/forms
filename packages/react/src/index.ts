@@ -93,8 +93,11 @@ export type {
   RadioInputProps,
   SelectOptions,
   SelectProps,
+  TextareaOptions,
+  TextareaProps,
   TextInputOptions,
   TextInputProps,
+  TextInputType,
   UseFieldRef,
   UseInputProps,
 } from "./input.js";
