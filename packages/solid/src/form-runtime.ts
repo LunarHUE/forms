@@ -1,7 +1,7 @@
 import type { FormSnapshot, FormStore } from "@lunarhue/forms-core";
 import { isServer } from "@solidjs/web";
-import { createComponent, getOwner, isDisposed, runWithOwner, type Element as SolidElement } from "solid-js";
-import { ProvideForm, type FormChildren, type RuntimeForm } from "./context.js";
+import { getOwner, isDisposed, runWithOwner, type Element as SolidElement } from "solid-js";
+import { provideForm, type FormChildren, type RuntimeForm } from "./context.js";
 import { focusInvalid, type RuntimeFocus } from "./focus.js";
 import { defineGetters, formReader } from "./reader.js";
 import { registerFormElement } from "./refs.js";
@@ -9,9 +9,6 @@ import type { RuntimeScope } from "./scope-runtime.js";
 
 /** A store with its types erased, as the runtime uses it. */
 export type RuntimeStore = FormStore<unknown, unknown, unknown>;
-
-/** The members of the form snapshot. */
-const formStateKeys = ["valid", "validating", "dirty", "submitting", "submission", "submitCount"] as const;
 
 /**
  * The form snapshot as getters. The signal is made the first time a getter
@@ -31,7 +28,8 @@ function createFormState(store: RuntimeStore): object {
     return read();
   };
   const state = {};
-  defineGetters(state, formStateKeys, current);
+  // The server snapshot has every member the form snapshot has.
+  defineGetters(state, Object.keys(store.getServerFormSnapshot()), current);
   return state;
 }
 
@@ -76,12 +74,6 @@ export function buildForm(parts: FormParts): RuntimeForm {
     submit,
     handleSubmit,
   };
-  form.Form = (props: { readonly children: FormChildren }): SolidElement =>
-    createComponent(ProvideForm, {
-      form,
-      get children() {
-        return props.children;
-      },
-    });
+  form.Form = (props: { readonly children: FormChildren }): SolidElement => provideForm(form, props);
   return form;
 }

@@ -2,19 +2,11 @@ import type { FieldSnapshot, FormSnapshot, FormStore, Path } from "@lunarhue/for
 import { isServer } from "@solidjs/web";
 import { createSignal, getOwner, isHydrating, onCleanup } from "solid-js";
 
-/** What a reader needs from a store snapshot source. */
-interface SnapshotSource<S> {
-  /** The current snapshot. */
-  readonly read: () => S;
-  /** The snapshot the store started with. */
-  readonly serverRead: () => S;
-  /** Calls the listener after the snapshot changes. Returns the unsubscribe. */
-  readonly subscribe: (listener: () => void) => () => void;
-}
-
 /**
  * Mirrors one store snapshot in one Solid signal, subscribed for the life of
- * the current owner. With no owner it subscribes to nothing and returns a
+ * the current owner. `read` gives the current snapshot, `serverRead` the one
+ * the store started with, and `subscribe` calls its listener after a change
+ * and returns the unsubscribe. With no owner it subscribes to nothing and returns a
  * reader of the current snapshot. On the server it reads the initial
  * snapshot, and while hydrating it starts from it and catches up once
  * hydration settles.
@@ -23,22 +15,26 @@ interface SnapshotSource<S> {
  * body or a computation, so the signal allows owned writes. Solid applies
  * the write at the next flush, a microtask later, before the browser paints.
  */
-export function snapshotReader<S>(source: SnapshotSource<S>): () => S {
-  if (isServer) return source.serverRead;
-  if (getOwner() === null) return source.read;
+export function snapshotReader<S>(
+  read: () => S,
+  serverRead: () => S,
+  subscribe: (listener: () => void) => () => void,
+): () => S {
+  if (isServer) return serverRead;
+  if (getOwner() === null) return read;
   const hydrating = isHydrating();
-  const initial = hydrating ? source.serverRead() : source.read();
+  const initial = hydrating ? serverRead() : read();
   // Snapshots are frozen objects, never functions, so the plain-value form of `createSignal` applies.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const [snapshot, setSnapshot] = createSignal<S>(initial as Exclude<S, Function>, { ownedWrite: true });
   const sync = () => {
-    const next = source.read();
+    const next = read();
     setSnapshot(() => next);
   };
-  onCleanup(source.subscribe(sync));
+  onCleanup(subscribe(sync));
   // A store written before hydration catches up once the hydration pass is over.
   // Not `onSettled`: it takes a hydration id, which the server never allocated.
-  if (hydrating && initial !== source.read()) queueMicrotask(sync);
+  if (hydrating && initial !== read()) queueMicrotask(sync);
   return snapshot;
 }
 
@@ -51,11 +47,11 @@ export interface ReadableHandle {
 /** A reader of one field's snapshot. See `snapshotReader`. */
 export function fieldReader(handle: ReadableHandle): () => FieldSnapshot<unknown, unknown> {
   const { store, path } = handle;
-  return snapshotReader({
-    read: () => store.getSnapshot(path),
-    serverRead: () => store.getServerSnapshot(path),
-    subscribe: (listener) => store.subscribe(path, listener),
-  });
+  return snapshotReader(
+    () => store.getSnapshot(path),
+    () => store.getServerSnapshot(path),
+    (listener) => store.subscribe(path, listener),
+  );
 }
 
 /** What a form reader needs from a store. */
@@ -63,11 +59,11 @@ export type FormSource<I, R> = Pick<FormStore<unknown, unknown, I, R>, "subscrib
 
 /** A reader of the form snapshot. See `snapshotReader`. */
 export function formReader<I, R>(store: FormSource<I, R>): () => FormSnapshot<I, R> {
-  return snapshotReader({
-    read: () => store.getFormSnapshot(),
-    serverRead: () => store.getServerFormSnapshot(),
-    subscribe: (listener) => store.subscribeForm(listener),
-  });
+  return snapshotReader(
+    () => store.getFormSnapshot(),
+    () => store.getServerFormSnapshot(),
+    (listener) => store.subscribeForm(listener),
+  );
 }
 
 /** Adds an enumerable getter to `target` for each key, reading that member of `read()`. */

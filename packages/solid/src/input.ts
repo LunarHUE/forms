@@ -282,7 +282,7 @@ export interface InputPropsOf<V> {
 export type FieldRef = (handle: HandleLike) => (element: HTMLElement) => void;
 
 /** See `FieldRef`. */
-export const fieldRef: FieldRef = (handle) => elementRegistrar(handle.store, handle.id);
+export const fieldRef: FieldRef = (handle) => elementRegistrar(handle);
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field
