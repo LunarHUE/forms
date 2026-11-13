@@ -1,6 +1,9 @@
 import type { ItemOf, ValueOf } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
-import { notImplemented } from "./not-implemented.js";
+import { inputSourceFor } from "./field-api.js";
+import { buildInputProps, errorIdOf, type AnyInputOptions } from "./input-props.js";
+import { fieldReader } from "./reader.js";
+import { elementRegistrar } from "./refs.js";
 
 /** The input types whose value is a string. */
 export type TextInputType =
@@ -242,8 +245,14 @@ export interface CreateInputProps {
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
 }
 
-/** See `CreateInputProps`. Not implemented yet: it throws. */
-export const createInputProps: CreateInputProps = notImplemented("createInputProps");
+function inputPropsOf(handle: HandleLike, options?: AnyInputOptions): unknown {
+  return buildInputProps(inputSourceFor(handle, fieldReader(handle)), options);
+}
+
+/** See `CreateInputProps`. */
+// The overloads pick the props type from `kind`, which is what `buildInputProps` builds.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createInputProps = inputPropsOf as CreateInputProps;
 
 /**
  * `createInputProps` for one field whose value type `V` is known: the same
@@ -268,13 +277,11 @@ export interface InputPropsOf<V> {
  */
 export type FieldRef = (handle: HandleLike) => (element: HTMLElement) => void;
 
-/** See `FieldRef`. Not implemented yet: it throws. */
-export const fieldRef: FieldRef = notImplemented("fieldRef");
+/** See `FieldRef`. */
+export const fieldRef: FieldRef = (handle) => elementRegistrar(handle.store, handle.id);
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field
  * shows errors. Put it on the element that renders the errors.
  */
-export function errorId(handle: Pick<HandleLike, "id">): string {
-  return `${handle.id}-errors`;
-}
+export const errorId: (handle: Pick<HandleLike, "id">) => string = errorIdOf;

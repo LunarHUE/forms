@@ -1,11 +1,13 @@
 import { createFormsCore, type AnyFormStore, type FieldSnapshot, type Path } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createEffect, createRoot, createSignal, flush, onCleanup } from "solid-js";
+import { createField } from "../field.js";
 import * as v from "valibot";
 
 // The row benchmark from solid-form, with Solid signals built on the store's
 // `subscribe`: a form with `count` array rows and one error effect per row,
-// as a list of row components would have.
+// as a list of row components would have. The `adapter` bridge reads each
+// row through the adapter's `createField` instead of the signal here.
 const schema = v.object({
   rows: v.array(v.object({ name: v.pipe(v.string(), v.minLength(1, "Required")), value: v.string() })),
 });
@@ -24,17 +26,25 @@ function fieldSignal(store: AnyFormStore, path: Path): () => FieldSnapshot<unkno
   return snapshot;
 }
 
-export function rowsForm(count: number) {
+/** How a row reads its name field's error count: the hand-written signal, or the adapter's `createField`. */
+export type RowBridge = "signal" | "adapter";
+
+export function rowsForm(count: number, bridge: RowBridge = "signal") {
   return createRoot((dispose) => {
     const store = Form.createStore(count, { id: "bench" });
     const list = store.root.at("rows");
     const runs = { errors: 0 };
     for (const key of list.peek().keys) {
-      const snapshot = fieldSignal(store, list.item(key).at("name").path);
-      createEffect(
-        () => snapshot().errors.length,
-        () => void runs.errors++,
-      );
+      const name = list.item(key).at("name");
+      let errorCount: () => number;
+      if (bridge === "signal") {
+        const snapshot = fieldSignal(store, name.path);
+        errorCount = () => snapshot().errors.length;
+      } else {
+        const field = createField(name);
+        errorCount = () => field.errors.length;
+      }
+      createEffect(errorCount, () => void runs.errors++);
     }
     flush();
     runs.errors = 0;

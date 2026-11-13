@@ -3,6 +3,7 @@ import type {
   DefinedValue,
   Definition,
   DisabledInvalid,
+  Draft,
   ErrorOf,
   FieldHandle,
   FormDefinition,
@@ -21,9 +22,10 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import type { Accessor, Element as SolidElement } from "solid-js";
-import type { ArrayHandleLike, FieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
-import { notImplemented } from "./not-implemented.js";
-import type { ArrayPath, FieldPath, ValueAt } from "./paths.js";
+import { createDisabledErrorList } from "./disabled-errors.js";
+import type { ArrayHandleLike, ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
+import { createFormsRuntime, useAnyForm } from "./forms-runtime.js";
+import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
 
 /**
  * What a failed submit leaves to focus. The adapter builds it from core's
@@ -95,11 +97,11 @@ interface FieldPropsBase<V, E> {
   /** A validator to add while the `Field` is mounted, as `createValidator` adds it. Read once, at mount. */
   readonly validate?: ValidatorInput<V, E> | undefined;
   /** Renders the field. Runs once. */
-  readonly children: (field: FieldApi<V, E>) => SolidElement;
+  readonly children: (field: ExactFieldApi<V, E>) => SolidElement;
 }
 
 /**
- * Renders one field of a scope with its `FieldApi`. Give exactly one of
+ * Renders one field of a scope with its `ExactFieldApi`. Give exactly one of
  * `name`, a dotted path relative to the scope, or `handle`.
  */
 export interface BoundField<V, E = FormError> {
@@ -162,30 +164,52 @@ export type ReservedName =
 /** The props of a component. */
 export type PropsOf<C> = C extends (props: infer P) => unknown ? P : never;
 
-/** The `FieldApi` type a registered component's `field` prop asks for. */
+/** The field object type a registered component's `field` prop asks for. */
 type FieldPropOf<C> = PropsOf<C> extends { readonly field: infer A } ? A : never;
 
-/** The value type a registered component's `field` prop asks for. */
-export type FieldValueOf<C> = FieldPropOf<C> extends { readonly "~field"?: FieldTypes<infer V, unknown> } ? V : never;
+/** True when a registered component's `field` prop is a `FieldApi`, which fits `Draft<T>` and `T`. */
+type TakesDraft<C> = "~fits" extends keyof FieldPropOf<C> ? true : false;
+
+/**
+ * The value type a registered component's field is written for: `T` of a
+ * `FieldApi<T>`, or `V` of an `ExactFieldApi<V>`.
+ */
+export type FieldValueOf<C> =
+  TakesDraft<C> extends true
+    ? FieldPropOf<C> extends { readonly "~fits"?: FieldTypes<infer T, unknown> }
+      ? T
+      : never
+    : FieldPropOf<C> extends { readonly "~field"?: FieldTypes<infer V, unknown> }
+      ? V
+      : never;
 
 /** The error type a registered component's `field` prop asks for. */
 export type FieldErrorOf<C> = FieldPropOf<C> extends { readonly "~field"?: FieldTypes<unknown, infer E> } ? E : never;
+
+/**
+ * The handles a registered component takes. A `FieldApi<T>` component takes
+ * a handle of `Draft<T>` or of `T`. An `ExactFieldApi<V>` component takes a
+ * handle of `V` only.
+ */
+export type ComponentHandle<C> =
+  TakesDraft<C> extends true
+    ? FieldHandle<Draft<FieldValueOf<C>>, FieldErrorOf<C>> | FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>
+    : FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>;
 
 /** A registered component's own props: all of them except `field`. */
 export type OwnProps<C> = Omit<PropsOf<C>, "field">;
 
 /**
- * True when a field of value `V` and error `E` fits a registered component.
- * The rule is core's handle assignability: the field's handle must be
- * assignable to the handle of the component's field type. A leaf handle is
- * invariant in its value, since the component both reads and writes it, so
- * a `FieldApi<number | undefined>` component takes a `number | undefined`
- * field (a schema number under `Draft`) but not a `number` one. An object
- * field may have more keys than the component's type names.
+ * True when a field of value `V` and error `E` fits registered component
+ * `C`. The rule is core's handle assignability: the field's handle must be
+ * assignable to one of `ComponentHandle<C>`. Leaf handles are invariant in
+ * their value, so a `FieldApi<number>` component takes a `number | undefined`
+ * field, the `Draft<number>` a schema form holds, and a plain form's
+ * `number` field (see `FieldApi` for why that side is loose), but not a
+ * `string` one. An object field may have more keys than the component's
+ * type names.
  */
-export type FitsComponent<V, E, C> = [FieldHandle<V, E>] extends [FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>]
-  ? true
-  : false;
+export type FitsComponent<V, E, C> = [FieldHandle<V, E>] extends [ComponentHandle<C>] ? true : false;
 
 /** The names in `V` whose fields fit registered component `C`. */
 export type FitPath<V, E, C> = {
@@ -194,15 +218,18 @@ export type FitPath<V, E, C> = {
 
 /**
  * A registered field component bound to a scope. It resolves the field by
- * `name` or `handle`, makes its `FieldApi`, and renders the app's component
- * with `field` filled in. The other props are the component's own. Only
- * fields that fit the component (see `FitsComponent`) are accepted.
+ * `name` or `handle`, makes its field object, and renders the app's
+ * component with `field` filled in. The other props are the component's
+ * own. Only fields that fit the component (see `FitsComponent`) are
+ * accepted. The field is resolved once, when the component mounts.
+ *
+ * Known hole: a component typed for a narrower error type fits a form whose
+ * error type extends it, and its `setErrors` then takes the narrower type.
+ * So the component can set errors that lack the form's extra members.
  */
 export interface BoundFieldComponent<V, E, C> {
   (props: { readonly name: FitPath<V, E, C>; readonly handle?: never } & OwnProps<C>): SolidElement;
-  (
-    props: { readonly handle: FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>; readonly name?: never } & OwnProps<C>,
-  ): SolidElement;
+  (props: { readonly handle: ComponentHandle<C>; readonly name?: never } & OwnProps<C>): SolidElement;
 }
 
 /** The registered components, bound to a scope of value `V`. */
@@ -315,40 +342,24 @@ export interface SolidFormDefinition<
   useFormContext(): SolidForm<V, E, I, R, F>;
 }
 
-/** Options for a fieldset's `scope`. */
-export interface FieldsetScopeOptions {
-  /** `false` skips registering the fieldset's schema as a validator on the handle. */
-  readonly validate?: false;
-}
-
 /**
  * A reusable value shape, not tied to one form: a token with the shape type
- * and `scope`. An app's fieldset is an ordinary component that takes a
- * handle prop typed `HandleOf<typeof Shape>` and calls `Shape.scope` in its
- * body.
+ * and `scope`. It is for type safety only. It registers no validator: the
+ * form's own schema validates. An app's fieldset is an ordinary component
+ * that takes a handle prop typed `HandleOf<typeof Shape>` and calls
+ * `Shape.scope` in its body.
  */
 export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents> {
   /** Type information only, always undefined at runtime. */
   readonly "~shape"?: FieldTypes<V, E>;
   /**
-   * Returns the scope rooted at `handle`, as `forms.scope` does. Call it in
-   * a component body. The handle is read once, as everything in a Solid
-   * component body is: to move the fieldset to another handle, render it
-   * again under `<Show when={handle} keyed>`.
+   * Returns the scope rooted at `handle`, the same object `forms.scope`
+   * returns, typed to the shape. Call it in a component body. The fieldset
+   * component reads its handle once, as everything in a Solid component
+   * body is read: to move it to another handle, render it again under
+   * `<Show when={handle} keyed>`.
    */
   scope(handle: FieldHandle<V, E>): Scope<V, E, F>;
-}
-
-/**
- * A fieldset made from a schema. Its `scope` also registers the schema as a
- * validator on the handle for the life of the current owner, as
- * `createValidator` does, unless `validate` is `false`.
- */
-export interface SchemaFieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents> {
-  /** Type information only, always undefined at runtime. */
-  readonly "~shape"?: FieldTypes<V, E>;
-  /** Returns the scope rooted at `handle` and registers the schema on it. See `Fieldset.scope`. */
-  scope(handle: FieldHandle<V, E>, options?: FieldsetScopeOptions): Scope<V, E, F>;
 }
 
 /**
@@ -359,16 +370,16 @@ export interface SchemaFieldset<V, E = FormError, F extends FieldComponents = No
  */
 export type HandleOf<T> = T extends { readonly "~shape"?: FieldTypes<infer V, infer E> } ? FieldHandle<V, E> : never;
 
-/** Defines a fieldset shape. */
+/** Defines a fieldset shape. Neither form takes options or registers anything. */
 export interface DefineFieldset<A extends readonly SchemaAdapter<never>[], E, F extends FieldComponents> {
   /** The shape from a type, with no schema: `forms.fieldset<Address>()`. */
   <V>(): Fieldset<V, E, F>;
   /**
    * The shape from a schema: the `Draft` of its input when a registered
    * adapter supports it, as `define` types it, and the input itself
-   * otherwise.
+   * otherwise. The schema only gives the type.
    */
-  <S extends StandardSchemaV1>(schema: S): SchemaFieldset<SchemaValue<S, A>, E, F>;
+  <S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, A>, E, F>;
 }
 
 /**
@@ -427,8 +438,10 @@ export type CreateForms = <
   options?: FormsOptions<A, E, F>,
 ) => SolidForms<A, E, F>;
 
-/** See `CreateForms`. Not implemented yet: it throws. */
-export const createForms: CreateForms = notImplemented("createForms");
+/** See `CreateForms`. */
+// The runtime builds every member the types name, with the types erased.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createForms: CreateForms = createFormsRuntime as unknown as CreateForms;
 
 /**
  * Returns the form from the nearest `form.Form` above, of any definition,
@@ -437,8 +450,10 @@ export const createForms: CreateForms = notImplemented("createForms");
  */
 export type UseFormContext = () => AnyForm;
 
-/** See `UseFormContext`. Not implemented yet: it throws. */
-export const useFormContext: UseFormContext = notImplemented("useFormContext");
+/** See `UseFormContext`. */
+// The context holds forms of any types, which is what `AnyForm` says.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const useFormContext: UseFormContext = useAnyForm as unknown as UseFormContext;
 
 /**
  * Returns the disabled fields with validation errors, as of the latest
@@ -451,5 +466,7 @@ export type CreateDisabledErrors = <V, E, I, R>(
   form: FormStore<V, E, I, R> | { readonly store: FormStore<V, E, I, R> },
 ) => Accessor<readonly DisabledInvalid<E>[]>;
 
-/** See `CreateDisabledErrors`. Not implemented yet: it throws. */
-export const createDisabledErrors: CreateDisabledErrors = notImplemented("createDisabledErrors");
+/** See `CreateDisabledErrors`. */
+// The list comes from the store's `disabledInvalid()`, whose error type is the store's `E`.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createDisabledErrors: CreateDisabledErrors = createDisabledErrorList as unknown as CreateDisabledErrors;

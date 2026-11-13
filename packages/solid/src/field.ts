@@ -1,4 +1,5 @@
 import type {
+  Draft,
   ErrorOf,
   FieldHandle,
   FieldSnapshot,
@@ -11,8 +12,10 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import type { Accessor } from "solid-js";
+import { createFieldApi } from "./field-api.js";
 import type { InputPropsOf } from "./input.js";
-import { notImplemented } from "./not-implemented.js";
+import { createItemList } from "./items.js";
+import { addValidator } from "./validator.js";
 
 /**
  * What the adapter needs from a handle: its id, its stable path, and a store
@@ -33,7 +36,7 @@ export interface HandleLike {
 /** The snapshot type of a handle type. */
 export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>>;
 
-/** The phantom that carries a field's value and error types on `FieldApi`. It never exists at runtime. */
+/** The phantom that carries a field's value and error types on a field object. It never exists at runtime. */
 export interface FieldTypes<V, E> {
   /** The field's value type. */
   readonly value: V;
@@ -41,30 +44,31 @@ export interface FieldTypes<V, E> {
   readonly error: E;
 }
 
-/** The handle members `FieldApi` leaves out: state reads, the store, and type phantoms. */
+/** The handle members a field object leaves out: state reads, the store, and type phantoms. */
 type HiddenHandleMembers = "peek" | "store" | "registerValidator" | "~types" | "~children";
 
 /** The commands of the handle for a value of type `V`. */
 export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHandleMembers>;
 
 /**
- * One field, as one object. It has:
+ * One field whose value type is exactly `V`, as one object. `Field`,
+ * `createField` and the free functions give this type. It has:
  * - every member of the field's snapshot (`value`, `errors`, `shownErrors`,
  *   `touched`, `dirty`, `name` and the rest), each a getter over one signal
  *   that mirrors the store's snapshot for this field. Reading `field.value`
  *   in JSX tracks that signal, so the read re-runs when this field's
  *   snapshot changes and at no other time;
  * - the handle's commands, which depend on its kind: `setValue`,
- *   `handleBlur`, `setErrors`, `validate`, `reset`, `setDisabled`,
- *   `setReadOnly`, and `at` on objects or `push`, `insert`, `remove`,
- *   `move` and `item` on arrays;
+ *   `handleBlur`, `setTouched`, `setErrors`, `validate`, `reset`,
+ *   `setDisabled`, `setReadOnly`, and `at` on objects or `push`, `insert`,
+ *   `remove`, `move` and `item` on arrays;
  * - `handle` itself, `errorId`, and `inputProps`.
  *
  * Don't destructure the snapshot members: a destructured member is read once.
  * The commands, `handle`, `errorId` and `inputProps` never change, so
  * destructuring those is fine.
  */
-export type FieldApi<V, E = FormError> = FieldSnapshot<V, E> &
+export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
   FieldCommands<V, E> & {
     /** The field's handle. */
     readonly handle: FieldHandle<V, E>;
@@ -77,18 +81,39 @@ export type FieldApi<V, E = FormError> = FieldSnapshot<V, E> &
   };
 
 /**
- * Makes the `FieldApi` for a handle. Call it in a component body or another
- * owner. It subscribes to the store at once and unsubscribes when the owner
- * is disposed.
+ * The `field` prop of a registered field component: the field object for a
+ * `Draft<T>` value, so an app writes `FieldApi<number>` for a number field.
+ * `FieldApi<number>` has `value: number | undefined` and its `setValue`
+ * takes `number | undefined`, which is what a schema form holds before the
+ * user fills the field in. `FieldApi<string>` is the field for a string,
+ * since `Draft<string>` is `string`.
+ *
+ * A field fits the component when its value type is `Draft<T>`, which is
+ * every field of a form built from a schema. A plain form's field typed
+ * exactly `T` fits too. That side is loose: the component may write
+ * `undefined` into a field typed `number`, and the type checker won't catch
+ * it.
+ */
+export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
+  /** Type information only: the `T` the component was written for. */
+  readonly "~fits"?: FieldTypes<T, E>;
+};
+
+/**
+ * Makes the field object for a handle. Call it in a component body or
+ * another owner. It subscribes to the store at once and unsubscribes when
+ * the owner is disposed.
  *
  * Called with no owner it subscribes to nothing, and its getters return the
  * current snapshot without tracking. On the server, and in the browser while
  * hydrating, it reads the store's server snapshot, so the markup matches.
  */
-export type CreateField = <H extends HandleLike>(handle: H) => FieldApi<ValueOf<H>, ErrorOf<H>>;
+export type CreateField = <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
 
-/** See `CreateField`. Not implemented yet: it throws. */
-export const createField: CreateField = notImplemented("createField");
+/** See `CreateField`. */
+// The runtime object has the members `ExactFieldApi` names for the handle's kind.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createField: CreateField = createFieldApi as unknown as CreateField;
 
 /**
  * The form snapshot as reactive reads: every member of `FormSnapshot`, each
@@ -111,8 +136,10 @@ export interface ArrayHandleLike extends HandleLike {
  */
 export type CreateItems = <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]>;
 
-/** See `CreateItems`. Not implemented yet: it throws. */
-export const createItems: CreateItems = notImplemented("createItems");
+/** See `CreateItems`. */
+// Each entry is what `handle.item` returns, which the type names.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createItems: CreateItems = createItemList as unknown as CreateItems;
 
 /** What `createValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {
@@ -131,5 +158,5 @@ export type CreateValidator = <H extends ValidatorHandleLike>(
   validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
 ) => void;
 
-/** See `CreateValidator`. Not implemented yet: it throws. */
-export const createValidator: CreateValidator = notImplemented("createValidator");
+/** See `CreateValidator`. */
+export const createValidator: CreateValidator = addValidator;

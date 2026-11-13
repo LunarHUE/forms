@@ -54,7 +54,9 @@
   },
   "devDependencies": {
     "@lunarhue/forms-schema": "workspace:^",
+    "@solidjs/vite-plugin": "catalog:",
     "@solidjs/web": "catalog:",
+    "jsdom": "catalog:",
     "solid-js": "catalog:",
     "valibot": "catalog:"
   },

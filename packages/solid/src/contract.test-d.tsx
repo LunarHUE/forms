@@ -25,8 +25,10 @@ import {
   useFormContext,
   type AnyForm,
   type CheckableProps,
+  type ExactFieldApi,
   type FieldApi,
   type FieldPath,
+  type PathMaxDepth,
   type FormState,
   type HandleOf,
   type NumberInputProps,
@@ -47,7 +49,7 @@ function TextField(props: { field: FieldApi<string>; label: string; placeholder?
     </label>
   );
 }
-function NumberField(props: { field: FieldApi<number | undefined>; label: string }) {
+function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <label>
       {props.label}
@@ -57,6 +59,16 @@ function NumberField(props: { field: FieldApi<number | undefined>; label: string
 }
 
 const forms = createForms({ schemas: [valibot()], fields: { TextField, NumberField } });
+
+// A component that takes an exact field object, with no Draft.
+function ExactCount(props: { field: ExactFieldApi<number>; label: string }) {
+  return (
+    <span>
+      {props.label} {props.field.value}
+    </span>
+  );
+}
+const exactForms = createForms({ fields: { ExactCount } });
 
 const AddressSchema = v.object({
   street: v.string(),
@@ -297,7 +309,7 @@ describe("Field", () => {
     void (
       <form.Field name="billing.geo.lat">
         {(field) => {
-          expectTypeOf(field).toEqualTypeOf<FieldApi<number | undefined>>();
+          expectTypeOf(field).toEqualTypeOf<ExactFieldApi<number | undefined>>();
           expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<number | undefined>>();
           expectTypeOf(field.setValue).parameter(0).toEqualTypeOf<number | undefined | ((previous: number | undefined) => number | undefined)>();
           expectTypeOf(field.errorId).toBeString();
@@ -352,6 +364,13 @@ describe("Field", () => {
     void (<form.Field name="name" handle={form.root.at("name")}>{() => null}</form.Field>);
     // @ts-expect-error: neither name nor handle
     void (<form.Field>{() => null}</form.Field>);
+  });
+
+  it("names fields up to PathMaxDepth segments", () => {
+    type Deep = { a: { b: { c: { d: { e: { f: { g: { h: { i: string } } } } } } } } };
+    expectTypeOf<PathMaxDepth>().toEqualTypeOf<8>();
+    expectTypeOf<"a.b.c.d.e.f.g.h">().toExtend<FieldPath<Deep>>();
+    expectTypeOf<"a.b.c.d.e.f.g.h.i">().not.toExtend<FieldPath<Deep>>();
   });
 
   it("checks inputProps per kind on the field", () => {
@@ -426,12 +445,37 @@ describe("registered field components", () => {
     void (<form.TextField name="name" label="Name" field={createField(form.root.at("name"))} />);
   });
 
-  it("is invariant on leaves: number | undefined fits, number does not", () => {
-    const Plain = forms.define({ defaultValues: { count: 0 } });
+  it("takes a Draft<T> field exactly and a plain T field loosely", () => {
+    const plainDefaults: { count: number; maybe: number | undefined; label: string; flag: number | null } = {
+      count: 0,
+      maybe: 0,
+      label: "",
+      flag: 0,
+    };
+    const Plain = forms.define({ defaultValues: plainDefaults });
     const form = Plain.createForm();
     expectTypeOf(form.root.at("count")).toEqualTypeOf<LeafHandle<number>>();
-    // @ts-expect-error: NumberField writes undefined, which a number field can't hold
+    // FieldApi<number> is the field of a Draft<number>, number | undefined.
+    expectTypeOf<FieldApi<number>["value"]>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<FieldApi<number>["setValue"]>().parameter(0).toEqualTypeOf<number | undefined | ((previous: number | undefined) => number | undefined)>();
+    expectTypeOf<FieldApi<string>["value"]>().toEqualTypeOf<string>();
+    // A plain number field fits too. This side is loose: NumberField may write undefined into it.
     void (<form.NumberField name="count" label="Count" />);
+    void (<form.NumberField name="maybe" label="Maybe" />);
+    void (<form.NumberField handle={form.root.at("count")} label="Count" />);
+    // @ts-expect-error: a string field doesn't fit NumberField
+    void (<form.NumberField name="label" label="Label" />);
+    // @ts-expect-error: number | null is neither number nor Draft<number>
+    void (<form.NumberField name="flag" label="Flag" />);
+  });
+
+  it("takes an exact field object component only for that exact type", () => {
+    const counts: { count: number; maybe: number | undefined } = { count: 0, maybe: 0 };
+    const form = exactForms.define({ defaultValues: counts }).createForm();
+    expectTypeOf(form.ExactCount).toBeFunction();
+    void (<form.ExactCount name="count" label="Count" />);
+    // @ts-expect-error: an exact component doesn't take the Draft
+    void (<form.ExactCount name="maybe" label="Maybe" />);
   });
 
   it("rejects a registration that collides with the form's own members, or has no field prop", () => {
@@ -472,7 +516,9 @@ describe("scopes and fieldsets", () => {
   it("types the fieldset prop from the shape", () => {
     expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<Address>>();
     expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
-    expectTypeOf<Parameters<typeof AddressShape.scope>[1]>().toEqualTypeOf<{ readonly validate?: false } | undefined>();
+    // A fieldset only types the scope: `scope` takes the handle and nothing else.
+    expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: FieldHandle<Address>]>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields>>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {
@@ -511,7 +557,7 @@ describe("free functions", () => {
   it("work on handles with no form object or context", () => {
     const form = Signup.createForm();
     const name = createField(form.root.at("name"));
-    expectTypeOf(name).toEqualTypeOf<FieldApi<string>>();
+    expectTypeOf(name).toEqualTypeOf<ExactFieldApi<string>>();
     expectTypeOf(createItems(form.root.at("rows"))).toEqualTypeOf<Accessor<readonly ItemHandle<Row>[]>>();
     expectTypeOf(createValidator(form.root.at("age"), (value) => (value === undefined ? { message: "Required" } : null))).toBeVoid();
     expectTypeOf(errorId(form.root.at("name"))).toBeString();

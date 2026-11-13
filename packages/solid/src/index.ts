@@ -9,6 +9,7 @@ export type {
   BoundFieldComponents,
   BoundItems,
   CheckedFields,
+  ComponentHandle,
   CreateDisabledErrors,
   CreateFormArgs,
   CreateForms,
@@ -16,7 +17,6 @@ export type {
   FieldComponents,
   FieldErrorOf,
   Fieldset,
-  FieldsetScopeOptions,
   FieldValueOf,
   FitPath,
   FitsComponent,
@@ -33,7 +33,6 @@ export type {
   OwnProps,
   PropsOf,
   ReservedName,
-  SchemaFieldset,
   Scope,
   ScopeMembers,
   SolidForm,
@@ -47,6 +46,7 @@ export type {
   CreateField,
   CreateItems,
   CreateValidator,
+  ExactFieldApi,
   FieldApi,
   FieldCommands,
   FieldTypes,
@@ -55,7 +55,7 @@ export type {
   SnapshotOf,
   ValidatorHandleLike,
 } from "./field.js";
-export type { ArrayPath, FieldPath, MaxPathDepth, ValueAt } from "./paths.js";
+export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { createInputProps, errorId, fieldRef } from "./input.js";
 export type {
   CheckableProps,
