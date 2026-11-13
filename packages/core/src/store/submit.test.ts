@@ -244,8 +244,9 @@ describe("schema output", () => {
     const seen: unknown[] = [];
     const { store } = make({ schema, onSubmit: (value) => void seen.push(value) });
     await store.submit();
+    // Submit armed the schema, so the write reruns it, and the next submit uses that run's output.
     store.root.at("name").setValue(" eve ", { edited: false });
-    expect(runs).toHaveBeenCalledTimes(1);
+    expect(runs).toHaveBeenCalledTimes(2);
     await store.submit();
     expect(runs).toHaveBeenCalledTimes(2);
     expect(seen[1]).toEqual({ name: "eve", titles: ["a", "b"] });

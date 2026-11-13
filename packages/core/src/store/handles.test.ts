@@ -120,6 +120,41 @@ describe("user edits", () => {
     expect(written).not.toHaveBeenCalled();
   });
 
+  it("rerun an armed validator on a write with edited: false", () => {
+    const rule = vi.fn<(value: unknown) => FormError | undefined>((value) => (value === "" ? err("Required") : undefined));
+    const { root } = make({ a: "" });
+    root.at("a").registerValidator(rule);
+    root.at("a").handleBlur();
+    expect(root.at("a").peek().errors).toEqual([err("Required")]);
+    root.at("a").setValue("x", { edited: false });
+    expect(rule).toHaveBeenCalledTimes(2);
+    expect(rule).toHaveBeenLastCalledWith("x", expect.anything());
+    expect(root.at("a").peek()).toMatchObject({ value: "x", edited: false, errors: [] });
+  });
+
+  it("run no unarmed validator on a write with edited: false", () => {
+    const rule = vi.fn<() => FormError>(() => err("No"));
+    const { root, validation } = make({ a: "", rows: [] });
+    root.at("a").registerValidator(rule);
+    const changed = vi.spyOn(validation, "changed");
+    root.at("a").setValue("x", { edited: false });
+    root.at("rows").push({ t: 1 }, { edited: false });
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenNthCalledWith(2, [["rows"]]);
+    expect(rule).not.toHaveBeenCalled();
+    expect(root.at("a").peek().errors).toEqual([]);
+  });
+
+  it("wake each listener once when a write with edited: false reruns a validator", () => {
+    const { store, root } = make({ a: { b: "" } });
+    root.at("a").at("b").registerValidator((value) => (value === "" ? err("Required") : undefined));
+    root.at("a").at("b").handleBlur();
+    const runs = count(store, [["a", "b"], ["a"], [], "form"]);
+    root.at("a").at("b").setValue("x", { edited: false });
+    expect(root.at("a").at("b").peek()).toMatchObject({ value: "x", errors: [] });
+    expect(runs).toEqual([1, 1, 1, 1]);
+  });
+
   it("do nothing when the value doesn't change", () => {
     const { store, root, written } = make({ a: { b: 1 } });
     root.at("a").at("b").setErrors(err("u"));

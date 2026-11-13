@@ -52,12 +52,18 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
   // Every write is a user edit unless `edited: false`. A user edit that
   // changed the value also marks the field edited, clears the user errors at
   // and below it, and tells validation, all in one batch so listeners run once.
+  // A write with `edited: false` that changed the value only tells validation,
+  // so validators that already run there see the new value.
   // Core doesn't block writes to a disabled or read-only field. The adapter
   // reads both from the snapshot and decides what the input allows.
   const write = (path: Path, options: WriteOptions | undefined, run: () => boolean) => {
     if (!core.isLive(path)) return;
     core.batch(() => {
-      if (!run() || options?.edited === false) return;
+      if (!run()) return;
+      if (options?.edited === false) {
+        validation.changed([path]);
+        return;
+      }
       core.markEdited(path);
       core.clearUserErrors(path);
       validation.written(path);
