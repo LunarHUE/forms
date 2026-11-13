@@ -62,22 +62,18 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
   const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
     const { schema } = definition;
     const adapter = schema === undefined ? undefined : adapterFor(schema);
+    // The definition's own keys pass through: schema, validate, equals, disabled, readOnly and onSubmit.
     // Every store option treats undefined as not given.
     return {
+      ...definition,
       id: instance?.id ?? defaultId,
       initial: initialValue(definition, adapter),
       itemValue: adapter && schema ? (path) => adapter.itemValue(schema, path) : undefined,
-      schema,
-      validate: definition.validate,
       timing: config.validate,
       // The error type is erased here. The contract ties `mapError`'s return type to the store's `E`.
       mapError: config.mapError,
       show: definition.show ?? config.show,
-      equals: definition.equals,
       sharedEquals: config.equals,
-      disabled: definition.disabled,
-      readOnly: definition.readOnly,
-      onSubmit: definition.onSubmit,
     };
   };
 

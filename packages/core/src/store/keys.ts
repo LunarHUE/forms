@@ -52,8 +52,7 @@ export function initialIndex(key: string, length: number): number {
  * of an array of `length` items, the keys the list will get.
  */
 export function hadKey(list: KeyList | undefined, key: string, length: number): boolean {
-  const match = /^k(0|[1-9]\d*)$/.exec(key);
-  return match !== null && Number(match[1]) < (list ? list.next : length);
+  return initialIndex(key, list ? list.next : length) >= 0;
 }
 
 function changed(list: KeyList): void {

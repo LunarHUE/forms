@@ -59,19 +59,19 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /** The store id. */
   readonly id: string;
   /** Calls `listener` after a write that changes the snapshot at `path`. Returns the function that unsubscribes. */
-  subscribe(path: Path, listener: () => void): () => void;
+  subscribe(this: void, path: Path, listener: () => void): () => void;
   /** The snapshot at `path`, the identical object until one of its members changes. */
-  getSnapshot(path: Path): Snapshot<E>;
+  getSnapshot(this: void, path: Path): Snapshot<E>;
   /** The snapshot `path` had when the store was created. */
-  getServerSnapshot(path: Path): Snapshot<E>;
+  getServerSnapshot(this: void, path: Path): Snapshot<E>;
   /** Calls `listener` after a write that changes the form snapshot. Returns the function that unsubscribes. */
-  subscribeForm(listener: () => void): () => void;
+  subscribeForm(this: void, listener: () => void): () => void;
   /** The form snapshot, the identical object until one of its members changes. Built on first read. */
-  getFormSnapshot(): FormSnapshot<I, R>;
+  getFormSnapshot(this: void): FormSnapshot<I, R>;
   /** The form snapshot the store started with, the identical object on every call. */
-  getServerFormSnapshot(): FormSnapshot<I, R>;
+  getServerFormSnapshot(this: void): FormSnapshot<I, R>;
   /** Runs `fn`, holding listeners until the outermost batch returns. */
-  batch<T>(fn: () => T): T;
+  batch<T>(this: void, fn: () => T): T;
   /**
    * Writes `value` at `path`. Returns false and does nothing when the value
    * is already there, or when the path is dead, goes through a leaf, or names
@@ -314,16 +314,17 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     return parent.name === "" ? segment : `${parent.name}.${segment}`;
   };
 
-  const stablePathOf = (node: Node<E>): Path => {
-    const path: string[] = [];
-    for (let n = node; n.parent; n = n.parent) path.unshift(n.seg);
+  // The node's stable path, or its value path with `byValue`.
+  const pathOf = (node: Node<E>, byValue: boolean): PathSegment[] => {
+    const path: PathSegment[] = [];
+    for (let n = node; n.parent; n = n.parent) path.unshift(byValue && n.index >= 0 ? n.index : n.seg);
     return path;
   };
 
   const dirtyOf = (node: Node<E>): boolean => {
     if (!dirtyHook) return false;
     if (!Object.is(node.dirtyFor, node.value)) {
-      node.dirty = dirtyHook(stablePathOf(node), node.value);
+      node.dirty = dirtyHook(pathOf(node, false), node.value);
       node.dirtyFor = node.value;
     }
     return node.dirty;
@@ -647,24 +648,18 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     finish(true);
   };
 
-  const valuePathOf = (node: Node<E>): PathSegment[] => {
-    const path: PathSegment[] = [];
-    for (let n = node; n.parent; n = n.parent) path.unshift(n.index >= 0 ? n.index : n.seg);
-    return path;
-  };
-
   // Written values are frozen in development, along with the copies `setAt`
   // made on the written path. Everything else is shared and already frozen.
   const writeAt = (node: Node<E>, value: unknown) => {
-    const path = valuePathOf(node);
+    const path = pathOf(node, true);
     const next = setAt(current, path, value);
     commit(freezePath(next, path), node);
   };
 
   // The array node at `path` when it can take an array write: an array, or missing.
   const arrayAt = (path: Path): { node: Node<E>; items: readonly unknown[] } | undefined => {
-    const node = nodeAt(path);
-    if (node.dead || node.blocked) return undefined;
+    const node = fieldAt(path);
+    if (!node) return undefined;
     if (Array.isArray(node.value)) return { node, items: node.value };
     if (node.value === undefined || node.value === null) return { node, items: [] };
     return undefined;
@@ -815,8 +810,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       }
     },
     set(path, value) {
-      const node = nodeAt(path);
-      if (node.dead || node.blocked || Object.is(node.value, value)) return false;
+      const node = fieldAt(path);
+      if (!node || Object.is(node.value, value)) return false;
       writeAt(node, value);
       return true;
     },
@@ -946,11 +941,10 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     },
     setSubmitCount(count) {
       if (count === submitCount) return false;
-      const was = submitCount;
       submitCount = count;
-      // Only fields with validation errors can show something different.
-      const matters = typeof show === "function" || ((show === "submitted" || show === "touched-or-submitted") && was > 0 !== count > 0);
-      if (matters) for (const node of withErrors) rebuild(node);
+      // Only fields with validation errors can show something different. A
+      // rebuild that changes nothing keeps the snapshot.
+      for (const node of withErrors) rebuild(node);
       return finish(true);
     },
     recheckDirty() {
@@ -1035,13 +1029,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
         return undefined;
       };
       const found = root && visit(root);
-      return found && stablePathOf(found);
+      return found && pathOf(found, false);
     },
     disabledInvalid() {
       const paths: Path[] = [];
       const visit = (node: Node<E>) => {
         if (node.invalidCount === 0) return;
-        if (node.validation.length > 0 && node.disabled.on) paths.push(stablePathOf(node));
+        if (node.validation.length > 0 && node.disabled.on) paths.push(pathOf(node, false));
         for (const child of inValueOrder(node)) visit(child);
       };
       if (root) visit(root);
