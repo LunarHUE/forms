@@ -1,6 +1,8 @@
 import type {
   ErrorOf,
+  FieldHandle,
   FieldSnapshot,
+  FormError,
   FormSnapshot,
   FormStore,
   HandleTypes,
@@ -9,6 +11,7 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import type { Accessor } from "solid-js";
+import type { InputPropsOf } from "./input.js";
 import { notImplemented } from "./not-implemented.js";
 
 /**
@@ -30,52 +33,68 @@ export interface HandleLike {
 /** The snapshot type of a handle type. */
 export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>>;
 
-/**
- * A field's snapshot as reactive reads. It has every member of
- * `FieldSnapshot`, each a getter over one signal that mirrors the store's
- * snapshot for this field. Reading `field.value` in JSX or a memo tracks
- * that signal, so the read re-runs when this field's snapshot changes and
- * at no other time. Don't destructure it: a destructured member is read once.
- */
-export type FieldState<V, E> = FieldSnapshot<V, E>;
+/** The phantom that carries a field's value and error types on `FieldApi`. It never exists at runtime. */
+export interface FieldTypes<V, E> {
+  /** The field's value type. */
+  readonly value: V;
+  /** The form's error type. */
+  readonly error: E;
+}
+
+/** The handle members `FieldApi` leaves out: state reads, the store, and type phantoms. */
+type HiddenHandleMembers = "peek" | "store" | "registerValidator" | "~types" | "~children";
+
+/** The commands of the handle for a value of type `V`. */
+export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHandleMembers>;
 
 /**
- * Reads a field's snapshot reactively. Call it in a component body or
- * another owner. It subscribes to the store at once and unsubscribes when
- * the owner is disposed.
+ * One field, as one object. It has:
+ * - every member of the field's snapshot (`value`, `errors`, `shownErrors`,
+ *   `touched`, `dirty`, `name` and the rest), each a getter over one signal
+ *   that mirrors the store's snapshot for this field. Reading `field.value`
+ *   in JSX tracks that signal, so the read re-runs when this field's
+ *   snapshot changes and at no other time;
+ * - the handle's commands, which depend on its kind: `setValue`,
+ *   `handleBlur`, `setErrors`, `validate`, `reset`, `setDisabled`,
+ *   `setReadOnly`, and `at` on objects or `push`, `insert`, `remove`,
+ *   `move` and `item` on arrays;
+ * - `handle` itself, `errorId`, and `inputProps`.
+ *
+ * Don't destructure the snapshot members: a destructured member is read once.
+ * The commands, `handle`, `errorId` and `inputProps` never change, so
+ * destructuring those is fine.
+ */
+export type FieldApi<V, E = FormError> = FieldSnapshot<V, E> &
+  FieldCommands<V, E> & {
+    /** The field's handle. */
+    readonly handle: FieldHandle<V, E>;
+    /** The id for the element that renders this field's errors. See `errorId`. */
+    readonly errorId: string;
+    /** The props for an input bound to this field, with the same kinds and checks as `createInputProps`. */
+    readonly inputProps: InputPropsOf<V>;
+    /** Type information only, always undefined at runtime. */
+    readonly "~field"?: FieldTypes<V, E>;
+  };
+
+/**
+ * Makes the `FieldApi` for a handle. Call it in a component body or another
+ * owner. It subscribes to the store at once and unsubscribes when the owner
+ * is disposed.
  *
  * Called with no owner it subscribes to nothing, and its getters return the
  * current snapshot without tracking. On the server, and in the browser while
  * hydrating, it reads the store's server snapshot, so the markup matches.
  */
-export type CreateField = <H extends HandleLike>(handle: H) => FieldState<ValueOf<H>, ErrorOf<H>>;
+export type CreateField = <H extends HandleLike>(handle: H) => FieldApi<ValueOf<H>, ErrorOf<H>>;
 
 /** See `CreateField`. Not implemented yet: it throws. */
 export const createField: CreateField = notImplemented("createField");
-
-/** What `createFormState` needs from a store. Every `FormStore` fits. */
-export type FormStateSource<I, R> = Pick<
-  FormStore<unknown, never, I, R>,
-  "subscribeForm" | "getFormSnapshot" | "getServerFormSnapshot"
->;
 
 /**
  * The form snapshot as reactive reads: every member of `FormSnapshot`, each
  * a getter over one signal that mirrors the store's form snapshot.
  */
 export type FormState<I, R> = FormSnapshot<I, R>;
-
-/**
- * Reads the form snapshot reactively. Takes the store, or anything with a
- * `store`, such as a handle. Ownership, server and hydration rules are the
- * ones `createField` follows.
- */
-export type CreateFormState = <I, R>(
-  form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> },
-) => FormState<I, R>;
-
-/** See `CreateFormState`. Not implemented yet: it throws. */
-export const createFormState: CreateFormState = notImplemented("createFormState");
 
 /** What `createItems` needs from an array handle. Array handles and loose handles fit. */
 export interface ArrayHandleLike extends HandleLike {

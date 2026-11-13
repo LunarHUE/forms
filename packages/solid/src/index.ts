@@ -1,25 +1,61 @@
 // Binds Solid 2 (solid-js 2 with @solidjs/web).
 export * from "@lunarhue/forms-core";
-export { createForms } from "./forms.js";
-export type { CreateForms, SolidFormDefinition, SolidFormsCore } from "./forms.js";
-export { createField, createFormState, createItems, createValidator } from "./field.js";
+export { createDisabledErrors, createForms, useFormContext } from "./forms.js";
+export type {
+  AnyComponent,
+  AnyForm,
+  BoundField,
+  BoundFieldComponent,
+  BoundFieldComponents,
+  BoundItems,
+  CheckedFields,
+  CreateDisabledErrors,
+  CreateFormArgs,
+  CreateForms,
+  DefineFieldset,
+  FieldComponents,
+  FieldErrorOf,
+  Fieldset,
+  FieldsetScopeOptions,
+  FieldValueOf,
+  FitPath,
+  FitsComponent,
+  FocusOnInvalid,
+  FocusTarget,
+  FormComponent,
+  FormElementProps,
+  FormMembers,
+  FormRenderProps,
+  FormSettings,
+  FormsOptions,
+  HandleOf,
+  NoFieldComponents,
+  OwnProps,
+  PropsOf,
+  ReservedName,
+  SchemaFieldset,
+  Scope,
+  ScopeMembers,
+  SolidForm,
+  SolidFormDefinition,
+  SolidForms,
+  UseFormContext,
+} from "./forms.js";
+export { createField, createItems, createValidator } from "./field.js";
 export type {
   ArrayHandleLike,
   CreateField,
-  CreateFormState,
   CreateItems,
   CreateValidator,
-  FieldState,
+  FieldApi,
+  FieldCommands,
+  FieldTypes,
   FormState,
-  FormStateSource,
   HandleLike,
   SnapshotOf,
   ValidatorHandleLike,
 } from "./field.js";
-export { FormContext, useFormStore } from "./context.js";
-export type { ContextStore, UseFormStore } from "./context.js";
-export { Field, Items } from "./components.js";
-export type { FieldComponent, FieldProps, ItemsComponent, ItemsProps } from "./components.js";
+export type { ArrayPath, FieldPath, MaxPathDepth, ValueAt } from "./paths.js";
 export { createInputProps, errorId, fieldRef } from "./input.js";
 export type {
   CheckableProps,
@@ -29,6 +65,13 @@ export type {
   CreateInputProps,
   FieldRef,
   InputOptions,
+  InputPropsOf,
+  IsBoolean,
+  IsChoice,
+  IsNumber,
+  IsOption,
+  IsOptionList,
+  IsText,
   NumberInputOptions,
   NumberInputProps,
   NumberInputType,
@@ -41,12 +84,3 @@ export type {
   TextInputProps,
   TextInputType,
 } from "./input.js";
-export { createDisabledErrors, createSubmit } from "./submit.js";
-export type {
-  CreateDisabledErrors,
-  CreateSubmit,
-  FormElementProps,
-  InvalidSubmit,
-  SubmitBinding,
-  SubmitOptions,
-} from "./submit.js";

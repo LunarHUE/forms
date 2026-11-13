@@ -1,13 +1,12 @@
 import type {
   ArrayHandle,
   DisabledInvalid,
-  FieldSnapshot,
+  FieldHandle,
   FormError,
   FormStore,
   ItemHandle,
   LeafHandle,
   ObjectHandle,
-  StandardSchemaV1,
   Submission,
 } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
@@ -15,32 +14,56 @@ import { For, Show, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
-  branch,
   createDisabledErrors,
   createField,
   createForms,
-  createFormState,
   createInputProps,
   createItems,
-  createSubmit,
   createValidator,
   errorId,
-  Field,
   fieldRef,
-  FormContext,
-  Items,
-  useFormStore,
+  useFormContext,
+  type AnyForm,
   type CheckableProps,
-  type FieldState,
+  type FieldApi,
+  type FieldPath,
   type FormState,
+  type HandleOf,
   type NumberInputProps,
+  type Scope,
   type SelectProps,
-  type SolidFormDefinition,
+  type SolidForm,
   type TextareaProps,
   type TextInputProps,
 } from "./index.js";
 
-const forms = createForms({ schemas: [valibot()] });
+// The app's own field components. Each takes a `field` prop and props of its own.
+function TextField(props: { field: FieldApi<string>; label: string; placeholder?: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...props.field.inputProps()} placeholder={props.placeholder} />
+      <Show when={props.field.shownErrors[0]}>{(error) => <p id={props.field.errorId}>{error().message}</p>}</Show>
+    </label>
+  );
+}
+function NumberField(props: { field: FieldApi<number | undefined>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...props.field.inputProps({ kind: "number" })} />
+    </label>
+  );
+}
+
+const forms = createForms({ schemas: [valibot()], fields: { TextField, NumberField } });
+
+const AddressSchema = v.object({
+  street: v.string(),
+  city: v.pipe(v.string(), v.minLength(1, "Required")),
+  zip: v.string(),
+  geo: v.object({ lat: v.number(), lng: v.number() }),
+});
 
 const signupSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1, "Required")),
@@ -49,14 +72,26 @@ const signupSchema = v.object({
   plan: v.picklist(["free", "pro"]),
   bio: v.string(),
   tags: v.array(v.string()),
-  address: v.object({ city: v.string(), zip: v.string() }),
-  rows: v.array(v.object({ title: v.string(), qty: v.number() })),
+  billing: AddressSchema,
+  shipping: AddressSchema,
+  rows: v.array(v.object({ title: v.string(), qty: v.number(), address: AddressSchema })),
 });
 
-// The form value as the adapter's defaults leave it: numbers start undefined.
+// The values as the adapter's defaults leave them: numbers start undefined.
+interface Geo {
+  lat: number | undefined;
+  lng: number | undefined;
+}
+interface Address {
+  street: string;
+  city: string;
+  zip: string;
+  geo: Geo;
+}
 interface Row {
   title: string;
   qty: number | undefined;
+  address: Address;
 }
 interface SignupDraft {
   name: string;
@@ -65,160 +100,165 @@ interface SignupDraft {
   plan: "free" | "pro" | undefined;
   bio: string;
   tags: string[];
-  address: { city: string; zip: string };
+  billing: Address;
+  shipping: Address;
   rows: Row[];
 }
+type Intent = "save" | "publish" | undefined;
+type SignupResult = { id: string; intent: Intent };
+type Fields = { readonly TextField: typeof TextField; readonly NumberField: typeof NumberField };
+type SignupForm = SolidForm<SignupDraft, FormError, Intent, SignupResult, Fields>;
 
 const Signup = forms.define({
   schema: signupSchema,
-  onSubmit: (value, ctx: { intent: "save" | "publish" | undefined }) => ({ id: value.name, intent: ctx.intent }),
+  onSubmit: (value, ctx: { intent: Intent }) => ({ id: value.name, intent: ctx.intent }),
 });
 
-type SignupResult = { id: string; intent: "save" | "publish" | undefined };
-type SignupStore = FormStore<SignupDraft, FormError, "save" | "publish" | undefined, SignupResult>;
+// Fieldsets: a shape token, then an ordinary component that asks for its scope.
+const AddressShape = forms.fieldset(AddressSchema);
+const GeoShape = forms.fieldset<Geo>();
 
-// A schema type no registered adapter supports.
-interface OtherSchema extends StandardSchemaV1<{ title: string }> {
-  readonly other: true;
-}
-declare const otherSchema: OtherSchema;
-
-// A nested field rendered through Field, with no provider above it.
-function City(props: { form: FormStore<SignupDraft> }) {
-  return (
-    <Field handle={props.form.root.at("address").at("city")} validate={(value) => (value ? null : { message: "Required" })}>
-      {(field, handle) => {
-        expectTypeOf(field.value).toEqualTypeOf<string>();
-        expectTypeOf(handle).toEqualTypeOf<LeafHandle<string>>();
-        return (
-          <label>
-            City
-            <input {...createInputProps(handle)} />
-            <Show when={field.shownErrors[0]}>{(error) => <p id={errorId(handle)}>{error().message}</p>}</Show>
-          </label>
-        );
-      }}
-    </Field>
-  );
-}
-
-// Array rows through Items.
-function Rows(props: { rows: ArrayHandle<Row[]> }) {
-  return (
-    <Items handle={props.rows} fallback={<p>No rows</p>}>
-      {(row, index) => {
-        expectTypeOf(row).toEqualTypeOf<ItemHandle<Row>>();
-        expectTypeOf(index).toEqualTypeOf<Accessor<number>>();
-        return (
-          <fieldset>
-            <legend>Row {index() + 1}</legend>
-            <input {...createInputProps(row.at("title"))} />
-            <input {...createInputProps(row.at("qty"), { type: "number" })} />
-            <button type="button" onClick={() => props.rows.remove(index())}>
-              Remove
-            </button>
-          </fieldset>
-        );
-      }}
-    </Items>
-  );
-}
-
-// createItems' handles go straight to For.
-function Tags(props: { tags: ArrayHandle<string[]> }) {
-  const items = createItems(props.tags);
-  return <For each={items()}>{(tag) => <input {...createInputProps(tag)} />}</For>;
-}
-
-// A store provided through context and read back typed by its definition.
-function Page() {
-  const form = Signup.createForm();
-  return (
-    <FormContext value={form}>
-      <Summary />
-    </FormContext>
-  );
-}
-function Summary() {
-  const form = useFormStore(Signup);
-  expectTypeOf(form).toEqualTypeOf<SignupStore>();
-  const name = createField(form.root.at("name"));
-  return <p>{name.value}</p>;
-}
-
-// Every input kind spread on its element.
-function Inputs() {
-  const root = Signup.createForm().root;
+function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
+  const scope = GeoShape.scope(props.field);
+  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields>>();
   return (
     <>
-      <input {...createInputProps(root.at("name"), { describedBy: "name-hint" })} />
-      <textarea {...createInputProps(root.at("bio"), { type: "textarea" })} />
-      <input {...createInputProps(root.at("age"), { type: "number" })} min={0} />
-      <input {...createInputProps(root.at("subscribe"), { type: "checkbox" })} />
-      <input {...createInputProps(root.at("tags"), { type: "checkbox", value: "news" })} />
-      <input {...createInputProps(root.at("plan"), { type: "radio", value: "free" })} />
-      <input {...createInputProps(root.at("plan"), { type: "radio", value: "pro" })} />
-      <select {...createInputProps(root.at("plan"), { type: "select" })}>
-        <option value="free">Free</option>
-        <option value="pro">Pro</option>
-      </select>
-      <div ref={fieldRef(root.at("address").at("zip"))} tabindex={0} />
+      <scope.NumberField name="lat" label="Latitude" />
+      <scope.NumberField name="lng" label="Longitude" />
     </>
   );
 }
 
-// Our ref and handler composed with the app's own.
-function Name() {
-  const props = createInputProps(Signup.createForm().root.at("name"));
-  let element: HTMLInputElement | undefined;
+function AddressFields(props: { field: HandleOf<typeof AddressShape>; title: string }) {
+  const scope = AddressShape.scope(props.field);
+  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<Address>>();
   return (
-    <input
-      {...props}
-      ref={[props.ref, (el) => (element = el)]}
-      onInput={(event) => {
-        props.onInput(event);
-        element?.setCustomValidity("");
-      }}
-    />
+    <fieldset>
+      <legend>{props.title}</legend>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField name="city" label="City" />
+      <scope.Field name="zip">{(field) => <input {...field.inputProps()} />}</scope.Field>
+      <scope.Field name="geo.lat">{(field) => <span>{field.value}</span>}</scope.Field>
+      {/* @ts-expect-error: names are typed against the shape */}
+      <scope.Field name="country">{() => null}</scope.Field>
+      <GeoFields field={scope.root.at("geo")} />
+    </fieldset>
   );
 }
 
-// The form element, an intent button, and the disabled-field errors.
-function SignupForm() {
+// A reusable part that needs only the nearest form.
+function SubmitButton(props: { label: string }) {
+  const form = useFormContext();
+  expectTypeOf(form).toEqualTypeOf<AnyForm>();
+  return (
+    <button type="submit" disabled={form.state.submitting}>
+      {props.label}
+    </button>
+  );
+}
+
+// A part that reads its own definition's form, typed.
+function SignupSummary() {
+  const form = Signup.useFormContext();
+  expectTypeOf(form).toEqualTypeOf<SignupForm>();
+  return <form.Field name="name">{(field) => <p>{field.value}</p>}</form.Field>;
+}
+
+function SignupPage() {
   const form = Signup.createForm();
-  const submit = createSubmit(form, { onInvalid: (invalid) => invalid.field?.id });
-  const state = createFormState(form);
   const disabledErrors = createDisabledErrors(form);
   return (
-    <form {...submit.formProps}>
-      <For each={disabledErrors()}>
-        {(entry) => (
-          <p>
-            {entry.name}: {entry.errors[0]?.message}
-          </p>
-        )}
-      </For>
-      <button type="submit" disabled={state.submitting}>
-        Save
-      </button>
-      <button type="button" onClick={() => void submit.submit("publish")}>
-        Publish
-      </button>
-    </form>
+    <form.Form>
+      {({ submit, ...props }) => (
+        <form {...props}>
+          <form.TextField name="name" label="Name" placeholder="Ada" />
+          <form.NumberField name="age" label="Age" />
+          <form.Field name="billing.city">{(field) => <input {...field.inputProps({ type: "text" })} />}</form.Field>
+          <form.Items name="rows" fallback={<p>No rows</p>}>
+            {(row, index) => (
+              <fieldset>
+                <legend>Row {index() + 1}</legend>
+                <form.TextField handle={row.at("title")} label="Title" />
+                <form.NumberField handle={row.at("qty")} label="Qty" />
+                <AddressFields field={row.at("address")} title="Row address" />
+                <button type="button" onClick={() => form.root.at("rows").remove(index())}>
+                  Remove
+                </button>
+              </fieldset>
+            )}
+          </form.Items>
+          <AddressFields field={form.root.at("billing")} title="Billing" />
+          <AddressFields field={form.root.at("shipping")} title="Shipping" />
+          <SignupSummary />
+          <For each={disabledErrors()}>{(entry) => <p>{entry.name}</p>}</For>
+          <SubmitButton label="Save" />
+          <button type="button" onClick={() => void submit("publish")}>
+            Publish
+          </button>
+        </form>
+      )}
+    </form.Form>
   );
 }
 
-describe("defining and creating a form", () => {
+// A second form with a wider object that the same fieldset fits.
+interface Office extends Address {
+  phone: string;
+}
+const officeDefaults: { office: Office; label: string } = {
+  office: { street: "", city: "", zip: "", geo: { lat: undefined, lng: undefined }, phone: "" },
+  label: "",
+};
+const Company = forms.define({ defaultValues: officeDefaults });
+
+function CompanyPage() {
+  const form = Company.createForm();
+  return (
+    <form.Form>
+      <AddressFields field={form.root.at("office")} title="Office" />
+      <SubmitButton label="Save" />
+    </form.Form>
+  );
+}
+
+// A separate form whose Form sits inside another form's Form.
+const RowDialog = forms.define({ defaultValues: { title: "" } });
+function NestedForms() {
+  const outer = Signup.createForm();
+  const inner = RowDialog.createForm();
+  return (
+    <outer.Form>
+      <inner.Form>
+        {/* useFormContext() here is `inner`; Signup.useFormContext() still finds `outer`. */}
+        <SignupSummary />
+        <SubmitButton label="Save row" />
+      </inner.Form>
+    </outer.Form>
+  );
+}
+
+describe("the form object", () => {
   it("carries V, E, I and R from the definition with no annotations", () => {
-    expectTypeOf(Signup).toEqualTypeOf<
-      SolidFormDefinition<SignupDraft, FormError, "save" | "publish" | undefined, SignupResult>
-    >();
     const form = Signup.createForm();
-    expectTypeOf(form).toEqualTypeOf<SignupStore>();
+    expectTypeOf(form).toEqualTypeOf<SignupForm>();
+    expectTypeOf(form.store).toEqualTypeOf<FormStore<SignupDraft, FormError, Intent, SignupResult>>();
     expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<SignupDraft>>();
+    expectTypeOf(form.id).toBeString();
+    expectTypeOf(form.submit("save")).toEqualTypeOf<Promise<Submission<Intent, SignupResult>>>();
+    expectTypeOf(form.handleSubmit()).toEqualTypeOf<Promise<void>>();
+    expectTypeOf(Signup.createForm({ id: "signup", focusOnInvalid: false })).toEqualTypeOf<SignupForm>();
     // The core store still comes from createStore, for use outside components.
-    expectTypeOf(Signup.createStore()).toEqualTypeOf(form);
-    expectTypeOf(Signup.createForm(undefined, { id: "signup" })).toEqualTypeOf<SignupStore>();
+    expectTypeOf(Signup.createStore()).toEqualTypeOf(form.store);
+  });
+
+  it("reads the form snapshot through state", () => {
+    const form = Signup.createForm();
+    expectTypeOf(form.state).toEqualTypeOf<FormState<Intent, SignupResult>>();
+    expectTypeOf(form.state.submitting).toEqualTypeOf<boolean>();
+    const submission = form.state.submission;
+    if (submission.status === "succeeded") expectTypeOf(submission.result).toEqualTypeOf<SignupResult>();
+    // @ts-expect-error: state is read-only
+    form.state.submitting = true;
   });
 
   it("passes per-store options through the function form", () => {
@@ -226,225 +266,291 @@ describe("defining and creating a form", () => {
       schema: v.object({ rows: v.array(v.object({ title: v.string() })) }),
       defaultValues: { rows: Array.from({ length: count }, () => ({ title: "" })) },
     }));
-    expectTypeOf(Lines.createForm(3).root.at("rows")).toEqualTypeOf<ArrayHandle<{ title: string }[]>>();
+    expectTypeOf(Lines.createForm(3, { id: "lines" }).root.at("rows")).toEqualTypeOf<ArrayHandle<{ title: string }[]>>();
     // @ts-expect-error: the function form needs its options
     Lines.createForm();
-    // @ts-expect-error: the options are a number
-    Lines.createForm("3");
   });
 
-  it("types a plain form from defaultValues", () => {
-    const Login = forms.define({ defaultValues: { email: "", remember: false } });
-    const form = Login.createForm();
-    expectTypeOf(form.root.at("email")).toEqualTypeOf<LeafHandle<string>>();
-    expectTypeOf(createField(form.root.at("remember")).value).toEqualTypeOf<boolean>();
-  });
-
-  it("keeps a schema's Draft value as it is", () => {
-    const form = Signup.createForm();
-    expectTypeOf(createField(form.root.at("age")).value).toEqualTypeOf<number | undefined>();
-    expectTypeOf(createField(form.root.at("plan")).value).toEqualTypeOf<"free" | "pro" | undefined>();
-  });
-
-  it("takes a schema no adapter supports when defaultValues is complete", () => {
-    const Other = forms.define({ schema: otherSchema, defaultValues: { title: "" } });
-    expectTypeOf(Other.createForm().root.at("title")).toEqualTypeOf<LeafHandle<string>>();
-    // @ts-expect-error: no adapter supports this schema, so defaultValues is required
-    forms.define({ schema: otherSchema });
-  });
-});
-
-describe("intents and results", () => {
   it("requires an intent when undefined is not one", () => {
     const Post = forms.define({
       defaultValues: { title: "" },
       onSubmit: (_value, ctx: { intent: "draft" | "publish" }) => ctx.intent.length,
     });
-    const submit = createSubmit(Post.createForm());
-    expectTypeOf(submit.submit("draft")).toEqualTypeOf<Promise<Submission<"draft" | "publish", number>>>();
+    const form = Post.createForm();
+    expectTypeOf(form.submit("draft")).toEqualTypeOf<Promise<Submission<"draft" | "publish", number>>>();
     // @ts-expect-error: the intent is required
-    void submit.submit();
+    void form.submit();
     // @ts-expect-error: "archive" is not an intent
-    void submit.submit("archive");
+    void form.submit("archive");
   });
 
-  it("reads the submission with its intent and result types", () => {
-    const state = createFormState(Signup.createForm());
-    expectTypeOf(state).toEqualTypeOf<FormState<"save" | "publish" | undefined, SignupResult>>();
-    const submission = state.submission;
-    if (submission.status === "succeeded") expectTypeOf(submission.result).toEqualTypeOf<SignupResult>();
-    if (submission.status === "submitting")
-      expectTypeOf(submission.intent).toEqualTypeOf<"save" | "publish" | undefined>();
-  });
-
-  it("reads the form state from a handle's store too", () => {
-    const form = Signup.createForm();
-    expectTypeOf(createFormState(form.root.at("name")).valid).toEqualTypeOf<boolean>();
+  it("type-checks Form with a function child and with plain children", () => {
+    expectTypeOf(SignupPage).toBeFunction();
+    expectTypeOf(CompanyPage).toBeFunction();
+    expectTypeOf(NestedForms).toBeFunction();
   });
 });
 
-describe("a custom error type from mapError", () => {
-  interface AppError {
-    readonly code: string;
-  }
-  const appForms = createForms({ mapError: (raw): AppError => ({ code: raw.message }) });
-  const Profile = appForms.define({ defaultValues: { handle: "", links: [{ url: "" }] } });
+describe("Field", () => {
+  it("resolves a name to its FieldApi", () => {
+    const form = Signup.createForm();
+    void (
+      <form.Field name="billing.geo.lat">
+        {(field) => {
+          expectTypeOf(field).toEqualTypeOf<FieldApi<number | undefined>>();
+          expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<number | undefined>>();
+          expectTypeOf(field.setValue).parameter(0).toEqualTypeOf<number | undefined | ((previous: number | undefined) => number | undefined)>();
+          expectTypeOf(field.errorId).toBeString();
+          return <span>{field.value}</span>;
+        }}
+      </form.Field>
+    );
+    void (
+      <form.Field name="rows">
+        {(field) => {
+          expectTypeOf(field.keys).toEqualTypeOf<readonly string[]>();
+          expectTypeOf(field.push).toBeFunction();
+          return null;
+        }}
+      </form.Field>
+    );
+    void (
+      <form.Field name="billing">
+        {(field) => {
+          expectTypeOf(field.at("city")).toEqualTypeOf<LeafHandle<string>>();
+          return null;
+        }}
+      </form.Field>
+    );
+  });
 
-  it("flows to field state, validators, items and submit", () => {
-    const form = Profile.createForm();
-    const handle = createField(form.root.at("handle"));
-    expectTypeOf(handle.errors).toEqualTypeOf<readonly AppError[]>();
-    expectTypeOf(handle.shownErrors).toEqualTypeOf<readonly AppError[]>();
-    createValidator(form.root.at("handle"), (value) => {
-      expectTypeOf(value).toEqualTypeOf<string>();
-      return value.includes(" ") ? { code: "space" } : undefined;
-    });
-    // @ts-expect-error: a validator returns the form's error type
-    createValidator(form.root.at("handle"), () => ({ message: "no" }));
-    const links = createItems(form.root.at("links"));
-    expectTypeOf(links).toEqualTypeOf<Accessor<readonly ItemHandle<{ url: string }, AppError>[]>>();
-    createSubmit(form, {
-      onInvalid: (invalid) => {
-        expectTypeOf(invalid.disabled).toEqualTypeOf<readonly DisabledInvalid<AppError>[]>();
-        expectTypeOf(invalid.focused).toEqualTypeOf<HTMLElement | undefined>();
-      },
-    });
-    expectTypeOf(createDisabledErrors(form)).toEqualTypeOf<Accessor<readonly DisabledInvalid<AppError>[]>>();
+  it("resolves a handle and takes a validator typed by the field", () => {
+    const form = Signup.createForm();
+    const qty = form.root.at("rows").item("k").at("qty");
+    void (
+      <form.Field handle={qty} validate={(value) => (value === undefined ? { message: "Required" } : null)}>
+        {(field) => {
+          expectTypeOf(field.value).toEqualTypeOf<number | undefined>();
+          return <input {...field.inputProps({ kind: "number" })} />;
+        }}
+      </form.Field>
+    );
+    // @ts-expect-error: a string schema doesn't fit a number field
+    void (<form.Field handle={qty} validate={v.string()}>{() => null}</form.Field>);
+  });
+
+  it("rejects a wrong name, an index, both name and handle, or neither", () => {
+    const form = Signup.createForm();
+    expectTypeOf<FieldPath<SignupDraft>>().toExtend<string>();
+    // @ts-expect-error: no such field
+    void (<form.Field name="billing.country">{() => null}</form.Field>);
+    // @ts-expect-error: names have no array indexes
+    void (<form.Field name="rows.0.title">{() => null}</form.Field>);
+    // @ts-expect-error: names stop at an array
+    void (<form.Field name="rows.title">{() => null}</form.Field>);
+    // @ts-expect-error: name and handle together
+    void (<form.Field name="name" handle={form.root.at("name")}>{() => null}</form.Field>);
+    // @ts-expect-error: neither name nor handle
+    void (<form.Field>{() => null}</form.Field>);
+  });
+
+  it("checks inputProps per kind on the field", () => {
+    const form = Signup.createForm();
+    void (
+      <form.Field name="plan">
+        {(field) => {
+          expectTypeOf(field.inputProps({ kind: "select" })).toEqualTypeOf<SelectProps>();
+          expectTypeOf(field.inputProps({ kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
+          // @ts-expect-error: a union of literals takes no free text
+          field.inputProps();
+          // @ts-expect-error: "team" is not a plan
+          field.inputProps({ kind: "radio", value: "team" });
+          return null;
+        }}
+      </form.Field>
+    );
   });
 });
 
-describe("reading fields", () => {
-  it("gives a field state shaped like the snapshot", () => {
+describe("Items", () => {
+  it("renders item handles keyed by stable keys", () => {
     const form = Signup.createForm();
-    const city = createField(form.root.at("address").at("city"));
-    expectTypeOf(city).toEqualTypeOf<FieldState<string, FormError>>();
-    expectTypeOf(city).toEqualTypeOf<FieldSnapshot<string>>();
-    const rows = createField(form.root.at("rows"));
-    expectTypeOf(rows.keys).toEqualTypeOf<readonly string[]>();
-    expectTypeOf(rows.value).toEqualTypeOf<readonly { readonly title: string; readonly qty: number | undefined }[]>();
-    // @ts-expect-error: field state is read-only
-    city.value = "Paris";
+    void (
+      <form.Items name="rows">
+        {(row, index) => {
+          expectTypeOf(row).toEqualTypeOf<ItemHandle<Row>>();
+          expectTypeOf(index).toEqualTypeOf<Accessor<number>>();
+          return <form.Field handle={row.at("qty")}>{(field) => <span>{field.value}</span>}</form.Field>;
+        }}
+      </form.Items>
+    );
+    void (
+      <form.Items handle={form.root.at("tags")}>
+        {(tag) => {
+          expectTypeOf(tag).toEqualTypeOf<ItemHandle<string>>();
+          return <form.TextField handle={tag} label="Tag" />;
+        }}
+      </form.Items>
+    );
   });
 
-  it("narrows a union through core's branch with the field state", () => {
-    type Method = { kind: "card"; number: string } | { kind: "iban"; iban: string };
-    const defaults: { method: Method } = { method: { kind: "card", number: "" } };
-    const method = forms.define({ defaultValues: defaults }).createForm().root.at("method");
-    const card = branch(method, createField(method), "kind", "card");
-    expectTypeOf(card).toEqualTypeOf<ObjectHandle<{ kind: "card"; number: string }> | undefined>();
-  });
-
-  it("rejects things that are not handles", () => {
+  it("rejects a name that is not an array", () => {
     const form = Signup.createForm();
-    expectTypeOf(createItems(form.root.at("tags"))).toEqualTypeOf<Accessor<readonly ItemHandle<string>[]>>();
-    // @ts-expect-error: createField takes a handle
-    createField({ id: "x" });
-    // @ts-expect-error: createItems takes an array handle
-    createItems(form.root.at("name"));
-    // @ts-expect-error: an object handle has no items
-    createItems(form.root.at("address"));
-  });
-
-  it("types a validator by the field", () => {
-    const form = Signup.createForm();
-    expectTypeOf(
-      createValidator(form.root.at("age"), (value) => (value === undefined ? { message: "Required" } : null)),
-    ).toBeVoid();
-    createValidator(form.root.at("name"), v.pipe(v.string(), v.email()));
-    createValidator(form.root.at("name"), { validate: (value) => (value ? [] : { message: "Required" }), debounce: 300 });
-    createValidator(form.root.at("name"), false);
-    // @ts-expect-error: a number schema doesn't fit a string field
-    createValidator(form.root.at("name"), v.number());
+    expectTypeOf(form.Items).toBeFunction();
+    // @ts-expect-error: name is not an array field
+    void (<form.Items name="name">{() => null}</form.Items>);
+    // @ts-expect-error: a leaf handle has no items
+    void (<form.Items handle={form.root.at("name")}>{() => null}</form.Items>);
   });
 });
 
-describe("components", () => {
-  it("type-checks Field, Items and For with handles", () => {
-    expectTypeOf(City).toBeFunction();
-    expectTypeOf(Rows).toBeFunction();
-    expectTypeOf(Tags).toBeFunction();
+describe("registered field components", () => {
+  it("are bound on the form by name and by handle", () => {
+    const form = Signup.createForm();
+    expectTypeOf(form.TextField).toBeFunction();
+    void (<form.TextField name="billing.street" label="Street" />);
+    void (<form.TextField handle={form.root.at("bio")} label="Bio" placeholder="About you" />);
+    void (<form.NumberField name="age" label="Age" />);
   });
 
-  it("rejects a leaf handle on Items and the wrong children on Field", () => {
+  it("require their own props and reject fields of the wrong type", () => {
     const form = Signup.createForm();
-    expectTypeOf(form.root.at("name")).toEqualTypeOf<LeafHandle<string>>();
-    // @ts-expect-error: Items takes an array handle
-    void (<Items handle={form.root.at("name")}>{() => <li />}</Items>);
-    // @ts-expect-error: the field of a string has no keys
-    void (<Field handle={form.root.at("name")}>{(field) => <p>{field.keys.length}</p>}</Field>);
+    expectTypeOf(form.NumberField).toBeFunction();
+    // @ts-expect-error: label is required
+    void (<form.TextField name="name" />);
+    // @ts-expect-error: a string field doesn't fit NumberField
+    void (<form.NumberField name="name" label="Name" />);
+    // @ts-expect-error: a number field doesn't fit TextField
+    void (<form.TextField handle={form.root.at("age")} label="Age" />);
+    // @ts-expect-error: the field prop is filled in by the adapter
+    void (<form.TextField name="name" label="Name" field={createField(form.root.at("name"))} />);
+  });
+
+  it("is invariant on leaves: number | undefined fits, number does not", () => {
+    const Plain = forms.define({ defaultValues: { count: 0 } });
+    const form = Plain.createForm();
+    expectTypeOf(form.root.at("count")).toEqualTypeOf<LeafHandle<number>>();
+    // @ts-expect-error: NumberField writes undefined, which a number field can't hold
+    void (<form.NumberField name="count" label="Count" />);
+  });
+
+  it("rejects a registration that collides with the form's own members, or has no field prop", () => {
+    expectTypeOf(createForms).toBeFunction();
+    // @ts-expect-error: Field is the form's own
+    createForms({ fields: { Field: TextField } });
+    // @ts-expect-error: submit is the form's own
+    createForms({ fields: { submit: TextField } });
+    // @ts-expect-error: a field component takes a field prop
+    createForms({ fields: { Label: (props: { text: string }) => <span>{props.text}</span> } });
+  });
+
+  it("check the error type too", () => {
+    interface AppError {
+      readonly code: string;
+    }
+    const appForms = createForms({ mapError: (raw): AppError => ({ code: raw.message }), fields: { TextField } });
+    const form = appForms.define({ defaultValues: { handle: "" } }).createForm();
+    expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ handle: string }, AppError>>();
+    // @ts-expect-error: TextField renders FormError messages, and this form's errors are AppError
+    void (<form.TextField name="handle" label="Handle" />);
+  });
+});
+
+describe("scopes and fieldsets", () => {
+  it("makes a scope for any object handle, with names relative to it", () => {
+    const form = Signup.createForm();
+    const billing = forms.scope(form.root.at("billing"));
+    expectTypeOf(billing).toEqualTypeOf<Scope<Address, FormError, Fields>>();
+    void (<billing.TextField name="city" label="City" />);
+    void (<billing.Field name="geo.lng">{(field) => <span>{field.value}</span>}</billing.Field>);
+    // @ts-expect-error: names are relative to the scope
+    void (<billing.TextField name="billing.city" label="City" />);
+    const row = forms.scope(form.root.at("rows").item("k"));
+    expectTypeOf(row.root).toEqualTypeOf<ObjectHandle<Row>>();
+  });
+
+  it("types the fieldset prop from the shape", () => {
+    expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<Address>>();
+    expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
+    expectTypeOf<Parameters<typeof AddressShape.scope>[1]>().toEqualTypeOf<{ readonly validate?: false } | undefined>();
+  });
+
+  it("takes handles of the shape at any path, in rows and in other forms", () => {
+    expectTypeOf(AddressFields).toBeFunction();
+    expectTypeOf(GeoFields).toBeFunction();
+  });
+
+  it("rejects a handle of the wrong shape", () => {
+    const form = Signup.createForm();
+    expectTypeOf(form.root.at("billing").at("geo")).toEqualTypeOf<ObjectHandle<Geo>>();
+    // @ts-expect-error: a geo object is not an address
+    void (<AddressFields field={form.root.at("billing").at("geo")} title="Geo" />);
+    // @ts-expect-error: rows is an array
+    void (<AddressFields field={form.root.at("rows")} title="Rows" />);
+    // @ts-expect-error: the fieldset's own props are required
+    void (<AddressFields field={form.root.at("billing")} />);
+    const loose: { geo: { lat: number; lng: number } } = { geo: { lat: 0, lng: 0 } };
+    const other = forms.define({ defaultValues: loose }).createForm();
+    // @ts-expect-error: lat is number here, and the shape's lat is number | undefined
+    void (<GeoFields field={other.root.at("geo")} />);
   });
 });
 
 describe("context", () => {
-  it("provides a store and reads it back typed by its definition", () => {
-    expectTypeOf(Page).toBeFunction();
-    expectTypeOf(Summary).toBeFunction();
-  });
-
-  it("reads an untyped store without a definition", () => {
-    const form = useFormStore();
-    expectTypeOf(form.root.at("anything").path).toEqualTypeOf<readonly (string | number)[]>();
+  it("reads the nearest form untyped, or its own definition's form typed", () => {
+    expectTypeOf(SubmitButton).toBeFunction();
+    expectTypeOf(SignupSummary).toBeFunction();
+    const form = useFormContext();
+    expectTypeOf(form.state.submitting).toEqualTypeOf<boolean>();
+    expectTypeOf(form.formProps.novalidate).toEqualTypeOf<true>();
+    expectTypeOf(form.submit).parameters.toEqualTypeOf<[intent?: unknown]>();
   });
 });
 
-describe("input props", () => {
-  it("picks the props by the options' type", () => {
+describe("free functions", () => {
+  it("work on handles with no form object or context", () => {
+    const form = Signup.createForm();
+    const name = createField(form.root.at("name"));
+    expectTypeOf(name).toEqualTypeOf<FieldApi<string>>();
+    expectTypeOf(createItems(form.root.at("rows"))).toEqualTypeOf<Accessor<readonly ItemHandle<Row>[]>>();
+    expectTypeOf(createValidator(form.root.at("age"), (value) => (value === undefined ? { message: "Required" } : null))).toBeVoid();
+    expectTypeOf(errorId(form.root.at("name"))).toBeString();
+    expectTypeOf(fieldRef(form.root.at("name"))).toEqualTypeOf<(element: HTMLElement) => void>();
+    expectTypeOf(createDisabledErrors(form.store)).toEqualTypeOf<Accessor<readonly DisabledInvalid[]>>();
+    // @ts-expect-error: createItems takes an array handle
+    createItems(form.root.at("name"));
+  });
+
+  it("picks input props by kind and rejects kinds the field doesn't fit", () => {
     const root = Signup.createForm().root;
     expectTypeOf(createInputProps(root.at("name"))).toEqualTypeOf<TextInputProps>();
     expectTypeOf(createInputProps(root.at("name"), { type: "email" })).toEqualTypeOf<TextInputProps>();
-    expectTypeOf(createInputProps(root.at("bio"), { type: "textarea" })).toEqualTypeOf<TextareaProps>();
-    expectTypeOf(createInputProps(root.at("age"), { type: "number" })).toEqualTypeOf<NumberInputProps>();
-    expectTypeOf(createInputProps(root.at("subscribe"), { type: "checkbox" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("tags"), { type: "checkbox", value: "news" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("plan"), { type: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("plan"), { type: "select" })).toEqualTypeOf<SelectProps>();
-  });
-
-  it("spreads onto the matching elements and composes with the app's own", () => {
-    expectTypeOf(Inputs).toBeFunction();
-    expectTypeOf(Name).toBeFunction();
-  });
-
-  it("needs empty for a number field that can't hold undefined", () => {
-    const defaults: { qty: number; note: string | undefined } = { qty: 1, note: "" };
-    const order = forms.define({ defaultValues: defaults }).createForm().root;
-    expectTypeOf(createInputProps(order.at("qty"), { type: "number", empty: 0 })).toEqualTypeOf<NumberInputProps>();
-    expectTypeOf(createInputProps(order.at("note"))).toEqualTypeOf<TextInputProps>();
-    // @ts-expect-error: an empty input needs a number to write
-    createInputProps(order.at("qty"), { type: "number" });
-  });
-
-  it("rejects an input kind the field's type doesn't fit", () => {
-    const root = Signup.createForm().root;
-    expectTypeOf(root.at("age")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(createInputProps(root.at("bio"), { kind: "textarea" })).toEqualTypeOf<TextareaProps>();
+    expectTypeOf(createInputProps(root.at("age"), { kind: "number", type: "range" })).toEqualTypeOf<NumberInputProps>();
+    expectTypeOf(createInputProps(root.at("subscribe"), { kind: "checkbox" })).toEqualTypeOf<CheckableProps>();
+    expectTypeOf(createInputProps(root.at("tags"), { kind: "checkbox", value: "news" })).toEqualTypeOf<CheckableProps>();
+    expectTypeOf(createInputProps(root.at("plan"), { kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
+    expectTypeOf(createInputProps(root.at("plan"), { kind: "select" })).toEqualTypeOf<SelectProps>();
     // @ts-expect-error: a number field is not text
     createInputProps(root.at("age"));
     // @ts-expect-error: a string field is not a number input
-    createInputProps(root.at("name"), { type: "number" });
-    // @ts-expect-error: a string field is not a checkbox
-    createInputProps(root.at("name"), { type: "checkbox" });
-    // @ts-expect-error: a union of literals takes no free text
-    createInputProps(root.at("plan"));
-    // @ts-expect-error: "team" is not a plan
-    createInputProps(root.at("plan"), { type: "radio", value: "team" });
+    createInputProps(root.at("name"), { kind: "number" });
     // @ts-expect-error: a checkbox group's value is one of the array's items
-    createInputProps(root.at("tags"), { type: "checkbox", value: 1 });
-    // @ts-expect-error: an object is not an input
-    createInputProps(root.at("address"));
+    createInputProps(root.at("tags"), { kind: "checkbox", value: 1 });
     // @ts-expect-error: a boolean field is not a select
-    createInputProps(root.at("subscribe"), { type: "select" });
-  });
-});
-
-describe("submit", () => {
-  it("wires the form element, intents and the failed-submit focus", () => {
-    expectTypeOf(SignupForm).toBeFunction();
+    createInputProps(root.at("subscribe"), { kind: "select" });
   });
 
-  it("rejects an intent the definition doesn't name", () => {
-    const submit = createSubmit(Signup.createForm());
-    expectTypeOf(submit.handleSubmit()).toEqualTypeOf<Promise<void>>();
-    // @ts-expect-error: "archive" is not an intent
-    void submit.submit("archive");
+  it("spreads input props onto their elements", () => {
+    const root = Signup.createForm().root;
+    void (
+      <>
+        <textarea {...createInputProps(root.at("bio"), { kind: "textarea" })} />
+        <input {...createInputProps(root.at("subscribe"), { kind: "checkbox" })} />
+        <select {...createInputProps(root.at("plan"), { kind: "select" })} />
+        <div ref={fieldRef(root.at("billing").at("zip"))} tabindex={0} />
+      </>
+    );
+    expectTypeOf(root).toEqualTypeOf<ObjectHandle<SignupDraft>>();
   });
 });

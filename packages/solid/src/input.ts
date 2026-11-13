@@ -27,8 +27,10 @@ export interface InputOptions {
   readonly describedBy?: string;
 }
 
-/** Options for a text input. */
+/** Options for a text input. `kind` may be left out. */
 export interface TextInputOptions extends InputOptions {
+  /** Picks the text input props. */
+  readonly kind?: "text";
   /** The input's `type`. Defaults to `"text"`. */
   readonly type?: TextInputType;
 }
@@ -36,7 +38,7 @@ export interface TextInputOptions extends InputOptions {
 /** Options for a textarea. */
 export interface TextareaOptions extends InputOptions {
   /** Picks the textarea props. */
-  readonly type: "textarea";
+  readonly kind: "textarea";
 }
 
 /**
@@ -45,20 +47,22 @@ export interface TextareaOptions extends InputOptions {
  * `undefined`.
  */
 export type NumberInputOptions<V> = InputOptions & {
-  /** The input's `type`. */
-  readonly type: NumberInputType;
+  /** Picks the number input props. */
+  readonly kind: "number";
+  /** The input's `type`. Defaults to `"number"`. */
+  readonly type?: NumberInputType;
 } & (undefined extends V ? { readonly empty?: V } : { readonly empty: V });
 
 /** Options for a checkbox bound to a boolean. */
 export interface CheckboxOptions extends InputOptions {
   /** Picks the checkbox props. */
-  readonly type: "checkbox";
+  readonly kind: "checkbox";
 }
 
-/** Options for one checkbox of a group bound to an array of values. */
+/** Options for one checkbox of a group bound to an array of strings or numbers. */
 export interface CheckboxGroupOptions<T> extends InputOptions {
   /** Picks the checkbox props. */
-  readonly type: "checkbox";
+  readonly kind: "checkbox";
   /** The value this checkbox adds to the array when checked. */
   readonly value: T;
 }
@@ -66,7 +70,7 @@ export interface CheckboxGroupOptions<T> extends InputOptions {
 /** Options for one radio button. */
 export interface RadioOptions<T> extends InputOptions {
   /** Picks the radio props. */
-  readonly type: "radio";
+  readonly kind: "radio";
   /** The value this button writes when chosen. */
   readonly value: T;
 }
@@ -74,7 +78,7 @@ export interface RadioOptions<T> extends InputOptions {
 /** Options for a select. */
 export interface SelectOptions extends InputOptions {
   /** Picks the select props. */
-  readonly type: "select";
+  readonly kind: "select";
 }
 
 /** The props every kind of input gets. */
@@ -170,34 +174,37 @@ export interface SelectProps extends ControlProps<HTMLSelectElement> {
   readonly onChange: (event: Event) => void;
 }
 
-/** `unknown` when `Ok` is true, `never` otherwise. Intersected with a parameter, `never` rejects the argument. */
-type Allow<Ok extends boolean> = Ok extends true ? unknown : never;
-
 /** True when a field of type `V` holds any string and nothing but strings. */
-type IsText<V> = [V] extends [string | null | undefined] ? (string extends V ? true : false) : false;
+export type IsText<V> = [V] extends [string | null | undefined] ? (string extends V ? true : false) : false;
 
 /** True when a field of type `V` holds any number and nothing but numbers. */
-type IsNumber<V> = [V] extends [number | null | undefined] ? (number extends V ? true : false) : false;
+export type IsNumber<V> = [V] extends [number | null | undefined] ? (number extends V ? true : false) : false;
 
 /** True when a field of type `V` holds a boolean and nothing else. */
-type IsBoolean<V> = [V] extends [boolean | null | undefined] ? (boolean extends V ? true : false) : false;
+export type IsBoolean<V> = [V] extends [boolean | null | undefined] ? (boolean extends V ? true : false) : false;
 
 /** True when a field of type `V` holds strings, possibly a union of string literals. */
-type IsChoice<V> = [V] extends [string | null | undefined] ? ([NonNullable<V>] extends [never] ? false : true) : false;
+export type IsChoice<V> = [V] extends [string | null | undefined] ? ([NonNullable<V>] extends [never] ? false : true) : false;
 
 /** True when a field of type `V` holds one primitive a radio button can stand for. */
-type IsOption<V> = [V] extends [string | number | boolean | null | undefined]
+export type IsOption<V> = [V] extends [string | number | boolean | null | undefined]
   ? [NonNullable<V>] extends [never]
     ? false
     : true
   : false;
 
 /** True when a field of type `V` is an array of strings or numbers. */
-type IsOptionList<V> = [V] extends [readonly (string | number)[] | null | undefined]
+export type IsOptionList<V> = [V] extends [readonly (string | number)[] | null | undefined]
   ? [NonNullable<V>] extends [never]
     ? false
     : true
   : false;
+
+/** `unknown` when `Ok` is true, `never` otherwise. Intersected with a parameter, `never` rejects the argument. */
+type Allow<Ok extends boolean> = Ok extends true ? unknown : never;
+
+/** The arguments of an overload: `Args` when `Ok` is true, else one `never`, which no call can pass. */
+type ArgsIf<Ok extends boolean, Args extends readonly unknown[]> = Ok extends true ? Args : [never];
 
 /**
  * Returns the props for an input bound to a field, to spread on the
@@ -206,15 +213,18 @@ type IsOptionList<V> = [V] extends [readonly (string | number)[] | null | undefi
  * field's signal, as on `createField`. The handlers are fixed functions, so
  * Solid binds them once.
  *
- * `type` in the options picks the kind, and the field's type decides which
+ * `kind` in the options picks the props, and the field's type decides which
  * kinds it accepts:
- * - text types and `"textarea"`: a field of `string`, maybe null or undefined.
- * - `"number"` and `"range"`: a field of `number`, maybe null or undefined.
+ * - `"text"` (the default) and `"textarea"`: a field of `string`, maybe null
+ *   or undefined.
+ * - `"number"`, with `type: "range"` for a slider: a field of `number`, maybe
+ *   null or undefined.
  * - `"checkbox"`: a field of `boolean`, or with `value`, one box of a group
  *   bound to an array of strings or numbers.
  * - `"radio"` with `value`: a field of a string, number or boolean, or a
  *   union of their literals.
- * - `"select"`: a field of a string or a union of string literals.
+ * - `"select"`: a field of a string or a union of string literals. There is
+ *   no `<select multiple>`.
  *
  * To run your own handler as well, spread these props, set your own handler
  * after them, and call ours from it.
@@ -222,24 +232,33 @@ type IsOptionList<V> = [V] extends [readonly (string | number)[] | null | undefi
 export interface CreateInputProps {
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options?: TextInputOptions): TextInputProps;
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options: TextareaOptions): TextareaProps;
-  <H extends HandleLike>(
-    handle: H & Allow<IsNumber<ValueOf<H>>>,
-    options: NumberInputOptions<ValueOf<H>>,
-  ): NumberInputProps;
+  <H extends HandleLike>(handle: H & Allow<IsNumber<ValueOf<H>>>, options: NumberInputOptions<ValueOf<H>>): NumberInputProps;
   <H extends HandleLike>(handle: H & Allow<IsBoolean<ValueOf<H>>>, options: CheckboxOptions): CheckableProps;
   <H extends HandleLike>(
     handle: H & Allow<IsOptionList<ValueOf<H>>>,
     options: CheckboxGroupOptions<ItemOf<ValueOf<H>>>,
   ): CheckableProps;
-  <H extends HandleLike>(
-    handle: H & Allow<IsOption<ValueOf<H>>>,
-    options: RadioOptions<NonNullable<ValueOf<H>>>,
-  ): CheckableProps;
+  <H extends HandleLike>(handle: H & Allow<IsOption<ValueOf<H>>>, options: RadioOptions<NonNullable<ValueOf<H>>>): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
 }
 
 /** See `CreateInputProps`. Not implemented yet: it throws. */
 export const createInputProps: CreateInputProps = notImplemented("createInputProps");
+
+/**
+ * `createInputProps` for one field whose value type `V` is known: the same
+ * kinds and the same checks, without the handle argument. A kind the field
+ * doesn't fit takes no call.
+ */
+export interface InputPropsOf<V> {
+  (...args: ArgsIf<IsText<V>, [options?: TextInputOptions]>): TextInputProps;
+  (...args: ArgsIf<IsText<V>, [options: TextareaOptions]>): TextareaProps;
+  (...args: ArgsIf<IsNumber<V>, [options: NumberInputOptions<V>]>): NumberInputProps;
+  (...args: ArgsIf<IsBoolean<V>, [options: CheckboxOptions]>): CheckableProps;
+  (...args: ArgsIf<IsOptionList<V>, [options: CheckboxGroupOptions<ItemOf<V>>]>): CheckableProps;
+  (...args: ArgsIf<IsOption<V>, [options: RadioOptions<NonNullable<V>>]>): CheckableProps;
+  (...args: ArgsIf<IsChoice<V>, [options: SelectOptions]>): SelectProps;
+}
 
 /**
  * Returns a ref callback that registers an element as the focus target of a
