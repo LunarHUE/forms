@@ -1,5 +1,11 @@
 import type { HandleBase, ValueOf } from "./handle.js";
 import type { Path } from "./path.js";
+import { ownKeys } from "./store/baseline/equality.js";
+import { childKeys, keysOf, locate, type KeysFor, type KeyTrie } from "./store/baseline/keys.js";
+import { partsOf } from "./store/baseline/registry.js";
+import { sameList } from "./store/entries.js";
+import { dev } from "./store/freeze.js";
+import { childOf, isPlainObject } from "./store/tree.js";
 
 /** One leaf whose current value differs from the incoming one. `Resolve` decides what it becomes. */
 export interface RebaseLeaf {
@@ -41,3 +47,69 @@ export type Rebase = <H extends HandleBase<unknown, unknown>>(
   incoming: ValueOf<H>,
   resolve: Resolve,
 ) => RebaseResult;
+
+const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
+
+/**
+ * Implements `Rebase`. Objects are walked key by key. An array is walked item
+ * by item when its items still have the keys and order of its baseline and
+ * the incoming array has as many items. Otherwise it is one leaf.
+ *
+ * After it, each array's items pair with the incoming items by index: with
+ * the baseline's keys where the leaf was kept, and with the current keys
+ * everywhere else, so a leaf that was taken or already equal isn't dirty.
+ */
+export const rebase: Rebase = (handle, incoming, resolve) => {
+  const parts = partsOf(handle.store);
+  if (!parts) throw new TypeError("rebase: the handle does not belong to a form store");
+  const { core, baseline } = parts;
+  const path = handle.path.map(String);
+  if (!core.isLive(path)) return freeze({ taken: freeze([]) });
+
+  return core.batch(() => {
+    const taken: Path[] = [];
+    const kept = new Set<string>();
+    const old = baseline.locate(path);
+
+    const visit = (at: string[], value: unknown, next: unknown, before: unknown, keys: KeyTrie | undefined) => {
+      if (baseline.compare(at, value, next, keys)) return;
+      if (isPlainObject(value) && isPlainObject(next)) {
+        const held = isPlainObject(before) ? before : {};
+        for (const key of ownKeys(value, next))
+          visit([...at, key], childOf(value, key), childOf(next, key), childOf(held, key), childKeys(keys, key));
+        return;
+      }
+      if (Array.isArray(value) && Array.isArray(next) && Array.isArray(before)) {
+        const current = core.getSnapshot(at).keys ?? [];
+        const same = value.length === next.length && sameList(current, keysOf(keys, before.length));
+        if (same) {
+          current.forEach((key, i) => visit([...at, key], value[i], next[i], before[i], childKeys(keys, key)));
+          return;
+        }
+      }
+      const choice = resolve({ path: freeze(at), value, baseline: before, incoming: next, edited: core.getSnapshot(at).edited });
+      if (choice === "keep") {
+        kept.add(JSON.stringify(at));
+        return;
+      }
+      core.set(at, choice === "take" ? next : choice.value);
+      taken.push(freeze(at));
+    };
+
+    // Arrays at or under a kept leaf keep the baseline's keys. The rest take the current ones.
+    const keysFor: KeysFor = (at, length) => {
+      if (kept.size > 0)
+        for (let end = path.length; end <= at.length; end++) {
+          if (!kept.has(JSON.stringify(at.slice(0, end)))) continue;
+          const before = locate(old.value, old.keys, at.slice(path.length));
+          return Array.isArray(before.value) ? keysOf(before.keys, before.value.length) : [];
+        }
+      return baseline.currentKeys(at, length);
+    };
+
+    visit(path, core.getSnapshot(path).value, incoming, old.value, old.keys);
+    baseline.move(path, incoming, keysFor);
+    core.recheckDirty();
+    return freeze({ taken: freeze(taken) });
+  });
+};

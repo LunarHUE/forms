@@ -8,7 +8,10 @@
     "url": "git+https://github.com/LunarHUE/forms.git",
     "directory": "packages/core"
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "rebase"
+  ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
@@ -24,6 +27,17 @@
         "default": "./dist/cjs/index.js"
       }
     },
+    "./rebase": {
+      "@lunarhue/source": "./src/rebase.ts",
+      "import": {
+        "types": "./dist/esm/rebase.d.ts",
+        "default": "./dist/esm/rebase.js"
+      },
+      "require": {
+        "types": "./dist/cjs/rebase.d.ts",
+        "default": "./dist/cjs/rebase.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -37,9 +51,16 @@
   },
   "size-limit": [
     {
+      "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
       "limit": "1 kB"
+    },
+    {
+      "name": "./rebase",
+      "path": "dist/esm/rebase.js",
+      "import": "*",
+      "limit": "1.5 kB"
     }
   ]
 }
