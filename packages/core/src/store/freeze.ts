@@ -1,4 +1,5 @@
-import { isPlainObject } from "./tree.js";
+import type { Path } from "../path.js";
+import { childOf, isContainer, isPlainObject } from "./tree.js";
 
 // Core has no node types, so this declares the one global the check reads.
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
@@ -32,4 +33,22 @@ export function deepFreeze<T>(value: T): T {
     for (const key of Object.keys(value)) deepFreeze(value[key]);
   }
   return value;
+}
+
+/**
+ * Freezes the containers along value path `path` in `root`, then deep-freezes
+ * the value at its end, and returns `root`. It is for a tree `setAt` just made
+ * from a frozen one: the containers on the path are its new copies and every
+ * other branch is shared, so the cost follows the path's depth and the
+ * written value, not the number of siblings.
+ */
+export function freezePath<T>(root: T, path: Path): T {
+  let node: unknown = root;
+  for (const key of path) {
+    if (!isContainer(node)) return root;
+    Object.freeze(node);
+    node = childOf(node, key);
+  }
+  deepFreeze(node);
+  return root;
 }

@@ -37,7 +37,10 @@ export function valueAt(root: unknown, path: Path): unknown {
 }
 
 function copyOf(node: object): object {
-  if (Array.isArray(node)) return node.slice();
+  // Spread, not `slice`: V8's `slice` is many times slower on a frozen array,
+  // and in development every array in the tree is frozen. Spread turns holes
+  // into undefined items, as insert, remove and move already do.
+  if (Array.isArray(node)) return [...node];
   // Spread defines own properties, so an own `__proto__` key stays a key.
   if (Object.getPrototypeOf(node) !== null) return { ...node };
   const bare: object = Object.create(null);

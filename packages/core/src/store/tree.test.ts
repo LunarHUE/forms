@@ -45,6 +45,15 @@ describe("setAt", () => {
     expect(valueAt(next, ["list", 0])).toBe(initial.list[0]);
   });
 
+  it("turns holes in a copied array into undefined items", () => {
+    // oxlint-disable-next-line no-sparse-arrays
+    const sparse = [1, , 3];
+    const next = setAt(sparse, [0], 9);
+    expect(next).toEqual([9, undefined, 3]);
+    expect(Array.isArray(next) && 1 in next).toBe(true);
+    expect(1 in sparse).toBe(false);
+  });
+
   it("creates missing steps on a write", () => {
     expect(setAt({}, ["items", 0, "name"], "x")).toEqual({ items: [{ name: "x" }] });
     expect(setAt(undefined, ["a", "b"], 1)).toEqual({ a: { b: 1 } });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Path } from "../path.js";
 import { createStoreCore, type StoreCore } from "./core.js";
+import { isContainer } from "./tree.js";
 
 const make = (initial: unknown) => createStoreCore({ id: "f", initial });
 
@@ -13,6 +14,16 @@ function count(store: StoreCore, paths: Path[]) {
 
 const keysAt = (store: StoreCore, path: Path) => store.getSnapshot(path).keys;
 const valueOf = (store: StoreCore, path: Path) => store.getSnapshot(path).value;
+
+/** The value paths of the arrays and plain objects in `value` that aren't frozen. */
+function unfrozen(value: unknown, path: Path = []): Path[] {
+  if (!isContainer(value)) return [];
+  const own = Object.isFrozen(value) ? [] : [path];
+  const children = Array.isArray(value)
+    ? value.map((item, i) => unfrozen(item, [...path, i]))
+    : Object.keys(value).map((key) => unfrozen(Reflect.get(value, key), [...path, key]));
+  return [...own, ...children.flat()];
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
@@ -511,6 +522,51 @@ describe("immutability", () => {
     expect(Object.isFrozen(written.z)).toBe(true);
     expect(Object.isFrozen(store.getSnapshot([]).value)).toBe(true);
     expect(store.getSnapshot(["b"]).value).toBe(shared);
+  });
+});
+
+describe("immutability through writes", () => {
+  it("keeps every container frozen after each kind of write, and leaves leaves alone", () => {
+    const when = new Date(0);
+    const store = make({ rows: [{ t: "a", tags: ["x"] }, { t: "b", tags: [] }], meta: { n: 1 } });
+    const writes: (() => unknown)[] = [
+      () => store.set(["rows", "k0", "t"], "z"),
+      () => store.set(["rows", "k1"], { t: "c", tags: [{ deep: [1] }], when }),
+      () => store.insert(["rows"], 1, { t: "d", tags: [[2]] }),
+      () => store.remove(["rows"], 0),
+      () => store.move(["rows"], 0, 1),
+      () => store.set(["meta", "extra"], { list: [{}] }),
+      () => store.set(["fresh", "deep"], { x: [] }),
+      () => store.set([], { rows: [{ t: "e", tags: [{}] }], meta: {} }),
+      () => store.insert(["rows"], 0, { t: "f", tags: [] }),
+    ];
+    for (const write of writes) {
+      write();
+      expect(unfrozen(valueOf(store, []))).toEqual([]);
+    }
+    expect(Object.isFrozen(when)).toBe(false);
+  });
+
+  it("freezes nothing in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    try {
+      const prod = await import("./core.js");
+      const initial = { rows: [{ t: "a" }], meta: { n: 1 } };
+      const store = prod.createStoreCore({ id: "f", initial });
+      const written = { t: "b", tags: [] };
+      store.insert(["rows"], 1, written);
+      store.set(["rows", "k0", "t"], "z");
+      store.set(["meta"], { n: 2 });
+      const root = store.getSnapshot([]);
+      expect(Object.isFrozen(root)).toBe(false);
+      expect(Object.isFrozen(initial)).toBe(false);
+      expect(Object.isFrozen(written)).toBe(false);
+      expect(unfrozen(root.value)).toEqual([[], ["rows"], ["rows", 0], ["rows", 1], ["rows", 1, "tags"], ["meta"]]);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });
 

@@ -2,7 +2,7 @@ import type { FormError, Show } from "../errors.js";
 import type { Path, PathSegment } from "../path.js";
 import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
-import { deepFreeze, dev } from "./freeze.js";
+import { deepFreeze, dev, freezePath } from "./freeze.js";
 import {
   createKeyList,
   hadKey,
@@ -641,9 +641,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   // Makes `next` the value, updates the written node's ancestors and subtree,
   // then runs listeners unless a batch is open.
   const commit = (next: unknown, target: Node<E>) => {
-    // Written values are frozen in development. This stops at frozen nodes,
-    // so it freezes the new copies on the written path and the written value.
-    current = dev ? deepFreeze(next) : next;
+    current = next;
     if (target.parent) refreshDown(target.parent);
     update(target, false);
     finish(true);
@@ -655,7 +653,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     return path;
   };
 
-  const writeAt = (node: Node<E>, value: unknown) => commit(setAt(current, valuePathOf(node), value), node);
+  // Written values are frozen in development, along with the copies `setAt`
+  // made on the written path. Everything else is shared and already frozen.
+  const writeAt = (node: Node<E>, value: unknown) => {
+    const path = valuePathOf(node);
+    const next = setAt(current, path, value);
+    commit(dev ? freezePath(next, path) : next, node);
+  };
 
   // The array node at `path` when it can take an array write: an array, or missing.
   const arrayAt = (path: Path): { node: Node<E>; items: readonly unknown[] } | undefined => {
@@ -784,7 +788,10 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const { node, items } = target;
       const at = clamp(index, items.length);
       const key = insertKey((node.list ??= createKeyList(0)), at);
-      writeAt(node, [...items.slice(0, at), item, ...items.slice(at)]);
+      // Spread then splice, since `slice` is slow on the frozen arrays of development.
+      const next = [...items];
+      next.splice(at, 0, item);
+      writeAt(node, next);
       return key;
     },
     remove(path, index) {
@@ -794,7 +801,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       if (index < 0 || index >= items.length) return undefined;
       const key = removeKey(target.node.list, index);
       if (key !== undefined) kill(node, key);
-      writeAt(node, [...items.slice(0, index), ...items.slice(index + 1)]);
+      const next = [...items];
+      next.splice(index, 1);
+      writeAt(node, next);
       return key;
     },
     move(path, from, to) {

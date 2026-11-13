@@ -6,6 +6,7 @@ import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { rebase } from "../rebase.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { isContainer } from "./tree.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
@@ -32,6 +33,16 @@ function count(store: FormStore<unknown>, paths: (Path | "form")[]) {
     else store.subscribe(path, listener);
   }
   return runs;
+}
+
+/** The value paths of the arrays and plain objects in `value` that aren't frozen. */
+function unfrozen(value: unknown, path: Path = []): Path[] {
+  if (!isContainer(value)) return [];
+  const own = Object.isFrozen(value) ? [] : [path];
+  const children = Array.isArray(value)
+    ? value.map((item, i) => unfrozen(item, [...path, i]))
+    : Object.keys(value).map((key) => unfrozen(Reflect.get(value, key), [...path, key]));
+  return [...own, ...children.flat()];
 }
 
 const dirty = (store: FormStore<unknown>, path: Path) => store.getSnapshot(path).dirty;
@@ -310,6 +321,23 @@ describe("reset", () => {
     expect(store.getFormSnapshot().dirty).toBe(false);
     root.at("a").setValue("two");
     expect(dirty(store, ["a"])).toBe(true);
+  });
+
+  it("keeps every container in the baseline frozen through resets and rebases", () => {
+    const { baseline, root } = make({ rows: [{ t: "a", tags: ["x"] }], other: { n: 1 } });
+    const check = () => expect(unfrozen(baseline.locate([]).value)).toEqual([]);
+    root.at("rows").push({ t: "b", tags: [{}] });
+    root.at("rows").item("k1").reset();
+    check();
+    root.at("rows").item("k0").at("t").setValue("q");
+    root.at("rows").item("k0").reset();
+    check();
+    rebase(root, { rows: [{ t: "c", tags: [[1]] }], other: { n: 2, more: {} } }, () => "take");
+    check();
+    rebase(root.at("other"), { n: 3, more: { deep: [] } }, () => "take");
+    check();
+    root.reset({ to: "initial" });
+    check();
   });
 
   it("finds an item's initial value by its first key", () => {

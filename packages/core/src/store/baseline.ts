@@ -1,6 +1,6 @@
 import type { Equals } from "../definition.js";
 import type { ResetOptions } from "../handle.js";
-import type { Path } from "../path.js";
+import type { Path, PathSegment } from "../path.js";
 import type { Change } from "../store.js";
 import { createEquality, ownKeys, type Compare } from "./baseline/equality.js";
 import {
@@ -15,7 +15,7 @@ import {
 } from "./baseline/keys.js";
 import type { FormContext } from "./context.js";
 import { none, sameList } from "./entries.js";
-import { deepFreeze, dev } from "./freeze.js";
+import { deepFreeze, dev, freezePath } from "./freeze.js";
 import { childOf, isPlainObject, setAt } from "./tree.js";
 
 /** The store options the baseline reads. */
@@ -73,6 +73,14 @@ export interface Baseline {
 
 const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
 
+// A copy of `container` with `inner` at `key`. In development the copy is
+// frozen as it is made, and so is `inner` when it is the written value.
+// Everything else is shared with the frozen baseline.
+const put = (container: unknown, key: PathSegment, inner: unknown): unknown => {
+  const copy = setAt(container, [key], inner);
+  return dev ? freezePath(copy, [key]) : copy;
+};
+
 const emptyTrie = (): KeyTrie => ({ list: undefined, children: undefined });
 
 /** Makes the baseline. It starts as the initial value with positional item keys. */
@@ -128,16 +136,21 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
           index = now < 0 ? items.length : Math.min(now, items.length);
           const keys = [...keysOf(t, items.length)];
           keys.splice(index, 0, seg);
-          items = [...items.slice(0, index), undefined, ...items.slice(index)];
+          // Spread then splice, since `slice` is slow on the frozen arrays of development.
+          const grown = [...items];
+          grown.splice(index, 0, undefined);
+          items = grown;
           t.list = indexKeys(keys);
         }
-        return setAt(items, [index], below(items[index]));
+        return put(items, index, below(items[index]));
       }
       const object = isPlainObject(v) ? v : {};
-      return setAt(object, [seg], below(childOf(object, seg)));
+      return put(object, seg, below(childOf(object, seg)));
     };
-    const next = place(root, (trie ??= emptyTrie()), 0);
-    root = dev ? deepFreeze(next) : next;
+    // The shared branches must be frozen already. The initial value is frozen
+    // here on the first move unless the core froze it first.
+    if (dev) deepFreeze(root);
+    root = place(root, (trie ??= emptyTrie()), 0);
   };
 
   return {
