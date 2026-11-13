@@ -1,0 +1,538 @@
+/*
+ * Styles for the "New order" example page, shared by every example app.
+ * Plain CSS, light and dark through `color-scheme` and the custom properties
+ * on :root. Framework code uses these class names and nothing else.
+ *
+ * Page
+ *   .page               two columns: form left, inspector right; one column under 900px
+ *   .page-header        title and intro above the columns (h1, p)
+ *   .page-form          the left column
+ *   .page-inspector     the right column; mountInspector renders into it
+ *
+ * Form
+ *   .order-form         the <form>
+ *   .fieldset           a <fieldset> with a <legend>
+ *   .field              one row: label, control, errors
+ *   .field-label        the row's <label> or group label
+ *   .field-hint         small muted text under a label
+ *   .field-errors       the row's error list (<ul>); empty lists take no space
+ *   .field-check        a row with a checkbox before its label
+ *   .field-grid         puts its .field children side by side
+ *   .option-group       a radio or checkbox group
+ *   .option             one <label> in a group, control first
+ *   inputs, selects and textareas inside .order-form are styled directly;
+ *   [aria-invalid="true"] gives them the error border
+ *   .line-items         the line items <table>; .num right-aligns a cell
+ *   .line-items-total   the table's footer row
+ *   .form-errors        form-level errors, above the actions
+ *   .form-actions       the row of buttons at the bottom
+ *   .form-status        a one-line submit status beside the buttons
+ *
+ * Buttons
+ *   .button             any button; add .button-primary, .button-danger or .button-small
+ *
+ * Render badge
+ *   .render-badge       small monospace pill that counts renders
+ *   .flash              restarts the badge's (or an inspector cell's) flash; see bumpBadge
+ *
+ * Inspector (rendered by @lunarhue/forms-example-inspector)
+ *   .inspector, .inspector-section, .inspector-heading
+ *   .inspector-state    the form state <dl>
+ *   .inspector-controls, .inspector-toggle, .inspector-flags
+ *   .inspector-list, .inspector-empty
+ *   .inspector-table-wrap, .inspector-table; cells get .is-true, .is-false, .flash
+ *   .inspector-log, .log-name, .log-member, .log-change
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --surface-muted: #efefec;
+  --text: #1d1d1b;
+  --muted: #6b6b66;
+  --border: #d6d6d0;
+  --accent: #2f5bd3;
+  --accent-text: #ffffff;
+  --danger: #b4261d;
+  --danger-bg: #fbeceb;
+  --flash: #ffe58a;
+  --true: #1f7a3d;
+  --radius: 6px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #20201e;
+    --surface-muted: #2a2a27;
+    --text: #e8e8e3;
+    --muted: #9a9a93;
+    --border: #3a3a36;
+    --accent: #7c9bff;
+    --accent-text: #10131c;
+    --danger: #ff8a80;
+    --danger-bg: #3a1f1d;
+    --flash: #6b5a12;
+    --true: #6fd391;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 var(--sans);
+}
+
+/* Page */
+
+.page-header {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 16px 0;
+}
+
+.page-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+  align-items: start;
+}
+
+.page-form,
+.page-inspector {
+  min-width: 0;
+}
+
+.page-inspector {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page-inspector {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Form */
+
+.order-form {
+  display: grid;
+  gap: 16px;
+}
+
+.fieldset {
+  margin: 0;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.fieldset legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-label {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.field-errors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.field-errors:empty {
+  display: none;
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.option-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-form input:not([type="checkbox"], [type="radio"]),
+.order-form select,
+.order-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.order-form input:focus-visible,
+.order-form select:focus-visible,
+.order-form textarea:focus-visible,
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.order-form [aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.order-form :disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.order-form input:read-only:not([type="checkbox"], [type="radio"]) {
+  background: var(--surface-muted);
+}
+
+.line-items {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.line-items th,
+.line-items td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.line-items th {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.line-items .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.line-items-total td {
+  border-bottom: 0;
+  font-weight: 600;
+}
+
+.form-errors {
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.form-errors:empty {
+  display: none;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Buttons */
+
+.button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--surface-muted);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.button-primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+.button-danger {
+  color: var(--danger);
+}
+
+.button-small {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+}
+
+/* Render badge */
+
+.render-badge {
+  display: inline-block;
+  min-width: 2ch;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font: 11px/16px var(--mono);
+  text-align: center;
+  vertical-align: middle;
+}
+
+@keyframes flash {
+  from {
+    background: var(--flash);
+  }
+}
+
+.flash {
+  animation: flash 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+  }
+}
+
+/* Inspector */
+
+.inspector {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.inspector-section {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.inspector-state {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.inspector-state dt {
+  color: var(--muted);
+}
+
+.inspector-state dd {
+  margin: 0;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.inspector-controls,
+.inspector-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-controls + .inspector-controls,
+.inspector-controls + .inspector-flags {
+  margin-top: 8px;
+}
+
+.inspector-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.inspector-flags select {
+  min-width: 10rem;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.inspector-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.inspector-empty {
+  color: var(--muted);
+}
+
+.inspector-table-wrap {
+  overflow-x: auto;
+}
+
+.inspector-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.inspector-table th,
+.inspector-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.inspector-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.inspector-table td.is-true {
+  color: var(--true);
+  font-weight: 600;
+}
+
+.inspector-table td.is-false {
+  color: var(--muted);
+}
+
+.inspector-log {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.inspector-log li {
+  display: flex;
+  gap: 12px;
+  padding: 1px 0;
+  border-bottom: 1px solid var(--surface-muted);
+}
+
+.log-name {
+  min-width: 10ch;
+}
+
+.log-member {
+  min-width: 9ch;
+  color: var(--muted);
+}
+
+.log-change {
+  overflow-wrap: anywhere;
+}
