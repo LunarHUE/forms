@@ -96,12 +96,13 @@ export function OrderForm() {
       <AddressFields field={form.root.at("billing")} legend="Billing address" />
       <SameAsBilling />
       <AddressFields field={form.root.at("shipping")} legend="Shipping address" />
-      <FormErrors />
-      <DisabledErrors />
       <div className="form-actions">
         <SubmitButton />
         <FormStatus />
       </div>
+      {/* Below the button, so they can appear without moving it. */}
+      <FormErrors />
+      <DisabledErrors />
     </form>
   );
 }

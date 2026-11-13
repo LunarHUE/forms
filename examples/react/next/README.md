@@ -56,6 +56,10 @@ this list is about the full example.
   behaviour.
 - Untick and tick "Ship to the billing address" to see the shipping
   fieldset enabled and disabled through the handle's `setDisabled`.
+- Every field keeps a line of space under it for its errors, even when it
+  has none. Errors show when a field is blurred, and clicking submit blurs
+  the field being edited, so an error line that pushed the button down
+  would make that click miss.
 
 ## Config notes
 

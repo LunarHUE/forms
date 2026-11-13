@@ -16,7 +16,7 @@
  *   .field              one row: label, control, errors
  *   .field-label        the row's <label> or group label
  *   .field-hint         small muted text under a label
- *   .field-errors       the row's error list (<ul>); empty lists take no space
+ *   .field-errors       the row's error list (<ul>); always one line tall, even empty
  *   .field-check        a row with a checkbox before its label
  *   .field-grid         puts its .field children side by side
  *   .option-group       a radio or checkbox group
@@ -25,7 +25,7 @@
  *   [aria-invalid="true"] gives them the error border
  *   .line-items         the line items <table>; .num right-aligns a cell
  *   .line-items-total   the table's footer row
- *   .form-errors        form-level errors, above the actions
+ *   .form-errors        form-level errors, below the actions; empty lists take no space
  *   .form-actions       the row of buttons at the bottom
  *   .form-status        a one-line submit status beside the buttons
  *
@@ -196,16 +196,21 @@ body {
   font-size: 0.85rem;
 }
 
+/*
+ * Errors show when a field is blurred, and clicking the submit button blurs
+ * the field being edited. If the error line pushed the button down between
+ * mouse down and mouse up, the click would miss. So every error list keeps
+ * one line of space while it is empty, and nothing below it moves when an
+ * error appears. A field with two or more errors grows by a line per extra
+ * error, which is rare enough to accept.
+ */
 .field-errors {
+  min-height: 1lh;
   margin: 0;
   padding: 0;
   list-style: none;
   color: var(--danger);
   font-size: 0.85rem;
-}
-
-.field-errors:empty {
-  display: none;
 }
 
 .field-check {
@@ -297,6 +302,10 @@ body {
   font-weight: 600;
 }
 
+/*
+ * Form-level errors sit below the actions, so they can appear without
+ * moving the submit button, and take no space while there are none.
+ */
 .form-errors {
   margin: 0;
   padding: 8px 12px;
