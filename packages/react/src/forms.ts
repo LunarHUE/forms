@@ -19,8 +19,9 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import { createFormsCore } from "@lunarhue/forms-core";
-import { type Context, createContext, createElement, type ReactElement, type ReactNode, useContext, useId, useState } from "react";
+import { type Context, createContext, createElement, type ReactElement, type ReactNode, useContext, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
+import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike } from "./field.js";
 import { focusInvalid, formRef } from "./refs.js";
 import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope } from "./scope.js";
@@ -92,6 +93,8 @@ export interface UseFormOptions<E = FormError> {
   /**
    * The store id, which prefixes every handle id and so every DOM id.
    * Defaults to an id from `useId`, which matches between server and client.
+   * React 16.8 and 17 have no `useId`, so there the default is a counter that
+   * doesn't match. Pass `id` to server render a form on those versions.
    */
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
@@ -111,7 +114,7 @@ export interface FormElementProps {
   readonly tabIndex: -1;
   /**
    * Calls `handleSubmit`. It needs only `preventDefault`, so the type fits
-   * `<form onSubmit>` in the React 18 and 19 types alike.
+   * `<form onSubmit>` in the types of every React version.
    */
   readonly onSubmit: (event: { preventDefault(): void }) => void;
   /** Records the form element as the focus fallback. Same cleanup rules as `FieldRef`. */
@@ -344,7 +347,9 @@ export const createForms: CreateForms = (options = {}) => {
       // `useForm` takes the definition's options first only when the definition is a function.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
-      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: instance?.id ?? generatedId });
+      const id = instance?.id;
+      if (id === undefined) generatedIdUsed();
+      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
       return makeForm(store, scope(store.root), own, instance?.focusOnInvalid ?? defaultFocus);
     };
     return {

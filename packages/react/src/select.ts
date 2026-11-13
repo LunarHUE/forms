@@ -1,4 +1,5 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
+import { useSyncExternalStore } from "./compat.js";
 import type { IsEqual } from "./field.js";
 
 /** An external value as `useSyncExternalStore` reads it. Each function keeps its identity. */

@@ -1,6 +1,6 @@
 import { errorId as coreErrorId, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "./compat.js";
 import { type HandleLike, useField } from "./field.js";
 import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
 import { numberTextSource } from "./number-text.js";
