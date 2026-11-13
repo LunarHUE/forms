@@ -25,7 +25,10 @@ export function Inspector(props: InspectorProps) {
   useEffect(() => {
     const target = container.current;
     if (target === null) return undefined;
-    return mountInspector(target, store, { ...(settings === undefined ? {} : { settings }), invalidValue });
+    return mountInspector(target, store, {
+      ...(settings === undefined ? {} : { settings }),
+      ...(invalidValue === undefined ? {} : { invalidValue }),
+    });
   }, [store, settings, invalidValue]);
   return <div ref={container} />;
 }

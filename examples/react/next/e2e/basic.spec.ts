@@ -29,6 +29,12 @@ test("loads and hydrates with no console errors or warnings", async ({ page }) =
   expect(messages).toEqual([]);
 });
 
+test("the inspector has no fill with invalid data button, since the page gives no invalid value", async ({ page }) => {
+  await open(page);
+  await expect(page.locator(".inspector").getByRole("button", { name: "Submit" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fill with invalid data" })).toHaveCount(0);
+});
+
 test("typing and submitting shows the submitting state, then the result", async ({ page }) => {
   await open(page);
   const name = page.getByRole("textbox", { name: "Name", exact: true });
