@@ -41,6 +41,7 @@ without breaking the write that was running.
 | `no form.Form is mounted above this component.`                        | `useFormContext()` found no form above it.                                               | Render the component inside `form.Form`, or pass the form down as a prop.        |
 | `no form.Form of these forms is mounted above this component.`         | `useFormContext(forms)` found no form made from one of those forms' definitions.         | Render it inside the `form.Form` of a form made from one of their definitions.   |
 | `no form.Form of this definition is mounted above this component.`     | `useFormContext(definition)` found no form made from that definition.                    | Render it inside the `form.Form` of a form made from that definition.            |
+| `React before 18 needs @lunarhue/forms-react/legacy.`                  | An app on React 16.8 or 17 imported `@lunarhue/forms-react`, which needs React 18.       | Import from `@lunarhue/forms-react/legacy` instead. It has the same API.         |
 
 ## Solid
 
@@ -63,6 +64,6 @@ These are logged in development only, and production drops them.
 - `This store's plugins come from two copies of @lunarhue/forms-core.` The
   app bundles two copies of core, and plugins only work with the copy they
   were made with. Install one copy, as by deduping the lockfile.
-- `@lunarhue/forms-react: a form was server rendered without an id.` React
-  16.8 and 17 have no `useId`, so the generated id can't match on the
-  client. Pass `id` to `useForm`.
+- `@lunarhue/forms-react: a form was server rendered without an id.` From
+  `@lunarhue/forms-react/legacy` on React 16.8 and 17, which have no `useId`,
+  so the generated id can't match on the client. Pass `id` to `useForm`.
