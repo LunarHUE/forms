@@ -43,7 +43,8 @@ function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>,
 
 /**
  * The source of a field's view: its snapshot, its number text and the field
- * object built from both. The view keeps its identity until either changes.
+ * object built from both. The view keeps its identity until either changes,
+ * and the server and client views are one object while they read the same.
  */
 export const fieldViewSource = (handle: HandleLike): Source<FieldView> =>
   cached(viewSources, handle, () => {
@@ -63,12 +64,18 @@ export const fieldViewSource = (handle: HandleLike): Source<FieldView> =>
       get() {
         const snapshot = field.get();
         const text = texts.get();
-        if (current?.snapshot !== snapshot || current.text !== text) current = makeView(handle, snapshot, text);
+        if (current?.snapshot !== snapshot || current.text !== text) {
+          // While nothing has changed since server rendering, the client view is
+          // the server view, so a hydrated component doesn't render again.
+          current = initial?.snapshot === snapshot && text === undefined ? initial : makeView(handle, snapshot, text);
+        }
         return current;
       },
       server() {
         const snapshot = field.server();
-        if (initial?.snapshot !== snapshot) initial = makeView(handle, snapshot, undefined);
+        if (initial?.snapshot !== snapshot) {
+          initial = current?.snapshot === snapshot && current.text === undefined ? current : makeView(handle, snapshot, undefined);
+        }
         return initial;
       },
     };
