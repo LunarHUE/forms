@@ -419,10 +419,4 @@ describe("store commands", () => {
     expect(result).toBe("done");
     expect(runs).toEqual([1]);
   });
-
-  it("submit and handleSubmit are not there yet", () => {
-    const { store } = make({});
-    expect(() => store.submit()).toThrow("not implemented");
-    expect(() => store.handleSubmit()).toThrow("not implemented");
-  });
 });

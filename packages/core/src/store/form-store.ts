@@ -12,8 +12,8 @@ import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
 import { createValidation, type Validation, type ValidationOptions } from "./validation.js";
 
 /** What `createFormStore` takes. Each module adds the options it reads to its own options type. */
-export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown>
-  extends BaselineOptions<V>, ValidationOptions<V, E>, SubmitOptions<V, E, I, R> {
+export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, O = V>
+  extends BaselineOptions<V>, ValidationOptions<V, E>, SubmitOptions<V, E, I, R, O> {
   /** The store id, which prefixes every handle id. */
   readonly id: string;
   /** The starting value. */
@@ -38,8 +38,8 @@ export interface FormInternals<V, E, I, R> {
 }
 
 /** Makes a form store and returns it with its value store. */
-export function createFormInternals<V, E = FormError, I = undefined, R = unknown>(
-  options: FormStoreOptions<V, E, I, R>,
+export function createFormInternals<V, E = FormError, I = undefined, R = unknown, O = V>(
+  options: FormStoreOptions<V, E, I, R, O>,
 ): FormInternals<V, E, I, R> {
   const core = createStoreCore<E, I, R>({
     id: options.id,
@@ -95,13 +95,13 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     changes: (path) => baseline.changes(path),
     firstInvalid: () => submit.firstInvalid(),
   };
-  registerStore(store, { core, baseline });
+  registerStore(store, { core, baseline, validation });
   return { store, core, baseline, validation, submit };
 }
 
 /** Makes a form store. `define(...).createStore(...)` calls this. */
-export function createFormStore<V, E = FormError, I = undefined, R = unknown>(
-  options: FormStoreOptions<V, E, I, R>,
+export function createFormStore<V, E = FormError, I = undefined, R = unknown, O = V>(
+  options: FormStoreOptions<V, E, I, R, O>,
 ): FormStore<V, E, I, R> {
   return createFormInternals(options).store;
 }

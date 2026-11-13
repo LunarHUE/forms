@@ -1,16 +1,22 @@
+import type { SubmitContext } from "../definition.js";
 import type { ErrorMap } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import type { Submission } from "../snapshot.js";
 import type { IntentArgs } from "../store.js";
+import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
 import type { Validation } from "./validation.js";
 
-/** The store options submit reads. There are none until `onSubmit` arrives. */
-// The type parameters are for the options `onSubmit` brings.
-// oxlint-disable-next-line no-unused-vars
-export interface SubmitOptions<V, E, I, R> {}
+// Core has no DOM or node types, so this declares the platform global submit uses.
+declare const AbortController: new () => { readonly signal: PlatformAbortSignal; abort(): void };
+
+/** The store options submit reads. `O` is what `onSubmit` gets: the schema's output, or the value. */
+export interface SubmitOptions<V, E, I, R, O = V> {
+  /** Called when a submit passes validation. What it returns becomes the result, what it throws the error. */
+  readonly onSubmit?: (value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>;
+}
 
 /** Submitting, form-wide user errors and finding the first invalid field. */
 export interface Submit<E, I, R> {
@@ -26,37 +32,98 @@ export interface Submit<E, I, R> {
   abort(): void;
 }
 
-/**
- * Makes submit. `submit` and `handleSubmit` are placeholders that throw.
- * `setErrors` and `firstInvalid` work.
- */
-export function createSubmit<V, E, I, R>(
+type Controller = { readonly signal: PlatformAbortSignal; abort(): void };
+
+/** Makes submit. Making it runs nothing: no controller or promise exists until `submit` is called. */
+export function createSubmit<V, E, I, R, O = V>(
   context: FormContext<V, E, I, R>,
-  // oxlint-disable-next-line typescript/no-generated-empty-object-type
-  _options: SubmitOptions<V, E, I, R>,
-  _validation: Validation<E>,
+  options: SubmitOptions<V, E, I, R, O>,
+  validation: Validation<E>,
 ): Submit<E, I, R> {
   const { core } = context;
+  // The running submit, by its controller, which belongs to that run alone.
+  let running: { readonly controller: Controller; readonly promise: Promise<Submission<I, R>> } | undefined;
+  // What an aborted run resolves to: the idle submission its abort set.
+  const aborted = new WeakMap<Controller, Submission<I, R>>();
+  let count = 0;
+  // False while the submission is anything but idle, so a reset of an idle form changes nothing.
+  let idleNow = true;
+
+  // Ends the run with `submission`, unless an abort ended it first.
+  const end = (controller: Controller, submission: Submission<I, R>): Submission<I, R> => {
+    const idle = aborted.get(controller);
+    if (idle) return idle;
+    running = undefined;
+    core.setSubmission(submission);
+    return submission;
+  };
+
+  const execute = async (controller: Controller, intent: I, settled: Promise<void>): Promise<Submission<I, R>> => {
+    await settled;
+    const out = aborted.has(controller) || core.invalidAt([]) ? undefined : await validation.schemaOutput();
+    const idle = aborted.get(controller);
+    if (idle) return idle;
+    // Errors that landed while the schema ran again block the submit too.
+    if (!out || core.invalidAt([])) return end(controller, { status: "invalid" });
+    const ctx: SubmitContext<V, E, I> = {
+      store: context.store(),
+      intent,
+      signal: controller.signal,
+      // The value validation passed on is the form's value, of type V.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      input: out.input as DeepReadonly<V>,
+    };
+    try {
+      // The schema's output, or the form value without a schema, which is what `O` names.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const result = options.onSubmit ? await options.onSubmit(out.output as O, ctx) : (undefined as R);
+      return end(controller, { status: "succeeded", result });
+    } catch (error) {
+      return end(controller, { status: "failed", error });
+    }
+  };
+
+  const start = (intent: I): Promise<Submission<I, R>> => {
+    if (running) return running.promise;
+    idleNow = false;
+    const controller = new AbortController();
+    let settled: Promise<void> = Promise.resolve();
+    // One batch: the previous attempt's user errors go, the count and status
+    // change, and validators that finish at once land.
+    core.batch(() => {
+      core.clearUserErrors([]);
+      core.setSubmitCount(++count);
+      core.setSubmission({ status: "submitting", intent });
+      settled = validation.settleForSubmit();
+    });
+    const promise = execute(controller, intent, settled);
+    running = { controller, promise };
+    return promise;
+  };
+
   return {
-    submit() {
-      throw new Error("not implemented");
-    },
-    handleSubmit() {
-      throw new Error("not implemented");
+    // With no argument the intent is undefined, which `IntentArgs` allows only when I includes it.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    submit: (...args) => start(args[0] as I),
+    async handleSubmit(event) {
+      event?.preventDefault();
+      // The form's submit event carries no intent, so this submit's intent is undefined whatever I is.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      await start(undefined as I);
     },
     setErrors(errors) {
       // Errors for one field from `form` and `fields` are joined, `form` first.
       const lists = new Map<string, { path: Path; errors: E[] }>();
-      const add = (path: Path | undefined, more: readonly E[]) => {
-        if (!path) return;
+      const add = (path: Path, more: readonly E[]) => {
         const id = JSON.stringify(path);
         const entry = lists.get(id);
         if (entry) entry.errors.push(...more);
         else lists.set(id, { path, errors: [...more] });
       };
       if (errors.form !== undefined) add([], errorList(errors.form));
+      // A name that resolves to no field lands on the root after the form errors, as validation does.
       for (const [name, entry] of Object.entries(errors.fields ?? {}))
-        if (entry !== undefined) add(core.pathOf(name), errorList(entry));
+        if (entry !== undefined) add(core.pathOf(name) ?? [], errorList(entry));
       core.batch(() => {
         core.clearUserErrors([]);
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);
@@ -66,6 +133,18 @@ export function createSubmit<V, E, I, R>(
       const path = core.firstInvalid();
       return path && context.store().fieldAt(path);
     },
-    abort() {},
+    abort() {
+      const run = running;
+      running = undefined;
+      const idle: Submission<I, R> = { status: "idle" };
+      if (run) aborted.set(run.controller, idle);
+      // Reset puts a settled submission back to idle too, as a fresh form has none.
+      if (!idleNow) {
+        idleNow = true;
+        core.setSubmission(idle);
+      }
+      // Last, so a signal listener that submits again starts from idle.
+      run?.controller.abort();
+    },
   };
 }

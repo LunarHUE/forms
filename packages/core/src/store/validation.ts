@@ -60,8 +60,28 @@ export interface Validation<E> {
    * before the baseline writes, to abort runs and drop pending debounces there.
    */
   reset(path: Path): void;
+  /**
+   * Called after writes that were not user edits changed the values at
+   * `paths`, inside their batch. Reruns the validators that already run on
+   * input and touch those paths. It arms nothing.
+   */
+  changed(paths: readonly Path[]): void;
   /** Runs what submit needs and resolves once no validator is running. */
   settleForSubmit(): Promise<void>;
+  /**
+   * The value submit passes on and what `onSubmit` gets for it. With a form
+   * schema that is the schema's output, from its last run when that run
+   * passed on the current value. Otherwise the schema runs again now and its
+   * errors land. Without a schema both are the current value. Resolves
+   * undefined when the value fails the schema.
+   */
+  schemaOutput(): Promise<SchemaOutput | undefined>;
+}
+
+/** A value that passed the form schema, and what the schema made of it. */
+export interface SchemaOutput {
+  readonly input: unknown;
+  readonly output: unknown;
 }
 
 /**
@@ -118,6 +138,14 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   value !== null &&
   "then" in value &&
   typeof value.then === "function";
+
+// A result with no issues passed. An empty issue list counts as none, as `place` reads it.
+const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unknown> => {
+  // A schema check's result is a Standard Schema result.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const issues = (result as StandardSchemaV1.Result<unknown>).issues;
+  return issues === undefined || issues.length === 0;
+};
 
 const defaultMapError: MapError<FormError> = (raw) => ({ message: raw.message });
 
@@ -252,9 +280,18 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     }
   };
 
-  const land = (run: Run, result: unknown) => write(run, place(core, run.reg.spec, run.path, result, mapError));
+  // The form schema's registration, and the output of its last run that passed.
+  let schemaReg: Registration | undefined;
+  let captured: SchemaOutput | undefined;
+
+  // `input` is the value the check ran on.
+  const land = (run: Run, result: unknown, input: unknown) => {
+    if (run.reg === schemaReg) captured = passed(result) ? { input, output: result.value } : undefined;
+    write(run, place(core, run.reg.spec, run.path, result, mapError));
+  };
 
   const fail = (run: Run, cause: unknown) => {
+    if (run.reg === schemaReg) captured = undefined;
     run.thrown = true;
     const placed: Placed<E> = new Map();
     const error = mapError({ source: "thrown", message: thrownMessage(cause), path: run.path, cause });
@@ -282,9 +319,10 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       path: run.path,
       store: context.store(),
     };
+    const input = core.getSnapshot(run.path).value;
     let result: unknown;
     try {
-      result = run.reg.spec.check(core.getSnapshot(run.path).value, ctx);
+      result = run.reg.spec.check(input, ctx);
     } catch (cause) {
       run.call = undefined;
       fail(run, cause);
@@ -293,7 +331,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     }
     if (!isThenable(result)) {
       run.call = undefined;
-      land(run, result);
+      land(run, result, input);
       settle(run);
       return;
     }
@@ -310,7 +348,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       });
     };
     void result.then(
-      (value) => finish(() => land(run, value)),
+      (value) => finish(() => land(run, value, input)),
       (cause: unknown) => finish(() => fail(run, cause)),
     );
   };
@@ -393,7 +431,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   // The definition's validators, in error order: the schema, the form validator, then field validators.
   if (options.schema) {
     const spec = toSpec(options.schema, "form");
-    if (spec) add([], spec);
+    if (spec) schemaReg = add([], spec);
   }
   const formSpec = toSpec(options.validate?.form, "form");
   if (formSpec) add([], formSpec);
@@ -474,9 +512,31 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         }
       if (path.length === 0) for (const reg of patterns) reg.armedAll = false;
     },
+    changed(paths) {
+      const runs = new Set<Run>();
+      for (const path of paths) {
+        along(runsAt, path, true, runs);
+        below(slotAt(runsAt, path, false), false, runs);
+        // Runs made for an armed pattern start armed. Other patterns only have the runs in the trie.
+        for (const reg of patterns) if (reg.armedAll) patternRuns(reg, path, true, runs);
+      }
+      for (const run of runs) if (live(run) && (run.armed || run.scopes)) start(run, false);
+    },
     async settleForSubmit() {
       for (const reg of patterns) reg.armedAll = true;
       await runNow([], (run) => !run.ran || run.thrown || run.reg.spec.recheckOnSubmit);
+    },
+    async schemaOutput() {
+      const value = core.getSnapshot([]).value;
+      if (!schemaReg) return { input: value, output: value };
+      if (captured && Object.is(captured.input, value)) return captured;
+      const run = runOf(schemaReg, []);
+      core.batch(() => {
+        arm(run);
+        start(run, true);
+      });
+      await idle(run);
+      return captured;
     },
   };
 }
