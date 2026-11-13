@@ -52,6 +52,11 @@
       "optional": true
     }
   },
+  "devDependencies": {
+    "@lunarhue/forms-valibot": "workspace:^",
+    "solid-js": "catalog:",
+    "valibot": "catalog:"
+  },
   "publishConfig": {
     "access": "public"
   },

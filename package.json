@@ -17,6 +17,7 @@
       "oxlint-tsgolint": "7.0.2007",
       "publint": "0.3.25",
       "size-limit": "14.3.0",
+      "solid-js": "2.0.0-rc.21",
       "tsdown": "0.23.7",
       "typescript": "7.0.2",
       "valibot": "1.5.0",
@@ -30,7 +31,8 @@
     "lint": "oxlint",
     "test": "vitest run",
     "check:package": "bun run --filter './packages/*' check:package",
-    "size": "bun run --filter './packages/*' size"
+    "size": "bun run --filter './packages/*' size",
+    "bench": "vitest bench --run"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
