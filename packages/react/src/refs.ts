@@ -5,62 +5,48 @@ import { cached } from "./select.js";
 
 type FormRef = (element: HTMLFormElement | null) => (() => void) | undefined;
 
+// Keyed by field handle for field elements and by store for `<form>` elements.
 const elements = new WeakMap<object, Set<HTMLElement>>();
-const formElements = new WeakMap<object, HTMLFormElement>();
-const fieldRefs = new WeakMap<object, Map<string, FieldRef>>();
+const fieldRefs = new WeakMap<object, FieldRef>();
 const formRefs = new WeakMap<object, FormRef>();
 
+/** Drops the elements that left the document, so the set can't grow without bound. */
+function connected(set: Set<HTMLElement>): Set<HTMLElement> {
+  for (const element of set) if (!element.isConnected) set.delete(element);
+  return set;
+}
+
 /**
- * Makes a ref callback that records its element with `add`. React 19 calls
- * the cleanup `add` returns. React 18 ignores it and calls the callback
- * again with `null`, which runs the cleanup of the element it last recorded.
+ * Makes a ref callback that records its elements for `key`. React 19 calls
+ * the cleanup it returns. React 18 ignores the cleanup and calls the
+ * callback with `null` without saying which element left, so that call does
+ * nothing and lookups skip elements that left the document.
  */
-function recorder<T extends HTMLElement>(add: (element: T) => () => void): (element: T | null) => (() => void) | undefined {
-  let remove: (() => void) | undefined;
+function recorder(key: object): FieldRef {
   return (element) => {
-    if (element === null) {
-      remove?.();
-      remove = undefined;
-      return undefined;
-    }
-    remove = add(element);
-    return remove;
+    if (element === null) return undefined;
+    const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
+    set.add(element);
+    return () => {
+      set.delete(element);
+    };
   };
 }
 
-/**
- * The ref callback for one field's element, the same function for the life
- * of the handle. `option` tells apart the radios and boxes of one field.
- */
-export function fieldRef(handle: object, option: string): FieldRef {
-  return cached(cached(fieldRefs, handle, () => new Map<string, FieldRef>()), option, () =>
-    recorder<HTMLElement>((element) => {
-      const set = cached(elements, handle, () => new Set<HTMLElement>());
-      set.add(element);
-      return () => {
-        set.delete(element);
-      };
-    }),
-  );
+/** The ref callback for a field's elements, the same function for the life of the handle. */
+export function fieldRef(handle: object): FieldRef {
+  return cached(fieldRefs, handle, () => recorder(handle));
 }
 
-/** The ref callback that records a store's `<form>` element, the same function for the life of the store. */
+/** The ref callback that records a store's `<form>` elements, the same function for the life of the store. */
 export function formRef(store: object): FormRef {
-  return cached(formRefs, store, () =>
-    recorder<HTMLFormElement>((element) => {
-      formElements.set(store, element);
-      return () => {
-        if (formElements.get(store) === element) formElements.delete(store);
-      };
-    }),
-  );
+  return cached(formRefs, store, () => recorder(store));
 }
 
-/** The first connected element, in document order, recorded for a field. */
-function firstElement(handle: object): HTMLElement | undefined {
+/** The first connected element, in document order, recorded for `key`. */
+function firstElement(key: object): HTMLElement | undefined {
   let first: HTMLElement | undefined;
-  for (const element of elements.get(handle) ?? []) {
-    if (!element.isConnected) continue;
+  for (const element of connected(elements.get(key) ?? new Set())) {
     if (first === undefined || (first.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING) !== 0) first = element;
   }
   return first;
@@ -70,7 +56,7 @@ function firstElement(handle: object): HTMLElement | undefined {
 export function focusInvalid<E>(store: AnyFormStore<E>, focus: FocusOnInvalid<E>): void {
   if (focus === false) return;
   const field: AnyFieldHandle<E> | undefined = store.firstInvalid();
-  const element = (field === undefined ? undefined : firstElement(field)) ?? formElements.get(store);
+  const element = (field === undefined ? undefined : firstElement(field)) ?? firstElement(store);
   if (focus === true) element?.focus();
   else focus({ field, disabled: store.disabledInvalid(), element });
 }

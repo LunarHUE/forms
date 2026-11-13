@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createForms,
   type FieldApi,
+  type FieldRef,
   type FocusTarget,
   useDisabledErrors,
   useFieldRef,
@@ -266,5 +267,67 @@ describe("the form object without form.Form", () => {
     await act(settle);
     expect(document.activeElement).toBe(screen.getByLabelText("title box"));
     expect(box.form?.formProps.id).toBe(box.form?.id);
+  });
+});
+
+describe("one field on two elements", () => {
+  const titled = forms.define({ defaultValues: { title: "" }, validate: { fields: { title: required } } });
+  type TitledForm = ReturnType<typeof titled.useForm>;
+  const box: { form?: TitledForm; ref?: FieldRef } = {};
+  const form = (): TitledForm => {
+    if (box.form === undefined) throw new Error("no form rendered");
+    return box.form;
+  };
+
+  function Twice(props: { readonly first: boolean }) {
+    const titledForm = titled.useForm();
+    const ref = useFieldRef(titledForm.root.at("title"));
+    useEffect(() => {
+      box.form = titledForm;
+      box.ref = ref;
+    });
+    return (
+      <>
+        {props.first ? <div aria-label="first" ref={ref} tabIndex={-1} /> : null}
+        <div aria-label="second" ref={ref} tabIndex={-1} />
+      </>
+    );
+  }
+
+  it("focuses the element still mounted after the other unmounts", async () => {
+    const { rerender } = render(<Twice first />);
+    rerender(<Twice first={false} />);
+    await act(() => form().handleSubmit());
+    expect(document.activeElement).toBe(screen.getByLabelText("second"));
+  });
+
+  // Hands out the field's ref callback and renders no element of its own.
+  function RefOnly() {
+    const titledForm = titled.useForm();
+    const ref = useFieldRef(titledForm.root.at("title"));
+    useEffect(() => {
+      box.form = titledForm;
+      box.ref = ref;
+    });
+    return null;
+  }
+
+  it("keeps the element still mounted when React 18 calls the ref with null", async () => {
+    render(<RefOnly />);
+    const ref = box.ref;
+    if (ref === undefined) throw new Error("no ref recorded");
+    const a = document.createElement("div");
+    const b = document.createElement("div");
+    b.tabIndex = -1;
+    document.body.append(a, b);
+    // React 18 calls the ref with each element as it mounts, then with null
+    // when one unmounts, and never calls the returned cleanup.
+    ref(a);
+    ref(b);
+    a.remove();
+    ref(null);
+    await act(() => form().handleSubmit());
+    expect(document.activeElement).toBe(b);
+    b.remove();
   });
 });

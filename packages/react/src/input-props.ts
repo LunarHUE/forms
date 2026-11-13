@@ -67,7 +67,7 @@ function numberShown(value: unknown, text: NumberText | undefined): string {
 function makeCallbacks(handle: Commands, kind: Kind, option: unknown): Callbacks {
   const writable = () => !handle.peek().readOnly;
   const blur = () => handle.handleBlur();
-  const ref = fieldRef(handle, kind === "group" || kind === "radio" ? `${kind}:${String(option)}` : "");
+  const ref = fieldRef(handle);
 
   switch (kind) {
     case "number":

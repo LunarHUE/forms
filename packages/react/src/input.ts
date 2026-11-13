@@ -10,7 +10,8 @@ import { fieldRef } from "./refs.js";
  * The ref callback the adapter puts on a field's element. It records the
  * element for focus after an invalid submit and returns the cleanup that
  * forgets it. React 19 calls the cleanup. React 18 calls the callback again
- * with `null`, which forgets it too.
+ * with `null`, which does nothing: an element that left the document is
+ * skipped by focus and dropped the next time an element is recorded.
  */
 export type FieldRef = (element: HTMLElement | null) => (() => void) | undefined;
 
@@ -207,7 +208,7 @@ export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: 
 export type UseFieldRef = (handle: HandleLike) => FieldRef;
 
 /** See `UseFieldRef`. It reads no state, so it is a plain lookup. */
-export const useFieldRef: UseFieldRef = (handle) => fieldRef(handle, "");
+export const useFieldRef: UseFieldRef = (handle) => fieldRef(handle);
 
 /**
  * The id of the element that shows a field's errors: the handle id with
