@@ -40,7 +40,7 @@ function initialValue(definition: AnyConfig, adapter: SchemaAdapter | undefined)
   if (schema === undefined) return defaultValues;
   if (adapter) return mergeDefaults(adapter.defaultValue(schema), defaultValues);
   if (defaultValues === undefined)
-    throw new Error(`No schema adapter is registered for vendor "${schema["~standard"].vendor}", so the definition needs defaultValues.`);
+    throw new Error(`No schema adapter for vendor "${schema["~standard"].vendor}", so the definition needs defaultValues.`);
   return defaultValues;
 }
 
