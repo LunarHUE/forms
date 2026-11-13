@@ -93,6 +93,11 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
  * exactly `T` fits too. That side is loose: the component may write
  * `undefined` into a field typed `number`, and the type checker won't catch
  * it.
+ *
+ * For a select, radio group or checkbox group, write `FieldApi<Choice>` or
+ * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
+ * props. The component then fits any field of string options, and each use
+ * checks the options against the named field. See `Choice`.
  */
 export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
   /** Type information only: the `T` the component was written for. */

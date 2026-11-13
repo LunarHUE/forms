@@ -200,8 +200,12 @@ export type IsOption<V> = [V] extends [string | number | boolean | null | undefi
     : true
   : false;
 
-/** True when a field of type `V` is an array of strings or numbers. */
-export type IsOptionList<V> = [V] extends [readonly (string | number)[] | null | undefined]
+/**
+ * True when a field of type `V` is an array of strings or numbers. Its items
+ * may also be undefined, as a schema form's array of picklist values is
+ * before it is filled in.
+ */
+export type IsOptionList<V> = [V] extends [readonly (string | number | null | undefined)[] | null | undefined]
   ? [NonNullable<V>] extends [never]
     ? false
     : true
@@ -243,7 +247,7 @@ export interface CreateInputProps {
   <H extends HandleLike>(handle: H & Allow<IsBoolean<ValueOf<H>>>, options: CheckboxOptions): CheckableProps;
   <H extends HandleLike>(
     handle: H & Allow<IsOptionList<ValueOf<H>>>,
-    options: CheckboxGroupOptions<ItemOf<ValueOf<H>>>,
+    options: CheckboxGroupOptions<NonNullable<ItemOf<ValueOf<H>>>>,
   ): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsOption<ValueOf<H>>>, options: RadioOptions<NonNullable<ValueOf<H>>>): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
@@ -268,7 +272,7 @@ export interface InputPropsOf<V> {
   (...args: ArgsIf<IsText<V>, [options: TextareaOptions]>): TextareaProps;
   (...args: ArgsIf<IsNumber<V>, [options: NumberInputOptions<V>]>): NumberInputProps;
   (...args: ArgsIf<IsBoolean<V>, [options: CheckboxOptions]>): CheckableProps;
-  (...args: ArgsIf<IsOptionList<V>, [options: CheckboxGroupOptions<ItemOf<V>>]>): CheckableProps;
+  (...args: ArgsIf<IsOptionList<V>, [options: CheckboxGroupOptions<NonNullable<ItemOf<V>>>]>): CheckableProps;
   (...args: ArgsIf<IsOption<V>, [options: RadioOptions<NonNullable<V>>]>): CheckableProps;
   (...args: ArgsIf<IsChoice<V>, [options: SelectOptions]>): SelectProps;
 }

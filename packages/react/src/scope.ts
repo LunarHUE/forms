@@ -1,15 +1,19 @@
 import type {
+  ChoiceHandle,
+  ChoiceValue,
   Draft,
   ErrorOf,
   FieldHandle,
   FieldSnapshot,
   FormError,
   HandleTypes,
+  HasChoice,
   ItemHandle,
   ItemOf,
   Path,
   ValidatorInput,
   ValueOf,
+  WithChoice,
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
 import type { ArrayHandleLike, HandleLike, IsEqual, SnapshotOf } from "./field.js";
@@ -65,6 +69,11 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
  * plain form's `number` field is, fits too. That side is loose: the
  * component may write `undefined` into a field typed `number`, and the type
  * checker won't catch it.
+ *
+ * For a select, radio group or checkbox group, write `FieldApi<Choice>` or
+ * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
+ * props. The component then fits any field of string options, and each use
+ * checks the options against the named field. See `Choice`.
  */
 export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
   /** Type information only: the `T` the component was written for. */
@@ -250,8 +259,56 @@ export interface BoundFieldComponent<V, E, A, P> {
 }
 
 /**
+ * The `T` of a registered component's `FieldApi<T>` when `T` is written
+ * with `Choice`, else `never`.
+ */
+export type ChoiceFieldOf<A> = "~fits" extends keyof A
+  ? A extends { readonly "~fits"?: { readonly value: infer T } }
+    ? HasChoice<T> extends true
+      ? T
+      : never
+    : never
+  : never;
+
+/**
+ * The names relative to a scope of value `V` whose field fits a component
+ * with a `FieldApi<T>` field, `T` written with `Choice`. See `ChoiceHandle`.
+ */
+export type NameFittingChoice<V, E, T> =
+  FieldPath<V> extends infer P
+    ? P extends string
+      ? [FieldHandle<ValueAt<V, P>, E>] extends [ChoiceHandle<T, ValueAt<V, P>, E>]
+        ? P
+        : never
+      : never
+    : never;
+
+/**
+ * A registered component with a `FieldApi<T>` field, `T` written with
+ * `Choice`, bound to a scope. Each use reads the option type from the named
+ * field and puts it in place of `Choice` in the component's own props `P`.
+ * TypeScript reports the error of the last signature only, so the `name`
+ * signature comes last: a wrong name lists the names that fit, and a wrong
+ * option lists the field's options. A handle that doesn't fit is reported
+ * against that signature too, as not assignable to `never`.
+ */
+export interface BoundChoiceComponent<V, E, T, P> {
+  <H extends HandleLike>(
+    props: WithChoice<P, ChoiceValue<T, ValueOf<H>>> & {
+      readonly handle: H & ChoiceHandle<T, ValueOf<H>, E>;
+      readonly name?: never;
+    },
+  ): ReactElement;
+  <N extends NameFittingChoice<V, E, T>>(
+    props: WithChoice<P, ChoiceValue<T, ValueAt<V, N>>> & { readonly name: N; readonly handle?: never },
+  ): ReactElement;
+}
+
+/**
  * The registered components as bound on a scope. A component whose field
- * error type doesn't accept the form's error type is `never` there.
+ * error type doesn't accept the form's error type is `never` there. A
+ * component whose `FieldApi` is written with `Choice` is bound as
+ * `BoundChoiceComponent`, every other one as `BoundFieldComponent`.
  *
  * Known hole: a component typed for a narrower error type still fits a form
  * whose error type extends it, and its `setErrors` then takes the narrower
@@ -259,7 +316,9 @@ export interface BoundFieldComponent<V, E, A, P> {
  */
 export type BoundFieldComponents<V, E, F extends FieldComponentMap> = {
   readonly [K in keyof F]: [E] extends [ErrorOf<FieldPropOf<F[K]>>]
-    ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
+    ? [ChoiceFieldOf<FieldPropOf<F[K]>>] extends [never]
+      ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
+      : BoundChoiceComponent<V, E, ChoiceFieldOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
     : never;
 };
 
