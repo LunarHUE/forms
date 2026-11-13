@@ -1,5 +1,7 @@
 import type {
   AnyFieldHandle,
+  ChoiceHandle,
+  ChoiceValue,
   DefinedValue,
   Definition,
   DisabledInvalid,
@@ -10,6 +12,7 @@ import type {
   FormError,
   FormsConfig,
   FormStore,
+  HasChoice,
   IntentArgs,
   ItemHandle,
   ItemOf,
@@ -20,6 +23,7 @@ import type {
   Submission,
   ValidatorInput,
   ValueOf,
+  WithChoice,
 } from "@lunarhue/forms-core";
 import type { Accessor, Element as SolidElement } from "solid-js";
 import { createDisabledErrorList } from "./disabled-errors.js";
@@ -279,9 +283,59 @@ export interface BoundFieldComponent<V, E, C> {
   ): SolidElement;
 }
 
-/** The registered components, bound to a scope of value `V`. */
+/**
+ * The `T` of a registered component's `FieldApi<T>` when `T` is written
+ * with `Choice`, else `never`.
+ */
+export type ChoiceFieldOf<C> =
+  TakesDraft<C> extends true ? (HasChoice<FieldValueOf<C>> extends true ? FieldValueOf<C> : never) : never;
+
+/**
+ * The names in `V` whose fields fit registered component `C`, whose
+ * `FieldApi` is written with `Choice`. See `ChoiceHandle`.
+ */
+export type ChoicePath<V, E, C> =
+  FieldPath<V> extends infer P
+    ? P extends string
+      ? [FieldHandle<ValueAt<V, P>, E>] extends [ChoiceHandle<ChoiceFieldOf<C>, ValueAt<V, P>, FieldErrorOf<C>>]
+        ? P
+        : never
+      : never
+    : never;
+
+/**
+ * A registered component whose `FieldApi<T>` is written with `Choice`,
+ * bound to a scope. Each use reads the option type from the named field and
+ * puts it in place of `Choice` in the component's own props. TypeScript
+ * reports the error of the last signature only, so the `name` signature
+ * comes last: a wrong name lists the names that fit, and a wrong option
+ * lists the field's options. A handle that doesn't fit is reported against
+ * that signature too, as not assignable to `never`.
+ */
+export interface BoundChoiceComponent<V, E, C> {
+  <H extends HandleLike>(
+    props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueOf<H>>> & {
+      readonly handle: H & ChoiceHandle<ChoiceFieldOf<C>, ValueOf<H>, FieldErrorOf<C>>;
+      readonly name?: never;
+    },
+  ): SolidElement;
+  <N extends ChoicePath<V, E, C>>(
+    props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueAt<V, N>>> & {
+      readonly name: N;
+      readonly handle?: never;
+    },
+  ): SolidElement;
+}
+
+/**
+ * The registered components, bound to a scope of value `V`. A component
+ * whose `FieldApi` is written with `Choice` is bound as
+ * `BoundChoiceComponent`, every other one as `BoundFieldComponent`.
+ */
 export type BoundFieldComponents<V, E, F extends FieldComponents> = {
-  readonly [K in keyof F]: BoundFieldComponent<V, E, F[K]>;
+  readonly [K in keyof F]: [ChoiceFieldOf<F[K]>] extends [never]
+    ? BoundFieldComponent<V, E, F[K]>
+    : BoundChoiceComponent<V, E, F[K]>;
 };
 
 /** The members every scope has. */

@@ -4,6 +4,7 @@ export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 export type { Path, PathSegment } from "./path.js";
 export type { StandardSchemaV1 } from "./standard-schema.js";
+export type { Choice, ChoiceHandle, ChoiceValue, HasChoice, WithChoice } from "./choice.js";
 export type {
   AbortSignalLike,
   ChildValue,
