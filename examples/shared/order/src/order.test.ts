@@ -134,6 +134,21 @@ describe("fake server", () => {
     expect((await submitOrder(loadOrder(), { settings })).ok).toBe(true);
   });
 
+  it("sends the order and plain settings to a custom save", async () => {
+    const settings = createServerSettings({ delayMs: 7, reject: true });
+    const calls: unknown[] = [];
+    const result = await submitOrder(loadOrder(), {
+      settings,
+      save: async (order, request) => {
+        calls.push(request);
+        return saveOrder(order, { ...request, delayMs: 0 });
+      },
+    });
+    expect(calls).toEqual([{ delayMs: 7, reject: true }]);
+    expect(result.ok).toBe(false);
+    expect(settings.get().reject).toBe(false);
+  });
+
   it("puts a refused save's errors on the form", async () => {
     serverSettings.set({ delayMs: 0, reject: true });
     const store = definition.createStore();

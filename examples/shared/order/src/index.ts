@@ -28,9 +28,10 @@ export {
   emailDebounceMs,
   emailField,
   orderOnSubmit,
+  orderOnSubmitWith,
   orderValidate,
 } from "./validators.js";
-export type { OrderValidate } from "./validators.js";
+export type { OrderOnSubmit, OrderValidate } from "./validators.js";
 export {
   checkEmail,
   createServerSettings,
@@ -42,6 +43,16 @@ export {
   submitOrder,
   takenEmail,
 } from "./server.js";
-export type { CallOptions, EmailCheck, SaveOptions, SaveResult, ServerSettings, ServerSettingsState } from "./server.js";
+export type {
+  CallOptions,
+  EmailCheck,
+  SaveOptions,
+  SaveOrder,
+  SaveRequest,
+  SaveResult,
+  ServerSettings,
+  ServerSettingsState,
+  SubmitOptions,
+} from "./server.js";
 export { invalidOrder } from "./invalid.js";
 export { bumpBadge, restartFlash } from "./badge.js";

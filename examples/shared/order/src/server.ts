@@ -169,13 +169,42 @@ export async function saveOrder(order: unknown, options: SaveOptions = {}): Prom
   return { ok: true, id: `ORD-${nextId++}` };
 }
 
+/** The part of the server settings a save needs, as plain data, so a server action can take it. */
+export interface SaveRequest {
+  /** How long the save waits before it answers, in milliseconds. */
+  readonly delayMs: number;
+  /** True makes the save fail with server errors. */
+  readonly reject: boolean;
+}
+
+/**
+ * Something that saves an order: `saveOrder` itself, or a function that
+ * sends the order to a server that calls it, such as a Next.js server
+ * action. The arguments are plain data, so they cross a network boundary.
+ */
+export type SaveOrder = (order: Order, request: SaveRequest) => Promise<SaveResult>;
+
+/** Options for `submitOrder`. */
+export interface SubmitOptions {
+  /**
+   * Aborts the save. Only the default `saveOrder` call takes it: a custom
+   * `save` gets plain data only, so it can't be aborted.
+   */
+  readonly signal?: AbortSignal;
+  /** The settings to read. Defaults to the shared `serverSettings`. */
+  readonly settings?: ServerSettings;
+  /** Where to send the order. Defaults to calling `saveOrder` in this process. */
+  readonly save?: SaveOrder;
+}
+
 /**
  * Saves with the current server settings: their delay, and their `reject`
  * flag, which it turns off again so only the next save fails.
  */
-export function submitOrder(order: unknown, options: { readonly signal?: AbortSignal; readonly settings?: ServerSettings } = {}): Promise<SaveResult> {
+export function submitOrder(order: Order, options: SubmitOptions = {}): Promise<SaveResult> {
   const settings = options.settings ?? serverSettings;
   const { delayMs, reject } = settings.get();
   if (reject) settings.set({ reject: false });
+  if (options.save) return options.save(order, { delayMs, reject });
   return saveOrder(order, { delayMs, reject, ...(options.signal ? { signal: options.signal } : {}) });
 }

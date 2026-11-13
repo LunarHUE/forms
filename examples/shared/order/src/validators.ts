@@ -8,7 +8,7 @@ import type {
 import * as v from "valibot";
 import { discountErrors } from "./rules.js";
 import type { Order, OrderDraft } from "./schema.js";
-import { checkEmail, type SaveResult, serverSettings, submitOrder } from "./server.js";
+import { checkEmail, type SaveOrder, type SaveResult, serverSettings, submitOrder } from "./server.js";
 
 /** How long the email check waits after the last keystroke, in milliseconds. */
 export const emailDebounceMs = 400;
@@ -53,14 +53,24 @@ export const orderValidate: OrderValidate = {
   fields: { customer: { email: emailField } },
 };
 
+/** The `onSubmit` of the order definition. */
+export type OrderOnSubmit = (order: Order, ctx: SubmitContext<OrderDraft>) => Promise<SaveResult>;
+
 /**
- * The definition's `onSubmit`: saves through `submitOrder` with the shared
- * server settings and the submit's signal. When the server refuses, it puts
- * the server's errors on the form with `store.setErrors`. Either way it
- * resolves the server's answer, which becomes the submission's result.
+ * Makes the definition's `onSubmit`: it saves through `submitOrder` with the
+ * shared server settings and the submit's signal, sending the order to
+ * `save` when one is given and to `saveOrder` otherwise. When the server
+ * refuses, it puts the server's errors on the form with `store.setErrors`,
+ * unless the form was reset while the save ran. Either way it resolves the
+ * server's answer, which becomes the submission's result.
  */
-export async function orderOnSubmit(order: Order, ctx: SubmitContext<OrderDraft>): Promise<SaveResult> {
-  const result = await submitOrder(order, { signal: ctx.signal });
-  if (!result.ok) ctx.store.setErrors(result.errors);
-  return result;
+export function orderOnSubmitWith(save?: SaveOrder): OrderOnSubmit {
+  return async (order, ctx) => {
+    const result = await submitOrder(order, { signal: ctx.signal, ...(save ? { save } : {}) });
+    if (!result.ok && !ctx.signal.aborted) ctx.store.setErrors(result.errors);
+    return result;
+  };
 }
+
+/** The definition's `onSubmit` when the order is saved in this process: `orderOnSubmitWith()`. */
+export const orderOnSubmit: OrderOnSubmit = orderOnSubmitWith();
