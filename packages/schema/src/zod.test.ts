@@ -178,6 +178,9 @@ describe("itemValue", () => {
   it("gives the item default of an array at the root", () => {
     expect(itemValue(z.array(z.object({ t: z.string() })), [])).toEqual({ t: "" });
     expect(itemValue(z.array(z.number()), [])).toBeUndefined();
+    // An enum item has no empty value, so a checkbox group's array has to be given one.
+    expect(itemValue(z.array(z.enum(["email", "sms"])), [])).toBeUndefined();
+    expect(itemValue(z.array(z.enum(["email", "sms"]).nullable()), [])).toBeNull();
   });
 
   it("walks objects, wrappers and pipes to a nested array", () => {
