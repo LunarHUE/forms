@@ -1,6 +1,7 @@
 import type { AnyFormStore, FieldSnapshot, FormSnapshot, Path } from "@lunarhue/forms-core";
-import { normalDelayMs, restartFlash, type ServerSettings, slowDelayMs } from "@lunarhue/forms-example-order";
+import { restartFlash } from "./flash.js";
 import { compactValue, formatErrors, formatSubmission, isPlainObject } from "./format.js";
+import { normalDelayMs, type ServerSettings, slowDelayMs } from "./settings.js";
 
 /**
  * Any form store, whatever its value, error, intent and result types. The

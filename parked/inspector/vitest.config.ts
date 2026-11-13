@@ -1,4 +1,4 @@
-import { packageTests } from "../../../vitest.base.ts";
+import { packageTests } from "../../vitest.base.ts";
 
 const base = packageTests();
 

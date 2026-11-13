@@ -1,24 +1,47 @@
 import { type AnyFormStore, createFormsCore, type Path } from "@lunarhue/forms-core";
 import { dirty } from "@lunarhue/forms-core/plugins/dirty";
-import {
-  createServerSettings,
-  invalidOrder,
-  loadOrder,
-  orderOnSubmit,
-  OrderSchema,
-  orderValidate,
-  serverSettings,
-} from "@lunarhue/forms-example-order";
 import { valibot } from "@lunarhue/forms-schema/valibot";
+import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mountInspector } from "./index.js";
+import { createServerSettings, mountInspector } from "./index.js";
+
+// A form with nested objects and an array, enough to give the table every
+// kind of row.
+const Address = v.object({ street: v.string(), city: v.string(), country: v.string() });
+
+const Order = v.object({
+  customer: v.object({ name: v.string(), email: v.string() }),
+  delivery: v.string(),
+  lineItems: v.array(v.object({ description: v.string(), quantity: v.number(), unitPrice: v.number() })),
+  billing: Address,
+  shipping: Address,
+});
+
+const london = { street: "12 St James's Square", city: "London", country: "GB" };
 
 const definition = createFormsCore({ plugins: [valibot(), dirty()] }).define({
-  schema: OrderSchema,
-  defaultValues: loadOrder(),
-  validate: orderValidate,
-  onSubmit: orderOnSubmit,
+  schema: Order,
+  defaultValues: {
+    customer: { name: "Ada Lovelace", email: "ada@example.com" },
+    delivery: "standard",
+    lineItems: [
+      { description: "Analytical engine manual", quantity: 1, unitPrice: 94 },
+      { description: "Punched cards", quantity: 3, unitPrice: 7.5 },
+    ],
+    billing: london,
+    shipping: london,
+  },
+  onSubmit: () => "saved",
 });
+
+/** A value the "fill with invalid data" button writes. */
+const invalidOrder = {
+  customer: { name: "", email: "taken@example.com" },
+  delivery: "standard",
+  lineItems: [{ description: "", quantity: 0, unitPrice: 1 }],
+  billing: london,
+  shipping: london,
+};
 
 /** Wraps a store so the test can count the subscriptions that are still open. */
 function counted<S extends AnyFormStore<unknown>>(store: S) {
@@ -43,7 +66,6 @@ function counted<S extends AnyFormStore<unknown>>(store: S) {
 let target: HTMLElement;
 
 beforeEach(() => {
-  serverSettings.set({ delayMs: 0, reject: false });
   target = document.createElement("div");
   document.body.append(target);
 });

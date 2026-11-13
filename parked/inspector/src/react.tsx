@@ -1,4 +1,4 @@
-import { type InspectableStore, type InspectorOptions, mountInspector } from "@lunarhue/forms-example-inspector";
+import { type InspectableStore, type InspectorOptions, mountInspector } from "./index.js";
 import { useEffect, useRef } from "react";
 
 /** Props for `Inspector`. */
