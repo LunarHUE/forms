@@ -58,7 +58,8 @@ this list is about the full example.
   reset the form, fill it with invalid data, and toggle the fake server's
   behaviour.
 - Untick and tick "Ship to the billing address" to see the shipping
-  fieldset enabled and disabled through the handle's `setDisabled`.
+  fieldset enabled and disabled. A `rules` entry on the order definition
+  sets the flag from the value, on the server too.
 - Every field keeps a line of space under it for its errors, even when it
   has none. Errors show when a field is blurred, and clicking submit blurs
   the field being edited, so an error line that pushed the button down

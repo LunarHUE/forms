@@ -81,7 +81,8 @@ type Asker = "definition" | "validator";
  * The error for a store that needs the runner and has none. Development
  * gets a sentence. A bundler replaces the read of NODE_ENV with
  * "production", folds the check to false and drops the sentences, so
- * production gets `validation:<asker>`.
+ * production gets `@lunarhue/forms-core: validation:<asker>`, which
+ * docs/errors.md lists.
  */
 function missing(asker: Asker): Error {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -94,7 +95,7 @@ function missing(asker: Asker): Error {
       `${sentences[asker]} Add \`validation()\` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as \`valibot()\`, to \`plugins\`.`,
     );
   }
-  return new Error(`validation:${asker}`);
+  return new Error(`@lunarhue/forms-core: validation:${asker}`);
 }
 
 const nothing = () => {};

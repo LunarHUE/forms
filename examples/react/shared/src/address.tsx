@@ -1,6 +1,5 @@
 import { countries } from "@lunarhue/forms-example-order";
 import { errorId, type HandleOf, useField, useFormContext, useInputProps } from "@lunarhue/forms-react";
-import { useEffect } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { FieldErrors } from "./fields.js";
 import { AddressFieldset, order } from "./order.js";
@@ -47,24 +46,18 @@ export function AddressFields(props: AddressFieldsProps) {
  * a bound component: `useInputProps` gives the checkbox its props, and
  * `useField` reads the errors.
  *
- * Ticking it disables the whole shipping address with the handle's
- * `setDisabled`, which disables every field below it. The effect keeps the
- * flag in step with the value whatever wrote it: this checkbox, the
- * inspector's reset, or "fill with invalid data". The disabled shipping
- * address keeps its values and still counts for validation, so an invalid
- * one blocks the submit and shows up in the "disabled fields" list.
+ * Ticking it disables the whole shipping address. The checkbox only writes
+ * the value: a `rules` entry on the order definition sets the flag. The
+ * disabled shipping address keeps its values and still counts for
+ * validation, so an invalid one blocks the submit and shows up in the
+ * "disabled fields" list.
  */
 export function SameAsBilling() {
   const form = useFormContext(order);
   const same = form.root.at("sameAsBilling");
-  const shipping = form.root.at("shipping");
   const input = useInputProps(same, { kind: "checkbox" });
   const errors = useField(same, (snapshot) => snapshot.shownErrors);
   const badge = useRenderBadge();
-  const on = input.checked;
-  useEffect(() => {
-    shipping.setDisabled(on);
-  }, [shipping, on]);
   return (
     <div className="field">
       <div className="field-check">

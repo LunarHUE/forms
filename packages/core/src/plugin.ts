@@ -162,7 +162,13 @@ export interface PluginHooks<A = undefined> {
    * Runs before each value write, in plugin order. Return the value to
    * write, or `refuse` from `@lunarhue/forms-core/plugins` to stop the
    * write. Writes from reset, rebase and plugins come through too, and
-   * `write.cause` tells them apart. Items that `push` and `insert` add don't.
+   * `write.cause` tells them apart. A write of an object comes through once,
+   * at the object's path, so a plugin that cares about a field below it
+   * walks down to it. A row that `push` or `insert` adds comes through as a
+   * write at the row's path, with `before` undefined. The row is already in
+   * the array then, since its key is made by the insert. Return a
+   * replacement row, or `refuse` to take the row out again. The array then
+   * holds the items it had, though its listeners run once.
    */
   beforeWrite?(write: Write): unknown;
   /** Gets committed writes at the time `when` names. */
@@ -173,8 +179,15 @@ export interface PluginHooks<A = undefined> {
   onReset?(path: Path): void;
   /**
    * Runs when a submit starts. A returned promise runs alongside validation,
-   * and submit waits for both before it reads the schema output. A rejection
-   * goes to `onPluginError` and the submit carries on.
+   * and submit waits for both before it reads the schema output. A throw or
+   * a rejection goes to `onPluginError` and the submit carries on.
+   *
+   * Return `refuse`, directly or from the promise, to stop the submit. The
+   * definition's `onSubmit` isn't called and the submission ends
+   * `"invalid"`, as it does when validation fails. Set a form error first,
+   * as with `ctx.store.root.setErrors`, so the user sees why. A refusal
+   * returned directly stops the plugins after this one from running their
+   * `onSubmit`. One returned from a promise can't, since they have run.
    */
   onSubmit?(): unknown;
   /** Runs once a submit has ended, with how it ended. */
@@ -196,7 +209,12 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   readonly name: N;
   /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
   readonly after?: readonly string[];
-  /** Runs once per store, when the store is made, and returns the plugin's hooks. */
+  /**
+   * Runs once per store, when the store is made, and returns the plugin's
+   * hooks. What it writes is part of the store's starting state: the server
+   * snapshot shows it and no plugin gets a record of it. It runs on the
+   * server too, so it must not read the browser. Do that in `onActive`.
+   */
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
   /** Gives the form's starting value. See `Plugin.initial`. */
   initial?(value: unknown): unknown;
@@ -238,7 +256,7 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
    */
   initial?(value: unknown): unknown;
   /** A hook plugin's: makes the store's plugin host. Internal. */
-  readonly host?: CreateHost;
+  readonly "~host"?: CreateHost;
   /** A hook plugin's: reads its meta from a field. */
   meta?(source: MetaSource): M | undefined;
   /** A hook plugin's: reads its meta from the form snapshot. */
@@ -255,7 +273,7 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
  */
 export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown> extends Plugin<A, N, M, F> {
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
-  readonly host: CreateHost;
+  readonly "~host": CreateHost;
   /**
    * Reads this plugin's meta from a field snapshot or a field object, as
    * `rules.meta(field)?.hidden`. Undefined until the plugin sets some there.

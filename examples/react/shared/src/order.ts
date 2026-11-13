@@ -7,6 +7,7 @@ import {
   type SaveOrder,
 } from "@lunarhue/forms-example-order";
 import { createForms, type DeepPartial, type FormOf } from "@lunarhue/forms-react";
+import { rules } from "@lunarhue/forms-react/plugins/rules";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import type * as v from "valibot";
 import { CheckboxGroupField, NumberField, RadioGroupField, SelectField, TextField } from "./fields.js";
@@ -30,8 +31,11 @@ export const AddressFieldset = forms.fieldset(AddressSchema);
 /** A shape for one line item row. */
 export const LineItemFieldset = forms.fieldset(LineItemSchema);
 
+/** The order form's value. */
+export type OrderValue = v.InferInput<typeof OrderSchema>;
+
 /** Starting values for the order form: any part of an order, at any depth. */
-export type OrderDefaults = DeepPartial<v.InferInput<typeof OrderSchema>>;
+export type OrderDefaults = DeepPartial<OrderValue>;
 
 /** What each mounted order form is made with. */
 export interface OrderOptions {
@@ -53,11 +57,11 @@ export interface OrderOptions {
 export const order = forms.define((options: OrderOptions) => ({
   schema: OrderSchema,
   ...(options.defaultValues === undefined ? {} : { defaultValues: options.defaultValues }),
-  // "Same as billing" disables the shipping fieldset at run time (see
-  // `SameAsBilling`). Declaring the starting flag here as well means the
-  // server renders the shipping inputs disabled already, so they don't
-  // flip after hydration.
-  disabled: { shipping: options.defaultValues?.sameAsBilling ?? false },
+  // "Same as billing" disables the whole shipping address, whatever wrote
+  // the value: the checkbox, the inspector's reset or "fill with invalid
+  // data". The rule runs when the form is made too, so the server renders
+  // the shipping inputs disabled already and they don't flip after hydration.
+  plugins: [rules<OrderValue>({ shipping: (value) => ({ disabled: value.sameAsBilling }) })],
   validate: orderValidate,
   onSubmit: orderOnSubmitWith(options.save),
 }));

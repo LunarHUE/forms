@@ -110,10 +110,10 @@ describe("a form with no validation runner", () => {
 
   it("throws a short code in production", () => {
     vi.stubEnv("NODE_ENV", "production");
-    expect(() => bare().root.at("name").registerValidator(required)).toThrow(/^validation:validator$/);
+    expect(() => bare().root.at("name").registerValidator(required)).toThrow(/^@lunarhue\/forms-core: validation:validator$/);
     // @ts-expect-error: no plugin brings the runner
     const form = createFormsCore().define({ defaultValues: contact(), validate: { fields: { name: required } } });
-    expect(() => form.createStore()).toThrow(/^validation:definition$/);
+    expect(() => form.createStore()).toThrow(/^@lunarhue\/forms-core: validation:definition$/);
   });
 });
 

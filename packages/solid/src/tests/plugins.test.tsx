@@ -1,9 +1,11 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "../plugins.js";
+import { definePlugin, refuse } from "../plugins.js";
 import { history } from "../plugins/history.js";
+import { mask, upper as upperCase } from "../plugins/mask.js";
 import { type Rebase, rebase } from "../plugins/rebase.js";
-import { describe, expect, expectTypeOf, it } from "vitest";
-import { createForm, createForms, type FormOf } from "../index.js";
+import { flush } from "solid-js";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { createField, createForm, createForms, type FormOf } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 // Shared: stores each written string's length as the field's meta.
@@ -130,5 +132,85 @@ describe("the history plugin", () => {
     await settle();
     expect(input.value).toBe("");
     expect(button.disabled).toBe(true);
+  });
+});
+
+const Lines = createForms().define({
+  defaultValues: { lines: [{ sku: "ab-1" }] },
+  plugins: [mask({ "lines.*.sku": upperCase })],
+});
+
+function LinesPage() {
+  const form = createForm(Lines);
+  return (
+    <>
+      <form.Items name="lines">
+        {(row) => <form.Field handle={row.at("sku")}>{(field) => <input {...field.inputProps()} />}</form.Field>}
+      </form.Items>
+      <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
+        add
+      </button>
+      <button type="button" onClick={() => form.root.reset()}>
+        reset
+      </button>
+      <output>{form.state.dirty ? "dirty" : "clean"}</output>
+    </>
+  );
+}
+
+describe("mask through the adapter", () => {
+  it("cleans the starting rows and a pushed row, and a reset leaves the form clean", () => {
+    const { host } = mount(() => <LinesPage />);
+    const skus = () => [...host.querySelectorAll("input")].map((input) => input.value);
+    expect(skus()).toEqual(["AB-1"]);
+    expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("clean");
+    const [add, reset] = host.querySelectorAll("button");
+    add?.click();
+    flush();
+    expect(skus()).toEqual(["AB-1", "CD-2"]);
+    expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("dirty");
+    reset?.click();
+    flush();
+    expect(skus()).toEqual(["AB-1"]);
+    expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("clean");
+  });
+});
+
+/** Refuses every submit after failing to get a captcha token, with a form error that says why. */
+const captcha = definePlugin({
+  name: "captcha",
+  setup: (ctx) => ({
+    async onSubmit() {
+      await Promise.resolve();
+      ctx.store.root.setErrors({ message: "No token" });
+      return refuse;
+    },
+  }),
+});
+
+describe("a plugin that refuses a submit through the adapter", () => {
+  it("ends the submit invalid, skips onSubmit and shows the plugin's form error", async () => {
+    const onSubmit = vi.fn<() => void>();
+    const Checked = createForms().define({ defaultValues: { name: "Ada" }, plugins: [captcha], onSubmit });
+    const { host } = mount(() => {
+      const form = createForm(Checked);
+      const root = createField(form.root);
+      return (
+        <form.Form>
+          {(props) => (
+            <form {...props}>
+              <p>{root.shownErrors.map((error) => error.message).join()}</p>
+              <output>{form.state.submission.status}</output>
+            </form>
+          )}
+        </form.Form>
+      );
+    });
+    getAs(host, "form", HTMLFormElement).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flush();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("invalid");
+    expect(getAs(host, "p", HTMLParagraphElement).textContent).toBe("No token");
   });
 });

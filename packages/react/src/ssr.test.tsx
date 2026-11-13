@@ -4,6 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { createForms, type FieldApi, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
+import { rules } from "./plugins/rules.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -166,5 +167,70 @@ it("commits each field once when it hydrates", async () => {
     "scope text": 1,
     "scope number": 1,
   });
+  container.remove();
+});
+
+interface Shipping {
+  sameAsBilling: boolean;
+  gift: boolean;
+  street: string;
+  note: string;
+  city: string;
+}
+
+const shippingRules = rules<Shipping>({
+  street: (value) => ({ disabled: value.sameAsBilling }),
+  note: (value) => ({ hidden: !value.gift }),
+});
+
+const ruledCommits: Commits = new Map();
+
+interface RuledTextProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+/** A text input that renders nothing while `rules` hides its field. */
+function RuledText({ field, label }: RuledTextProps) {
+  useCommits(ruledCommits, label);
+  if (shippingRules.meta(field)?.hidden === true) return null;
+  return <input aria-label={label} {...field.inputProps()} />;
+}
+
+const shipping = createForms({ fields: { RuledText } }).define({
+  defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
+  plugins: [shippingRules],
+});
+
+function ShippingForm() {
+  const form = useForm(shipping, { id: "shipping" });
+  return (
+    <form {...form.formProps}>
+      <form.RuledText name="street" label="street" />
+      <form.RuledText name="note" label="note" />
+      <form.RuledText name="city" label="city" />
+    </form>
+  );
+}
+
+it("server renders what rules set, and hydrates it with no mismatch and one commit per field", async () => {
+  const container = document.body.appendChild(document.createElement("div"));
+  container.innerHTML = renderToString(<ShippingForm />);
+  expect(container.querySelector<HTMLInputElement>("[aria-label=street]")?.disabled).toBe(true);
+  expect(container.querySelector("[aria-label=note]")).toBeNull();
+  expect(container.querySelector<HTMLInputElement>("[aria-label=city]")?.disabled).toBe(false);
+
+  const errors = vi.spyOn(console, "error");
+  const recoverable = vi.fn<(error: unknown) => void>();
+  // No StrictMode here, so each effect run is one commit.
+  await act(async () => {
+    hydrateRoot(container, <ShippingForm />, { onRecoverableError: recoverable });
+  });
+  expect(recoverable).not.toHaveBeenCalled();
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+  expect(Object.fromEntries(ruledCommits)).toEqual({ street: 1, note: 1, city: 1 });
+  expect(container.querySelector<HTMLInputElement>("[aria-label=street]")?.disabled).toBe(true);
+  expect(container.querySelector("[aria-label=note]")).toBeNull();
   container.remove();
 });
