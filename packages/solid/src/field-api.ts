@@ -17,7 +17,7 @@ export function inputSourceFor(handle: HandleLike, read: InputSource["read"]): I
 
 /**
  * Builds the field object for a handle: snapshot getters over one signal,
- * the handle's commands, `handle`, `errorId`, and `inputProps`,
+ * the handle's commands, `id` and `path`, `handle`, `errorId`, and `inputProps`,
  * which returns the same props object for the same options.
  */
 export function createFieldApi(handle: HandleLike): object {
@@ -28,8 +28,10 @@ export function createFieldApi(handle: HandleLike): object {
   defineGetters(field, Object.keys(handle.store.getSnapshot(handle.path)), read);
   // Core's handle commands read no `this`, so they are copied as they are. The
   // field reads state through its getters and validators through `createValidator`.
+  // The plain members `id`, `path` and an item's `key` never change for a
+  // handle, so they are copied too. `store` stays on `handle`.
   for (const [name, member] of Object.entries(handle)) {
-    if (typeof member === "function" && name !== "peek" && name !== "registerValidator") field[name] = member;
+    if (name !== "peek" && name !== "registerValidator" && name !== "store") field[name] = member;
   }
   field.handle = handle;
   field.errorId = errorIdOf(handle);
