@@ -1,5 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { type Rebase, rebase } from "@lunarhue/forms-core/plugins/rebase";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm, useFormState } from "./index.js";
@@ -67,5 +68,34 @@ describe("plugins", () => {
     expect(screen.getByLabelText<HTMLInputElement>("name").value).toBe("ADA");
     expect(output?.textContent).toBe("3");
     expect(writes?.textContent).toBe("1");
+  });
+});
+
+const order = createForms({ plugins: [rebase()] }).define({ defaultValues: { name: "a", qty: 1 } });
+
+interface OrderPageProps {
+  readonly fresh: { readonly name: string; readonly qty: number };
+}
+
+function OrderPage({ fresh }: OrderPageProps) {
+  const form = useForm(order);
+  return (
+    <>
+      <form.Field name="name">{(field) => <output>{field.value}</output>}</form.Field>
+      <form.Field name="qty">{(field) => <p>{String(field.value)}</p>}</form.Field>
+      <button type="button" onClick={() => form.plugins.rebase(form.root, fresh, (leaf) => (leaf.edited ? "keep" : "take"))}>
+        reload
+      </button>
+    </>
+  );
+}
+
+describe("the rebase plugin", () => {
+  it("rebases the form through form.plugins.rebase", () => {
+    expectTypeOf<FormOf<typeof order>["plugins"]>().toEqualTypeOf<{ readonly rebase: Rebase }>();
+    const { container } = render(<OrderPage fresh={{ name: "b", qty: 2 }} />);
+    fireEvent.click(screen.getByText("reload"));
+    expect(container.querySelector("output")?.textContent).toBe("b");
+    expect(container.querySelector("p")?.textContent).toBe("2");
   });
 });
