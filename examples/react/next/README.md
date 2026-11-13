@@ -51,8 +51,6 @@ this list is about the full example.
 - The pills next to each field count that component's commits. Type in the
   customer's name and only the name's pill moves. Change a quantity and the
   quantity, its line total and the amount due move, while the row does not.
-  Every field pill starts at 2, not 1: hydration renders each field
-  component twice, which is an adapter bug, not something this page does.
 - The inspector on the right shows the store as it changes. Its controls
   reset the form, fill it with invalid data, and toggle the fake server's
   behaviour.
