@@ -115,6 +115,45 @@ describe("number and range", () => {
     expect(input.value).toBe("7");
   });
 
+  it("keeps the typed text until the input loses focus, then shows the stored number", async () => {
+    const { form, host } = mountSurvey((f) => <f.Field name="age">{(field) => <input {...field.inputProps({ kind: "number" })} />}</f.Field>);
+    const input = get(host, "input");
+    const age = form.root.at("age");
+    const blur = async () => {
+      input.dispatchEvent(new FocusEvent("blur"));
+      await settle();
+    };
+
+    typeText(input, "2.50");
+    await settle();
+    expect(age.peek().value).toBe(2.5);
+    expect(input.value).toBe("2.50");
+    await blur();
+    expect(input.value).toBe("2.5");
+
+    // A value set from outside while the input has focus shows at once.
+    typeText(input, "3.0");
+    await settle();
+    age.setValue(4);
+    await settle();
+    expect(input.value).toBe("4");
+
+    // Text that isn't a number yet gives way to the stored number on blur.
+    Object.defineProperty(input, "validity", { configurable: true, value: { badInput: true } });
+    typeText(input, "");
+    await settle();
+    Reflect.deleteProperty(input, "validity");
+    expect(age.peek().value).toBe(4);
+    await blur();
+    expect(input.value).toBe("4");
+
+    typeText(input, "");
+    await settle();
+    await blur();
+    expect(age.peek().value).toBeUndefined();
+    expect(input.value).toBe("");
+  });
+
   it("writes the `empty` option and binds a range", async () => {
     const { form, host } = mountSurvey((f) => (
       <input {...createInputProps(f.root.at("volume"), { kind: "number", type: "range", empty: 0 })} />

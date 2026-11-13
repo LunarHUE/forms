@@ -35,10 +35,6 @@ export const frameworks: readonly Framework[] = [
     name: "solid",
     port: 4312,
     rerendersOnChange: false,
-    knownFailures: {
-      "inputs.spec.ts > number inputs > typed text is kept while typing, and the stored number shows once the input loses focus":
-        "Solid keeps the typed text ('2.50') after blur. React shows the stored number ('2.5') again once the input loses focus.",
-    },
   },
 ];
 
