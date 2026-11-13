@@ -2,7 +2,7 @@ import { countries } from "@lunarhue/forms-example-order";
 import { errorId, type HandleOf, useField, useFormContext, useInputProps } from "@lunarhue/forms-react";
 import { useEffect } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
-import { FieldErrors, SelectField } from "./fields.js";
+import { FieldErrors } from "./fields.js";
 import { AddressFieldset, order } from "./order.js";
 
 /** Props for `AddressFields`. */
@@ -37,12 +37,7 @@ export function AddressFields(props: AddressFieldsProps) {
         <scope.TextField name="city" label="City" autoComplete="address-level2" />
         <scope.TextField name="postcode" label="Postcode" autoComplete="postal-code" />
       </div>
-      {/* The `Field` render form: `SelectField` is generic over the country codes, so it can't be registered. */}
-      <scope.Field name="country">
-        {(field) => (
-          <SelectField field={field} label="Country" options={countries} select={field.inputProps({ kind: "select" })} />
-        )}
-      </scope.Field>
+      <scope.SelectField name="country" label="Country" options={countries} />
     </fieldset>
   );
 }
