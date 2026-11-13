@@ -13,13 +13,19 @@ type LineItemsHandle = FieldHandle<OrderDraft["lineItems"]>;
 /** One line's total: quantity times unit price, with a missing number counted as 0. */
 const lineTotal = (item: ReadonlyOrderDraft["lineItems"][number]): number => orderTotal({ lineItems: [item] });
 
+/** Props for `LineTotal`. */
+interface LineTotalProps {
+  /** The row's handle. */
+  readonly item: HandleOf<typeof LineItemFieldset>;
+}
+
 /**
  * A line's total. It reads the row through `useField` with a selector, so
  * it re-renders only when the total changes, not on every keystroke in the
  * description.
  */
-function LineTotal(props: { readonly item: HandleOf<typeof LineItemFieldset> }) {
-  const total = useField(props.item, (snapshot) => lineTotal(snapshot.value));
+function LineTotal({ item }: LineTotalProps) {
+  const total = useField(item, (snapshot) => lineTotal(snapshot.value));
   return <>{money(total)}</>;
 }
 
@@ -38,8 +44,7 @@ interface LineItemRowProps {
  * `name="quantity"` is this item's quantity. Typing in a cell re-renders
  * that cell's field component and the line total, not the row.
  */
-function LineItemRow(props: LineItemRowProps) {
-  const { item, lineItems, index } = props;
+function LineItemRow({ item, lineItems, index, last }: LineItemRowProps) {
   const scope = LineItemFieldset.scope(item);
   const badge = useRenderBadge();
   return (
@@ -71,7 +76,7 @@ function LineItemRow(props: LineItemRowProps) {
           type="button"
           className="button button-small"
           aria-label={`Move item ${index + 1} down`}
-          disabled={props.last}
+          disabled={last}
           onClick={() => lineItems.move(index, index + 1)}
         >
           Down
@@ -89,9 +94,15 @@ function LineItemRow(props: LineItemRowProps) {
   );
 }
 
+/** Props for `OrderTotalRow`. */
+interface OrderTotalRowProps {
+  /** The array handle. */
+  readonly lineItems: LineItemsHandle;
+}
+
 /** The table footer: the order total before the discount. */
-function OrderTotalRow(props: { readonly lineItems: LineItemsHandle }) {
-  const total = useField(props.lineItems, (snapshot) => orderTotal({ lineItems: snapshot.value }));
+function OrderTotalRow({ lineItems }: OrderTotalRowProps) {
+  const total = useField(lineItems, (snapshot) => orderTotal({ lineItems: snapshot.value }));
   return (
     <tr className="line-items-total">
       <td colSpan={3}>Order total</td>
@@ -140,7 +151,7 @@ export function LineItems() {
       </table>
       <FieldErrors id={errorId(lineItems)} errors={errors} />
       <div className="form-actions">
-        {/* With no argument, `push` adds the valibot adapter's empty line item. */}
+        {/* With no argument, `push` adds the `valibot()` plugin's empty line item. */}
         <button type="button" className="button" onClick={() => lineItems.push()}>
           Add item
         </button>

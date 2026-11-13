@@ -22,10 +22,10 @@ export interface FieldErrorsProps {
  * space for it and an error appearing doesn't move the rest of the form.
  * While it is empty it is hidden from screen readers.
  */
-export function FieldErrors(props: FieldErrorsProps) {
+export function FieldErrors({ id, errors }: FieldErrorsProps) {
   return (
-    <ul className="field-errors" id={props.id} aria-hidden={props.errors.length === 0 ? true : undefined}>
-      {props.errors.map((error) => (
+    <ul className="field-errors" id={id} aria-hidden={errors.length === 0 ? true : undefined}>
+      {errors.map((error) => (
         <li key={error.message}>{error.message}</li>
       ))}
     </ul>
@@ -48,22 +48,21 @@ export interface TextFieldProps {
  * runs, and its errors. It is registered with `createForms`, so every form
  * and scope has it bound as `form.TextField name="customer.name"`.
  */
-export function TextField(props: TextFieldProps) {
-  const { field } = props;
+export function TextField({ field, label, type, autoComplete, inline }: TextFieldProps) {
   const badge = useRenderBadge();
   return (
     <div className="field">
       <div className="field-label">
-        {props.inline ? null : <label htmlFor={field.id}>{props.label}</label>}
+        {inline ? null : <label htmlFor={field.id}>{label}</label>}
         <RenderBadge counter={badge} name={field.name} />
         {/* In the label row, so it appears and goes without moving the layout. */}
         {field.validating ? <span className="field-hint">Checking...</span> : null}
       </div>
       <input
         {...field.inputProps()}
-        type={props.type ?? "text"}
-        autoComplete={props.autoComplete}
-        aria-label={props.inline ? props.label : undefined}
+        type={type ?? "text"}
+        autoComplete={autoComplete}
+        aria-label={inline ? label : undefined}
       />
       <FieldErrors id={field.errorId} errors={field.shownErrors} />
     </div>
@@ -84,19 +83,18 @@ export interface NumberFieldProps {
  * or `undefined` when the input is empty, and keeps text such as `1.` while
  * the user is still typing. Registered, like `TextField`.
  */
-export function NumberField(props: NumberFieldProps) {
-  const { field } = props;
+export function NumberField({ field, label, step, inline }: NumberFieldProps) {
   const badge = useRenderBadge();
   return (
     <div className="field">
       <div className="field-label">
-        {props.inline ? null : <label htmlFor={field.id}>{props.label}</label>}
+        {inline ? null : <label htmlFor={field.id}>{label}</label>}
         <RenderBadge counter={badge} name={field.name} />
       </div>
       <input
         {...field.inputProps({ kind: "number" })}
-        step={props.step}
-        aria-label={props.inline ? props.label : undefined}
+        step={step}
+        aria-label={inline ? label : undefined}
       />
       <FieldErrors id={field.errorId} errors={field.shownErrors} />
     </div>
@@ -118,17 +116,16 @@ export interface RadioGroupFieldProps {
 }
 
 /** A radio group. Each radio gets its own id from `inputProps`, so each label can point at it. */
-export function RadioGroupField(props: RadioGroupFieldProps) {
-  const { field } = props;
+export function RadioGroupField({ field, label, options }: RadioGroupFieldProps) {
   const badge = useRenderBadge();
   return (
     <div className="field" role="radiogroup" aria-labelledby={`${field.id}-label`}>
       <div className="field-label">
-        <span id={`${field.id}-label`}>{props.label}</span>
+        <span id={`${field.id}-label`}>{label}</span>
         <RenderBadge counter={badge} name={field.name} />
       </div>
       <div className="option-group">
-        {props.options.map((option) => {
+        {options.map((option) => {
           const input = field.inputProps({ kind: "radio", value: option.value });
           return (
             <label key={option.value} className="option" htmlFor={input.id}>
@@ -152,17 +149,16 @@ export interface CheckboxGroupFieldProps {
 }
 
 /** A checkbox group over an array field. Ticking a box adds its value to the array, unticking removes it. */
-export function CheckboxGroupField(props: CheckboxGroupFieldProps) {
-  const { field } = props;
+export function CheckboxGroupField({ field, label, options }: CheckboxGroupFieldProps) {
   const badge = useRenderBadge();
   return (
     <div className="field" role="group" aria-labelledby={`${field.id}-label`}>
       <div className="field-label">
-        <span id={`${field.id}-label`}>{props.label}</span>
+        <span id={`${field.id}-label`}>{label}</span>
         <RenderBadge counter={badge} name={field.name} />
       </div>
       <div className="option-group">
-        {props.options.map((option) => {
+        {options.map((option) => {
           const input = field.inputProps({ kind: "checkbox", value: option.value });
           return (
             <label key={option.value} className="option" htmlFor={input.id}>
@@ -185,18 +181,17 @@ export interface SelectFieldProps {
 }
 
 /** A select with an empty first option, which writes `undefined`. */
-export function SelectField(props: SelectFieldProps) {
-  const { field } = props;
+export function SelectField({ field, label, options }: SelectFieldProps) {
   const badge = useRenderBadge();
   return (
     <div className="field">
       <div className="field-label">
-        <label htmlFor={field.id}>{props.label}</label>
+        <label htmlFor={field.id}>{label}</label>
         <RenderBadge counter={badge} name={field.name} />
       </div>
       <select {...field.inputProps({ kind: "select" })}>
         <option value="">Choose one</option>
-        {props.options.map((option) => (
+        {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

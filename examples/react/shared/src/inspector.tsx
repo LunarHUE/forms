@@ -19,9 +19,8 @@ export interface InspectorProps {
  * Without `settings` and `invalidValue` it leaves those controls out, so it
  * fits any form.
  */
-export function Inspector(props: InspectorProps) {
+export function Inspector({ store, settings, invalidValue }: InspectorProps) {
   const container = useRef<HTMLDivElement>(null);
-  const { store, settings, invalidValue } = props;
   useEffect(() => {
     const target = container.current;
     if (target === null) return undefined;

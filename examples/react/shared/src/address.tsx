@@ -22,13 +22,13 @@ export interface AddressFieldsProps {
  * in one place and `shipping.city` in the other. The scope is a cached
  * lookup, not a hook, so calling it on every render is free.
  */
-export function AddressFields(props: AddressFieldsProps) {
-  const scope = AddressFieldset.scope(props.field);
+export function AddressFields({ field, legend }: AddressFieldsProps) {
+  const scope = AddressFieldset.scope(field);
   const badge = useRenderBadge();
   return (
     <fieldset className="fieldset">
       <legend>
-        {props.legend} <RenderBadge counter={badge} name={`${props.legend} fieldset`} />
+        {legend} <RenderBadge counter={badge} name={`${legend} fieldset`} />
       </legend>
       {/* Registered components, bound to the scope. */}
       <scope.TextField name="street" label="Street" autoComplete="street-address" />
