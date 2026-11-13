@@ -2,6 +2,8 @@ import type { FieldSnapshot, FormSnapshot, FormStore, Path } from "@lunarhue/for
 import { isServer } from "@solidjs/web";
 import { createSignal, getOwner, isHydrating, onCleanup } from "solid-js";
 
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+
 /**
  * Mirrors one store snapshot in one Solid signal, subscribed for the life of
  * the current owner. `read` gives the current snapshot, `serverRead` the one
@@ -77,5 +79,11 @@ export function defineGetters(target: object, keys: readonly string[], read: () 
       enumerable: true,
       get: (): unknown => Reflect.get(read(), key),
     });
+  }
+  // In development, a store without `dirty()` puts `dirty` on the snapshot's
+  // prototype, as a getter that warns, so `keys` lacks it. This getter isn't
+  // enumerable either, so spreading the object doesn't warn.
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !keys.includes("dirty")) {
+    Object.defineProperty(target, "dirty", { get: (): unknown => Reflect.get(read(), "dirty") });
   }
 }

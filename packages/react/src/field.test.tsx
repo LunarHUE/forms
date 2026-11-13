@@ -15,6 +15,7 @@ import {
   type ValidatorInput,
 } from "./index.js";
 import { type Commits, countListeners, type Listeners, settle, useCommits } from "./test/helpers.js";
+import { dirty as dirtyPlugin } from "./plugins/dirty.js";
 import { validation } from "./plugins/validation.js";
 
 const commits: Commits = new Map();
@@ -235,7 +236,7 @@ describe("StrictMode lifecycle", () => {
   });
 
   it("leaves no form listeners after unmount", () => {
-    const status = createForms().define({ defaultValues: { name: "" } });
+    const status = createForms({ plugins: [dirtyPlugin()] }).define({ defaultValues: { name: "" } });
     let live: Listeners | undefined;
     function Status() {
       const form = useForm(status);

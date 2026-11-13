@@ -18,6 +18,10 @@ import {
   resizeKeys,
 } from "./keys.js";
 import { childOf, isPlainObject, setAt } from "./tree.js";
+import { watchDirty, watchShow } from "./untracked.js";
+
+// Core has no node types, so this declares the global the development checks read.
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 export type { Snapshot } from "./entries.js";
 
@@ -276,7 +280,15 @@ const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
   const { id } = options;
-  const show = options.show ?? "touched-or-submitted";
+  // In development, a store without dirty tracking warns once when something
+  // reads `dirty`: from a `show` function's argument, through `watchShow`
+  // here, and from a snapshot, through `watchDirty` wherever one is made. The
+  // check is written out at each place because a bundler folds it to false
+  // there and drops the call. Held in a variable, it would stay in production.
+  const show =
+    typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !options.dirty && typeof options.show === "function"
+      ? watchShow(options.show, options)
+      : (options.show ?? "touched-or-submitted");
   const dirtyHook = options.dirty;
   let current = options.initial;
   let root: Node<E> | undefined;
@@ -364,7 +376,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const invalid = node.validation.length > 0;
     // User errors always show: something set them on purpose.
     const shownErrors = invalid && showsValidation(node, dirty) ? node.errors : node.user;
-    return entries(node.value, node.name, Array.isArray(node.value) && node.list ? keysView(node.list) : undefined, {
+    const snapshot = entries(node.value, node.name, Array.isArray(node.value) && node.list ? keysView(node.list) : undefined, {
       errors: node.errors,
       shownErrors,
       invalid,
@@ -376,6 +388,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       readOnly: node.readOnly.on,
       ...(node.meta && { meta: node.meta }),
     });
+    return typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !dirtyHook ? watchDirty(snapshot, options) : snapshot;
   };
 
   // Gives `cell` its new snapshot and queues its listeners.
@@ -396,7 +409,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       formDirty = dirtyHook([], current);
       formDirtyFor = current;
     }
-    return {
+    const snapshot: FormSnapshot<I, R> = {
       valid: (root?.invalidCount ?? 0) === 0,
       validating: (root?.validatingCount ?? 0) > 0,
       dirty: formDirty,
@@ -405,6 +418,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       submitCount,
       ...(formMeta && { meta: formMeta }),
     };
+    return typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !dirtyHook ? watchDirty(snapshot, options) : snapshot;
   };
 
   const serverFormSnapshot = (): FormSnapshot<I, R> =>
@@ -416,6 +430,12 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       submission: idleSubmission,
       submitCount: 0,
     }));
+  // Without dirty tracking, development makes the watched server form
+  // snapshot now rather than on first read. Doing it here leaves the function
+  // above, and so the production bundle, as it was.
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !dirtyHook) {
+    serverForm = freeze(watchDirty(serverFormSnapshot(), options));
+  }
 
   // The form snapshot is only kept up to date once something has read it.
   const refreshForm = () => {
@@ -708,15 +728,14 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       }
     } else if (isPlainObject(holder)) value = childOf(holder, step);
     const keys = Array.isArray(value) ? freeze(initialKeys(value.length)) : undefined;
-    return (node.server = freeze(
-      entries(value, above.name === "" ? step : `${above.name}.${step}`, keys, {
-        ...idle,
-        // Plugin setup may have written a value that differs from the baseline.
-        dirty: !!dirtyHook?.(pathOf(node, false), value),
-        disabled: node.disabled.decl === true || above.disabled,
-        readOnly: node.readOnly.decl === true || above.readOnly,
-      }),
-    ));
+    const snapshot = entries(value, above.name === "" ? step : `${above.name}.${step}`, keys, {
+      ...idle,
+      // Plugin setup may have written a value that differs from the baseline.
+      dirty: !!dirtyHook?.(pathOf(node, false), value),
+      disabled: node.disabled.decl === true || above.disabled,
+      readOnly: node.readOnly.decl === true || above.readOnly,
+    });
+    return (node.server = freeze(typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !dirtyHook ? watchDirty(snapshot, options) : snapshot));
   };
 
   // Sets the own flag and brings the existing nodes below up to date. A node

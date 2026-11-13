@@ -6,6 +6,8 @@ import { type NumberText, numberTextSource } from "./number-text.js";
 import { cached, type Source } from "./select.js";
 import { fieldSource } from "./sources.js";
 
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+
 /** A field object as the runtime builds it. The contract types it as `ExactFieldApi`. */
 export type AnyFieldApi = FieldSnapshot<unknown, unknown> & Readonly<Record<string, unknown>>;
 
@@ -38,6 +40,12 @@ function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>,
     errorId: errorId(handle),
     inputProps: (options?: AnyInputOptions) => inputPropsFor(handle, snapshot, text, options),
   };
+  // In development, a store without `dirty()` puts `dirty` on the snapshot's
+  // prototype, as a getter that warns, so the spread above skips it. The
+  // field object takes the same prototype.
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !("dirty" in api)) {
+    Object.setPrototypeOf(api, Object.getPrototypeOf(snapshot));
+  }
   return { snapshot, text, api };
 }
 

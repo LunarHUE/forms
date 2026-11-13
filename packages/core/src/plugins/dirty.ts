@@ -10,7 +10,8 @@ const plugin: DirtyPlugin = { name: "dirty", dirty: createDirty };
  * `createForms({ plugins: [dirty()] })`.
  *
  * Without it `dirty` is always false, `changes()` is empty and `equals` is a
- * type error. The baseline stays, so reset, `rebase` and `bind` still work.
+ * type error, and in development the first read of `dirty` or call to
+ * `changes()` warns. The baseline stays, so reset, `rebase` and `bind` still work.
  * `rebase` then compares by `Object.is` alone.
  */
 export function dirty(): DirtyPlugin {

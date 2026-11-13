@@ -17,6 +17,7 @@ import type {
   ItemHandle,
   LeafHandle,
   ObjectHandle,
+  Path,
   PlainDefinition,
   SchemaDefinition,
   SchemaPlugin,
@@ -226,6 +227,61 @@ describe("dirty tracking", () => {
   it("names the plugin to install in the type of equals", () => {
     type Bare = NonNullable<PlainDefinition<{ name: string }, FormError, undefined, unknown>["equals"]>;
     expectTypeOf<Bare>().toExtend<{ readonly "Add dirty() to plugins to use equals": never }>();
+  });
+});
+
+describe("a definition's own plugins", () => {
+  const validate = { fields: { name: (value: string) => (value ? undefined : { message: "Required" }) } };
+  const complete: User = { name: "", age: 0, address: { city: "", zip: "" } };
+
+  it("satisfy its own equals, validate and schema", () => {
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [dirty()], equals });
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [validation()], validate });
+    const form = createFormsCore().define({ schema: otherUserSchema, defaultValues: complete, plugins: [validation()] });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<User>>();
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [dirty(), validation()], equals, validate });
+  });
+
+  it("type an inline equals and validators", () => {
+    core.define({
+      defaultValues: { name: "" },
+      plugins: [dirty(), validation()],
+      equals: (a, b, ctx, next) => {
+        expectTypeOf(ctx.path).toEqualTypeOf<Path>();
+        return next(a, b);
+      },
+      validate: {
+        fields: {
+          name: (value) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            return undefined;
+          },
+        },
+      },
+    });
+  });
+
+  it("count in the function form", () => {
+    createFormsCore().define((name: string) => ({ defaultValues: { name }, plugins: [dirty()], equals }));
+    createFormsCore().define((name: string) => ({ defaultValues: { name }, plugins: [validation()], validate }));
+    const form = createFormsCore().define((step: number) => ({
+      schema: otherUserSchema,
+      defaultValues: { ...complete, age: step },
+      plugins: [validation()],
+    }));
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<User>>();
+  });
+
+  it("still need the right plugin", () => {
+    // @ts-expect-error: validation() brings no dirty tracking
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [validation()], equals });
+    // @ts-expect-error: dirty() brings no runner
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [dirty()], validate });
+    // @ts-expect-error: dirty() brings no runner, which the schema needs
+    createFormsCore().define({ schema: otherUserSchema, defaultValues: complete, plugins: [dirty()] });
+    // @ts-expect-error: no plugin brings dirty tracking, in the function form too
+    createFormsCore().define((name: string) => ({ defaultValues: { name }, equals }));
+    expectTypeOf(validate).toBeObject();
   });
 });
 

@@ -23,7 +23,8 @@ export type Code =
   | "validation:definition"
   | "validation:validator"
   | "schema:defaults"
-  | "rebase:store";
+  | "rebase:store"
+  | "dirty:untracked";
 
 /**
  * The message for `code`: the package, then what went wrong. Development
@@ -48,6 +49,8 @@ export function problem(code: Code, value = ""): string {
         `A validator was added to a field (through \`registerValidator\`, \`useValidator\` or a \`validate\` prop), but no plugin brings the validation runner. ${fix}`,
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
+      "dirty:untracked": () =>
+        'This form read `dirty` or called `changes()`, but no plugin tracks dirty state, so `dirty` is always false and `changes()` is empty. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.',
     };
     text = `${sentences[code](value)} ${docs}${code}`;
   }

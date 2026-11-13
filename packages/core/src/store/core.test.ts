@@ -234,7 +234,9 @@ describe("snapshot contents", () => {
     const store = make({ rows: [{ title: "a" }] });
     expect(store.getSnapshot([])).toMatchObject({ name: "", value: { rows: [{ title: "a" }] } });
     expect(store.getSnapshot(["rows"])).toMatchObject({ name: "rows", keys: ["k0"] });
-    expect(store.getSnapshot(["rows", "k0", "title"])).toEqual({
+    const title = store.getSnapshot(["rows", "k0", "title"]);
+    // Without a `dirty` option, development hides `dirty` from `toEqual`. See untracked.test.ts.
+    expect(title).toEqual({
       value: "a",
       name: "rows.0.title",
       errors: [],
@@ -242,11 +244,11 @@ describe("snapshot contents", () => {
       invalid: false,
       touched: false,
       edited: false,
-      dirty: false,
       validating: false,
       disabled: false,
       readOnly: false,
     });
+    expect(title.dirty).toBe(false);
   });
 });
 

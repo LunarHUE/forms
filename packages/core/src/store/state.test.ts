@@ -297,7 +297,9 @@ describe("shown errors", () => {
     expect(shown(store)).toEqual(["u"]);
     store.setSubmitCount(2);
     expect(shown(store)).toEqual(["x", "u"]);
-    expect(show).toHaveBeenLastCalledWith({ touched: false, edited: true, dirty: false, submitCount: 2 });
+    // Without a `dirty` option, development hides `dirty` from the match. It still reads false.
+    expect(show).toHaveBeenLastCalledWith({ touched: false, edited: true, submitCount: 2 });
+    expect(show.mock.lastCall?.[0].dirty).toBe(false);
   });
 
   it("rebuilds only fields with validation errors when the submit count changes", () => {
@@ -362,14 +364,15 @@ describe("form snapshot", () => {
     expect(store.stats().nodes).toBe(0);
     const server = store.getServerFormSnapshot();
     expect(store.getFormSnapshot()).toBe(server);
+    // Without a `dirty` option, development hides `dirty` from `toEqual`. It still reads false.
     expect(server).toEqual({
       valid: true,
       validating: false,
-      dirty: false,
       submitting: false,
       submission: { status: "idle" },
       submitCount: 0,
     });
+    expect(server.dirty).toBe(false);
     expect(store.stats().nodes).toBe(0);
     expect(Object.isFrozen(server)).toBe(true);
   });

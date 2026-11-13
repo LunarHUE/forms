@@ -1,8 +1,9 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { createMemo, createRoot, flush } from "solid-js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf } from "../index.js";
 import { definePlugin } from "../plugins.js";
+import { dirty } from "../plugins/dirty.js";
 import { getAs, mount } from "./dom.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -15,7 +16,8 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+// With `dirty()`, `dirty` is a plain member. Development hides it on a form without.
+const forms = createForms({ fields: { TextField }, plugins: [dirty()] });
 const Order = forms.define({
   defaultValues: { name: "", address: { city: "" }, rows: [{ title: "a" }, { title: "b" }] },
 });
@@ -201,6 +203,25 @@ describe("a field object's meta", () => {
     field.setValue("ada");
     flush();
     expect(length()).toBe(3);
+    dispose();
+  });
+});
+
+describe("a field object's `dirty` on a form without dirty()", () => {
+  it("warns when read, not when the object or the form state is spread", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const Plain = createForms().define({ defaultValues: { name: "" } });
+    const { field, form, dispose } = createRoot((stop) => {
+      const made = createForm(Plain);
+      return { field: createField(made.root.at("name")), form: made, dispose: stop };
+    });
+    expect({ ...field }).not.toHaveProperty("dirty");
+    expect({ ...form.state }).not.toHaveProperty("dirty");
+    expect(warn).not.toHaveBeenCalled();
+    expect(field.dirty).toBe(false);
+    expect(form.state.dirty).toBe(false);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
     dispose();
   });
 });
