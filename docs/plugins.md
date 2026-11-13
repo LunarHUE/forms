@@ -21,6 +21,7 @@ importing one never loads another. Each adapter re-exports every one of
 them at the same path, so you import from the adapter you already have:
 
 ```ts
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
 import { history } from "@lunarhue/forms-react/plugins/history";
 import { validation } from "@lunarhue/forms-react/plugins/validation";
 ```
@@ -31,6 +32,14 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
 - `validation`: the validation runner alone, for function validators and for
   a Standard Schema of a library with no schema plugin. Schema plugins bring
   it, so a form with one doesn't need it.
+- `dirty`: dirty tracking. Each field and the form get `dirty`, true when
+  the value differs from its baseline, `store.changes()` lists the fields
+  that differ, and a definition or `createForms` can take an `equals`
+  comparison. Without it `dirty` is always false, `changes()` is empty and
+  `equals` is a type error. Reset still goes back to the baseline, and
+  `rebase` and `bind` still move it, since core keeps the baseline either
+  way. Without `dirty`, `rebase` compares values by reference alone, so a
+  date with the same time counts as changed and goes to your `resolve`.
 - `history`: undo and redo of the user's value and array writes, one step
   per task. It keeps `canUndo` and `canRedo` in its form meta, so an undo
   button can re-render. See below.
