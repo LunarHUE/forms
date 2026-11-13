@@ -20,6 +20,7 @@ interface Commands {
 /** The input options as the runtime reads them. */
 export interface AnyInputOptions {
   readonly kind?: string;
+  readonly type?: string;
   readonly value?: unknown;
   readonly empty?: unknown;
 }
@@ -27,7 +28,7 @@ export interface AnyInputOptions {
 /** Props for any input kind, as the runtime builds them. */
 export type AnyInputProps = BaseInputProps & Record<string, unknown>;
 
-type Kind = "text" | "number" | "range" | "checkbox" | "group" | "radio" | "select";
+type Kind = "text" | "textarea" | "number" | "range" | "checkbox" | "group" | "radio" | "select";
 
 /** The callbacks of one element kind on one field. */
 interface Callbacks {
@@ -42,7 +43,7 @@ interface BuiltProps {
   readonly props: AnyInputProps;
 }
 
-// Both caches are keyed by kind, then by the option (or `empty`) the element was given.
+// Both caches are keyed by kind, then by the option (or `empty`, or a text input's `type`) the element was given.
 const callbackCache = new WeakMap<object, Map<Kind, Map<unknown, Callbacks>>>();
 const propsCache = new WeakMap<object, Map<Kind, Map<unknown, BuiltProps>>>();
 
@@ -132,7 +133,8 @@ function buildProps(
   option: unknown,
   callbacks: Callbacks,
 ): AnyInputProps {
-  const shown = snapshot.shownErrors.length > 0;
+  // An ARIA state that is off is left out. React would write `false` as "false".
+  const shown = snapshot.shownErrors.length > 0 || undefined;
   const grouped = kind === "group" || kind === "radio";
   const base: BaseInputProps = {
     name: snapshot.name,
@@ -144,28 +146,31 @@ function buildProps(
     "aria-describedby": shown ? errorId(handle) : undefined,
   };
   const { value, readOnly } = snapshot;
+  const ariaReadOnly = readOnly || undefined;
   const { onChange } = callbacks;
   switch (kind) {
     case "number":
     case "range":
       return { ...base, type: kind, value: numberShown(value, text), readOnly, onChange };
     case "checkbox":
-      return { ...base, type: "checkbox", checked: value === true, "aria-readonly": readOnly, onChange };
+      return { ...base, type: "checkbox", checked: value === true, "aria-readonly": ariaReadOnly, onChange };
     case "group":
       return {
         ...base,
         type: "checkbox",
         value: asText(option),
         checked: Array.isArray(value) && value.includes(option),
-        "aria-readonly": readOnly,
+        "aria-readonly": ariaReadOnly,
         onChange,
       };
     case "radio":
-      return { ...base, type: "radio", value: asText(option), checked: Object.is(value, option), "aria-readonly": readOnly, onChange };
+      return { ...base, type: "radio", value: asText(option), checked: Object.is(value, option), "aria-readonly": ariaReadOnly, onChange };
     case "select":
-      return { ...base, value: asText(value), "aria-readonly": readOnly, onChange };
-    default:
+      return { ...base, value: asText(value), "aria-readonly": ariaReadOnly, onChange };
+    case "textarea":
       return { ...base, value: asText(value), readOnly, onChange };
+    default:
+      return { ...base, type: option ?? "text", value: asText(value), readOnly, onChange };
   }
 }
 
@@ -181,7 +186,7 @@ export function inputPropsFor(
   options: AnyInputOptions | undefined,
 ): AnyInputProps {
   const kind = kindOf(options);
-  const option = kind === "group" || kind === "radio" ? options?.value : options?.empty;
+  const option = kind === "group" || kind === "radio" ? options?.value : kind === "text" ? options?.type : options?.empty;
   const numeric = kind === "number" || kind === "range";
   const byOption = cached(cached(propsCache, snapshot, () => new Map()), kind, () => new Map());
   const built = byOption.get(option);

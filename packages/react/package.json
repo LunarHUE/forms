@@ -191,7 +191,7 @@
         "dist/esm/plugins/bind.js": "{ bind }",
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
-      "limit": "16.35 kB"
+      "limit": "17 kB"
     }
   ]
 }

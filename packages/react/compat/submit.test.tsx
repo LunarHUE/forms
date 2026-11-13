@@ -89,7 +89,7 @@ describe("submit", () => {
     await submit(container);
     expect(status()).toBe("succeeded 2");
     expect(saved).toEqual([{ name: "Ada", email: "ada@example.com" }]);
-    expect(field(container, "name").getAttribute("aria-invalid")).toBe("false");
+    expect(field(container, "name").hasAttribute("aria-invalid")).toBe(false);
   });
 
   it("reads the form state inline with form.State", async () => {

@@ -32,20 +32,48 @@ export interface BaseInputProps {
   readonly ref: FieldRef;
   /** The snapshot's `disabled`. */
   readonly disabled: boolean;
-  /** True when the field has errors in `shownErrors`. */
-  readonly "aria-invalid": boolean;
+  /** True while the field has errors in `shownErrors`, else undefined. */
+  readonly "aria-invalid": true | undefined;
   /** `errorId(handle)` while the field has errors in `shownErrors`, else undefined. */
   readonly "aria-describedby": string | undefined;
 }
 
-/** Props for `<input>` and `<textarea>` on a string field. */
+/** The input types whose value is a string. */
+export type TextInputType =
+  | "text"
+  | "email"
+  | "password"
+  | "search"
+  | "tel"
+  | "url"
+  | "hidden"
+  | "color"
+  | "date"
+  | "datetime-local"
+  | "month"
+  | "time"
+  | "week";
+
+/** Props for `<input>` on a string field. */
 export interface TextInputProps extends BaseInputProps {
+  /** The option's `type`, `"text"` when left out. */
+  readonly type: TextInputType;
   /** The value, with `null` and `undefined` shown as `""`. */
   readonly value: string;
   /** The snapshot's `readOnly`. */
   readonly readOnly: boolean;
   /** Writes the element's value as a user edit. */
-  readonly onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+/** Props for `<textarea>` on a string field. They are the text input's without `type`. */
+export interface TextareaProps extends BaseInputProps {
+  /** The value, with `null` and `undefined` shown as `""`. */
+  readonly value: string;
+  /** The snapshot's `readOnly`. */
+  readonly readOnly: boolean;
+  /** Writes the element's value as a user edit. */
+  readonly onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
 /** Props for `<input type="number">` and `<input type="range">`. */
@@ -69,8 +97,8 @@ export interface CheckboxInputProps extends BaseInputProps {
   readonly type: "checkbox";
   /** On a boolean field, the value. On a group, whether the array holds this box's option. */
   readonly checked: boolean;
-  /** The snapshot's `readOnly`. */
-  readonly "aria-readonly": boolean;
+  /** True while the snapshot is `readOnly`, else undefined. */
+  readonly "aria-readonly": true | undefined;
   /** On a boolean field, writes `checked`. On a group, adds or removes the option. */
   readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
@@ -88,8 +116,8 @@ export interface RadioInputProps extends BaseInputProps {
   readonly value: string;
   /** True when the field's value is this option. */
   readonly checked: boolean;
-  /** The snapshot's `readOnly`. */
-  readonly "aria-readonly": boolean;
+  /** True while the snapshot is `readOnly`, else undefined. */
+  readonly "aria-readonly": true | undefined;
   /** Writes this option as a user edit, unless the field is read-only. */
   readonly onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
@@ -98,8 +126,8 @@ export interface RadioInputProps extends BaseInputProps {
 export interface SelectProps extends BaseInputProps {
   /** The value, with `null` and `undefined` shown as `""`. */
   readonly value: string;
-  /** The snapshot's `readOnly`. */
-  readonly "aria-readonly": boolean;
+  /** True while the snapshot is `readOnly`, else undefined. */
+  readonly "aria-readonly": true | undefined;
   /** Writes the chosen option's value, or `empty` for an option whose value is `""`. */
   readonly onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
 }
@@ -111,9 +139,16 @@ export interface SelectProps extends BaseInputProps {
  */
 export type EmptyOption<V> = undefined extends V ? { readonly empty?: V } : { readonly empty: V };
 
-/** Options for a text input or textarea. `kind` defaults to `"text"`. */
+/** Options for a text input. `kind` defaults to `"text"`. */
 export interface TextInputOptions {
   readonly kind?: "text";
+  /** The input's `type`. Defaults to `"text"`. */
+  readonly type?: TextInputType;
+}
+
+/** Options for a textarea. */
+export interface TextareaOptions {
+  readonly kind: "textarea";
 }
 
 /** Options for a number or range input. */
@@ -149,7 +184,7 @@ type Only<V, T> = [V] extends [T | null | undefined] ? true : false;
  * with `value` an array of strings or numbers. Other fields accept none.
  */
 export type InputOptionsFor<V> =
-  | (Only<V, string> extends true ? TextInputOptions | SelectOptions<V> : never)
+  | (Only<V, string> extends true ? TextInputOptions | TextareaOptions | SelectOptions<V> : never)
   | (Only<V, number> extends true ? NumberInputOptions<V> : never)
   | (Only<V, boolean> extends true ? CheckboxInputOptions : never)
   | (Only<V, string | number | boolean> extends true ? RadioInputOptions<V> : never)
@@ -166,7 +201,9 @@ export type InputPropsFor<O> = O extends { readonly kind: "number" | "range" }
         ? RadioInputProps
         : O extends { readonly kind: "select" }
           ? SelectProps
-          : TextInputProps;
+          : O extends { readonly kind: "textarea" }
+            ? TextareaProps
+            : TextInputProps;
 
 /**
  * The rest argument of a call with no options: empty when the field takes a

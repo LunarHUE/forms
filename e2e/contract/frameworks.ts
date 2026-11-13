@@ -24,12 +24,6 @@ export const frameworks: readonly Framework[] = [
     name: "react",
     port: 4311,
     rerendersOnChange: true,
-    knownFailures: {
-      "inputs.spec.ts > markup > a valid text input and checkbox carry the contract's attributes in the server HTML":
-        "React writes aria-invalid=false on every valid input and aria-readonly=false on checkboxes, and leaves out type=text. Solid does what the contract says.",
-      "inputs.spec.ts > markup > a valid text input and checkbox carry the contract's attributes after hydration":
-        "Same as the server HTML: aria-invalid=false, aria-readonly=false, no type=text.",
-    },
   },
   {
     name: "solid",
