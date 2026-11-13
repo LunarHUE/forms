@@ -21,8 +21,12 @@
         in
         {
           default = pkgs.mkShellNoCC {
-            # Add the tools this repo needs, e.g. pkgs.go or pkgs.nodejs.
-            packages = [ ];
+            # bun installs and runs scripts. node runs the tools themselves
+            # (tsdown, vitest, size-limit), since the packages use no bun runtime features.
+            packages = [
+              pkgs.bun
+              pkgs.nodejs_24
+            ];
           };
         }
       );
