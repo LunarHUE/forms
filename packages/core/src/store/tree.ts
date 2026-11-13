@@ -64,6 +64,22 @@ export function setAt(root: unknown, path: Path, value: unknown): unknown {
   return copy;
 }
 
+/**
+ * `patch`'s own keys written over a copy of `target`, one level deep. A
+ * target that is not a plain object counts as an empty one. Returns `target`
+ * itself when it is a plain object that already holds every key of `patch`
+ * with the same value.
+ */
+export function merge(target: unknown, patch: Record<string, unknown>): unknown {
+  const base = isPlainObject(target) ? target : undefined;
+  const keys = Object.keys(patch).filter((key) => !base || !hasOwn(base, key) || !Object.is(base[key], patch[key]));
+  if (base && keys.length === 0) return base;
+  const copy = copyOf(base ?? {});
+  for (const key of keys)
+    Object.defineProperty(copy, key, { value: patch[key], writable: true, enumerable: true, configurable: true });
+  return copy;
+}
+
 /** The leaf value paths where `a` and `b` differ, stopping at shared references. */
 export function changedPaths(a: unknown, b: unknown, path: Path = []): Path[] {
   if (Object.is(a, b)) return [];

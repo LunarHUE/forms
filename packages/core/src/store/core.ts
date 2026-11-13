@@ -5,6 +5,7 @@ import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } f
 import { deepFreeze, dev } from "./freeze.js";
 import {
   createKeyList,
+  hadKey,
   indexOfKey,
   initialIndex,
   initialKeys,
@@ -108,6 +109,8 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   setValidationErrors(owner: string, path: Path, errors: readonly E[]): boolean;
   /** Replaces the field's user errors. The list is copied. */
   setUserErrors(path: Path, errors: readonly E[]): boolean;
+  /** Clears user errors at and below `path`. Touched, edited and validation errors stay. */
+  clearUserErrors(path: Path): boolean;
   /**
    * Clears touched, edited and user errors at and below `path`, and
    * validation errors too with `validation: true`. Flags and validating stay.
@@ -126,6 +129,19 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
    * or undefined when an index is out of range or a step goes into a leaf.
    */
   pathOf(name: string): Path | undefined;
+  /** True when state can be set at `path`: it names a field and its item wasn't removed. */
+  isLive(path: Path): boolean;
+  /**
+   * Says, for each segment of `path`, whether it names an array item.
+   * Undefined when the path can't name a field: a step goes into a leaf, or
+   * names an item key its array never had. A removed item's key counts as
+   * had. Makes no nodes.
+   */
+  itemSteps(path: Path): readonly boolean[] | undefined;
+  /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
+  invalidAt(path: Path): boolean;
+  /** The stable path of the first enabled field, in value order, with a validation error. */
+  firstInvalid(): Path | undefined;
 
   /** How many paths have a node, and how many of those hold subscriber state. For tests and leak checks. */
   stats(): { readonly nodes: number; readonly subscribed: number };
@@ -207,6 +223,20 @@ interface Node<E> extends Cell<Snapshot<E>> {
   dirty: boolean;
   /** The value `dirty` was computed for. */
   dirtyFor: unknown;
+}
+
+/** A node's live children in value order: items by index, object keys in key order, then keys the value lacks. */
+function inValueOrder<E>(node: Node<E>): Node<E>[] {
+  const { children, value } = node;
+  if (!children) return [];
+  const order = Array.isArray(value) && node.list ? node.list.keys : isPlainObject(value) ? Object.keys(value) : [];
+  const ordered: Node<E>[] = [];
+  for (const seg of order) {
+    const child = children.get(seg);
+    if (child) ordered.push(child);
+  }
+  if (ordered.length < children.size) for (const child of children.values()) if (!ordered.includes(child)) ordered.push(child);
+  return ordered;
 }
 
 const clamp = (index: number, max: number) => Math.max(0, Math.min(index, max));
@@ -843,6 +873,21 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       refreshErrors(node);
       return finish(true);
     },
+    clearUserErrors(path) {
+      const start = findNode(path);
+      if (!start || start.dead) return false;
+      let changed = false;
+      const visit = (node: Node<E>) => {
+        if (node.user.length > 0) {
+          node.user = none;
+          changed = true;
+          refreshErrors(node);
+        }
+        if (node.children) for (const child of node.children.values()) visit(child);
+      };
+      visit(start);
+      return finish(changed);
+    },
     clearState(path, clearOptions) {
       const start = findNode(path);
       if (!start || start.dead) return false;
@@ -948,6 +993,51 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
         node = node?.children?.get(seg);
       }
       return path;
+    },
+    isLive: (path) => fieldAt(path) !== undefined,
+    itemSteps(path) {
+      const steps: boolean[] = [];
+      let value = current;
+      let node = root;
+      // False once the walk passes a removed item it has no node for, so the values below are unknown.
+      let known = true;
+      for (const segment of path) {
+        const seg = String(segment);
+        const child = node?.children?.get(seg) ?? node?.removed?.get(seg);
+        if (!known) steps.push(false);
+        else if (Array.isArray(value)) {
+          if (!hadKey(node?.list, seg, value.length)) return undefined;
+          steps.push(true);
+          const index = node?.list ? indexOfKey(node.list, seg) : initialIndex(seg, value.length);
+          if (index >= 0) value = value[index];
+          else if (child) value = child.value;
+          else known = false;
+        } else if (isPlainObject(value)) {
+          steps.push(false);
+          value = childOf(value, seg);
+        } else if (value === undefined || value === null) steps.push(false);
+        else return undefined;
+        node = child;
+      }
+      return steps;
+    },
+    invalidAt(path) {
+      const node = findNode(path);
+      return node !== undefined && !node.dead && node.invalidCount > 0;
+    },
+    firstInvalid() {
+      const visit = (node: Node<E>): Node<E> | undefined => {
+        // A disabled node's subtree is disabled too, so it is skipped whole.
+        if (node.invalidCount === 0 || node.disabled.on) return undefined;
+        if (node.validation.length > 0) return node;
+        for (const child of inValueOrder(node)) {
+          const found = visit(child);
+          if (found) return found;
+        }
+        return undefined;
+      };
+      const found = root && visit(root);
+      return found && stablePathOf(found);
     },
 
     stats() {

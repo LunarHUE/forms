@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedPaths, isContainer, setAt, valueAt } from "./tree.js";
+import { changedPaths, isContainer, merge, setAt, valueAt } from "./tree.js";
 
 describe("isContainer", () => {
   it("takes arrays and plain objects, and treats everything else as a leaf", () => {
@@ -60,6 +60,37 @@ describe("setAt", () => {
 
   it("replaces the root for an empty path", () => {
     expect(setAt({ a: 1 }, [], 2)).toBe(2);
+  });
+});
+
+describe("merge", () => {
+  it("writes the patch over a copy one level deep and shares untouched keys", () => {
+    const initial = { a: 1, b: { x: 1 } };
+    const next = merge(initial, { a: 2 });
+    expect(next).toEqual({ a: 2, b: { x: 1 } });
+    expect(valueAt(next, ["b"])).toBe(initial.b);
+    expect(initial.a).toBe(1);
+  });
+
+  it("returns the target when nothing differs", () => {
+    const initial = { a: 1, b: undefined };
+    expect(merge(initial, { a: 1, b: undefined })).toBe(initial);
+    expect(merge(initial, { c: undefined })).toEqual({ a: 1, b: undefined, c: undefined });
+  });
+
+  it("starts from an empty object when the target is not a plain object", () => {
+    expect(merge(undefined, { a: 1 })).toEqual({ a: 1 });
+    expect(merge(undefined, {})).toEqual({});
+    expect(merge([1], { a: 1 })).toEqual({ a: 1 });
+  });
+
+  it("keeps a null prototype and writes `__proto__` as a key", () => {
+    const bare: object = Object.create(null);
+    expect(Object.getPrototypeOf(merge(bare, { a: 1 }))).toBeNull();
+    const patch: Record<string, unknown> = JSON.parse('{"__proto__":{"polluted":true}}');
+    const plain = merge({}, patch);
+    expect(Object.getPrototypeOf(plain)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyNames(plain)).toEqual(["__proto__"]);
   });
 });
 

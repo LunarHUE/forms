@@ -561,3 +561,107 @@ describe("name lookup", () => {
     expect(store.pathOf("user.name.length")).toBeUndefined();
   });
 });
+
+describe("clearing user errors", () => {
+  it("clears user errors at and below a path and leaves everything else", () => {
+    const store = make({ a: { b: 1 }, c: 1 });
+    store.setTouched(["a", "b"], true);
+    store.markEdited(["a", "b"]);
+    store.setUserErrors(["a"], [err("top")]);
+    store.setUserErrors(["a", "b"], [err("u")]);
+    store.setValidationErrors("v", ["a", "b"], [err("x")]);
+    store.setUserErrors(["c"], [err("c")]);
+    const { runs } = count(store, [["a", "b"], ["a"], ["c"]]);
+    expect(store.clearUserErrors(["a"])).toBe(true);
+    expect(runs).toEqual([1, 1, 0]);
+    expect(snap(store, ["a", "b"])).toMatchObject({ touched: true, edited: true, errors: [{ message: "x" }] });
+    expect(snap(store, ["a"]).errors).toEqual([]);
+    expect(snap(store, ["c"]).errors).toEqual([{ message: "c" }]);
+    expect(store.clearUserErrors(["a"])).toBe(false);
+    expect(runs).toEqual([1, 1, 0]);
+  });
+
+  it("does nothing where no node exists", () => {
+    const store = make({ a: 1 });
+    expect(store.clearUserErrors(["a"])).toBe(false);
+    expect(store.stats().nodes).toBe(0);
+  });
+});
+
+describe("field lookup", () => {
+  it("says whether state can be set at a path", () => {
+    const store = make({ rows: [{ t: "a" }], leaf: 1 });
+    expect(store.isLive(["rows", "k0", "t"])).toBe(true);
+    expect(store.isLive(["missing", "deeper"])).toBe(true);
+    expect(store.isLive(["leaf", "x"])).toBe(false);
+    expect(store.isLive(["rows", "k1"])).toBe(false);
+    store.remove(["rows"], 0);
+    expect(store.isLive(["rows", "k0", "t"])).toBe(false);
+  });
+
+  it("marks item steps and makes no nodes", () => {
+    const store = make({ rows: [{ tags: ["x"] }], user: { name: "a" }, nothing: null });
+    expect(store.itemSteps([])).toEqual([]);
+    expect(store.itemSteps(["rows", "k0", "tags", "k0"])).toEqual([false, true, false, true]);
+    expect(store.itemSteps(["user", "missing", "deeper"])).toEqual([false, false, false]);
+    expect(store.itemSteps(["nothing", "x"])).toEqual([false, false]);
+    expect(store.stats().nodes).toBe(0);
+  });
+
+  it("rejects a step into a leaf and an item key the array never had", () => {
+    const store = make({ rows: [{ t: "a" }], user: { name: "a" } });
+    expect(store.itemSteps(["user", "name", "length"])).toBeUndefined();
+    expect(store.itemSteps(["rows", "k1"])).toBeUndefined();
+    expect(store.itemSteps(["rows", 0])).toBeUndefined();
+    expect(store.itemSteps(["rows", "x"])).toBeUndefined();
+  });
+
+  it("accepts a removed item's key and walks its last value", () => {
+    const store = make({ rows: [{ t: "a" }, { t: "b" }] });
+    store.getSnapshot(["rows", "k1", "t"]);
+    store.remove(["rows"], 1);
+    store.remove(["rows"], 0);
+    expect(store.itemSteps(["rows", "k1", "t"])).toEqual([false, true, false]);
+    expect(store.itemSteps(["rows", "k1", "t", "length"])).toBeUndefined();
+    // No node was made for k0, so what was below it is unknown and accepted.
+    expect(store.itemSteps(["rows", "k0", "anything"])).toEqual([false, true, false]);
+    expect(store.itemSteps(["rows", "k2"])).toBeUndefined();
+  });
+});
+
+describe("invalid lookup", () => {
+  it("says whether a subtree has a validation error, without making nodes", () => {
+    const store = make({ a: { b: 1 }, c: 1 });
+    expect(store.invalidAt(["a"])).toBe(false);
+    expect(store.stats().nodes).toBe(0);
+    store.setValidationErrors("v", ["a", "b"], [err("x")]);
+    store.setUserErrors(["c"], [err("u")]);
+    expect(store.invalidAt([])).toBe(true);
+    expect(store.invalidAt(["a"])).toBe(true);
+    expect(store.invalidAt(["c"])).toBe(false);
+    expect(store.invalidAt(["nope"])).toBe(false);
+  });
+
+  it("finds the first enabled invalid field in value order", () => {
+    const store = make({ b: 1, a: { x: 1, y: 1 }, rows: [{ t: 1 }, { t: 2 }] });
+    expect(store.firstInvalid()).toBeUndefined();
+    store.setValidationErrors("v", ["rows", "k1", "t"], [err("x")]);
+    store.setValidationErrors("v", ["rows", "k0", "t"], [err("x")]);
+    expect(store.firstInvalid()).toEqual(["rows", "k0", "t"]);
+    store.move(["rows"], 1, 0);
+    expect(store.firstInvalid()).toEqual(["rows", "k1", "t"]);
+    store.setValidationErrors("v", ["a", "y"], [err("x")]);
+    store.setValidationErrors("v", ["missing"], [err("x")]);
+    expect(store.firstInvalid()).toEqual(["a", "y"]);
+    store.setValidationErrors("v", ["b"], [err("x")]);
+    expect(store.firstInvalid()).toEqual(["b"]);
+    store.setUserErrors(["a"], [err("u")]);
+    store.setDisabled(["b"], true);
+    store.setDisabled(["a"], true);
+    expect(store.firstInvalid()).toEqual(["rows", "k1", "t"]);
+    store.setDisabled(["rows"], true);
+    expect(store.firstInvalid()).toEqual(["missing"]);
+    store.setValidationErrors("v", [], [err("form")]);
+    expect(store.firstInvalid()).toEqual([]);
+  });
+});

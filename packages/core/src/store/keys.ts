@@ -46,6 +46,16 @@ export function initialIndex(key: string, length: number): number {
   return index < length ? index : -1;
 }
 
+/**
+ * True when `key` is or once was a key of `list`, since keys are numbered in
+ * order and never reused. Without a list it is true for the positional keys
+ * of an array of `length` items, the keys the list will get.
+ */
+export function hadKey(list: KeyList | undefined, key: string, length: number): boolean {
+  const match = /^k(0|[1-9]\d*)$/.exec(key);
+  return match !== null && Number(match[1]) < (list ? list.next : length);
+}
+
 function changed(list: KeyList): void {
   list.positions = undefined;
   list.view = undefined;

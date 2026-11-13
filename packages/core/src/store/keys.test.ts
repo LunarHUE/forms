@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createKeyList, indexOfKey, initialIndex, insertKey, keysView, moveKey, removeKey, resizeKeys } from "./keys.js";
+import { createKeyList, hadKey, indexOfKey, initialIndex, insertKey, keysView, moveKey, removeKey, resizeKeys } from "./keys.js";
 
 describe("key lists", () => {
   it("keys items positionally at creation, then by counter", () => {
@@ -43,6 +43,19 @@ describe("key lists", () => {
     insertKey(list, 0);
     expect(keysView(list)).not.toBe(view);
     expect(view).toEqual(["k0", "k1"]);
+  });
+
+  it("knows every key a list has handed out, including removed ones", () => {
+    const list = createKeyList(2);
+    removeKey(list, 1);
+    insertKey(list, 1);
+    expect(list.keys).toEqual(["k0", "k2"]);
+    expect(["k0", "k1", "k2"].map((key) => hadKey(list, key, 0))).toEqual([true, true, true]);
+    expect(hadKey(list, "k3", 9)).toBe(false);
+    expect(hadKey(list, "k01", 9)).toBe(false);
+    expect(hadKey(undefined, "k1", 2)).toBe(true);
+    expect(hadKey(undefined, "k2", 2)).toBe(false);
+    expect(hadKey(undefined, "x", 2)).toBe(false);
   });
 
   it("maps a creation key back to its index", () => {
