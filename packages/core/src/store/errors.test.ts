@@ -4,6 +4,7 @@ import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import type { Validator } from "../validator.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormStore, type FormStoreOptions } from "./form-store.js";
 
 interface Value {
@@ -13,8 +14,10 @@ interface Value {
 
 const initial: Value = { name: "", rows: [{ title: "" }, { title: "" }] };
 
+const plugins = [runner()];
+
 const make = (options: Omit<FormStoreOptions<Value>, "id" | "initial"> = {}, value: Value = initial) =>
-  createFormStore<Value>({ id: "f", initial: value, ...options });
+  createFormStore<Value>({ id: "f", initial: value, plugins, ...options });
 
 const err = (message: string): FormError => ({ message });
 const required = (value: unknown) => (value === "" ? err("Required") : undefined);
@@ -55,6 +58,7 @@ describe("error type", () => {
     const store = createFormStore<Value, string>({
       id: "f",
       initial,
+      plugins,
       mapError: tagged,
       schema: failing({ message: "Bad", path: ["name"] }),
     });

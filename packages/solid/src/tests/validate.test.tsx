@@ -2,6 +2,7 @@ import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
+import { validation } from "../plugins/validation.js";
 
 /** The props each registered component was given, by label. */
 const given: Record<string, readonly string[]> = {};
@@ -17,7 +18,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [validation()], fields: { TextField } });
 const Signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
@@ -82,7 +83,7 @@ function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Cho
   return <For each={props.options}>{(option) => <input data-option={option} {...props.field.inputProps({ kind: "radio", value: option })} />}</For>;
 }
 
-const choiceForms = createForms({ fields: { RadioGroupField } });
+const choiceForms = createForms({ plugins: [validation()], fields: { RadioGroupField } });
 const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
 const Delivery = choiceForms.define({ defaultValues: deliveryStart });
 

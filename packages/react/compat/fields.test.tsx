@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
+import { validation } from "../src/plugins/validation.js";
 
 const commits: Commits = new Map();
 beforeEach(() => commits.clear());
@@ -26,7 +27,7 @@ interface Values {
   tags: { title: string }[];
 }
 const defaultValues: Values = { name: "", email: "", age: 30, agree: false, tags: [{ title: "a" }, { title: "b" }] };
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [validation()], fields: { TextField } });
 const profile = forms.define({ defaultValues });
 type ProfileForm = FormOf<typeof profile>;
 

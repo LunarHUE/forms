@@ -31,6 +31,12 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly disabled: boolean;
   /** True when this field or one above it is read-only. */
   readonly readOnly: boolean;
+  /**
+   * Plugin state by plugin name. Missing until a plugin sets some on this
+   * field. Read a plugin's slot, typed, with the plugin's `meta` reader:
+   * `rules.meta(snapshot)`.
+   */
+  readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 /** The extra member on an array field's snapshot. */
@@ -91,4 +97,10 @@ export interface FormSnapshot<I = undefined, R = unknown> {
   readonly submission: Submission<I, R>;
   /** How many submits have started, counting ones that ended invalid. */
   readonly submitCount: number;
+  /**
+   * Plugin state by plugin name. Missing until a plugin sets some on the
+   * form. Read a plugin's slot, typed, with the plugin's `formMeta` reader:
+   * `rules.formMeta(snapshot)`.
+   */
+  readonly meta?: Readonly<Record<string, unknown>>;
 }

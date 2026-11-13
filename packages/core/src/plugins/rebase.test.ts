@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Path } from "./path.js";
-import { rebase, type Resolve } from "./rebase.js";
-import type { FormStore } from "./store.js";
-import { createFormInternals } from "./store/form-store.js";
+import type { FormError } from "../errors.js";
+import type { AnyPlugin } from "../plugin.js";
+import type { Path } from "../path.js";
+import type { FormStore } from "../store.js";
+import { createFormInternals } from "../store/form-store.js";
+import type { ValidatorContext } from "../validator.js";
+import { validation as runner } from "./validation.js";
+import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
 
-const make = (initial: unknown) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial });
-  return { ...parts, root: parts.store.root };
+const make = (initial: unknown, plugins: readonly AnyPlugin[] = [runner(), rebasePlugin()]) => {
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins });
+  // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const rebase = (parts.store.plugins as { readonly rebase: Rebase }).rebase;
+  return { ...parts, root: parts.store.root, rebase };
 };
 
 /** Counts listener calls per path. `"form"` counts form listener calls. */
@@ -20,6 +27,11 @@ function count(store: FormStore<unknown>, paths: (Path | "form")[]) {
   return runs;
 }
 
+/** The rebase API of a store the rebase plugin is on. */
+// The internals' store has no typed plugin APIs.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+const apiOf = (store: FormStore<unknown>) => (store.plugins as { readonly rebase: Rebase }).rebase;
+
 /** A field validator that fails on an empty string with `label`. */
 const check = (label: string) =>
   vi.fn<(value: unknown) => { message: string } | undefined>((value) => (value === "" ? { message: label } : undefined));
@@ -28,7 +40,7 @@ const paths = (resolve: { mock: { calls: Parameters<Resolve>[] } }) => resolve.m
 
 describe("rebase", () => {
   it("asks once per differing leaf and keeps, takes or writes a value", () => {
-    const { store, root } = make({ name: "a", port: 1, same: "s", address: { street: "", city: "" } });
+    const { store, root, rebase } = make({ name: "a", port: 1, same: "s", address: { street: "", city: "" } });
     root.at("name").setValue("mine");
     const resolve = vi.fn<Resolve>((leaf) =>
       leaf.path[0] === "name" ? "keep" : leaf.path[0] === "port" ? "take" : { value: "X" },
@@ -49,7 +61,7 @@ describe("rebase", () => {
   });
 
   it("moves the baseline of leaves whose value already equals the incoming one", () => {
-    const { store, root } = make({ a: 1 });
+    const { store, root, rebase } = make({ a: 1 });
     root.at("a").setValue(2);
     const resolve = vi.fn<Resolve>(() => "keep");
     expect(rebase(root, { a: 2 }, resolve).taken).toEqual([]);
@@ -60,7 +72,7 @@ describe("rebase", () => {
   });
 
   it("wakes each listener once", () => {
-    const { store, root } = make({ a: 1, b: 2, c: 3 });
+    const { store, root, rebase } = make({ a: 1, b: 2, c: 3 });
     store.getFormSnapshot();
     const runs = count(store, [["a"], ["b"], ["c"], [], "form"]);
     rebase(root, { a: 5, b: 6, c: 3 }, () => "take");
@@ -71,7 +83,7 @@ describe("rebase", () => {
   });
 
   it("leaves siblings of the subtree alone", () => {
-    const { store, root } = make({ a: { x: 1 }, b: { y: 1 } });
+    const { store, root, rebase } = make({ a: { x: 1 }, b: { y: 1 } });
     root.at("b").at("y").setValue(2);
     const b = store.getSnapshot(["b"]);
     const y = store.getSnapshot(["b", "y"]);
@@ -85,7 +97,7 @@ describe("rebase", () => {
   });
 
   it("walks array items by key while the keys match the baseline", () => {
-    const { store, root } = make({ rows: [{ t: "a" }, { t: "b" }] });
+    const { store, root, rebase } = make({ rows: [{ t: "a" }, { t: "b" }] });
     root.at("rows").item("k1").at("t").setValue("mine");
     const resolve = vi.fn<Resolve>(() => "keep");
     rebase(root.at("rows"), [{ t: "A" }, { t: "B" }], resolve);
@@ -97,7 +109,7 @@ describe("rebase", () => {
   });
 
   it("treats an array that changed length or order as one leaf", () => {
-    const { store, root } = make({ tags: ["a", "b"], rows: ["x", "y"] });
+    const { store, root, rebase } = make({ tags: ["a", "b"], rows: ["x", "y"] });
     root.at("rows").move(0, 1);
     const resolve = vi.fn<Resolve>(() => "take");
     const { taken } = rebase(root, { tags: ["a", "b", "c"], rows: ["X", "Y"] }, resolve);
@@ -109,7 +121,7 @@ describe("rebase", () => {
   });
 
   it("pairs a kept array's items with the baseline's keys", () => {
-    const { store, root } = make({ rows: ["a", "b"] });
+    const { store, root, rebase } = make({ rows: ["a", "b"] });
     root.at("rows").move(0, 1);
     rebase(root.at("rows"), ["a2", "b2"], () => "keep");
     expect(store.getSnapshot(["rows"]).value).toEqual(["b", "a"]);
@@ -121,7 +133,7 @@ describe("rebase", () => {
   });
 
   it("adds an item the baseline lacks where it sits now", () => {
-    const { store, root } = make({ rows: ["a", "b"] });
+    const { store, root, rebase } = make({ rows: ["a", "b"] });
     root.at("rows").insert(1, "new");
     rebase(root.at("rows").item("k2"), "new", () => "keep");
     expect(store.getSnapshot(["rows", "k2"]).dirty).toBe(false);
@@ -130,7 +142,7 @@ describe("rebase", () => {
   });
 
   it("makes reset go to the new baseline", () => {
-    const { store, root } = make({ a: 1, b: { c: 1 } });
+    const { store, root, rebase } = make({ a: 1, b: { c: 1 } });
     rebase(root, { a: 2, b: { c: 2 } }, () => "keep");
     expect(store.getFormSnapshot().dirty).toBe(true);
     store.reset();
@@ -142,14 +154,14 @@ describe("rebase", () => {
   });
 
   it("treats a leaf that becomes an object as one leaf", () => {
-    const { root } = make({ a: null });
+    const { root, rebase } = make({ a: null });
     const resolve = vi.fn<Resolve>(() => "take");
     rebase(root, { a: { x: 1, y: 2 } }, resolve);
     expect(paths(resolve)).toEqual([["a"]]);
   });
 
   it("does nothing on a removed item", () => {
-    const { root } = make({ rows: ["a"] });
+    const { root, rebase } = make({ rows: ["a"] });
     const item = root.at("rows").item("k0");
     root.at("rows").remove(0);
     const resolve = vi.fn<Resolve>(() => "take");
@@ -161,7 +173,7 @@ describe("rebase", () => {
     const a = check("a");
     const b = check("b");
     const c = check("c");
-    const { store, root } = make({ a: "x", b: "x", c: "x" });
+    const { store, root, rebase } = make({ a: "x", b: "x", c: "x" });
     store.registerValidator(["a"], a);
     store.registerValidator(["b"], b);
     store.registerValidator(["c"], c);
@@ -185,9 +197,70 @@ describe("rebase", () => {
     expect(b).not.toHaveBeenCalled();
   });
 
+  it("runs a form validator once for a rebase that takes several paths", async () => {
+    const form = vi.fn<(value: unknown) => undefined>(() => undefined);
+    const { store } = createFormInternals<unknown>({
+      id: "f",
+      initial: { a: "x", b: "x" },
+      plugins: [runner(), rebasePlugin()],
+      validate: { form },
+    });
+    await store.validate();
+    form.mockClear();
+    expect(apiOf(store)(store.root, { a: "y", b: "y" }, () => "take").taken).toHaveLength(2);
+    expect(form).toHaveBeenCalledTimes(1);
+    expect(form).toHaveBeenCalledWith({ a: "y", b: "y" }, expect.anything());
+  });
+
+  it("starts an async form validator once for a rebase, without aborting it", async () => {
+    const signals: ValidatorContext<FormError>["signal"][] = [];
+    const form = vi.fn<(value: unknown, ctx: ValidatorContext<FormError>) => Promise<undefined>>(async (_value, ctx) => {
+      signals.push(ctx.signal);
+      await Promise.resolve();
+      return undefined;
+    });
+    const { store } = createFormInternals<unknown>({
+      id: "f",
+      initial: { a: "x", b: "x" },
+      plugins: [runner(), rebasePlugin()],
+      validate: { form },
+    });
+    await store.validate();
+    form.mockClear();
+    signals.length = 0;
+    apiOf(store)(store.root, { a: "y", b: "y" }, () => "take");
+    expect(form).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(store.getFormSnapshot().validating).toBe(false));
+    expect(signals.map((signal) => signal.aborted)).toEqual([false]);
+  });
+
   it("rejects a handle from something that isn't a form store", () => {
-    const { root } = make({});
+    const { root, rebase } = make({});
     const fake = { ...root, store: { ...root.store } };
     expect(() => rebase(fake, {}, () => "keep")).toThrow(TypeError);
+  });
+
+  it("rejects a handle from another store", () => {
+    const { rebase } = make({ a: 1 });
+    const other = make({ a: 1 });
+    expect(() => rebase(other.root, { a: 2 }, () => "take")).toThrow(TypeError);
+    expect(other.store.getSnapshot(["a"]).value).toBe(1);
+  });
+
+  it("works without the validation runner, and revalidates nothing", () => {
+    const { store, root, rebase } = make({ a: "x", b: { c: "x" } }, [rebasePlugin()]);
+    root.at("a").setValue("mine");
+    const { taken } = rebase(root, { a: "server", b: { c: "y" } }, (leaf) => (leaf.edited ? "keep" : "take"));
+    expect(taken).toEqual([["b", "c"]]);
+    expect(store.getSnapshot([]).value).toEqual({ a: "mine", b: { c: "y" } });
+    expect(store.getSnapshot(["b", "c"])).toMatchObject({ dirty: false, edited: false, errors: [] });
+    expect(store.changes()).toEqual([{ path: ["a"], baseline: "server", value: "mine" }]);
+  });
+
+  it("writes a function value as it is", () => {
+    const { store, root, rebase } = make({ fn: null });
+    const fn = vi.fn<() => void>();
+    rebase(root, { fn }, () => "take");
+    expect(store.getSnapshot(["fn"]).value).toBe(fn);
   });
 });

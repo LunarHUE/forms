@@ -7,7 +7,7 @@ import type { StoreCore } from "./core.js";
 import { freeze } from "./freeze.js";
 import { fieldId } from "./ids.js";
 import { isPlainObject, merge } from "./tree.js";
-import type { Validation } from "./validation.js";
+import type { Validation } from "./runner.js";
 
 /** An item's handle at runtime. */
 export type AnyItemHandle<E> = AnyFieldHandle<E> & { readonly key: string };

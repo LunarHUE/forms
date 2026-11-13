@@ -157,6 +157,10 @@ export interface ValidatorHandleLike extends HandleLike {
  * it and its errors when the owner is disposed. It registers once, with the
  * validator it was given. To make a validator conditional, create it under
  * `<Show>`, or pass `undefined`, `null` or `false` to add none.
+ *
+ * It needs the validation runner, from `validation()` or a schema plugin. A
+ * handle doesn't carry the form's plugins, so the compiler can't check that.
+ * Without the runner it throws in development.
  */
 export type CreateValidator = <H extends ValidatorHandleLike>(
   handle: H,

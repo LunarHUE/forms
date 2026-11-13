@@ -28,7 +28,7 @@ function createFormState(store: RuntimeStore): object {
     return read();
   };
   const state = {};
-  // The server snapshot has every member the form snapshot has.
+  // The server snapshot has every member the form snapshot has, except `meta`, which `defineGetters` adds.
   defineGetters(state, Object.keys(store.getServerFormSnapshot()), current);
   return state;
 }
@@ -69,6 +69,7 @@ export function buildForm(parts: FormParts): RuntimeForm {
     ...scope,
     store,
     id: store.id,
+    plugins: store.plugins,
     state: createFormState(store),
     formProps,
     submit,

@@ -122,8 +122,19 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   setSubmission(submission: Submission<I, R>): boolean;
   /** Sets the form's submit count. */
   setSubmitCount(count: number): boolean;
+  /**
+   * Sets slot `slot` of the meta on the field at `path`, or on the form
+   * without a path. The meta object is replaced, so the snapshot changes.
+   */
+  setMeta(slot: string, value: unknown, path?: Path): boolean;
   /** Asks the `dirty` option again for every field and the form, after the baseline changed. */
   recheckDirty(): void;
+  /**
+   * Makes the state now the starting state: the server snapshots show it
+   * from here on. The plugin host calls it after plugin setup, so what setup
+   * wrote renders on the server too.
+   */
+  started(): void;
   /**
    * The stable path of the field with dotted name `name` (`rows.0.title`),
    * or undefined when an index is out of range or a step goes into a leaf.
@@ -225,7 +236,12 @@ interface Node<E> extends Cell<Snapshot<E>> {
   dirty: boolean;
   /** The value `dirty` was computed for. */
   dirtyFor: unknown;
+  /** Plugin meta by plugin name. Undefined until a plugin sets some, and the snapshot has it only then. */
+  meta: Meta;
 }
+
+/** Plugin meta by plugin name, or undefined while no plugin has set any. */
+type Meta = Readonly<Record<string, unknown>> | undefined;
 
 /** A node's live children in value order: items by index, object keys in key order, then keys the value lacks. */
 function inValueOrder<E>(node: Node<E>): Node<E>[] {
@@ -253,13 +269,16 @@ const flagFrom = (decl: unknown, inherited: boolean): Flag => {
   return { decl, own, on: own || inherited };
 };
 
-// The flag of the child at `seg`. A tuple's entry in the declaration applies to every item.
-const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
-  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, on);
+// The flag of the child at `seg`, inheriting `inherited` in place of the
+// parent's `on` when given. A tuple's entry in the declaration applies to every item.
+const flagUnder = ({ decl, on }: Flag, seg: string, inherited = on): Flag =>
+  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, inherited);
 
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
-  const { id, initial } = options;
+  const { id } = options;
+  // The value the server snapshots start from. `started` moves it.
+  let initial = options.initial;
   const show = options.show ?? "touched-or-submitted";
   const dirtyHook = options.dirty;
   let current = initial;
@@ -283,6 +302,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let serverForm: FormSnapshot<I, R> | undefined;
   let formDirty = false;
   let formDirtyFor: unknown = stale;
+  // The form's plugin meta.
+  let formMeta: Meta;
 
   // Where `node` sits now, from its parent's value and key list.
   const place = (node: Node<E>) => {
@@ -356,6 +377,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       validating: node.validating !== undefined,
       disabled: node.disabled.on,
       readOnly: node.readOnly.on,
+      ...(node.meta && { meta: node.meta }),
     });
   };
 
@@ -384,6 +406,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       submitting: submission.status === "submitting",
       submission,
       submitCount,
+      ...(formMeta && { meta: formMeta }),
     };
   };
 
@@ -531,6 +554,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       errors: none,
       dirty: false,
       dirtyFor: stale,
+      meta: undefined,
     };
     place(node);
     node.name = nameOf(node);
@@ -673,8 +697,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     readonly readOnly: Flag;
   }
 
-  // Where `node` sat in the initial value, using the positional keys every
-  // key list starts with, and the flags it started with.
+  // Where `node` sat in the initial value, using its parent's server keys or
+  // the positional keys every key list starts with, and the flags it started with.
   const initialPlace = (node: Node<E>): InitialPlace => {
     if (!node.parent) {
       const disabled = flagFrom(options.disabled, false);
@@ -682,8 +706,11 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       return { value: initial, name: "", blocked: false, disabled, readOnly };
     }
     const parent = initialPlace(node.parent);
-    const disabled = flagUnder(parent.disabled, node.seg);
-    const readOnly = flagUnder(parent.readOnly, node.seg);
+    // A parent with a server snapshot hands down the flags it shows there,
+    // since plugin setup may have set them.
+    const shown = node.parent.server;
+    const disabled = flagUnder(parent.disabled, node.seg, shown?.disabled);
+    const readOnly = flagUnder(parent.readOnly, node.seg, shown?.readOnly);
     const at = (value: unknown, segment: string, blocked: boolean): InitialPlace => ({
       value,
       name: parent.name === "" ? segment : `${parent.name}.${segment}`,
@@ -694,7 +721,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const holder = parent.value;
     if (parent.blocked) return at(undefined, node.seg, true);
     if (Array.isArray(holder)) {
-      const index = initialIndex(node.seg, holder.length);
+      // Setup may have changed the parent's keys, which its server snapshot keeps.
+      const index = shown?.keys?.indexOf(node.seg) ?? initialIndex(node.seg, holder.length);
       if (index < 0) return at(undefined, node.seg, true);
       const item: unknown = holder[index];
       return at(item, String(index), false);
@@ -708,7 +736,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     if (node.server) return node.server;
     const { value, name, disabled, readOnly } = initialPlace(node);
     const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
-    const state = { ...idle, disabled: disabled.on, readOnly: readOnly.on };
+    // Plugin setup may have written a value that differs from the baseline.
+    const state = { ...idle, dirty: !!dirtyHook?.(pathOf(node, false), value), disabled: disabled.on, readOnly: readOnly.on };
     node.server = freeze(entries(value, name, keys && freeze(keys), state));
     return node.server;
   };
@@ -947,6 +976,18 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       for (const node of withErrors) rebuild(node);
       return finish(true);
     },
+    setMeta(slot, value, path) {
+      if (!path) {
+        if (Object.is(formMeta?.[slot], value)) return false;
+        formMeta = freeze({ ...formMeta, [slot]: value });
+        return finish(true);
+      }
+      const node = fieldAt(path);
+      if (!node || Object.is(node.meta?.[slot], value)) return false;
+      node.meta = freeze({ ...node.meta, [slot]: value });
+      rebuild(node);
+      return finish(true);
+    },
     recheckDirty() {
       if (!dirtyHook) return;
       formDirtyFor = stale;
@@ -957,6 +998,17 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       };
       if (root) visit(root);
       finish(true);
+    },
+    started() {
+      if (!changes) return;
+      changes = 0;
+      initial = current;
+      serverForm = form().snapshot;
+      const visit = (node: Node<E>) => {
+        node.server = node.snapshot;
+        node.children?.forEach(visit);
+      };
+      if (root) visit(root);
     },
     pathOf(name) {
       // A property name that contains a dot can't be told apart from two

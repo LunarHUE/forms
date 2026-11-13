@@ -1,6 +1,6 @@
-import { createFormsCore, type FormsConfig } from "@lunarhue/forms-core";
+import { createFormsCore, type FormsConfig, type Plugins } from "@lunarhue/forms-core";
 import { createUniqueId } from "solid-js";
-import { madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
+import { madeBy, madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
 import type { RuntimeFocus } from "./focus.js";
 import { buildForm, type RuntimeStore } from "./form-runtime.js";
 import { scopeCache, type RuntimeComponent, type RuntimeHandle } from "./scope-runtime.js";
@@ -8,7 +8,7 @@ import { scopeCache, type RuntimeComponent, type RuntimeHandle } from "./scope-r
 export { useAnyForm };
 
 /** `createForms` options with their types erased. */
-interface RuntimeOptions extends FormsConfig<[], unknown> {
+interface RuntimeOptions extends FormsConfig<Plugins, unknown> {
   readonly focusOnInvalid?: RuntimeFocus;
   readonly fields?: Readonly<Record<string, RuntimeComponent>>;
 }
@@ -17,11 +17,12 @@ interface RuntimeOptions extends FormsConfig<[], unknown> {
 interface RuntimeSettings {
   readonly id?: string;
   readonly focusOnInvalid?: RuntimeFocus;
+  readonly plugins?: Plugins;
 }
 
 /** A core definition with its types erased. */
 interface RuntimeDefinition {
-  createStore(options: unknown, instance?: { readonly id?: string }): RuntimeStore;
+  createStore(options: unknown, instance?: { readonly id: string; readonly plugins: Plugins | undefined }): RuntimeStore;
 }
 
 /** How each definition makes a form, from `createForm`'s arguments after the definition. */
@@ -50,13 +51,14 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
       // `CreateFormArgs` types the settings argument.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const settings = (settingsArg ?? {}) as RuntimeSettings;
-      const store = definition.createStore(formOptions, { id: settings.id ?? createUniqueId() });
+      const store = definition.createStore(formOptions, { id: settings.id ?? createUniqueId(), plugins: settings.plugins });
       const form = buildForm({
         store,
         scope: scopeOf(store.root),
         focusOnInvalid: settings.focusOnInvalid ?? options.focusOnInvalid ?? true,
       });
       madeFrom.set(form, definition);
+      madeBy.set(form, forms);
       return form;
     });
     return definition;
@@ -65,5 +67,6 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
   /** A fieldset is a token whose `scope` is `forms.scope`, typed to the shape. */
   const fieldset = () => ({ scope: scopeOf });
 
-  return { define, scope: (handle: RuntimeHandle) => scopeOf(handle), fieldset };
+  const forms = { define, scope: (handle: RuntimeHandle) => scopeOf(handle), fieldset };
+  return forms;
 }

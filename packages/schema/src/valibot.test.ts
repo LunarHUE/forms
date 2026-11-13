@@ -4,8 +4,8 @@ import * as v from "valibot";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
 
-const defaultValue = (schema: ValibotSchema) => valibot().defaultValue(schema);
-const itemValue = (schema: ValibotSchema, path: Path) => valibot().itemValue(schema, path);
+const defaultValue = (schema: ValibotSchema) => valibot().schema.defaultValue(schema);
+const itemValue = (schema: ValibotSchema, path: Path) => valibot().schema.itemValue(schema, path);
 
 const auth = v.variant("type", [
   v.object({ type: v.literal("password"), password: v.string() }),
@@ -178,16 +178,16 @@ describe("itemValue", () => {
   });
 });
 
-describe("the adapter", () => {
+describe("the plugin", () => {
   it("names the valibot vendor, which every valibot schema reports", () => {
-    expect(valibot().vendor).toBe("valibot");
-    expect(schema["~standard"].vendor).toBe(valibot().vendor);
+    expect(valibot().schema.vendor).toBe("valibot");
+    expect(schema["~standard"].vendor).toBe(valibot().schema.vendor);
     expect(valibot()).toBe(valibot());
   });
 });
 
 describe("with core", () => {
-  const core = createFormsCore({ schemas: [valibot()] });
+  const core = createFormsCore({ plugins: [valibot()] });
 
   const profile = v.object({
     name: v.pipe(v.string(), v.minLength(1, "Name required")),

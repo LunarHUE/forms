@@ -1,5 +1,6 @@
 import { createFormsCore } from "../index.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
+import { defineSchemaPlugin } from "../plugins/validation.js";
 
 // The row benchmark from solid-form, on the plain store: a form with `count`
 // array rows and one listener per row on that row's name errors, as a list of
@@ -15,7 +16,7 @@ interface Rows {
 }
 
 // A hand-written Standard Schema with the old benchmark's rule: every name is required.
-const schema: StandardSchemaV1<Rows> = {
+export const schema: StandardSchemaV1<Rows> = {
   "~standard": {
     version: 1,
     vendor: "bench",
@@ -33,8 +34,15 @@ const schema: StandardSchemaV1<Rows> = {
   },
 };
 
+/** The schema plugin for `schema`. Every benchmark form gives complete defaultValues, so its defaults are never read. */
+export const benchSchemas = defineSchemaPlugin<StandardSchemaV1<Rows>>({
+  vendor: "bench",
+  defaultValue: () => ({ rows: [] }),
+  itemValue: () => undefined,
+});
+
 // The old form ran its schema on every write, so this one validates on input.
-const Form = createFormsCore({ validate: "input" }).define((count: number) => ({
+const Form = createFormsCore({ plugins: [benchSchemas], validate: "input" }).define((count: number) => ({
   schema,
   defaultValues: { rows: Array.from({ length: count }, (_, i) => ({ name: `row-${i}`, value: "" })) },
 }));

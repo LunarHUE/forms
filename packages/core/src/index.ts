@@ -2,6 +2,35 @@ export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
+
+export type {
+  AnyHookPlugin,
+  AnyPlugin,
+  BaselineAt,
+  HasSchemaPlugin,
+  HasValidation,
+  HookPlugin,
+  IfValidation,
+  MetaSource,
+  Plugin,
+  PluginApis,
+  PluginBaseline,
+  PluginContext,
+  PluginDefinition,
+  PluginErrorHandler,
+  PluginHooks,
+  Plugins,
+  PluginSchemas,
+  PluginsFor,
+  SchemaNeedsValidation,
+  SchemaPlugin,
+  ValidationNotInstalled,
+  ValidationPlugin,
+  When,
+  Write,
+  WriteCause,
+  WriteRecord,
+} from "./plugin.js";
 export type { Path, PathSegment } from "./path.js";
 export type { StandardSchemaV1 } from "./standard-schema.js";
 export type { Choice, ChoiceHandle, ChoiceValue, HasChoice, WithChoice } from "./choice.js";
@@ -76,12 +105,13 @@ export type {
   WriteOptions,
 } from "./handle.js";
 export type { AnyFormStore, Change, DisabledInvalid, FormStore, IntentArgs } from "./store.js";
-export type { AdapterSchema, HasAdapter, SchemaAdapter } from "./schema-adapter.js";
+export type { SchemaAdapter } from "./schema-adapter.js";
 export type {
   CreateFormsCore,
   DefinedValue,
   Definition,
   DefinitionOptions,
+  DefinitionValidate,
   Equals,
   Flags,
   FormDefinition,
@@ -93,5 +123,7 @@ export type {
   SchemaValue,
   StoreInstance,
   SubmitContext,
+  Combined,
+  DefineConfig,
+  WithPlugins,
 } from "./definition.js";
-export type { Rebase, RebaseChoice, RebaseLeaf, RebaseResult, Resolve } from "./rebase.js";

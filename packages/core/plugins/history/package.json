@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/cjs/plugins/history.js",
+  "module": "../../dist/esm/plugins/history.js",
+  "types": "../../dist/cjs/plugins/history.d.ts"
+}

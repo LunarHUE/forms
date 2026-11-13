@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/cjs/plugins/rules.js",
+  "module": "../../dist/esm/plugins/rules.js",
+  "types": "../../dist/cjs/plugins/rules.d.ts"
+}

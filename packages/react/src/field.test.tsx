@@ -15,6 +15,7 @@ import {
   type ValidatorInput,
 } from "./index.js";
 import { type Commits, countListeners, type Listeners, settle, useCommits } from "./test/helpers.js";
+import { validation } from "./plugins/validation.js";
 
 const commits: Commits = new Map();
 beforeEach(() => commits.clear());
@@ -150,7 +151,7 @@ describe("useItems", () => {
 
 const toError = (message: string | undefined) => (message === undefined ? undefined : { message });
 type Check = (value: string) => string | undefined;
-const signup = createForms().define({ defaultValues: { name: "" } });
+const signup = createForms({ plugins: [validation()] }).define({ defaultValues: { name: "" } });
 
 function Name(props: { readonly validator: Check; readonly debounce?: number }) {
   const form = useForm(signup);

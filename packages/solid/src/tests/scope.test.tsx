@@ -26,7 +26,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   );
 }
 
-const forms = createForms({ schemas: [valibot()], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [valibot()], fields: { TextField, NumberField } });
 
 const AddressSchema = v.object({
   street: v.string(),

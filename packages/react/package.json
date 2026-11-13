@@ -9,7 +9,8 @@
     "directory": "packages/react"
   },
   "files": [
-    "dist"
+    "dist",
+    "plugins"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -24,6 +25,94 @@
       "require": {
         "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
+      }
+    },
+    "./plugins": {
+      "@lunarhue/source": "./src/plugins.ts",
+      "import": {
+        "types": "./dist/esm/plugins.d.ts",
+        "default": "./dist/esm/plugins.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins.d.ts",
+        "default": "./dist/cjs/plugins.js"
+      }
+    },
+    "./plugins/bind": {
+      "@lunarhue/source": "./src/plugins/bind.ts",
+      "import": {
+        "types": "./dist/esm/plugins/bind.d.ts",
+        "default": "./dist/esm/plugins/bind.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/bind.d.ts",
+        "default": "./dist/cjs/plugins/bind.js"
+      }
+    },
+    "./plugins/history": {
+      "@lunarhue/source": "./src/plugins/history.ts",
+      "import": {
+        "types": "./dist/esm/plugins/history.d.ts",
+        "default": "./dist/esm/plugins/history.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/history.d.ts",
+        "default": "./dist/cjs/plugins/history.js"
+      }
+    },
+    "./plugins/mask": {
+      "@lunarhue/source": "./src/plugins/mask.ts",
+      "import": {
+        "types": "./dist/esm/plugins/mask.d.ts",
+        "default": "./dist/esm/plugins/mask.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/mask.d.ts",
+        "default": "./dist/cjs/plugins/mask.js"
+      }
+    },
+    "./plugins/persist": {
+      "@lunarhue/source": "./src/plugins/persist.ts",
+      "import": {
+        "types": "./dist/esm/plugins/persist.d.ts",
+        "default": "./dist/esm/plugins/persist.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/persist.d.ts",
+        "default": "./dist/cjs/plugins/persist.js"
+      }
+    },
+    "./plugins/rebase": {
+      "@lunarhue/source": "./src/plugins/rebase.ts",
+      "import": {
+        "types": "./dist/esm/plugins/rebase.d.ts",
+        "default": "./dist/esm/plugins/rebase.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/rebase.d.ts",
+        "default": "./dist/cjs/plugins/rebase.js"
+      }
+    },
+    "./plugins/rules": {
+      "@lunarhue/source": "./src/plugins/rules.ts",
+      "import": {
+        "types": "./dist/esm/plugins/rules.d.ts",
+        "default": "./dist/esm/plugins/rules.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/rules.d.ts",
+        "default": "./dist/cjs/plugins/rules.js"
+      }
+    },
+    "./plugins/validation": {
+      "@lunarhue/source": "./src/plugins/validation.ts",
+      "import": {
+        "types": "./dist/esm/plugins/validation.d.ts",
+        "default": "./dist/esm/plugins/validation.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/validation.d.ts",
+        "default": "./dist/cjs/plugins/validation.js"
       }
     },
     "./package.json": "./package.json"
@@ -60,7 +149,15 @@
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "13 kB"
+      "limit": "11 kB"
+    },
+    {
+      "name": "react + valibot()",
+      "import": {
+        "dist/esm/index.js": "*",
+        "../schema/dist/esm/valibot.js": "{ valibot }"
+      },
+      "limit": "13.7 kB"
     }
   ]
 }

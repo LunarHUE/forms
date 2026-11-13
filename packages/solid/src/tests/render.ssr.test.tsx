@@ -3,15 +3,23 @@ import { renderToString } from "@solidjs/web";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createDisabledErrors, createField, createForm, createForms, createItems } from "../index.js";
-import { App, serverHtml } from "./ssr-app.js";
+import { App, DeliveryApp, deliveryHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
 describe("server rendering", () => {
   it("renders the form from its initial snapshot with ids from createUniqueId", () => {
     expect(renderToString(() => <App />)).toBe(serverHtml);
   });
 
+  it("renders the flags rules set when the store is made", () => {
+    expect(renderToString(() => <ShippingApp />)).toBe(shippingHtml);
+  });
+
+  it("renders a field disabled through a parent rules disabled, when the store changed before the field was read", () => {
+    expect(renderToString(() => <DeliveryApp />)).toBe(deliveryHtml);
+  });
+
   it("reads the server snapshot, not a value written during the render", () => {
-    const Profile = createForms({ schemas: [valibot()] }).define({
+    const Profile = createForms({ plugins: [valibot()] }).define({
       schema: v.object({ name: v.string(), tags: v.array(v.string()) }),
       defaultValues: { name: "initial", tags: ["a"] },
     });

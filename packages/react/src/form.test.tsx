@@ -15,6 +15,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
+import { validation } from "./plugins/validation.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -25,7 +26,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [validation()], fields: { TextField } });
 const required = (value: string) => (value === "" ? { message: "required" } : undefined);
 
 const saved: { value: unknown; intent: unknown }[] = [];
@@ -262,6 +263,36 @@ function NoteInAccount() {
   );
 }
 
+// A part shared by every form of `forms`, inside a form from another `createForms` call.
+const otherForms = createForms();
+const comment = otherForms.define({ defaultValues: { body: "" } });
+
+function SharedId() {
+  return <p data-testid="shared">{useFormContext(forms).id}</p>;
+}
+
+function CommentInAccount() {
+  const outer = useForm(account, { id: "outer" });
+  const inner = useForm(comment, { id: "comment" });
+  return (
+    <outer.Form>
+      <SharedId />
+      <inner.Form>
+        <SharedId />
+      </inner.Form>
+    </outer.Form>
+  );
+}
+
+function CommentOnly() {
+  const form = useForm(comment, { id: "comment" });
+  return (
+    <form.Form>
+      <SharedId />
+    </form.Form>
+  );
+}
+
 class Boundary extends Component<{ readonly children: ReactNode }, { message: string | undefined }> {
   override state = { message: undefined };
   static getDerivedStateFromError(error: Error) {
@@ -342,6 +373,29 @@ describe("context", () => {
       </Boundary>,
     );
     expect(screen.getAllByText(/no form\.Form of this definition is mounted above this component/)).toHaveLength(2);
+    quiet.mockRestore();
+  });
+});
+
+describe("useFormContext(forms)", () => {
+  it("finds the nearest form of those forms past forms of other createForms calls", () => {
+    render(<CommentInAccount />);
+    expect(screen.getAllByTestId("shared").map((element) => element.textContent)).toEqual(["outer", "outer"]);
+  });
+
+  it("throws a clear error under only a form of other forms, or no form at all", () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Boundary>
+        <CommentOnly />
+      </Boundary>,
+    );
+    render(
+      <Boundary>
+        <SharedId />
+      </Boundary>,
+    );
+    expect(screen.getAllByText(/no form\.Form of these forms is mounted above this component/)).toHaveLength(2);
     quiet.mockRestore();
   });
 });

@@ -611,3 +611,74 @@ describe("server snapshot", () => {
     expect(store.getServerSnapshot(["a"])).toBe(store.getSnapshot(["a"]));
   });
 });
+
+// Flags the parent the way plugin setup does, then writes elsewhere, so
+// the child below is made after the first change.
+function flaggedAtStart(kind: "setDisabled" | "setReadOnly", parent: Path, initial: unknown) {
+  const store = make(initial);
+  store[kind](parent, true);
+  store.started();
+  store.set(["other"], "typed");
+  return store;
+}
+
+describe("server flags of a field first read after a write", () => {
+  it("is disabled under a parent disabled at start", () => {
+    const store = flaggedAtStart("setDisabled", ["shipping"], { other: "", shipping: { street: "" } });
+    expect(store.getServerSnapshot(["shipping", "street"])).toMatchObject({ value: "", disabled: true, readOnly: false });
+  });
+
+  it("is read-only under a parent locked at start", () => {
+    const store = flaggedAtStart("setReadOnly", ["shipping"], { other: "", shipping: { street: "" } });
+    expect(store.getServerSnapshot(["shipping", "street"])).toMatchObject({ disabled: false, readOnly: true });
+  });
+
+  it("is disabled two levels down", () => {
+    const store = flaggedAtStart("setDisabled", ["shipping"], { other: "", shipping: { address: { street: "" } } });
+    expect(store.getServerSnapshot(["shipping", "address", "street"]).disabled).toBe(true);
+    expect(store.getServerSnapshot(["shipping", "address"]).disabled).toBe(true);
+  });
+
+  it("is disabled for an item under an array disabled at start", () => {
+    const store = flaggedAtStart("setDisabled", ["rows"], { other: "", rows: [{ t: "a" }] });
+    expect(store.getServerSnapshot(["rows", "k0", "t"])).toMatchObject({ value: "a", disabled: true });
+    expect(store.getServerSnapshot(["rows", "k0"]).disabled).toBe(true);
+  });
+
+  it("stays disabled when the parent is enabled before the child is read", () => {
+    const store = flaggedAtStart("setDisabled", ["shipping"], { other: "", shipping: { street: "" } });
+    store.setDisabled(["shipping"], false);
+    expect(store.getSnapshot(["shipping", "street"]).disabled).toBe(false);
+    expect(store.getServerSnapshot(["shipping", "street"]).disabled).toBe(true);
+  });
+
+  it("follows the definition when nothing changed before the start", () => {
+    const store = make({ other: "", shipping: { street: "" } });
+    store.getSnapshot(["shipping"]);
+    store.started();
+    store.set(["other"], "typed");
+    store.setDisabled(["shipping"], true);
+    expect(store.getServerSnapshot(["shipping", "street"]).disabled).toBe(false);
+  });
+
+  it("takes the value written before the start, clean with no dirty option", () => {
+    const store = make({ other: "", shipping: { street: "" } });
+    store.set(["shipping"], { street: "1 Main St" });
+    store.started();
+    store.set(["other"], "typed");
+    expect(store.getServerSnapshot(["shipping", "street"]).value).toBe("1 Main St");
+    // With no `dirty` option nothing is dirty.
+    expect(store.getServerSnapshot(["shipping", "street"]).dirty).toBe(false);
+  });
+
+  it("asks the dirty option about the value the field started with", () => {
+    const dirty = vi.fn<(path: Path, value: unknown) => boolean>((_path, value) => value !== "");
+    const store = createStoreCore({ id: "f", initial: { other: "", shipping: { street: "", city: "" } }, dirty });
+    store.set(["shipping"], { street: "1 Main St", city: "" });
+    store.started();
+    store.set(["other"], "typed");
+    expect(store.getServerSnapshot(["shipping", "street"]).dirty).toBe(true);
+    expect(store.getServerSnapshot(["shipping", "city"]).dirty).toBe(false);
+    expect(dirty).toHaveBeenCalledWith(["shipping", "street"], "1 Main St");
+  });
+});

@@ -10,7 +10,7 @@
   },
   "files": [
     "dist",
-    "rebase"
+    "plugins"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -27,15 +27,92 @@
         "default": "./dist/cjs/index.js"
       }
     },
-    "./rebase": {
-      "@lunarhue/source": "./src/rebase.ts",
+    "./plugins": {
+      "@lunarhue/source": "./src/plugins.ts",
       "import": {
-        "types": "./dist/esm/rebase.d.ts",
-        "default": "./dist/esm/rebase.js"
+        "types": "./dist/esm/plugins.d.ts",
+        "default": "./dist/esm/plugins.js"
       },
       "require": {
-        "types": "./dist/cjs/rebase.d.ts",
-        "default": "./dist/cjs/rebase.js"
+        "types": "./dist/cjs/plugins.d.ts",
+        "default": "./dist/cjs/plugins.js"
+      }
+    },
+    "./plugins/bind": {
+      "@lunarhue/source": "./src/plugins/bind.ts",
+      "import": {
+        "types": "./dist/esm/plugins/bind.d.ts",
+        "default": "./dist/esm/plugins/bind.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/bind.d.ts",
+        "default": "./dist/cjs/plugins/bind.js"
+      }
+    },
+    "./plugins/history": {
+      "@lunarhue/source": "./src/plugins/history.ts",
+      "import": {
+        "types": "./dist/esm/plugins/history.d.ts",
+        "default": "./dist/esm/plugins/history.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/history.d.ts",
+        "default": "./dist/cjs/plugins/history.js"
+      }
+    },
+    "./plugins/mask": {
+      "@lunarhue/source": "./src/plugins/mask.ts",
+      "import": {
+        "types": "./dist/esm/plugins/mask.d.ts",
+        "default": "./dist/esm/plugins/mask.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/mask.d.ts",
+        "default": "./dist/cjs/plugins/mask.js"
+      }
+    },
+    "./plugins/persist": {
+      "@lunarhue/source": "./src/plugins/persist.ts",
+      "import": {
+        "types": "./dist/esm/plugins/persist.d.ts",
+        "default": "./dist/esm/plugins/persist.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/persist.d.ts",
+        "default": "./dist/cjs/plugins/persist.js"
+      }
+    },
+    "./plugins/rebase": {
+      "@lunarhue/source": "./src/plugins/rebase.ts",
+      "import": {
+        "types": "./dist/esm/plugins/rebase.d.ts",
+        "default": "./dist/esm/plugins/rebase.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/rebase.d.ts",
+        "default": "./dist/cjs/plugins/rebase.js"
+      }
+    },
+    "./plugins/rules": {
+      "@lunarhue/source": "./src/plugins/rules.ts",
+      "import": {
+        "types": "./dist/esm/plugins/rules.d.ts",
+        "default": "./dist/esm/plugins/rules.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/rules.d.ts",
+        "default": "./dist/cjs/plugins/rules.js"
+      }
+    },
+    "./plugins/validation": {
+      "@lunarhue/source": "./src/plugins/validation.ts",
+      "import": {
+        "types": "./dist/esm/plugins/validation.d.ts",
+        "default": "./dist/esm/plugins/validation.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugins/validation.d.ts",
+        "default": "./dist/cjs/plugins/validation.js"
       }
     },
     "./package.json": "./package.json"
@@ -54,13 +131,63 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "10.5 kB"
+      "limit": "8 kB"
     },
     {
-      "name": "./rebase",
-      "path": "dist/esm/rebase.js",
+      "name": "./plugins",
+      "path": "dist/esm/plugins.js",
       "import": "*",
-      "limit": "1.5 kB"
+      "limit": "2 kB"
+    },
+    {
+      "name": "./plugins/validation",
+      "path": "dist/esm/plugins/validation.js",
+      "import": "{ validation }",
+      "limit": "2.95 kB"
+    },
+    {
+      "name": "./plugins/bind",
+      "path": "dist/esm/plugins/bind.js",
+      "import": "{ bind }",
+      "limit": "2.65 kB"
+    },
+    {
+      "name": "./plugins/history",
+      "path": "dist/esm/plugins/history.js",
+      "import": "{ history }",
+      "limit": "2.2 kB"
+    },
+    {
+      "name": "./plugins/mask",
+      "path": "dist/esm/plugins/mask.js",
+      "import": "{ mask }",
+      "limit": "2.15 kB"
+    },
+    {
+      "name": "./plugins/persist",
+      "path": "dist/esm/plugins/persist.js",
+      "import": "{ persist }",
+      "limit": "2.05 kB"
+    },
+    {
+      "name": "./plugins/rebase",
+      "path": "dist/esm/plugins/rebase.js",
+      "import": "{ rebase }",
+      "limit": "2.5 kB"
+    },
+    {
+      "name": "./plugins/rules",
+      "path": "dist/esm/plugins/rules.js",
+      "import": "{ rules }",
+      "limit": "2.05 kB"
+    },
+    {
+      "name": "history() + mask()",
+      "import": {
+        "dist/esm/plugins/history.js": "{ history }",
+        "dist/esm/plugins/mask.js": "{ mask }"
+      },
+      "limit": "2.5 kB"
     }
   ]
 }

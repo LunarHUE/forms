@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createForm, createForms, createItems, type FormOf } from "../index.js";
 import { getAs, mount, settle, typeText } from "./dom.js";
 
-const forms = createForms({ schemas: [valibot()] });
+const forms = createForms({ plugins: [valibot()] });
 const List = forms.define({
   schema: v.object({ rows: v.array(v.object({ title: v.string() })) }),
   defaultValues: { rows: [{ title: "a" }, { title: "b" }, { title: "c" }] },

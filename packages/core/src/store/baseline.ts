@@ -1,8 +1,9 @@
 import type { Equals } from "../definition.js";
 import type { ResetOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
+import type { PluginBaseline } from "../plugin.js";
 import type { Change } from "../store.js";
-import { createEquality, ownKeys, type Compare } from "./baseline/equality.js";
+import { createEquality, ownKeys } from "./baseline/equality.js";
 import {
   buildKeys,
   childKeys,
@@ -37,7 +38,7 @@ export interface BaselineOptions<V> {
  * array is dirty when its value differs in order, so a move, insert or
  * remove makes the array dirty even when no item is.
  */
-export interface Baseline {
+export interface Baseline extends PluginBaseline {
   /**
    * Computes `dirty` for the field at stable path `path` holding `value`.
    * The store core calls it as its `dirty` option, first when something
@@ -57,18 +58,6 @@ export interface Baseline {
    * otherwise.
    */
   changes(this: void, path?: Path): readonly Change[];
-  /** The baseline value at stable path `path`, and the item keys of the arrays in it. */
-  locate(path: Path): { readonly value: unknown; readonly keys: KeyTrie | undefined };
-  /** Compares two values with the form's equality chain. `keys` names the items of `b`. */
-  readonly compare: Compare;
-  /**
-   * Makes `value` the baseline of the subtree at `path`, taking each array's
-   * item keys from `keysFor`. A path through an item the baseline lacks adds
-   * that item. It doesn't recheck dirty: call the core's `recheckDirty` after.
-   */
-  move(path: Path, value: unknown, keysFor: KeysFor): void;
-  /** Reads each array's item keys from the store, for a subtree whose value was just written. */
-  readonly currentKeys: KeysFor;
 }
 
 // A copy of `container` with `inner` at `key`. In development the copy is
@@ -80,6 +69,10 @@ const put = (container: unknown, key: PathSegment, inner: unknown): unknown => {
 };
 
 const emptyTrie = (): KeyTrie => ({ list: undefined, children: undefined });
+
+// The item keys of a located baseline array, by index.
+const pairing = ({ value, keys }: { value: unknown; keys: KeyTrie | undefined }) =>
+  Array.isArray(value) ? keysOf(keys, value.length) : undefined;
 
 /** Makes the baseline. It starts as the initial value with positional item keys. */
 export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, options: BaselineOptions<V>): Baseline {
@@ -96,7 +89,10 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
     return Array.isArray(snapshot.value) && snapshot.keys ? snapshot.keys : keysOf(undefined, length);
   };
 
-  const move = (path: Path, value: unknown, keysFor: KeysFor) => {
+  // Makes `value` the baseline of the subtree at `path`, taking each array's
+  // item keys from `keysFor`. A path through an item the baseline lacks adds
+  // that item. It doesn't recheck dirty.
+  const place = (path: Path, value: unknown, keysFor: KeysFor) => {
     const p = path.map(String);
     const steps = core.itemSteps(p);
     if (!steps) return;
@@ -116,11 +112,11 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
       return next;
     };
     // A copy of `v` with `value` at `p` from step `i` on, sharing everything else.
-    const place = (v: unknown, t: KeyTrie, i: number): unknown => {
+    const copy = (v: unknown, t: KeyTrie, i: number): unknown => {
       const seg = p[i] ?? "";
       const last = i === p.length - 1;
       const below = (held: unknown) => {
-        if (!last) return place(held, child(t, seg), i + 1);
+        if (!last) return copy(held, child(t, seg), i + 1);
         if (built) (t.children ??= new Map()).set(seg, built);
         else t.children?.delete(seg);
         return value;
@@ -148,7 +144,13 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
     // The shared branches must be frozen already. The initial value is frozen
     // here on the first move unless the core froze it first.
     deepFreeze(root);
-    root = place(root, (trie ??= emptyTrie()), 0);
+    root = copy(root, (trie ??= emptyTrie()), 0);
+  };
+
+  const move: PluginBaseline["move"] = (path, value, keep) => {
+    // `buildKeys` calls this before the baseline changes, so `find` reads the old one.
+    place(path, value, (at, length) => (keep?.(at) ? (pairing(find(at)) ?? []) : currentKeys(at, length)));
+    core.recheckDirty();
   };
 
   return {
@@ -163,8 +165,7 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
         core.set(p, target);
         core.clearState(p, { validation: true });
         // Writing kept the items' keys by index, so the baseline pairs with them from now on.
-        move(p, target, currentKeys);
-        core.recheckDirty();
+        move(p, target);
       });
     },
     changes(path) {
@@ -189,9 +190,12 @@ export function createBaseline<V, E, I, R>(context: FormContext<V, E, I, R>, opt
       walk(start, core.getSnapshot(start).value, baseline, keys);
       return freeze(out);
     },
-    locate: find,
-    compare,
+    read(path) {
+      if (!core.isLive(path)) return undefined;
+      const found = find(path);
+      return freeze({ value: found.value, keys: pairing(found) });
+    },
+    equals: (path, a, b) => compare(path, a, b, find(path).keys),
     move,
-    currentKeys,
   };
 }

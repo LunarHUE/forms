@@ -13,7 +13,7 @@ const schema = v.object({
 });
 
 // The old form ran its schema on every write, so this one validates on input.
-const Form = createFormsCore({ schemas: [valibot()], validate: "input" }).define((count: number) => ({
+const Form = createFormsCore({ plugins: [valibot()], validate: "input" }).define((count: number) => ({
   schema,
   defaultValues: { rows: Array.from({ length: count }, (_, i) => ({ name: `row-${i}`, value: "" })) },
 }));

@@ -3,16 +3,20 @@ import type { Equals } from "../definition.js";
 import type { FormError } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
+import { type Rebase, rebase as rebasePlugin } from "../plugins/rebase.js";
 import type { FormStore } from "../store.js";
-import { rebase } from "../rebase.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 import { isContainer } from "./tree.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, ...options });
-  return { ...parts, root: parts.store.root };
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [runner(), rebasePlugin()], ...options });
+  // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const rebase = (parts.store.plugins as { readonly rebase: Rebase }).rebase;
+  return { ...parts, root: parts.store.root, rebase };
 };
 
 const err = (message: string): FormError => ({ message });
@@ -310,7 +314,7 @@ describe("reset", () => {
   });
 
   it("goes back to the initial value and moves the baseline there", () => {
-    const { store, root } = make({ a: "one", b: "x" });
+    const { store, root, rebase } = make({ a: "one", b: "x" });
     rebase(root, { a: "two", b: "x" }, () => "take");
     expect(store.getFormSnapshot().dirty).toBe(false);
     root.at("a").setValue("three");
@@ -324,8 +328,8 @@ describe("reset", () => {
   });
 
   it("keeps every container in the baseline frozen through resets and rebases", () => {
-    const { baseline, root } = make({ rows: [{ t: "a", tags: ["x"] }], other: { n: 1 } });
-    const check = () => expect(unfrozen(baseline.locate([]).value)).toEqual([]);
+    const { baseline, root, rebase } = make({ rows: [{ t: "a", tags: ["x"] }], other: { n: 1 } });
+    const check = () => expect(unfrozen(baseline.read([])?.value)).toEqual([]);
     root.at("rows").push({ t: "b", tags: [{}] });
     root.at("rows").item("k1").reset();
     check();

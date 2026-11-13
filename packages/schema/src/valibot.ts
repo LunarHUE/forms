@@ -1,4 +1,5 @@
-import type { Path, SchemaAdapter } from "@lunarhue/forms-core";
+import type { Path, SchemaPlugin } from "@lunarhue/forms-core";
+import { defineSchemaPlugin } from "@lunarhue/forms-core/plugins/validation";
 import { getDefault, type GenericSchema, type GenericSchemaAsync } from "valibot";
 
 /** A valibot schema, sync or async. */
@@ -116,9 +117,14 @@ function itemValue(schema: ValibotSchema, path: Path): unknown {
   return s && node(s).type === "array" ? defaultValue(node(s).item) : undefined;
 }
 
-const adapter: SchemaAdapter<ValibotSchema> = { vendor: "valibot", defaultValue, itemValue };
+const plugin = defineSchemaPlugin<ValibotSchema>({ vendor: "valibot", defaultValue, itemValue });
 
-/** The valibot schema adapter for `createFormsCore({ schemas: [valibot()] })`. */
-export function valibot(): SchemaAdapter<ValibotSchema> {
-  return adapter;
+/**
+ * The valibot schema plugin, for `createForms({ plugins: [valibot()] })`.
+ * `define` then takes a valibot schema and starts its form from the
+ * schema's defaults. It brings the validation runner, so the form's
+ * validators work with no other plugin.
+ */
+export function valibot(): SchemaPlugin<ValibotSchema> {
+  return plugin;
 }

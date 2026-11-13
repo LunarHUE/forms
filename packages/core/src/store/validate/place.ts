@@ -4,20 +4,8 @@ import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { ValidatorResult } from "../../validator.js";
 import type { StoreCore } from "../core.js";
 import { errorList } from "../handles.js";
+import { addErrors, type Placed } from "../placed.js";
 import type { Spec } from "./inputs.js";
-import { keyOf } from "./paths.js";
-
-/** Errors one run puts on each field, by path key. */
-export type Placed<E> = Map<string, { readonly path: Path; readonly errors: E[] }>;
-
-/** Adds `errors` to the field at `path`, after the ones it already has. */
-export const addErrors = <E>(placed: Placed<E>, path: Path, errors: readonly E[]) => {
-  if (errors.length === 0) return;
-  const key = keyOf(path);
-  const entry = placed.get(key);
-  if (entry) entry.errors.push(...errors);
-  else placed.set(key, { path, errors: [...errors] });
-};
 
 const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
   errors === undefined || errors === null ? [] : errorList(errors);

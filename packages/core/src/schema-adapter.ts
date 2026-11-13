@@ -4,8 +4,10 @@ import type { StandardSchemaV1 } from "./standard-schema.js";
 /**
  * Teaches core the default values of one schema library's schemas.
  * Validation and types go through Standard Schema, so this is all an
- * adapter does. `S` is the schema type the adapter supports. A schema of that
- * type gets automatic defaults, so its form's `defaultValues` is optional.
+ * adapter does. `S` is the schema type the adapter supports. A schema
+ * plugin carries one (see `defineSchemaPlugin` in
+ * `@lunarhue/forms-core/plugins/validation`), and a schema of type `S` then
+ * gets automatic defaults, so its form's `defaultValues` is optional.
  */
 export interface SchemaAdapter<S extends StandardSchemaV1 = StandardSchemaV1> {
   /** Matched against `schema["~standard"].vendor` to pick the adapter for a schema at runtime. */
@@ -18,14 +20,3 @@ export interface SchemaAdapter<S extends StandardSchemaV1 = StandardSchemaV1> {
    */
   itemValue(schema: S, path: Path): unknown;
 }
-
-/** The schema types a list of adapters supports. */
-export type AdapterSchema<A extends readonly SchemaAdapter<never>[]> =
-  A[number] extends infer T ? (T extends SchemaAdapter<infer S> ? S : never) : never;
-
-/** True when one of the adapters in `A` supports schema type `S`. */
-export type HasAdapter<S, A extends readonly SchemaAdapter<never>[]> = [S] extends [never]
-  ? false
-  : [S] extends [AdapterSchema<A>]
-    ? true
-    : false;

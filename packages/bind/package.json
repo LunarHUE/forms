@@ -1,0 +1,68 @@
+{
+  "name": "@lunarhue/forms-bind",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunarHUE/forms.git",
+    "directory": "packages/bind"
+  },
+  "files": [
+    "dist",
+    "zustand"
+  ],
+  "exports": {
+    "./zustand": {
+      "@lunarhue/source": "./src/zustand.ts",
+      "import": {
+        "types": "./dist/esm/zustand.d.ts",
+        "default": "./dist/esm/zustand.js"
+      },
+      "require": {
+        "types": "./dist/cjs/zustand.d.ts",
+        "default": "./dist/cjs/zustand.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@lunarhue/forms-core": "workspace:^",
+    "zustand": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zustand": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@lunarhue/forms-core": "workspace:^",
+    "zustand": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:package": "publint --strict --pack npm && attw --pack .",
+    "size": "size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "./zustand",
+      "path": "dist/esm/zustand.js",
+      "import": "*",
+      "limit": "350 B"
+    },
+    {
+      "name": "core + zustand()",
+      "import": {
+        "../core/dist/esm/index.js": "{ createFormsCore }",
+        "../core/dist/esm/plugins/bind.js": "{ bind }",
+        "dist/esm/zustand.js": "{ zustand }"
+      },
+      "limit": "10.4 kB"
+    }
+  ]
+}

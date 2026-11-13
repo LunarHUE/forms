@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf } from "../index.js";
 import { choose, click, get, getAs, mount, settle, typeText } from "./dom.js";
 
-const forms = createForms({ schemas: [valibot()] });
+const forms = createForms({ plugins: [valibot()] });
 const Survey = forms.define({
   schema: v.object({
     name: v.pipe(v.string(), v.minLength(1, "Required")),

@@ -54,7 +54,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
 }
 
 const forms = createForms({
-  schemas: [valibot()],
+  plugins: [valibot()],
   fields: { SelectField, RadioGroupField, CheckboxGroupField, SizeField, TextField },
 });
 

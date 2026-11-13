@@ -1,6 +1,6 @@
 # Next.js example
 
-Two pages in a Next.js App Router app:
+Three pages in a Next.js App Router app:
 
 - `/` is the full "New order" form. The form itself lives in
   `@lunarhue/forms-example-react` (`examples/react/shared`), built to be
@@ -10,6 +10,9 @@ Two pages in a Next.js App Router app:
   few components: the schema, `createForms` with two field components,
   `define`, a reusable address fieldset, a submit button that reads the
   form from context, and the page with `form.Field` and `form.Items`.
+- `/bind` binds a form to a zustand store with `zustand()` from
+  `@lunarhue/forms-bind/zustand`, in `app/bind/page.tsx`. The store's state
+  shows beside the form, and a button changes the store from outside.
 
 ## Run it
 
@@ -55,7 +58,8 @@ this list is about the full example.
   reset the form, fill it with invalid data, and toggle the fake server's
   behaviour.
 - Untick and tick "Ship to the billing address" to see the shipping
-  fieldset enabled and disabled through the handle's `setDisabled`.
+  fieldset enabled and disabled. A `rules` entry on the order definition
+  sets the flag from the value, on the server too.
 - Every field keeps a line of space under it for its errors, even when it
   has none. Errors show when a field is blurred, and clicking submit blurs
   the field being edited, so an error line that pushed the button down

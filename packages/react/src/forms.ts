@@ -1,8 +1,9 @@
 import type {
   AnyFieldHandle,
   AnyFormStore,
+  Combined,
+  DefineConfig,
   DefinedValue,
-  Definition,
   DisabledInvalid,
   ErrorOf,
   FormDefinition,
@@ -11,10 +12,11 @@ import type {
   FormSnapshot,
   FormStore,
   IntentArgs,
-  SchemaAdapter,
+  PluginApis,
+  Plugins,
+  PluginsFor,
   SchemaValue,
   StandardSchemaV1,
-  StoreInstance,
   Submission,
   ValueOf,
 } from "@lunarhue/forms-core";
@@ -70,7 +72,8 @@ export type ReservedName =
   | "id"
   | "formProps"
   | "submit"
-  | "handleSubmit";
+  | "handleSubmit"
+  | "plugins";
 
 /**
  * The props a bound component takes for itself, which a registered component
@@ -95,11 +98,8 @@ export type CheckedFields<F extends FieldComponentMap> = {
 };
 
 /** Settings for `createForms`: core's settings plus the adapter's. */
-export interface FormsOptions<
-  A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
-> extends FormsConfig<A, E> {
+export interface FormsOptions<P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>
+  extends FormsConfig<P, E> {
   /** What happens after a submit ends invalid. Defaults to `true`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
   /**
@@ -111,8 +111,11 @@ export interface FormsOptions<
   readonly fields?: F & CheckedFields<F>;
 }
 
-/** Per-form settings for `useForm`. Read when the form is made. */
-export interface UseFormOptions<E = FormError> {
+/**
+ * Per-form settings for `useForm`. Read when the form is made. `V` is the
+ * form's value type and `X` its own plugins.
+ */
+export interface UseFormOptions<E = FormError, V = unknown, X extends Plugins = Plugins> {
   /**
    * The store id, which prefixes every handle id and so every DOM id.
    * Defaults to an id from `useId`, which matches between server and client.
@@ -122,6 +125,15 @@ export interface UseFormOptions<E = FormError> {
   readonly id?: string;
   /** Overrides the `focusOnInvalid` given to `createForms`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
+  /**
+   * Plugins for this form only, such as `zustand(store)` from
+   * `@lunarhue/forms-bind/zustand` with a store this component made. They
+   * run after the shared plugins and the definition's. The list is read
+   * once, when the form is made: a later render with a different list
+   * changes nothing. A plugin that names a value type, as a binding does,
+   * must name the form's.
+   */
+  readonly plugins?: X & PluginsFor<V>;
 }
 
 /** Props for the `<form>` element. */
@@ -161,10 +173,16 @@ export interface FormComponentProps<T> {
  */
 export type FormComponent<T> = (props: FormComponentProps<T>) => ReactElement;
 
-/** The form's own members, on top of the scope at its root. */
-export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields> {
+/** The form's own members, on top of the scope at its root. `P` is every plugin the form has. */
+export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields, P extends Plugins = []> {
   /** The core store. Every handle's `store` is this object. */
-  readonly store: FormStore<V, E, I, R>;
+  readonly store: FormStore<V, E, I, R, PluginApis<P>>;
+  /**
+   * The API of each installed plugin that has one, by plugin name, from the
+   * shared list and the definition's: `form.plugins.history.undo()`. The
+   * same object as `store.plugins`.
+   */
+  readonly plugins: PluginApis<P>;
   /** The store id. */
   readonly id: string;
   /** The form element props, the same object `form.Form` passes to its child first. */
@@ -178,9 +196,9 @@ export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields>
   /** As `store.handleSubmit`, then applies `focusOnInvalid` when the submit ends invalid. Bound. */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
   /** The headless provider. See `FormComponent`. */
-  readonly Form: FormComponent<FormInstance<V, E, I, R, F>>;
+  readonly Form: FormComponent<FormInstance<V, E, I, R, F, P>>;
   /** Renders a selection of the form snapshot. See `FormStateComponent`. */
-  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F>>;
+  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F, P>>;
 }
 
 /**
@@ -196,15 +214,33 @@ export type FormInstance<
   I = undefined,
   R = unknown,
   F extends FieldComponentMap = NoFields,
-> = Scope<V, E, F> & FormMembers<V, E, I, R, F>;
+  P extends Plugins = [],
+> = Scope<V, E, F, P> & FormMembers<V, E, I, R, F, P>;
 
-/** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
-export type UnknownForm = FormInstance<unknown, unknown, unknown>;
+/**
+ * A form of unknown value, intent and result type, as the generic context
+ * reader returns it. With no arguments its error type is unknown too, and it
+ * has no plugins or field components. `useFormContext(forms)` fills in the
+ * shared plugins `P`, the error type `E` and the field components `F` of
+ * that `createForms` call.
+ */
+export type UnknownForm<P extends Plugins = [], E = unknown, F extends FieldComponentMap = NoFields> = FormInstance<
+  unknown,
+  E,
+  unknown,
+  unknown,
+  F,
+  P
+>;
 
-/** The arguments `useForm` takes after the definition: its options unless they are `void`, then per-form settings. */
-export type UseFormArgs<O, E> = [O] extends [void]
-  ? [instance?: UseFormOptions<E>]
-  : [options: O, instance?: UseFormOptions<E>];
+/**
+ * The arguments `useForm` takes after the definition: its options unless
+ * they are `void`, then per-form settings. `V` is the form's value type and
+ * `X` its own plugins.
+ */
+export type UseFormArgs<O, E, V = unknown, X extends Plugins = Plugins> = [O] extends [void]
+  ? [instance?: UseFormOptions<E, V, X>]
+  : [options: O, instance?: UseFormOptions<E, V, X>];
 
 /**
  * A form definition for React: what `useForm` and `useFormContext` take. It
@@ -218,12 +254,16 @@ export interface ReactFormDefinition<
   R = unknown,
   O = void,
   F extends FieldComponentMap = NoFields,
-> extends FormDefinition<V, E, I, R, O> {
+  P extends Plugins = [],
+> extends FormDefinition<V, E, I, R, O, P> {
   /** Type information only, always undefined at runtime: the form `useForm` makes from this definition. */
-  readonly "~form"?: FormInstance<V, E, I, R, F>;
+  readonly "~form"?: FormInstance<V, E, I, R, F, P>;
 }
 
-/** The form a definition makes: `FormOf<typeof signUp>`. */
+/**
+ * The form a definition makes, `FormOf<typeof signUp>`, or the form
+ * `useFormContext(forms)` returns, `FormOf<typeof forms>`.
+ */
 export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
 
 /** Props for `form.State`, where `T` is the form that owns it. */
@@ -256,10 +296,10 @@ export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>)
  * does, `useForm` makes a new form from it with the current arguments and
  * returns that one from then on. The old form's values are dropped.
  */
-export type UseForm = <V, E, I, R, O, F extends FieldComponentMap>(
-  definition: ReactFormDefinition<V, E, I, R, O, F>,
-  ...args: NoInfer<UseFormArgs<O, E>>
-) => FormInstance<V, E, I, R, F>;
+export type UseForm = <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins, const X extends Plugins = []>(
+  definition: ReactFormDefinition<V, E, I, R, O, F, P>,
+  ...args: UseFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
+) => FormInstance<V, E, I, R, F, Combined<P, X>>;
 
 /**
  * Reads a form from the nearest `form.Form` above. Every `form.Form`
@@ -279,7 +319,18 @@ export interface UseFormContext {
    * such as a dialog's form inside a page's form, are skipped. Throws when no
    * form of that definition is above.
    */
-  <V, E, I, R, O, F extends FieldComponentMap>(definition: ReactFormDefinition<V, E, I, R, O, F>): FormInstance<V, E, I, R, F>;
+  <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
+    definition: ReactFormDefinition<V, E, I, R, O, F, P>,
+  ): FormInstance<V, E, I, R, F, P>;
+  /**
+   * Returns the nearest form defined by `forms`, the object `createForms`
+   * returned, for a part shared by its forms such as an undo button. Its
+   * value type is unknown. Its plugins are the shared ones, its error type
+   * and field components those of `forms`. Plugins a definition or a form
+   * adds are not in its type. Forms from other `createForms` calls are
+   * skipped. Throws when no form of `forms` is above.
+   */
+  <P extends Plugins, E, F extends FieldComponentMap>(forms: Forms<P, E, F>): UnknownForm<P, E, F>;
 }
 
 /** What `forms.scope` needs: an object handle. */
@@ -292,19 +343,17 @@ export interface ObjectHandleLike extends HandleLike {
  * What `createForms` returns: `define` for forms, `scope` for the bound
  * components of any object handle, and `fieldset` for reusable shapes.
  */
-export interface Forms<
-  A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
-> {
+export interface Forms<P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields> {
+  /** Type information only, always undefined at runtime: the form `useFormContext` returns for these forms. */
+  readonly "~form"?: UnknownForm<P, E, F>;
   /**
    * As core's `FormsCore.define`, returning a definition for `useForm` and
-   * `useFormContext`. The same three cases decide the value type, and `E`,
-   * `I` and `R` are inferred the same way.
+   * `useFormContext`. The same cases decide the value type, and `E`, `I`,
+   * `R` and the definition's own plugins `D` are inferred the same way.
    */
-  define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
-    config: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
-  ): ReactFormDefinition<DefinedValue<V, S, A>, E, I, R, O, F>;
+  define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
+    config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+  ): ReactFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**
    * Returns the scope rooted at an object handle of any form made here.
    * Scopes are cached per handle, so one handle always gives the same object
@@ -312,30 +361,27 @@ export interface Forms<
    * state, so it can be called anywhere, render included, and needs no
    * `form.Form` above.
    */
-  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F>;
+  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F, P>;
   /**
    * Makes a reusable shape from a schema. The shape is the schema's value
-   * type as `define` would type it: the `Draft` of its input when a
-   * registered adapter supports the schema, its input otherwise. The schema
-   * only types the shape. It is never run, since the form's own schema
-   * validates.
+   * type as `define` would type it: the `Draft` of its input when an
+   * installed schema plugin accepts the schema, its input otherwise. The
+   * schema only types the shape. It is never run, since the form's own
+   * schema validates.
    */
-  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, A>, E, F>;
+  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F, P>;
   /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
-  fieldset<V>(): Fieldset<V, E, F>;
+  fieldset<V>(): Fieldset<V, E, F, P>;
 }
 
 /**
  * The adapter's entry point. It wraps `createFormsCore`. Call it once at
- * module scope. `E` is inferred from `mapError` and `F` from `fields`.
+ * module scope. `P` is inferred from `plugins` as a tuple, `E` from
+ * `mapError` and `F` from `fields`.
  */
-export type CreateForms = <
-  const A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
->(
-  options?: FormsOptions<A, E, F>,
-) => Forms<A, E, F>;
+export type CreateForms = <const P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>(
+  options?: FormsOptions<P, E, F>,
+) => Forms<P, E, F>;
 
 /** A form as the runtime builds it. */
 type AnyForm = AnyScope & { readonly store: AnyFormStore<unknown> };
@@ -351,6 +397,9 @@ const FormContext = createContext<FormNode | null>(null);
 
 /** The definition each form was made from. */
 const madeFrom = new WeakMap<AnyForm, object>();
+
+/** The `createForms` result each form was defined by. */
+const madeBy = new WeakMap<AnyForm, object>();
 
 /** How each definition makes a form, from `useForm`'s arguments after the definition and the generated id. */
 const makers = new WeakMap<object, (args: readonly unknown[], generatedId: string) => AnyForm>();
@@ -387,13 +436,15 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
     const selected = useSelected(formSource(store), props.select, props.isEqual);
     return createElement(Fragment, null, props.children(selected, form));
   }
-  const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form, State };
+  const form: AnyForm = { ...scope, store, id: store.id, plugins: store.plugins, formProps, submit, handleSubmit, Form, State };
   return form;
 }
 
 /** Core's `define` as the runtime calls it, with every type erased. */
 interface LooseCore {
-  define(config: unknown): { createStore(options: unknown, instance?: StoreInstance): AnyFormStore<unknown> };
+  define(config: unknown): {
+    createStore(options: unknown, instance?: { readonly id: string; readonly plugins: Plugins | undefined }): AnyFormStore<unknown>;
+  };
 }
 
 /** See `CreateForms`. */
@@ -418,16 +469,18 @@ export const createForms: CreateForms = (options = {}) => {
       const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
       const id = instance?.id;
       if (id === undefined) generatedIdUsed();
-      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId });
+      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: id ?? generatedId, plugins: instance?.plugins });
       const form = makeForm(store, scope(store.root), instance?.focusOnInvalid ?? defaultFocus);
       madeFrom.set(form, definition);
+      madeBy.set(form, forms);
       return form;
     });
     return definition;
   };
 
+  const forms = { define, scope, fieldset: () => ({ scope }) };
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return { define, scope, fieldset: () => ({ scope }) } as never;
+  return forms as never;
 };
 
 /** See `UseForm`. */
@@ -451,16 +504,18 @@ export const useForm: UseForm = (definition, ...args) => {
 export const useFormContext: UseFormContext = (definition?: object) => {
   let node = useContext(FormContext);
   if (definition !== undefined) {
-    while (node !== null && madeFrom.get(node.form) !== definition) node = node.parent;
+    while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
   }
   if (node === null) {
     throw new Error(
       definition === undefined
         ? "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop."
-        : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
+        : "define" in definition
+          ? "@lunarhue/forms-react: no form.Form of these forms is mounted above this component. Forms of other createForms calls don't count. Render it inside the form.Form of a form made from one of their definitions."
+          : "@lunarhue/forms-react: no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
     );
   }
-  // A form found by its definition is that definition's form. With no definition the caller gets `UnknownForm`.
+  // A form found by its definition or its forms is the form their types describe. With neither the caller gets `UnknownForm`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return node.form as never;
 };
