@@ -72,7 +72,12 @@ function changeHandler(handle: Commands, kind: Kind, option: unknown): Callbacks
     case "range":
       return (event) => {
         const text = event.target.value;
-        const number = text.trim() === "" ? Number.NaN : Number(text);
+        const number = text === "" ? Number.NaN : Number(text);
+        // Text such as `-` isn't a number yet. The browser reports it as an empty value with `badInput`.
+        if (Number.isNaN(number) && (text !== "" || event.target.validity.badInput)) {
+          setNumberText(handle, { value: handle.peek().value, text });
+          return;
+        }
         const value = Number.isNaN(number) ? option : number;
         setNumberText(handle, { value, text });
         handle.setValue(value);
