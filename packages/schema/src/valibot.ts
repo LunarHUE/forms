@@ -80,7 +80,7 @@ function defaultValue(schema: ValibotSchema): unknown {
 /** Strips wrappers and lazy schemas. Undefined when a lazy getter gives no schema, as an async one does. */
 function resolve(schema: ValibotSchema): ValibotSchema | undefined {
   let s: ValibotSchema = schema;
-  for (;;) {
+  while (true) {
     const n = node(s);
     if (wrappers.has(n.type) || narrowers.has(n.type)) s = n.wrapped;
     else if (n.type === "lazy") {

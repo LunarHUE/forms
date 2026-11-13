@@ -67,7 +67,7 @@ function defaultValue(schema: ZodSchema): unknown {
 /** Strips wrappers, pipes and lazy schemas. Undefined for a schema that isn't Zod 4. */
 function resolve(schema: ZodSchema): ZodSchema | undefined {
   let s = schema;
-  for (;;) {
+  while (true) {
     const d = defOf(s);
     switch (d?.type) {
       case "optional":
