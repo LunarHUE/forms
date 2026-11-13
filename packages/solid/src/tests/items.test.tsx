@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForms, createItems } from "../index.js";
+import { createForm, createForms, createItems, type FormOf } from "../index.js";
 import { getAs, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ schemas: [valibot()] });
@@ -10,7 +10,7 @@ const List = forms.define({
   schema: v.object({ rows: v.array(v.object({ title: v.string() })) }),
   defaultValues: { rows: [{ title: "a" }, { title: "b" }, { title: "c" }] },
 });
-type ListForm = ReturnType<typeof List.createForm>;
+type ListForm = FormOf<typeof List>;
 
 /** The row inputs in document order. */
 function rowInputs(host: HTMLElement): HTMLInputElement[] {
@@ -22,7 +22,7 @@ function mountList() {
   let form: ListForm | undefined;
   const rowBodies: string[] = [];
   const { host } = mount(() => {
-    form = List.createForm();
+    form = createForm(List);
     const f = form;
     return (
       <f.Items name="rows" fallback={<p>Empty</p>}>
@@ -87,7 +87,7 @@ describe("Items", () => {
     let form: ListForm | undefined;
     let runs = 0;
     const { host } = mount(() => {
-      form = List.createForm();
+      form = createForm(List);
       const items = createItems(form.root.at("rows"));
       return (
         <For each={(runs++, items())}>

@@ -24,7 +24,7 @@ import type {
 import type { Accessor, Element as SolidElement } from "solid-js";
 import { createDisabledErrorList } from "./disabled-errors.js";
 import type { ArrayHandleLike, ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
-import { createFormsRuntime, useAnyForm } from "./forms-runtime.js";
+import { createFormRuntime, createFormsRuntime, useAnyForm } from "./forms-runtime.js";
 import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
 
 /**
@@ -317,12 +317,14 @@ export interface FormSettings<E = FormError> {
   readonly focusOnInvalid?: FocusOnInvalid<E>;
 }
 
-/** The arguments `createForm` takes: the definition's options unless they are `void`, then per-form settings. */
+/** The arguments `createForm` takes after the definition: its options unless they are `void`, then per-form settings. */
 export type CreateFormArgs<O, E> = [O] extends [void] ? [settings?: FormSettings<E>] : [options: O, settings?: FormSettings<E>];
 
 /**
- * A form definition for Solid. It still has core's `createStore`, for tests
- * and code outside components.
+ * A form definition for Solid: what `createForm` and `useFormContext` take.
+ * It carries the schema, the validators and the registered field
+ * components, and still has core's `createStore`, for tests and code
+ * outside components.
  */
 export interface SolidFormDefinition<
   V,
@@ -332,15 +334,27 @@ export interface SolidFormDefinition<
   O = void,
   F extends FieldComponents = NoFieldComponents,
 > extends FormDefinition<V, E, I, R, O> {
-  /** Makes the form. Call it in a component body: the form's subscriptions end with that owner. */
-  createForm(...args: CreateFormArgs<O, E>): SolidForm<V, E, I, R, F>;
-  /**
-   * Returns the nearest form of this definition from a `form.Form` above,
-   * even when another definition's `form.Form` is nearer. Throws when there
-   * is none.
-   */
-  useFormContext(): SolidForm<V, E, I, R, F>;
+  /** Type information only, always undefined at runtime: the form `createForm` makes from this definition. */
+  readonly "~form"?: SolidForm<V, E, I, R, F>;
 }
+
+/** The form a definition makes: `FormOf<typeof Signup>`. */
+export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
+
+/**
+ * Makes the form. Call it in a component body: the form's subscriptions end
+ * with that owner. `options` is required when the definition was made with
+ * the function form of `define`, and absent otherwise.
+ */
+export type CreateForm = <V, E, I, R, O, F extends FieldComponents>(
+  definition: SolidFormDefinition<V, E, I, R, O, F>,
+  ...args: NoInfer<CreateFormArgs<O, E>>
+) => SolidForm<V, E, I, R, F>;
+
+/** See `CreateForm`. */
+// The runtime builds the form the definition's types describe.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const createForm: CreateForm = createFormRuntime as unknown as CreateForm;
 
 /**
  * A reusable value shape, not tied to one form: a token with the shape type
@@ -444,14 +458,27 @@ export type CreateForms = <
 export const createForms: CreateForms = createFormsRuntime as unknown as CreateForms;
 
 /**
- * Returns the form from the nearest `form.Form` above, of any definition,
- * with its types unknown. Use it in reusable parts such as a submit button.
- * Throws when there is none.
+ * Reads a form from the nearest `form.Form` above. Every `form.Form`
+ * provides the same context, and each remembers the `form.Form` above it.
+ * Call it in a component body.
  */
-export type UseFormContext = () => AnyForm;
+export interface UseFormContext {
+  /**
+   * Returns the form from the nearest `form.Form`, of any definition, with
+   * its types unknown. Use it in reusable parts such as a submit button.
+   * Throws when no `form.Form` is above.
+   */
+  (): AnyForm;
+  /**
+   * Returns the form made from `definition`, fully typed, from the nearest
+   * `form.Form` of that definition, even when another definition's
+   * `form.Form` is nearer. Throws when no form of that definition is above.
+   */
+  <V, E, I, R, O, F extends FieldComponents>(definition: SolidFormDefinition<V, E, I, R, O, F>): SolidForm<V, E, I, R, F>;
+}
 
 /** See `UseFormContext`. */
-// The context holds forms of any types, which is what `AnyForm` says.
+// The context holds forms of any types. A form found by its definition is that definition's form.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
 export const useFormContext: UseFormContext = useAnyForm as unknown as UseFormContext;
 
