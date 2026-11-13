@@ -155,14 +155,21 @@ export interface ArrayHandle<V, E = FormError> extends HandleBase<V, E> {
   push(item?: ItemOf<V>, options?: WriteOptions): void;
   /** Adds an item before `index`. With no item it behaves as `push` does. */
   insert(index: number, item?: ItemOf<V>, options?: WriteOptions): void;
-  /** Removes the item at `index`. Its handle keeps returning its last snapshot. */
+  /**
+   * Removes the item at `index`. Its handle keeps returning its last
+   * snapshot, so a component that is still unmounting can read it. The store
+   * keeps the removed item's state, last snapshots and handles until the
+   * store itself is freed.
+   */
   remove(index: number, options?: WriteOptions): void;
   /** Moves the item at `from` to `to`. The item keeps its key and its handle. */
   move(from: number, to: number, options?: WriteOptions): void;
   /**
    * Returns the handle of the item with stable key `key`. It reads no state:
    * it returns the same handle object for the same key on every call. The
-   * current keys are in the snapshot's `keys`.
+   * current keys are in the snapshot's `keys`. A removed item's key still
+   * returns its handle, which keeps its last snapshot and ignores commands,
+   * for the life of the store.
    */
   item(key: string): ItemHandle<ItemOf<V>, E>;
 }
