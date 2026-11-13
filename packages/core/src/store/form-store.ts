@@ -3,6 +3,7 @@ import type { FormError, Show } from "../errors.js";
 import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
 import type { AnyHookPlugin, AnyPlugin, PluginErrorHandler } from "../plugin.js";
+import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
@@ -74,7 +75,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // Each copy of core has its own host and its own `refuse`, so plugins from
   // two copies don't work together. Development only: production drops it.
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin["~host"] !== createHost)) {
-    console.warn("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
+    console.warn(problem("plugins:copies"));
   }
   const runner = plugins.find((plugin) => plugin.validation)?.validation ?? noValidation;
   // The host's core wraps this store's and keeps its types.

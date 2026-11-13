@@ -2,10 +2,9 @@ import type { HandleBase } from "../handle.js";
 import type { Path } from "../path.js";
 import type { HookPlugin } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
+import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
-
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 export type { RebaseChoice, RebaseLeaf, Resolve } from "../store/rebase.js";
 
@@ -45,12 +44,7 @@ export function rebase(): HookPlugin<Rebase, "rebase"> {
       const { store } = ctx;
       const api: Rebase = (handle, incoming, resolve) => {
         if (handle.store !== store) {
-          // Production gets the code that docs/errors.md lists. See `failure` in store/plugins.ts.
-          throw new TypeError(
-            typeof process !== "undefined" && process.env.NODE_ENV !== "production"
-              ? "rebase: the handle belongs to another store."
-              : "@lunarhue/forms-core: rebase:store",
-          );
+          throw new TypeError(problem("rebase:store"));
         }
         let taken: Path[] = [];
         // Called from inside another plugin's hook, this waits for the round to

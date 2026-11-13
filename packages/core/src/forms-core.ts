@@ -12,11 +12,10 @@ import type { FormError } from "./errors.js";
 import type { PluginApis, Plugins } from "./plugin.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
+import { problem } from "./problem.js";
 import type { FormStore } from "./store.js";
 import { createFormStore, type FormStoreOptions } from "./store/form-store.js";
 import { isPlainObject } from "./store/tree.js";
-
-declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** The store options with every type parameter erased, as the runtime builds them. */
 type AnyStoreOptions = FormStoreOptions<unknown, unknown, unknown, unknown, unknown>;
@@ -45,12 +44,7 @@ function initialValue(definition: AnyConfig, adapter: SchemaAdapter | undefined)
   if (schema === undefined) return defaultValues;
   if (adapter) return mergeDefaults(adapter.defaultValue(schema), defaultValues);
   if (defaultValues === undefined) {
-    // Production gets the code that docs/errors.md lists. See `failure` in store/plugins.ts.
-    throw new Error(
-      typeof process !== "undefined" && process.env.NODE_ENV !== "production"
-        ? `No schema plugin for vendor "${schema["~standard"].vendor}", so the definition needs defaultValues.`
-        : "@lunarhue/forms-core: schema:defaults",
-    );
+    throw new Error(problem("schema:defaults", schema["~standard"].vendor));
   }
   return defaultValues;
 }
