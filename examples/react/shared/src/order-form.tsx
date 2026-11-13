@@ -61,6 +61,19 @@ function DeliveryFields() {
           />
         )}
       </form.Field>
+      {/*
+        The `select` form, for reading one thing about a field. The children
+        get what `select` returns and the field's handle, and re-render only
+        when the count changes, not on every change to the field. There is no
+        `inputProps` here: to render an input, use `Field` without `select`.
+      */}
+      <form.Field name="notifications" select={(snapshot) => snapshot.value.length}>
+        {(count) => (
+          <p className="field-hint">
+            {count === 0 ? "The customer gets no updates." : `Updates go out on ${count} of ${notificationChannels.length} channels.`}
+          </p>
+        )}
+      </form.Field>
     </fieldset>
   );
 }
