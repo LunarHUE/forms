@@ -1,12 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type AnyHookPlugin, createFormsCore, type PluginErrorHandler, type Write, type WriteRecord } from "../index.js";
+import {
+  type AnyHookPlugin,
+  createFormsCore,
+  type Equals,
+  type PluginBaseline,
+  type PluginErrorHandler,
+  type Write,
+  type WriteRecord,
+} from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
-import { rebase } from "../rebase.js";
 import { validation } from "../validation.js";
 import { history } from "./fixtures/history.js";
 import { digits, mask, upper } from "./fixtures/mask.js";
 import { persist } from "./fixtures/persist.js";
 import { rules } from "./fixtures/rules.js";
+import { rebase } from "./rebase.js";
 
 interface Contact {
   phone: string;
@@ -204,11 +212,79 @@ describe("records", () => {
 
   it("name reset and rebase as their cause", () => {
     const { plugin, calls } = watcher("watch");
-    const store = make(contact(), [plugin]);
+    const causes: Write["cause"][] = [];
+    const look = definePlugin({ name: "look", setup: () => ({ beforeWrite: (write) => (causes.push(write.cause), write.value) }) });
+    const store = make(contact(), [plugin, look, rebase()]);
     store.root.at("phone").setValue("1");
     store.reset();
-    rebase(store.root, { phone: "2", code: "" }, () => "take");
+    store.plugins.rebase(store.root, { phone: "2", code: "" }, () => "take");
     expect(calls.map((records) => records.map((record) => record.cause))).toEqual([["user"], ["reset"], ["rebase"]]);
+    expect(causes).toEqual(["user", "reset", "rebase"]);
+  });
+});
+
+/** A plugin that hands out its context's baseline, for tests of `ctx.baseline`. */
+const outside = () => {
+  let baseline: PluginBaseline | undefined;
+  const plugin = definePlugin({
+    name: "outside",
+    setup(ctx) {
+      baseline = ctx.baseline;
+      return {};
+    },
+  });
+  return { plugin, baseline: () => baseline };
+};
+
+/** Compares strings with their ends trimmed. */
+const trimmed: Equals = (a, b, _ctx, next) => (typeof a === "string" && typeof b === "string" ? a.trim() === b.trim() : next(a, b));
+
+describe("the baseline on the context", () => {
+  it("reads the baseline with each array's pairing, and nothing at a removed item", () => {
+    const { plugin, baseline } = outside();
+    const store = make({ name: "a", tags: ["x", "y"] }, [plugin]);
+    const tags = store.root.at("tags");
+    tags.move(0, 1);
+    expect(baseline()?.read([])).toEqual({ value: { name: "a", tags: ["x", "y"] }, keys: undefined });
+    expect(baseline()?.read(["tags"])).toEqual({ value: ["x", "y"], keys: ["k0", "k1"] });
+    expect(baseline()?.read(["tags", "k1"])).toEqual({ value: "y", keys: undefined });
+    tags.remove(0);
+    expect(baseline()?.read(["tags", "k1"])).toBeUndefined();
+  });
+
+  it("compares with the form's equals", () => {
+    const { plugin, baseline } = outside();
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [plugin], equals: trimmed }).createStore();
+    expect(baseline()?.equals(["name"], "a ", "a")).toBe(true);
+    expect(baseline()?.equals(["name"], "a", "b")).toBe(false);
+  });
+
+  it("moves the baseline in one wake, and writes no value", () => {
+    const { plugin, baseline } = outside();
+    const { plugin: watch, calls } = watcher("watch");
+    const store = make({ name: "a", tags: ["x", "y"] }, [plugin, watch]);
+    store.root.at("name").setValue("b");
+    let runs = 0;
+    store.subscribeForm(() => void runs++);
+    store.batch(() => baseline()?.move([], { name: "b", tags: ["x", "y"] }));
+    expect(runs).toBe(1);
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(store.getSnapshot(["name"]).edited).toBe(true);
+    expect(calls.flat().map((record) => record.cause)).toEqual(["user"]);
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ name: "b", tags: ["x", "y"] });
+  });
+
+  it("pairs arrays with the current items, or keeps the old pairing where asked", () => {
+    const { plugin, baseline } = outside();
+    const store = make({ a: ["x", "y"], b: ["x", "y"] }, [plugin]);
+    store.root.at("a").move(0, 1);
+    store.root.at("b").move(0, 1);
+    baseline()?.move([], { a: ["X", "Y"], b: ["X", "Y"] }, (path) => path[0] === "b");
+    // a pairs by index with its current items k1, k0. b keeps k0, k1.
+    expect(baseline()?.read(["a"])?.keys).toEqual(["k1", "k0"]);
+    expect(baseline()?.read(["b"])?.keys).toEqual(["k0", "k1"]);
+    expect(store.changes(["b", "k0"])).toEqual([{ path: ["b", "k0"], baseline: "X", value: "x" }]);
   });
 });
 

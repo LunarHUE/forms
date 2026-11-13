@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFormsCore } from "../index.js";
 import { definePlugin } from "../plugins.js";
-import { partsOf } from "../store/baseline/registry.js";
-import { createPluginHost } from "../store/plugins.js";
+import { createPluginHost, hosts } from "../store/plugins.js";
 
 // Every host is made through this spy, so a test can count them.
 vi.mock(import("../store/plugins.js"), async (original) => {
@@ -18,8 +17,8 @@ describe("the plugin host", () => {
     plain.root.at("name").setValue("a");
     empty.root.at("name").setValue("a");
     expect(createPluginHost).not.toHaveBeenCalled();
-    expect(partsOf(plain)?.host).toBeUndefined();
-    expect(partsOf(empty)?.host).toBeUndefined();
+    expect(hosts.has(plain)).toBe(false);
+    expect(hosts.has(empty)).toBe(false);
   });
 
   it("is made once per store with plugins", () => {

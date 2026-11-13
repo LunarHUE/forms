@@ -8,8 +8,8 @@ import type { CreateValidation } from "./store/runner.js";
 
 /**
  * What made a write. `"user"` is a write from outside any plugin, `"reset"`
- * and `"rebase"` are writes those commands made, and `{ plugin }` is a write
- * a plugin made through `ctx.write`.
+ * is a write reset made, `"rebase"` is a write the `rebase` plugin made, and
+ * `{ plugin }` is a write any other plugin made through `ctx.write`.
  */
 export type WriteCause = "user" | "reset" | "rebase" | { readonly plugin: string };
 
@@ -91,6 +91,37 @@ export type When = "sync" | "deferred" | "idle";
 /** Called when a plugin hook throws, with the plugin's name. The write and the other plugins carry on. */
 export type PluginErrorHandler = (error: unknown, plugin: string) => void;
 
+/** The baseline at one path, as `ctx.baseline.read` returns it. */
+export interface BaselineAt {
+  readonly value: unknown;
+  /**
+   * For an array, the key of the current item each baseline item pairs
+   * with, by index. Undefined for anything else, and for an item no current
+   * item pairs with.
+   */
+  readonly keys: readonly (string | undefined)[] | undefined;
+}
+
+/**
+ * The form's baseline: the value fields are dirty against and reset goes
+ * back to. For plugins that bring in a value from outside the form, such as
+ * a fresh server copy. Paths are stable paths.
+ */
+export interface PluginBaseline {
+  /** The baseline at `path`, or undefined when `path` names no live field. */
+  read(this: void, path: Path): BaselineAt | undefined;
+  /** True when `a` equals `b` at `path` by the form's dirty comparison, `equals` included. */
+  equals(this: void, path: Path, a: unknown, b: unknown): boolean;
+  /**
+   * Makes `value` the baseline of the subtree at `path`, then rechecks
+   * dirty. Each array in it pairs its items with the current items by
+   * index, except at a path where `keep` returns true: there it keeps the
+   * pairing the old baseline had. It writes no value, so to change values
+   * too, call it inside `ctx.write` with the writes.
+   */
+  move(this: void, path: Path, value: unknown, keep?: (path: Path) => boolean): void;
+}
+
 /**
  * What a hook plugin's `setup` gets. Each plugin gets its own, once per
  * store. `M` is the plugin's meta on a field and `F` its meta on the form.
@@ -117,6 +148,8 @@ export interface PluginContext<M = unknown, F = unknown> {
   write(this: void, fn: () => void): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(this: void): void;
+  /** Reads and moves the form's baseline. */
+  readonly baseline: PluginBaseline;
 }
 
 /** What `setup` returns. Every hook is optional. */

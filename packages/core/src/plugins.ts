@@ -1,6 +1,5 @@
 import type { HookPlugin, MetaSource, PluginDefinition } from "./plugin.js";
-import { partsOf } from "./store/baseline/registry.js";
-import { createPluginHost } from "./store/plugins.js";
+import { createPluginHost, hosts } from "./store/plugins.js";
 
 export { refuse } from "./store/plugins.js";
 
@@ -29,5 +28,5 @@ export function definePlugin<A = undefined, N extends string = string, M = unkno
  * For tests, and for code that can't wait for a later task.
  */
 export function flushPlugins(store: object): void {
-  partsOf(store)?.host?.flush();
+  hosts.get(store)?.flush();
 }
