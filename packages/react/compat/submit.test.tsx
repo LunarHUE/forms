@@ -1,0 +1,79 @@
+import { fireEvent } from "@testing-library/dom";
+import { describe, expect, it } from "vitest";
+import { createForms, useFormContext, useFormState, useInputProps } from "../src/index.js";
+import { settle } from "../src/test/helpers.js";
+import { act, render } from "./render.js";
+
+const required = (value: string) => (value === "" ? { message: "required" } : undefined);
+const saved: unknown[] = [];
+const account = createForms().define({
+  defaultValues: { name: "", email: "" },
+  validate: { fields: { name: required, email: required } },
+  onSubmit: (value) => {
+    saved.push(value);
+    return "ok";
+  },
+});
+
+function Text(props: { readonly name: "name" | "email" }) {
+  const form = account.useFormContext();
+  return <input aria-label={props.name} {...useInputProps(form.root.at(props.name))} />;
+}
+
+function Status() {
+  const form = useFormContext();
+  const status = useFormState(form, (snapshot) => snapshot.submission.status);
+  const count = useFormState(form, (snapshot) => snapshot.submitCount);
+  return <p data-testid="status">{`${status} ${count}`}</p>;
+}
+
+function Account() {
+  const form = account.useForm({ id: "account" });
+  return (
+    <form.Form>
+      {({ submit: _submit, ...props }) => (
+        <form {...props}>
+          <Text name="name" />
+          <Text name="email" />
+          <Status />
+          <button type="submit">Save</button>
+        </form>
+      )}
+    </form.Form>
+  );
+}
+
+const field = (container: HTMLElement, name: string): HTMLInputElement => {
+  const found = container.querySelector<HTMLInputElement>(`input[aria-label="${name}"]`);
+  if (found === null) throw new Error(`no input ${name}`);
+  return found;
+};
+
+const submit = async (container: HTMLElement) => {
+  await act(async () => {
+    fireEvent.submit(container.querySelector("form") ?? container);
+    await settle();
+  });
+};
+
+describe("submit", () => {
+  it("focuses the first invalid field when invalid and calls onSubmit when valid", async () => {
+    saved.length = 0;
+    const { container } = await render(<Account />);
+    const status = () => container.querySelector("[data-testid=status]")?.textContent;
+    expect(status()).toBe("idle 0");
+
+    await act(() => fireEvent.change(field(container, "email"), { target: { value: "ada@example.com" } }));
+    await submit(container);
+    expect(status()).toBe("invalid 1");
+    expect(document.activeElement).toBe(field(container, "name"));
+    expect(field(container, "name").getAttribute("aria-invalid")).toBe("true");
+    expect(saved).toEqual([]);
+
+    await act(() => fireEvent.change(field(container, "name"), { target: { value: "Ada" } }));
+    await submit(container);
+    expect(status()).toBe("succeeded 2");
+    expect(saved).toEqual([{ name: "Ada", email: "ada@example.com" }]);
+    expect(field(container, "name").getAttribute("aria-invalid")).toBe("false");
+  });
+});

@@ -5,6 +5,7 @@
   "workspaces": {
     "packages": [
       "packages/*",
+      "packages/react/compat/*",
       "apps/*",
       "examples/*/*"
     ],
@@ -40,6 +41,20 @@
       "vite": "8.3.8",
       "vitest": "5.1.0",
       "zod": "4.6.7"
+    },
+    "catalogs": {
+      "react16": {
+        "react": "16.8.0",
+        "react-dom": "16.8.0"
+      },
+      "react17": {
+        "react": "17.0.2",
+        "react-dom": "17.0.2"
+      },
+      "react18": {
+        "react": "18.3.1",
+        "react-dom": "18.3.1"
+      }
     }
   },
   "scripts": {
