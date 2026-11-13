@@ -1,7 +1,7 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
-import { get, mount, settle, typeText } from "./dom.js";
+import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
+import { click, get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
 const given: Record<string, readonly string[]> = {};
@@ -77,6 +77,15 @@ function WithHome() {
   return <HomeFields field={form.root.at("home")} />;
 }
 
+/** A registered radio group written with `Choice`. */
+function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Choice[] }) {
+  return <For each={props.options}>{(option) => <input data-option={option} {...props.field.inputProps({ kind: "radio", value: option })} />}</For>;
+}
+
+const choiceForms = createForms({ fields: { RadioGroupField } });
+const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
+const Delivery = choiceForms.define({ defaultValues: deliveryStart });
+
 describe("the validate prop", () => {
   it("runs on the form's timing, shows its errors, and never reaches the registered component", async () => {
     const { host } = mountSignup(() => () => undefined);
@@ -91,6 +100,26 @@ describe("the validate prop", () => {
     await settle();
     expect(errorsOf(host, "Email")).toBe("");
     expect(new Set(given["Email"])).toEqual(new Set(["field", "label"]));
+  });
+
+  it("works on a registered component written with Choice", async () => {
+    const holder: { form?: FormOf<typeof Delivery> } = {};
+    const { host } = mount(() => {
+      const form = createForm(Delivery);
+      holder.form = form;
+      return (
+        <form.RadioGroupField
+          name="method"
+          options={["post", "pickup"]}
+          validate={(value) => (value === "pickup" ? { message: "no pickup" } : undefined)}
+        />
+      );
+    });
+    click(get(host, "[data-option=pickup]"));
+    const { form } = holder;
+    if (form === undefined) throw new Error("no form rendered");
+    await form.store.validate();
+    expect(form.root.at("method").peek().errors.map((error) => error.message)).toEqual(["no pickup"]);
   });
 
   it("works on a scope's components", async () => {

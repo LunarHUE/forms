@@ -6,6 +6,7 @@ import {
   type FieldApi,
   type SchemaAdapter,
   type StandardSchemaV1,
+  useForm,
   type ValueOf,
 } from "./index.js";
 
@@ -56,7 +57,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
 
 function CheckboxGroupField(props: { readonly field: FieldApi<Choice[]>; readonly options: readonly Option<Choice>[] }) {
   const { field } = props;
-  expectTypeOf(field.value).toEqualTypeOf<readonly (Choice | undefined)[]>();
+  expectTypeOf(field.value).toEqualTypeOf<readonly Choice[]>();
   return (
     <>
       {props.options.map((option) => (
@@ -106,7 +107,7 @@ const countries = [
 
 // Stands for the field's options.
 function RightUses() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   return (
     <>
       <form.SelectField name="country" label="Country" options={countries} />
@@ -126,16 +127,56 @@ function RightUses() {
   );
 }
 
+// Takes a validate prop typed with the named field's own value.
+function ValidateUses() {
+  const form = useForm(profile);
+  return (
+    <>
+      <form.SelectField
+        name="country"
+        label="Country"
+        options={countries}
+        validate={(value) => (expectTypeOf(value).toEqualTypeOf<"GB" | "IE" | undefined>(), null)}
+      />
+      <form.CheckboxGroupField
+        name="channels"
+        options={[{ value: "sms", label: "SMS" }]}
+        validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), debounce: 300 }}
+      />
+      <form.SelectField
+        handle={form.root.at("country")}
+        label="Country"
+        options={countries}
+        validate={(value) => (expectTypeOf(value).toEqualTypeOf<"GB" | "IE" | undefined>(), null)}
+      />
+      <form.RadioGroupField name="country" options={countries} validate={false} />
+      {/* @ts-expect-error: country holds its options, not numbers */}
+      <form.SelectField name="country" label="Country" options={countries} validate={(value: number) => (value > 0 ? null : { message: "No" })} />
+      {/* @ts-expect-error: channels is an array */}
+      <form.CheckboxGroupField name="channels" options={[]} validate={(value: string) => (value === "" ? null : { message: "No" })} />
+    </>
+  );
+}
+
+// A registered option component that declares a validate prop of its own.
+function OwnValidateSelect(props: {
+  readonly field: FieldApi<Choice>;
+  readonly options: readonly Option<Choice>[];
+  readonly validate?: boolean;
+}) {
+  return <select {...props.field.inputProps({ kind: "select" })} data-validate={props.validate} />;
+}
+
 // Fits a plain form's field with no undefined.
 function PlainUses() {
-  const form = plain.useForm();
+  const form = useForm(plain);
   expectTypeOf<ValueOf<typeof form.root>>().toEqualTypeOf<{ country: "GB" | "IE" }>();
   return <form.SelectField name="country" label="Country" options={countries} />;
 }
 
 // Rejects options and fields that don't fit.
 function WrongUses() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   return (
     <>
       {/* @ts-expect-error: FR is not one of the country options */}
@@ -168,7 +209,7 @@ function WrongUses() {
 
 // Leaves the checks of other components as they are.
 function OtherUses() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   return (
     <>
       {/* @ts-expect-error: country is a picklist, TextField edits any string */}
@@ -182,6 +223,16 @@ function OtherUses() {
 describe("Choice", () => {
   it("stands for the field's options", () => {
     expectTypeOf(RightUses).toBeFunction();
+  });
+
+  it("takes a validate prop typed with the named field's own value", () => {
+    expectTypeOf(ValidateUses).toBeFunction();
+  });
+
+  it("rejects a registered option component that declares validate", () => {
+    // @ts-expect-error: validate is the bound component's own prop
+    createForms({ fields: { OwnValidateSelect } });
+    expectTypeOf(createForms({ fields: { SelectField } })).toBeObject();
   });
 
   it("fits a plain form's field with no undefined", () => {

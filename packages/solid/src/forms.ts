@@ -310,19 +310,24 @@ export type ChoicePath<V, E, C> =
  * reports the error of the last signature only, so the `name` signature
  * comes last: a wrong name lists the names that fit, and a wrong option
  * lists the field's options. A handle that doesn't fit is reported against
- * that signature too, as not assignable to `never`.
+ * that signature too, as not assignable to `never`. `validate` works as on
+ * `BoundFieldComponent`.
  */
 export interface BoundChoiceComponent<V, E, C> {
   <H extends HandleLike>(
     props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueOf<H>>> & {
       readonly handle: H & ChoiceHandle<ChoiceFieldOf<C>, ValueOf<H>, FieldErrorOf<C>>;
       readonly name?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
     },
   ): SolidElement;
   <N extends ChoicePath<V, E, C>>(
     props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueAt<V, N>>> & {
       readonly name: N;
       readonly handle?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueAt<V, N>, E>;
     },
   ): SolidElement;
 }
