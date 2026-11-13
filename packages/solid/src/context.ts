@@ -1,4 +1,5 @@
 import { createComponent, createContext, untrack, useContext, type Element as SolidElement } from "solid-js";
+import { problem } from "./problem.js";
 
 /** A form object with its types erased, as context holds it. */
 export type RuntimeForm = Readonly<Record<string, unknown>>;
@@ -29,13 +30,7 @@ export function useAnyForm(definition?: object): RuntimeForm {
     while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
   }
   if (node === null) {
-    throw new Error(
-      definition === undefined
-        ? "@lunarhue/forms-solid: useFormContext() found no form. Render it inside the form's `form.Form`."
-        : "define" in definition
-          ? "@lunarhue/forms-solid: useFormContext(forms) found no form made from those forms. It skips forms of other `createForms` calls. Render it inside the `form.Form` of a form made from one of their definitions."
-          : "@lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.",
-    );
+    throw new Error(problem(definition === undefined ? "context:form" : "define" in definition ? "context:forms" : "context:definition"));
   }
   return node.form;
 }
