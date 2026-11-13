@@ -269,9 +269,10 @@ const flagFrom = (decl: unknown, inherited: boolean): Flag => {
   return { decl, own, on: own || inherited };
 };
 
-// The flag of the child at `seg`. A tuple's entry in the declaration applies to every item.
-const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
-  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, on);
+// The flag of the child at `seg`, inheriting `inherited` in place of the
+// parent's `on` when given. A tuple's entry in the declaration applies to every item.
+const flagUnder = ({ decl, on }: Flag, seg: string, inherited = on): Flag =>
+  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, inherited);
 
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
@@ -696,8 +697,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     readonly readOnly: Flag;
   }
 
-  // Where `node` sat in the initial value, using the positional keys every
-  // key list starts with, and the flags it started with.
+  // Where `node` sat in the initial value, using its parent's server keys or
+  // the positional keys every key list starts with, and the flags it started with.
   const initialPlace = (node: Node<E>): InitialPlace => {
     if (!node.parent) {
       const disabled = flagFrom(options.disabled, false);
@@ -705,8 +706,11 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       return { value: initial, name: "", blocked: false, disabled, readOnly };
     }
     const parent = initialPlace(node.parent);
-    const disabled = flagUnder(parent.disabled, node.seg);
-    const readOnly = flagUnder(parent.readOnly, node.seg);
+    // A parent with a server snapshot hands down the flags it shows there,
+    // since plugin setup may have set them.
+    const shown = node.parent.server;
+    const disabled = flagUnder(parent.disabled, node.seg, shown?.disabled);
+    const readOnly = flagUnder(parent.readOnly, node.seg, shown?.readOnly);
     const at = (value: unknown, segment: string, blocked: boolean): InitialPlace => ({
       value,
       name: parent.name === "" ? segment : `${parent.name}.${segment}`,
@@ -717,7 +721,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const holder = parent.value;
     if (parent.blocked) return at(undefined, node.seg, true);
     if (Array.isArray(holder)) {
-      const index = initialIndex(node.seg, holder.length);
+      // Setup may have changed the parent's keys, which its server snapshot keeps.
+      const index = shown?.keys?.indexOf(node.seg) ?? initialIndex(node.seg, holder.length);
       if (index < 0) return at(undefined, node.seg, true);
       const item: unknown = holder[index];
       return at(item, String(index), false);
@@ -731,7 +736,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     if (node.server) return node.server;
     const { value, name, disabled, readOnly } = initialPlace(node);
     const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
-    const state = { ...idle, disabled: disabled.on, readOnly: readOnly.on };
+    // Plugin setup may have written a value that differs from the baseline.
+    const state = { ...idle, dirty: !!dirtyHook?.(pathOf(node, false), value), disabled: disabled.on, readOnly: readOnly.on };
     node.server = freeze(entries(value, name, keys && freeze(keys), state));
     return node.server;
   };
