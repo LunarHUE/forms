@@ -74,24 +74,27 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       return handles.root() as FieldHandle<V, E>;
     },
-    subscribe: (path, listener) => core.subscribe(path, listener),
-    getSnapshot: (path) => core.getSnapshot(path),
-    getServerSnapshot: (path) => core.getServerSnapshot(path),
-    subscribeForm: (listener) => core.subscribeForm(listener),
-    getFormSnapshot: () => core.getFormSnapshot(),
-    getServerFormSnapshot: () => core.getServerFormSnapshot(),
-    peek: () => core.getFormSnapshot(),
-    batch: (fn) => core.batch(fn),
-    submit: (...args) => submit.submit(...args),
-    handleSubmit: (event) => submit.handleSubmit(event),
-    setErrors: (errors) => submit.setErrors(errors),
+    // The parts' commands never read `this`, so the store hands them out as they are.
+    /* oxlint-disable typescript/unbound-method */
+    subscribe: core.subscribe,
+    getSnapshot: core.getSnapshot,
+    getServerSnapshot: core.getServerSnapshot,
+    subscribeForm: core.subscribeForm,
+    getFormSnapshot: core.getFormSnapshot,
+    getServerFormSnapshot: core.getServerFormSnapshot,
+    peek: core.getFormSnapshot,
+    batch: core.batch,
+    submit: submit.submit,
+    handleSubmit: submit.handleSubmit,
+    setErrors: submit.setErrors,
     validate: () => validation.validate([]),
     reset: (resetOptions) => reset([], resetOptions),
-    registerValidator: (path, validator) => validation.register(path, validator),
-    fieldAt: (path) => handles.fieldAt(path),
-    changes: (path) => baseline.changes(path),
-    firstInvalid: () => submit.firstInvalid(),
-    disabledInvalid: () => submit.disabledInvalid(),
+    registerValidator: validation.register,
+    fieldAt: handles.fieldAt,
+    changes: baseline.changes,
+    firstInvalid: submit.firstInvalid,
+    disabledInvalid: submit.disabledInvalid,
+    /* oxlint-enable typescript/unbound-method */
   };
   registerStore(store, { core, baseline, validation });
   return { store, core, baseline, validation, submit };
