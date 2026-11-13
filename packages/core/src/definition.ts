@@ -11,7 +11,8 @@ import type { ChildValue, DeepPartial, DeepReadonly, IsUnknown, ItemOf, KeysOf, 
  * equal. Call `next` to fall back to the comparison after this one, which in
  * the end is core's default: `Object.is` on primitives, dates by timestamp,
  * plain objects key by key with a missing key equal to undefined, arrays in
- * order, and everything else by reference.
+ * order, and everything else by reference. Two values that are the same
+ * reference count as equal without `equals` being asked.
  */
 export type Equals = (
   a: unknown,
