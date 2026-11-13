@@ -213,8 +213,72 @@ function WrongUsage() {
   );
 }
 
+// The validate prop, typed from the field on Field, on bound components and on scope components.
+function ValidateProps() {
+  const form = order.useForm();
+  const billing = AddressShape.scope(form.root.at("billing"));
+  const qty = form.root.at("lines").item("k").at("qty");
+  return (
+    <>
+      <form.TextField
+        name="email"
+        label="Email"
+        validate={(value) => {
+          expectTypeOf(value).toEqualTypeOf<string>();
+          return value.endsWith("@x.io") ? undefined : { message: "Use your work email." };
+        }}
+      />
+      <form.NumberField
+        handle={qty}
+        label="Qty"
+        validate={(value) => {
+          expectTypeOf(value).toEqualTypeOf<number | undefined>();
+          return null;
+        }}
+      />
+      <form.NumberField name="age" label="Age" validate={{ validate: (value) => (value === undefined ? { message: "Required" } : null), debounce: 300 }} />
+      <form.Field name="age" validate={{ validate: (value: number | undefined) => (value === 0 ? { message: "Zero" } : null), debounce: 300 }}>
+        {(field) => <input {...field.inputProps({ kind: "number" })} />}
+      </form.Field>
+      <form.Field handle={qty} validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>
+        {(field) => <input {...field.inputProps({ kind: "number" })} />}
+      </form.Field>
+      <form.Field name="email" validate={false}>{() => null}</form.Field>
+      <billing.TextField
+        name="city"
+        label="City"
+        validate={(value) => {
+          expectTypeOf(value).toEqualTypeOf<string>();
+          return null;
+        }}
+      />
+      <billing.Field name="geo.lat" validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>
+        {() => null}
+      </billing.Field>
+      {/* @ts-expect-error: email is a string, not a number */}
+      <form.TextField name="email" label="Email" validate={(value: number) => (value > 0 ? null : { message: "No" })} />
+      {/* @ts-expect-error: qty is number | undefined, the validator takes number only */}
+      <form.NumberField handle={qty} label="Qty" validate={(value: number) => (value > 0 ? null : { message: "No" })} />
+      {/* @ts-expect-error: age is number | undefined, the validator takes string */}
+      <form.Field name="age" validate={(value: string) => (value === "" ? null : { message: "No" })}>{() => null}</form.Field>
+      {/* @ts-expect-error: a string schema doesn't fit a number field */}
+      <form.Field handle={qty} validate={addressSchema}>{() => null}</form.Field>
+      {/* @ts-expect-error: city is a string */}
+      <billing.TextField name="city" label="City" validate={(value: number) => (value > 0 ? null : { message: "No" })} />
+    </>
+  );
+}
+
+// Registered components that declare a validate prop of their own, which the bound component reserves.
+function OwnValidate(props: { readonly field: FieldApi<string>; readonly validate: boolean }) {
+  return <input {...props.field.inputProps()} data-validate={props.validate} />;
+}
+function OptionalValidate(props: { readonly field: FieldApi<string>; readonly validate?: () => void }) {
+  return <input {...props.field.inputProps()} onBlur={props.validate} />;
+}
+
 describe("createForms", () => {
-  it("rejects field components that collide with form members or have no field prop", () => {
+  it("rejects field components that collide with form members, have no field prop or declare validate", () => {
     // @ts-expect-error: Field is the form's own member
     createForms({ fields: { Field: TextField } });
     // @ts-expect-error: submit is the form's own member
@@ -223,6 +287,10 @@ describe("createForms", () => {
     createForms({ fields: { State: TextField } });
     // @ts-expect-error: a field component needs a field prop
     createForms({ fields: { Label: (props: { readonly text: string }) => <span>{props.text}</span> } });
+    // @ts-expect-error: validate is the bound component's own prop
+    createForms({ fields: { OwnValidate } });
+    // @ts-expect-error: an optional validate prop collides too
+    createForms({ fields: { TextField, OptionalValidate } });
     expectTypeOf(createForms({ fields: { TextField } })).toBeObject();
   });
 
@@ -238,6 +306,7 @@ describe("the form object", () => {
     expectTypeOf(OrderPage).toBeFunction();
     expectTypeOf(Line).toBeFunction();
     expectTypeOf(WrongUsage).toBeFunction();
+    expectTypeOf(ValidateProps).toBeFunction();
   });
 
   it("gives form.Form's child the form element props, then the form", () => {

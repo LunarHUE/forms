@@ -24,7 +24,7 @@ import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
 import { focusInvalid, formRef } from "./refs.js";
-import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope } from "./scope.js";
+import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, PropsOf, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
 import { formSource, storeOf } from "./sources.js";
 
@@ -73,12 +73,25 @@ export type ReservedName =
   | "handleSubmit";
 
 /**
- * Checks the `fields` passed to `createForms`: a reserved name, or a
- * component with no `field` prop, becomes `never`, which is a compile error
- * at that entry.
+ * The props a bound component takes for itself, which a registered component
+ * can't declare: `validate`, see `ValidateProp`. The bound component keeps it
+ * and never passes it on.
+ */
+export type ReservedProp = "validate";
+
+/**
+ * Checks the `fields` passed to `createForms`: a reserved name, a component
+ * with no `field` prop, or a component that declares a reserved prop,
+ * becomes `never`, which is a compile error at that entry.
  */
 export type CheckedFields<F extends FieldComponentMap> = {
-  readonly [K in keyof F]: K extends ReservedName ? never : [FieldPropOf<F[K]>] extends [never] ? never : F[K];
+  readonly [K in keyof F]: K extends ReservedName
+    ? never
+    : [FieldPropOf<F[K]>] extends [never]
+      ? never
+      : [Extract<keyof PropsOf<F[K]>, ReservedProp>] extends [never]
+        ? F[K]
+        : never;
 };
 
 /** Settings for `createForms`: core's settings plus the adapter's. */

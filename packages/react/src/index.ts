@@ -19,6 +19,7 @@ export type {
   ObjectHandleLike,
   ReactFormDefinition,
   ReservedName,
+  ReservedProp,
   UnknownForm,
   UseDisabledErrors,
   UseForm,
@@ -52,6 +53,7 @@ export type {
   PropsOf,
   Scope,
   ScopeMembers,
+  ValidateProp,
 } from "./scope.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { useField, useFormState, useItems, useValidator } from "./field.js";

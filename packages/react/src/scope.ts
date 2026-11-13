@@ -8,6 +8,7 @@ import type {
   ItemHandle,
   ItemOf,
   Path,
+  ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
@@ -74,26 +75,67 @@ export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
 export type FieldApiOf<H> = ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
 
 /**
- * Props of a bound `Field` naming its field by path. Without `select`,
- * `children` gets the field object and re-renders on every change to the
- * field. With `select`, it gets what `select` returns from the snapshot and
- * re-renders only when that changes by `isEqual`.
+ * The `validate` prop of `Field` and of the bound registered components. It
+ * takes what `useValidator` takes, typed from the field: a validator
+ * function, a Standard Schema, or either one with options such as
+ * `debounce`. `undefined`, `null` or `false` add none.
+ *
+ * The validator runs only while the component is mounted. On unmount it is
+ * removed along with the errors it set. A field that isn't rendered, such as
+ * one on a wizard step that isn't showing, isn't validated by its prop, so a
+ * submit can pass without it. Rules that must always hold belong in the
+ * definition. A definition validator and a prop validator on the same field
+ * both run, and each adds its own errors.
+ *
+ * An inline function is fine: the adapter registers once and calls the
+ * latest function on each run, as `useValidator` does.
+ */
+export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false;
+
+/**
+ * Props of a bound `Field` naming its field by path.
+ *
+ * Without `select`, `children` gets the field object and re-renders on every
+ * change to the field. Use it this way to render an input.
+ *
+ * With `select`, `children` gets `(selected, handle)` and re-renders only
+ * when `selected` changes by `isEqual`. Use it this way to read one thing
+ * about a field, such as an error count or a derived label. The handle still
+ * carries every command (`setValue`, `handleBlur`, `reset`, `push` and the
+ * rest), and `errorId(handle)` gives the error id. There is no `inputProps`
+ * with `select`, and there can't be: input props need the value, the
+ * disabled and read-only flags and the shown errors, so a render that has
+ * them must re-render on all of them.
  */
 export interface FieldByName<V, E, N extends string, T> {
   /** A dotted path relative to the scope, through objects only. */
   readonly name: N;
   readonly handle?: never;
+  /**
+   * Picks what `children` gets instead of the field object. With it,
+   * `children` has no `inputProps`. See `FieldByName`.
+   */
   readonly select?: (snapshot: FieldSnapshot<ValueAt<V, N>, E>) => T;
+  /** Compares two results of `select`. Defaults to `Object.is`. */
   readonly isEqual?: IsEqual<T>;
+  /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
+  readonly validate?: ValidateProp<ValueAt<V, N>, E>;
   readonly children: (field: T, handle: FieldHandle<ValueAt<V, N>, E>) => ReactNode;
 }
 
-/** Props of a bound `Field` given a handle. The rest as `FieldByName`. */
+/** Props of a bound `Field` given a handle. The rest, `select` included, as `FieldByName`. */
 export interface FieldByHandle<H extends HandleLike, T> {
   readonly handle: H;
   readonly name?: never;
+  /**
+   * Picks what `children` gets instead of the field object. With it,
+   * `children` has no `inputProps`. See `FieldByName`.
+   */
   readonly select?: (snapshot: SnapshotOf<H>) => T;
+  /** Compares two results of `select`. Defaults to `Object.is`. */
   readonly isEqual?: IsEqual<T>;
+  /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
+  readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
   readonly children: (field: T, handle: H) => ReactNode;
 }
 
@@ -182,13 +224,29 @@ export type NameFitting<V, E, A> =
 
 /**
  * A registered component bound to a scope. It takes the component's own
- * props and exactly one of `name` or `handle`, then renders the component
- * with `field` filled in. Only fields that fit the component are accepted,
- * see `AcceptedValues` and `FieldApi`.
+ * props, exactly one of `name` or `handle`, and an optional `validate`, then
+ * renders the component with `field` filled in. `name`, `handle` and
+ * `validate` are the bound component's own and never reach the registered
+ * one. Only fields that fit the component are accepted, see
+ * `AcceptedValues` and `FieldApi`.
  */
 export interface BoundFieldComponent<V, E, A, P> {
-  (props: P & { readonly name: NameFitting<V, E, A>; readonly handle?: never }): ReactElement;
-  (props: P & { readonly handle: AcceptedHandle<A, E>; readonly name?: never }): ReactElement;
+  <N extends NameFitting<V, E, A>>(
+    props: P & {
+      readonly name: N;
+      readonly handle?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueAt<V, N>, E>;
+    },
+  ): ReactElement;
+  <H extends AcceptedHandle<A, E>>(
+    props: P & {
+      readonly handle: H;
+      readonly name?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
+    },
+  ): ReactElement;
 }
 
 /**

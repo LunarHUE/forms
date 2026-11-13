@@ -1,7 +1,7 @@
-import type { AnyFieldHandle, FieldSnapshot } from "@lunarhue/forms-core";
+import type { AnyFieldHandle, FieldSnapshot, ValidatorInput } from "@lunarhue/forms-core";
 import { type ComponentType, createElement, Fragment, type ReactElement, type ReactNode } from "react";
 import { type FieldView, fieldViewSource } from "./field-api.js";
-import { type IsEqual, useItems } from "./field.js";
+import { type IsEqual, useItems, useValidator } from "./field.js";
 import type { FieldComponentMap, FieldComponentType } from "./scope.js";
 import { useSelected } from "./select.js";
 
@@ -17,7 +17,12 @@ interface Target {
   readonly handle?: AnyHandle;
 }
 
-interface FieldProps extends Target {
+/** The props of a bound component that renders one field: its target and its `validate`. */
+interface OneField extends Target {
+  readonly validate?: ValidatorInput<unknown, unknown> | undefined | null | false;
+}
+
+interface FieldProps extends OneField {
   readonly select?: (snapshot: FieldSnapshot<unknown, unknown>) => unknown;
   readonly isEqual?: IsEqual<unknown>;
   readonly children: (field: unknown, handle: AnyHandle) => ReactNode;
@@ -40,6 +45,7 @@ const pickApi = (view: FieldView): unknown => view.api;
 /** Renders a bound `Field`. */
 function useFieldElement(root: AnyHandle, props: FieldProps): ReactElement {
   const handle = targetOf(root, props);
+  useValidator(handle, props.validate);
   const { select } = props;
   const value = useSelected(
     fieldViewSource(handle),
@@ -61,9 +67,11 @@ function useItemsElement(root: AnyHandle, props: ItemsProps): ReactElement {
 }
 
 /** Renders a registered component with its `field` filled in. */
-function useRegisteredElement(root: AnyHandle, component: FieldComponentType, props: Target): ReactElement {
-  const { name: _name, handle: _handle, ...own } = props;
-  const field = useSelected(fieldViewSource(targetOf(root, props)), pickApi);
+function useRegisteredElement(root: AnyHandle, component: FieldComponentType, props: OneField): ReactElement {
+  const { name: _name, handle: _handle, validate, ...own } = props;
+  const handle = targetOf(root, props);
+  useValidator(handle, validate);
+  const field = useSelected(fieldViewSource(handle), pickApi);
   // The component's own props pass through as they came, and `field` is its field object.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return createElement(component as unknown as ComponentType<Record<string, unknown>>, { ...own, field });
@@ -81,7 +89,7 @@ export function makeScope(root: AnyHandle, fields: FieldComponentMap): AnyScope 
     return useItemsElement(root, props);
   }
   const registered = Object.entries(fields).map(([key, component]) => {
-    function BoundComponent(props: Target): ReactElement {
+    function BoundComponent(props: OneField): ReactElement {
       return useRegisteredElement(root, component, props);
     }
     BoundComponent.displayName = `Bound(${key})`;

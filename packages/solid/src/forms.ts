@@ -87,17 +87,47 @@ export type FormComponent<T> = (props: {
   readonly children: ((formProps: FormElementProps, form: T) => SolidElement) | SolidElement;
 }) => SolidElement;
 
-/** Props `Field` takes besides `name` or `handle`. */
+/**
+ * The `validate` prop of `Field` and of the bound registered components. It
+ * takes what `createValidator` takes, typed from the field: a validator
+ * function, a Standard Schema, or either one with options such as
+ * `debounce`. `undefined`, `null` or `false` add none.
+ *
+ * The validator runs only while the component is mounted. When the
+ * component's owner is disposed it is removed along with the errors it set.
+ * A field that isn't rendered, such as one on a wizard step that isn't
+ * showing, isn't validated by its prop, so a submit can pass without it.
+ * Rules that must always hold belong in the definition. A definition
+ * validator and a prop validator on the same field both run, and each adds
+ * its own errors.
+ *
+ * The component registers once, at mount, with the kind of validator and
+ * the options it finds then. When the prop is reactive and later gives
+ * another function, each run calls the function the prop gives when the run
+ * starts, without registering again. A schema is read at mount only.
+ */
+export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false;
+
+/**
+ * Props `Field` takes besides `name` or `handle`.
+ *
+ * Solid's `Field` has no `select`. Each member of the field object is its
+ * own reactive read, so JSX that reads `field.errors.length` re-runs when the
+ * errors change and at no other time. Read the members you need: render an
+ * input with `field.inputProps`, or read one thing about a field, such as an
+ * error count or a derived label, from that one member.
+ */
 interface FieldPropsBase<V, E> {
-  /** A validator to add while the `Field` is mounted, as `createValidator` adds it. Read once, at mount. */
-  readonly validate?: ValidatorInput<V, E> | undefined;
+  /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
+  readonly validate?: ValidateProp<V, E>;
   /** Renders the field. Runs once. */
   readonly children: (field: ExactFieldApi<V, E>) => SolidElement;
 }
 
 /**
  * Renders one field of a scope with its `ExactFieldApi`. Give exactly one of
- * `name`, a dotted path relative to the scope, or `handle`.
+ * `name`, a dotted path relative to the scope, or `handle`. See
+ * `FieldPropsBase` for reading one thing about a field.
  */
 export interface BoundField<V, E = FormError> {
   <P extends FieldPath<V>>(props: { readonly name: P; readonly handle?: never } & FieldPropsBase<ValueAt<V, P>, E>): SolidElement;
@@ -156,6 +186,13 @@ export type ReservedName =
   | "submit"
   | "handleSubmit";
 
+/**
+ * The props a bound component takes for itself, which a registered component
+ * can't declare: `validate`, see `ValidateProp`. The bound component keeps it
+ * and never passes it on.
+ */
+export type ReservedProp = "validate";
+
 /** The props of a component. */
 export type PropsOf<C> = C extends (props: infer P) => unknown ? P : never;
 
@@ -213,9 +250,10 @@ export type FitPath<V, E, C> = {
 
 /**
  * A registered field component bound to a scope. It resolves the field by
- * `name` or `handle`, makes its field object, and renders the app's
- * component with `field` filled in. The other props are the component's
- * own. Only fields that fit the component (see `FitsComponent`) are
+ * `name` or `handle`, adds the `validate` prop's validator, makes its field
+ * object, and renders the app's component with `field` filled in. The other
+ * props are the component's own: `name`, `handle` and `validate` never reach
+ * it. Only fields that fit the component (see `FitsComponent`) are
  * accepted. The field is resolved once, when the component mounts.
  *
  * Known hole: a component typed for a narrower error type fits a form whose
@@ -223,8 +261,22 @@ export type FitPath<V, E, C> = {
  * So the component can set errors that lack the form's extra members.
  */
 export interface BoundFieldComponent<V, E, C> {
-  (props: { readonly name: FitPath<V, E, C>; readonly handle?: never } & OwnProps<C>): SolidElement;
-  (props: { readonly handle: ComponentHandle<C>; readonly name?: never } & OwnProps<C>): SolidElement;
+  <P extends FitPath<V, E, C>>(
+    props: {
+      readonly name: P;
+      readonly handle?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueAt<V, P>, E>;
+    } & OwnProps<C>,
+  ): SolidElement;
+  <H extends ComponentHandle<C>>(
+    props: {
+      readonly handle: H;
+      readonly name?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
+    } & OwnProps<C>,
+  ): SolidElement;
 }
 
 /** The registered components, bound to a scope of value `V`. */
@@ -394,10 +446,17 @@ export interface DefineFieldset<A extends readonly SchemaAdapter<never>[], E, F 
 
 /**
  * `F` when every registered component has a `field` prop of a `FieldApi`
- * type and none takes a reserved name. A bad entry becomes `never`.
+ * type, none takes a reserved name, and none declares a reserved prop (see
+ * `ReservedProp`). A bad entry becomes `never`.
  */
 export type CheckedFields<F> = {
-  readonly [K in keyof F]: K extends ReservedName ? never : [FieldPropOf<F[K]>] extends [never] ? never : F[K];
+  readonly [K in keyof F]: K extends ReservedName
+    ? never
+    : [FieldPropOf<F[K]>] extends [never]
+      ? never
+      : [Extract<keyof PropsOf<F[K]>, ReservedProp>] extends [never]
+        ? F[K]
+        : never;
 };
 
 /** Settings for `createForms`: core's settings plus the adapter's. */
@@ -408,7 +467,8 @@ export interface FormsOptions<A extends readonly SchemaAdapter<never>[] = [], E 
   /**
    * The app's field components, by the name they get on every scope. Each
    * takes a `field` prop of a `FieldApi` type plus props of its own. A name
-   * a scope or form uses itself (see `ReservedName`) is a type error.
+   * a scope or form uses itself (see `ReservedName`), or a `validate` prop
+   * of its own (see `ReservedProp`), is a type error.
    */
   readonly fields?: F & CheckedFields<F>;
 }
