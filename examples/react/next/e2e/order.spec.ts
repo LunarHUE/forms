@@ -148,6 +148,17 @@ test("a submit saves, and a refused save puts the server's error on the email", 
   await expect(page.getByLabel("Server rejects next save")).not.toBeChecked();
 });
 
+test("the inspector's fill with invalid data button puts the invalid order in the form", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "Fill with invalid data" }).click();
+  await expect(page.getByRole("textbox", { name: "Name" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Email" })).toHaveValue("taken@example.com");
+  await expect(page.getByLabel("Item 1 description")).toHaveValue("");
+  await expect(page.getByLabel("Item 2 description")).toHaveValue("Mystery box");
+  await expect(page.getByLabel("Ship to the billing address")).not.toBeChecked();
+  await expect(cell(page, ["customer", "name"], "value")).toHaveText('""');
+});
+
 test("an error appearing doesn't move the submit button", async ({ page }) => {
   await open(page);
   const button = page.getByRole("button", { name: "Place order" });
