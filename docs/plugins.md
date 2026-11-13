@@ -1,8 +1,10 @@
 # Plugins
 
-Every plugin goes in one `plugins` list, on `createForms` or on a form's
-definition. Where a plugin lives depends on one question: does it need
-someone else's library?
+Every plugin goes in a `plugins` list: on `createForms`, on a form's
+definition, or on one form, as `useForm(definition, { plugins })` in React
+and `createForm(definition, { plugins })` in Solid. A form's own list is read
+once, when the form is made, and its plugins run after the others. Where a
+plugin lives depends on one question: does it need someone else's library?
 
 ## Three kinds
 
@@ -39,6 +41,19 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   restores it when the store is made.
 - `rebase`: moves a subtree's baseline to an incoming value, such as a fresh
   server copy, and lets you pick what each changed field keeps.
+- `bind`: keeps the form value in step with a store the app owns, given as
+  `get`, `set` and `subscribe`. A form write calls `set` once per batch, and
+  an outside change is written into the form. `incoming` picks what an
+  outside change does: `"replace"` writes over the form, `"rebase"` moves
+  the baseline and keeps what the user edited. A form has one binding.
+
+The form's state never moves into the bound store. The form keeps its own
+store with errors, touched, dirty, disabled and the rest, and only the value
+is copied both ways. The binding listens to the outside store while the form
+has listeners, so a form a render made and threw away holds no listener
+there. On the server, and in the render that hydrates, a bound form shows
+its definition's defaults, so give it defaults that match the outside
+store's starting state.
 
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 
@@ -56,7 +71,27 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { zod } from "@lunarhue/forms-schema/zod";
 ```
 
-`@lunarhue/forms-schema` takes `@lunarhue/forms-core` as a peer dependency.
+The bindings to state libraries are in `@lunarhue/forms-bind`. Each one
+returns `bind` set up for its library.
+
+```ts
+import { zustand } from "@lunarhue/forms-bind/zustand";
+
+// The whole state is the form value.
+const form = useForm(profile, { plugins: [zustand(useProfileStore)] });
+
+// One slice of it.
+zustand(useAppStore, { select: (state) => state.profile, update: (profile) => ({ profile }) });
+```
+
+`zustand` takes the hook `create` returns or a vanilla store. A form write
+merges the value into the state with `setState`, so bind the whole state
+only when the store has no actions. On a form's own `plugins`, the store's
+type must be the form's value type. On `createForms` and on a definition it
+isn't checked.
+
+`@lunarhue/forms-schema` and `@lunarhue/forms-bind` take
+`@lunarhue/forms-core` as a peer dependency.
 A plugin runs on the core copy it was made with, so the app must have one
 copy of core. In development, a store whose plugins come from two copies
 logs a warning.
