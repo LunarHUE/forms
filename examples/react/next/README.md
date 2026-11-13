@@ -9,10 +9,14 @@ Three pages in a Next.js App Router app:
   `app/basic/page.tsx`. Read it top to bottom to see the whole API in a
   few components: the schema, `createForms` with two field components,
   `define`, a reusable address fieldset, a submit button that reads the
-  form from context, and the page with `form.Field` and `form.Items`.
-- `/bind` binds a form to a zustand store with `zustand()` from
-  `@lunarhue/forms-bind/zustand`, in `app/bind/page.tsx`. The store's state
-  shows beside the form, and a button changes the store from outside.
+  form from context with `useFormContext(forms)`, and the page with
+  `form.Field` and `form.Items`.
+- `/bind` is the root README's example, running, in `app/bind/page.tsx`.
+  `createForms` installs `zod()` and `rebase()`, and the definition binds
+  the form to a zustand store with `zustand()` from
+  `@lunarhue/forms-bind/zustand`. The store's state shows beside the form,
+  and a button changes the store from outside. Refresh loads a fresh copy
+  and rebases the form onto it, keeping the fields you edited.
 
 ## Run it
 

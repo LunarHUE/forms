@@ -1,7 +1,8 @@
 # Examples
 
-Every example app builds the same "New order" form with a different
-framework, next to a dev inspector that shows the store's state as it changes.
+Every example app builds the same "New order" form, next to a dev inspector
+that shows the store's state as it changes. React with Next.js is the only
+framework so far.
 They are workspace packages, so they install the library packages from this
 repo with `workspace:*`.
 
@@ -22,7 +23,8 @@ repo with `workspace:*`.
     `OrderPage` takes the save function, the starting values and a header
     from each app.
   - `next` (`@lunarhue/forms-example-next`): the Next.js App Router app.
-- `examples/solid/*` holds the Solid apps.
+
+There are no Solid or Vue examples yet.
 
 ## Commands
 
