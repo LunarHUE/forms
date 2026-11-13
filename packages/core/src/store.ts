@@ -45,7 +45,9 @@ export type IntentArgs<I> = undefined extends I ? [intent?: I] : [intent: I];
  *   synchronously before it returns. One write wakes each listener once.
  * - The server snapshot is the initial snapshot.
  */
-export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
+// The default is an object type with no keys: a store with no plugin APIs has nothing on `plugins`.
+// oxlint-disable-next-line typescript/no-empty-object-type
+export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}> {
   /** The form instance's id. Every handle id starts with it. */
   readonly id: string;
   /** The handle for the whole value. */
@@ -107,7 +109,11 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
    * when the field's value is next written as a user edit.
    */
   setErrors(errors: ErrorMap<E>): void;
-  /** Runs every validator now, skipping debounce and timing. Resolves true when the form has no validation error. */
+  /**
+   * Runs every validator now, skipping debounce and timing. Resolves true
+   * when the form has no validation error. With no validation runner
+   * installed it resolves true.
+   */
   validate(): Promise<boolean>;
   /**
    * Puts the whole form back to its baseline, or to the initial value with
@@ -117,7 +123,8 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
   reset(options?: ResetOptions): void;
   /**
    * Adds a validator at stable path `path`. The returned function removes it
-   * and the errors it set.
+   * and the errors it set. It needs the validation runner, from
+   * `validation()` or a schema plugin. Without it this throws.
    */
   registerValidator(path: Path, validator: ValidatorInput<unknown, E>): () => void;
 
@@ -148,12 +155,18 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown> {
    * when there is none. A read for event handlers and effects, not render.
    */
   disabledInvalid(): readonly DisabledInvalid<E>[];
+  /**
+   * The API of each installed hook plugin that has one, by plugin name:
+   * `store.plugins.history.undo()`. A store from a definition types it
+   * from the plugin list.
+   */
+  readonly plugins: A;
 }
 
 /**
  * A store of any value, intent and result type. Handles and validators use
  * it so a store of any form fits.
  */
-// `any` here lets FormStore<V, E, I, R> of every V, I and R fit, whatever their variance.
+// `any` here lets FormStore<V, E, I, R, A> of every V, I, R and A fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
-export type AnyFormStore<E = FormError> = FormStore<any, E, any, any>;
+export type AnyFormStore<E = FormError> = FormStore<any, E, any, any, any>;

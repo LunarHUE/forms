@@ -1,4 +1,4 @@
-import type { Plugin } from "../../index.js";
+import type { HookPlugin } from "../../index.js";
 import { definePlugin } from "../../plugins.js";
 
 /** The part of `Storage` the fixture uses. */
@@ -12,7 +12,7 @@ export interface StorageLike {
  * the page is idle, and writes a saved value back when the store is made.
  * Without storage, as on the server, it does nothing.
  */
-export function persist(key: string, storage: StorageLike | undefined): Plugin<undefined, "persist"> {
+export function persist(key: string, storage: StorageLike | undefined): HookPlugin<undefined, "persist"> {
   return definePlugin({
     name: "persist",
     setup(ctx) {

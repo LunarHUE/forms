@@ -8,9 +8,11 @@ import type {
   FormError,
   HandleTypes,
   HasChoice,
+  IfValidation,
   ItemHandle,
   ItemOf,
   Path,
+  Plugins,
   ValidatorInput,
   ValueOf,
   WithChoice,
@@ -87,7 +89,9 @@ export type FieldApiOf<H> = ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
  * The `validate` prop of `Field` and of the bound registered components. It
  * takes what `useValidator` takes, typed from the field: a validator
  * function, a Standard Schema, or either one with options such as
- * `debounce`. `undefined`, `null` or `false` add none.
+ * `debounce`. `undefined`, `null` or `false` add none. It needs the
+ * validation runner: on a form whose plugins bring none, a validator here is
+ * a type error that says what to install (see `ValidatePropFor`).
  *
  * The validator runs only while the component is mounted. On unmount it is
  * removed along with the errors it set. A field that isn't rendered, such as
@@ -100,6 +104,9 @@ export type FieldApiOf<H> = ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
  * latest function on each run, as `useValidator` does.
  */
 export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false;
+
+/** `ValidateProp` on a form with plugins `P`: as it is when they bring the validation runner, marked as needing it when not. */
+export type ValidatePropFor<P extends Plugins, V, E> = IfValidation<P, ValidateProp<V, E>>;
 
 /**
  * Props of a bound `Field` naming its field by path.
@@ -116,7 +123,7 @@ export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false
  * disabled and read-only flags and the shown errors, so a render that has
  * them must re-render on all of them.
  */
-export interface FieldByName<V, E, N extends string, T> {
+export interface FieldByName<V, E, N extends string, T, P extends Plugins = []> {
   /** A dotted path relative to the scope, through objects only. */
   readonly name: N;
   readonly handle?: never;
@@ -128,12 +135,12 @@ export interface FieldByName<V, E, N extends string, T> {
   /** Compares two results of `select`. Defaults to `Object.is`. */
   readonly isEqual?: IsEqual<T>;
   /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
-  readonly validate?: ValidateProp<ValueAt<V, N>, E>;
+  readonly validate?: ValidatePropFor<P, ValueAt<V, N>, E>;
   readonly children: (field: T, handle: FieldHandle<ValueAt<V, N>, E>) => ReactNode;
 }
 
 /** Props of a bound `Field` given a handle. The rest, `select` included, as `FieldByName`. */
-export interface FieldByHandle<H extends HandleLike, T> {
+export interface FieldByHandle<H extends HandleLike, T, P extends Plugins = []> {
   readonly handle: H;
   readonly name?: never;
   /**
@@ -144,14 +151,20 @@ export interface FieldByHandle<H extends HandleLike, T> {
   /** Compares two results of `select`. Defaults to `Object.is`. */
   readonly isEqual?: IsEqual<T>;
   /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
-  readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
+  readonly validate?: ValidatePropFor<P, ValueOf<H>, ErrorOf<H>>;
   readonly children: (field: T, handle: H) => ReactNode;
 }
 
-/** `scope.Field`: renders one field with exactly one of `name` or `handle`. */
-export interface BoundField<V, E> {
-  <N extends FieldPath<V>, T = ExactFieldApi<ValueAt<V, N>, E>>(props: FieldByName<V, E, N, T>): ReactElement;
-  <H extends HandleLike, T = FieldApiOf<H>>(props: FieldByHandle<H, T>): ReactElement;
+/**
+ * `scope.Field`: renders one field with exactly one of `name` or `handle`.
+ * `P` is the form's plugins. TypeScript reports the error of the last
+ * signature only, so the `name` signature, the common one, comes last: a
+ * `validate` prop on a form without the validation runner is reported
+ * against it alone.
+ */
+export interface BoundField<V, E, P extends Plugins = []> {
+  <H extends HandleLike, T = FieldApiOf<H>>(props: FieldByHandle<H, T, P>): ReactElement;
+  <N extends FieldPath<V>, T = ExactFieldApi<ValueAt<V, N>, E>>(props: FieldByName<V, E, N, T, P>): ReactElement;
 }
 
 /** Props of a bound `Items` naming its array by path. */
@@ -237,23 +250,24 @@ export type NameFitting<V, E, A> =
  * renders the component with `field` filled in. `name`, `handle` and
  * `validate` are the bound component's own and never reach the registered
  * one. Only fields that fit the component are accepted, see
- * `AcceptedValues` and `FieldApi`.
+ * `AcceptedValues` and `FieldApi`. The `name` signature comes last, as on
+ * `BoundField`.
  */
-export interface BoundFieldComponent<V, E, A, P> {
-  <N extends NameFitting<V, E, A>>(
-    props: P & {
-      readonly name: N;
-      readonly handle?: never;
-      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
-      readonly validate?: ValidateProp<ValueAt<V, N>, E>;
-    },
-  ): ReactElement;
+export interface BoundFieldComponent<V, E, A, O, P extends Plugins = []> {
   <H extends AcceptedHandle<A, E>>(
-    props: P & {
+    props: O & {
       readonly handle: H;
       readonly name?: never;
       /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
-      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
+      readonly validate?: ValidatePropFor<P, ValueOf<H>, ErrorOf<H>>;
+    },
+  ): ReactElement;
+  <N extends NameFitting<V, E, A>>(
+    props: O & {
+      readonly name: N;
+      readonly handle?: never;
+      /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
+      readonly validate?: ValidatePropFor<P, ValueAt<V, N>, E>;
     },
   ): ReactElement;
 }
@@ -293,21 +307,21 @@ export type NameFittingChoice<V, E, T> =
  * against that signature too, as not assignable to `never`. `validate`
  * works as on `BoundFieldComponent`.
  */
-export interface BoundChoiceComponent<V, E, T, P> {
+export interface BoundChoiceComponent<V, E, T, O, P extends Plugins = []> {
   <H extends HandleLike>(
-    props: WithChoice<P, ChoiceValue<T, ValueOf<H>>> & {
+    props: WithChoice<O, ChoiceValue<T, ValueOf<H>>> & {
       readonly handle: H & ChoiceHandle<T, ValueOf<H>, E>;
       readonly name?: never;
       /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
-      readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
+      readonly validate?: ValidatePropFor<P, ValueOf<H>, ErrorOf<H>>;
     },
   ): ReactElement;
   <N extends NameFittingChoice<V, E, T>>(
-    props: WithChoice<P, ChoiceValue<T, ValueAt<V, N>>> & {
+    props: WithChoice<O, ChoiceValue<T, ValueAt<V, N>>> & {
       readonly name: N;
       readonly handle?: never;
       /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
-      readonly validate?: ValidateProp<ValueAt<V, N>, E>;
+      readonly validate?: ValidatePropFor<P, ValueAt<V, N>, E>;
     },
   ): ReactElement;
 }
@@ -322,20 +336,20 @@ export interface BoundChoiceComponent<V, E, T, P> {
  * whose error type extends it, and its `setErrors` then takes the narrower
  * type. So it can set errors that lack the form's extra members.
  */
-export type BoundFieldComponents<V, E, F extends FieldComponentMap> = {
+export type BoundFieldComponents<V, E, F extends FieldComponentMap, P extends Plugins = []> = {
   readonly [K in keyof F]: [E] extends [ErrorOf<FieldPropOf<F[K]>>]
     ? [ChoiceFieldOf<FieldPropOf<F[K]>>] extends [never]
-      ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
-      : BoundChoiceComponent<V, E, ChoiceFieldOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
+      ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, P>
+      : BoundChoiceComponent<V, E, ChoiceFieldOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, P>
     : never;
 };
 
 /** The members every scope has besides the registered components. */
-export interface ScopeMembers<V, E> {
+export interface ScopeMembers<V, E, P extends Plugins = []> {
   /** The scope's object handle. `name` paths start here. */
   readonly root: FieldHandle<V, E>;
   /** Renders one field of this scope. */
-  readonly Field: BoundField<V, E>;
+  readonly Field: BoundField<V, E, P>;
   /** Renders the items of an array field of this scope. */
   readonly Items: BoundItems<V, E>;
 }
@@ -343,10 +357,12 @@ export interface ScopeMembers<V, E> {
 /**
  * The bound components rooted at one object handle: `Field`, `Items` and
  * every registered field component, with `name` paths relative to `root`.
- * The form is the scope at its root plus the submit members.
+ * The form is the scope at its root plus the submit members. `P` is the
+ * plugins of the `createForms` call, which decide whether the `validate`
+ * prop is allowed.
  */
-export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields> = ScopeMembers<V, E> &
-  BoundFieldComponents<V, E, F>;
+export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, P extends Plugins = []> = ScopeMembers<V, E, P> &
+  BoundFieldComponents<V, E, F, P>;
 
 /**
  * A reusable shape for a part of a form, made by `forms.fieldset(schema)` or
@@ -355,14 +371,14 @@ export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields> = Sc
  * component: the app writes an ordinary component that takes a
  * `HandleOf<typeof token>` prop and calls `scope` in its body.
  */
-export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields> {
+export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields, P extends Plugins = []> {
   /** Type information only. Read it with `HandleOf`. */
   readonly "~types"?: HandleTypes<V, E>;
   /**
    * Returns the scope of `handle`, the same object `forms.scope` returns,
    * typed to the shape. A cached lookup, not a hook.
    */
-  scope(handle: FieldHandle<V, E>): Scope<V, E, F>;
+  scope(handle: FieldHandle<V, E>): Scope<V, E, F, P>;
 }
 
 /**

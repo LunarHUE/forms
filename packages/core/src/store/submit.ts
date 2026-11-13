@@ -7,8 +7,8 @@ import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
 import type { PluginHost } from "./plugins.js";
-import { addErrors, type Placed } from "./validate/place.js";
-import type { Validation } from "./validation.js";
+import { addErrors, type Placed } from "./placed.js";
+import type { Validation } from "./runner.js";
 
 // Core has no DOM or node types, so this declares the platform global submit uses.
 declare const AbortController: new () => { readonly signal: PlatformAbortSignal; abort(): void };

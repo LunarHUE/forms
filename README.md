@@ -1,15 +1,29 @@
 # forms
 
 A form library that doesn't depend on any UI framework. The core holds the form
-logic, and small adapters connect it to each framework or schema library.
+logic, and small adapters connect it to each framework. Everything else is a
+plugin in one list: a schema library, the validation runner, or hooks of your
+own.
 
-| Package                  | What it is                                                |
-| ------------------------ | --------------------------------------------------------- |
-| `@lunarhue/forms-core`   | Framework-independent core                                |
-| `@lunarhue/forms-react`  | React adapter (React 16.8 and later)                      |
-| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1`          |
-| `@lunarhue/forms-vue`    | Vue 3 adapter                                             |
-| `@lunarhue/forms-schema` | Schema adapters: Valibot at `./valibot`, Zod 4 at `./zod` |
+```ts
+const forms = createForms({ plugins: [valibot()], fields: { TextField } });
+```
+
+A form with no validators doesn't load the validation runner. `valibot()` and
+`zod()` bring it, and `validation()` from `@lunarhue/forms-core/validation`
+brings it alone. The compiler knows what the list holds: `define({ schema })`
+and a `validate` option or prop need the runner, a schema of a library with a
+schema plugin needs no `defaultValues`, and each plugin's API is on
+`form.plugins`. Any other Standard Schema, such as an arktype one, works with
+the runner alone and complete `defaultValues`.
+
+| Package                  | What it is                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@lunarhue/forms-core`   | Framework-independent core, with the validation runner at `./validation` and hooks at `./plugins` |
+| `@lunarhue/forms-react`  | React adapter (React 16.8 and later)                                                              |
+| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1`                                                  |
+| `@lunarhue/forms-vue`    | Vue 3 adapter                                                                                     |
+| `@lunarhue/forms-schema` | Schema plugins: Valibot at `./valibot`, Zod 4 at `./zod`                                          |
 
 The repo is in early setup. The packages build and publish-check, but none has a
 real API yet and nothing is published.

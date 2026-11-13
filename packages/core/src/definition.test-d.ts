@@ -9,18 +9,20 @@ import type {
   FormDefinition,
   FormError,
   FormStore,
-  HasAdapter,
+  HasSchemaPlugin,
+  HasValidation,
   ItemHandle,
   LeafHandle,
   ObjectHandle,
   PlainDefinition,
-  SchemaAdapter,
   SchemaDefinition,
+  SchemaPlugin,
   StandardSchemaV1,
   Submission,
+  ValidationPlugin,
 } from "./index.js";
 
-// A schema type an adapter supports, and one no adapter supports.
+// A schema type a plugin accepts, and one no plugin accepts.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
@@ -29,7 +31,8 @@ interface OtherSchema<I, O = I> extends StandardSchemaV1<I, O> {
 }
 
 declare const createFormsCore: CreateFormsCore;
-declare const fakeAdapter: SchemaAdapter<FakeSchema<unknown>>;
+declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
+declare const validation: () => ValidationPlugin;
 
 interface User {
   name: string;
@@ -37,7 +40,7 @@ interface User {
   address: { city: string; zip: string };
 }
 
-// User as the adapter's defaults leave it: the number starts undefined.
+// User as the schema plugin's defaults leave it: the number starts undefined.
 interface DraftUser {
   name: string;
   age: number | undefined;
@@ -49,26 +52,20 @@ declare const otherUserSchema: OtherSchema<User>;
 declare const rowsSchema: FakeSchema<{ rows: { title: string; qty: number }[] }>;
 declare const parsedSchema: FakeSchema<{ age: string }, { age: number }>;
 
-const core = createFormsCore({ schemas: [fakeAdapter] });
+const core = createFormsCore({ plugins: [fakePlugin] });
 
-type Adapters = readonly [typeof fakeAdapter];
-type DefaultsOf<S extends StandardSchemaV1, A extends readonly SchemaAdapter<never>[] = Adapters> = SchemaDefinition<
-  S,
-  A,
-  FormError,
-  undefined,
-  unknown
->["defaultValues"];
+type Installed = readonly [typeof fakePlugin];
+type DefaultsOf<S extends StandardSchemaV1> = SchemaDefinition<S, Installed, FormError, undefined, unknown>["defaultValues"];
 
-type StoreOf<D> = D extends FormDefinition<infer V, infer E, infer I, infer R, infer _O> ? FormStore<V, E, I, R> : never;
+type StoreOf<D> = D extends FormDefinition<infer V, infer E, infer I, infer R, infer _O, infer _P> ? FormStore<V, E, I, R> : never;
 
-describe("defaults case 1: schema with a registered adapter", () => {
+describe("defaults case 1: schema with a schema plugin", () => {
   it("takes no defaultValues and types the value as a draft", () => {
     const form = core.define({ schema: userSchema });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<DraftUser>>();
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<Draft<User>>>();
     expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser>>();
-    expectTypeOf<DefinedValue<never, FakeSchema<User>, Adapters>>().toEqualTypeOf<Draft<User>>();
+    expectTypeOf<DefinedValue<never, FakeSchema<User>, Installed>>().toEqualTypeOf<Draft<User>>();
   });
 
   it("takes a deep partial of the input, not of the draft", () => {
@@ -139,33 +136,111 @@ describe("defaults case 1: schema with a registered adapter", () => {
   });
 });
 
-describe("defaults case 2: schema without an adapter", () => {
-  it("requires complete defaultValues", () => {
-    const form = core.define({
-      schema: otherUserSchema,
-      defaultValues: { name: "", age: 0, address: { city: "", zip: "" } },
+describe("defaults case 1: from the definition's own plugins", () => {
+  it("accepts a schema whose plugin the definition installs", () => {
+    const form = createFormsCore().define({ schema: userSchema, plugins: [fakePlugin] });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<DraftUser>>();
+    createFormsCore().define({
+      schema: userSchema,
+      plugins: [fakePlugin],
+      validate: {
+        fields: {
+          age: (value) => {
+            expectTypeOf(value).toEqualTypeOf<number | undefined>();
+            return undefined;
+          },
+        },
+      },
     });
+  });
+});
+
+describe("defaults case 2: a Standard Schema no plugin accepts, with the runner", () => {
+  const withRunner = createFormsCore({ plugins: [validation()] });
+  const complete: User = { name: "", age: 0, address: { city: "", zip: "" } };
+
+  it("types the value from the schema's input and requires complete defaultValues", () => {
+    const form = withRunner.define({ schema: userSchema, defaultValues: complete });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<User>>();
-  });
-
-  it("rejects missing defaultValues", () => {
-    // @ts-expect-error: no adapter supports OtherSchema, so defaultValues is required
-    core.define({ schema: otherUserSchema });
+    const other = core.define({ schema: otherUserSchema, defaultValues: complete });
+    expectTypeOf<StoreOf<typeof other>>().toEqualTypeOf<FormStore<User>>();
     expectTypeOf<DefaultsOf<OtherSchema<User>>>().toEqualTypeOf<User>();
+    expectTypeOf<HasSchemaPlugin<OtherSchema<User>, Installed>>().toEqualTypeOf<false>();
+    expectTypeOf<HasSchemaPlugin<FakeSchema<User>, Installed>>().toEqualTypeOf<true>();
   });
 
-  it("rejects partial defaultValues", () => {
+  it("rejects missing or partial defaultValues", () => {
+    // @ts-expect-error: no schema plugin accepts OtherSchema, so defaultValues is required
+    core.define({ schema: otherUserSchema });
     // @ts-expect-error: age and address are missing
-    core.define({ schema: otherUserSchema, defaultValues: { name: "" } });
+    withRunner.define({ schema: userSchema, defaultValues: { name: "" } });
     expectTypeOf<{ name: string }>().not.toExtend<DefaultsOf<OtherSchema<User>>>();
   });
 
-  it("treats every schema as unsupported when no adapters are registered", () => {
-    const bare = createFormsCore();
-    // @ts-expect-error: no adapters, so defaultValues is required
-    bare.define({ schema: userSchema });
-    expectTypeOf<HasAdapter<FakeSchema<User>, []>>().toEqualTypeOf<false>();
-    expectTypeOf<HasAdapter<FakeSchema<User>, Adapters>>().toEqualTypeOf<true>();
+  it("passes the schema output to onSubmit", () => {
+    withRunner.define({
+      schema: otherUserSchema,
+      defaultValues: complete,
+      onSubmit: (value) => {
+        expectTypeOf(value).toEqualTypeOf<User>();
+      },
+    });
+  });
+});
+
+describe("a schema with no validation runner", () => {
+  it("is rejected, with a message that says what to install", () => {
+    // @ts-expect-error: no plugin brings the runner that runs the schema
+    createFormsCore().define({ schema: userSchema, defaultValues: { name: "", age: 0, address: { city: "", zip: "" } } });
+    expectTypeOf<HasSchemaPlugin<FakeSchema<User>, []>>().toEqualTypeOf<false>();
+  });
+
+  it("names what to install in the schema's type", () => {
+    type Bare = SchemaDefinition<FakeSchema<User>, [], FormError, undefined, unknown>["schema"];
+    expectTypeOf<Bare>().toEqualTypeOf<
+      FakeSchema<User> & {
+        readonly "Add validation() or a schema plugin such as valibot() to plugins to use schema": never;
+      }
+    >();
+  });
+});
+
+describe("the validation runner", () => {
+  const validate = { fields: { name: (value: string) => (value ? undefined : { message: "Required" }) } };
+
+  it("is needed for validate", () => {
+    // @ts-expect-error: no plugin brings the runner
+    createFormsCore().define({ defaultValues: { name: "" }, validate });
+    createFormsCore({ plugins: [validation()] }).define({ defaultValues: { name: "" }, validate });
+    expectTypeOf<HasValidation<[]>>().toEqualTypeOf<false>();
+    expectTypeOf<HasValidation<readonly [ValidationPlugin]>>().toEqualTypeOf<true>();
+  });
+
+  it("comes with every schema plugin", () => {
+    core.define({ defaultValues: { name: "" }, validate });
+    expectTypeOf<HasValidation<Installed>>().toEqualTypeOf<true>();
+  });
+
+  it("names the plugin to install in the type of validate", () => {
+    type Bare = NonNullable<PlainDefinition<{ name: string }, FormError, undefined, unknown>["validate"]>;
+    expectTypeOf<Bare>().toExtend<{
+      readonly "Add validation() or a schema plugin such as valibot() to plugins to use validate": never;
+    }>();
+  });
+
+  it("keeps the validators typed when it is missing, so only validate is reported", () => {
+    createFormsCore().define({
+      defaultValues: { name: "" },
+      // @ts-expect-error: no plugin brings the runner
+      validate: {
+        fields: {
+          name: (value) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            return undefined;
+          },
+        },
+      },
+    });
   });
 });
 
@@ -290,7 +365,7 @@ describe("the error type", () => {
     interface AppError {
       readonly key: string;
     }
-    const app = createFormsCore({ mapError: (raw): AppError => ({ key: raw.message }) });
+    const app = createFormsCore({ plugins: [validation()], mapError: (raw): AppError => ({ key: raw.message }) });
     const form = app.define({
       defaultValues: { name: "" },
       validate: {

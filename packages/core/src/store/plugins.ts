@@ -1,4 +1,4 @@
-import type { AnyPlugin, PluginContext, PluginErrorHandler, PluginHooks, When, WriteCause, WriteRecord } from "../plugin.js";
+import type { AnyHookPlugin, PluginContext, PluginErrorHandler, PluginHooks, When, WriteCause, WriteRecord } from "../plugin.js";
 import type { Path } from "../path.js";
 import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
@@ -46,7 +46,7 @@ const rethrowLater: PluginErrorHandler = (error) => {
 };
 
 /** Makes the plugin host of one store. */
-export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly AnyPlugin[], report?: PluginErrorHandler) => PluginHost;
+export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly AnyHookPlugin[], report?: PluginErrorHandler) => PluginHost;
 
 /** The plugin host of one store. Only a store with plugins has one. */
 export interface PluginHost {
@@ -64,13 +64,13 @@ export interface PluginHost {
   submitted(submission: Submission<unknown>): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(): void;
-  /** The `api` that `plugin`'s setup returned, when it is installed here. */
-  api(plugin: AnyPlugin): unknown;
+  /** The `api` each plugin's setup returned, by plugin name. Filled by `start`. */
+  readonly apis: Record<string, unknown>;
 }
 
 /** One installed plugin. */
 interface Entry {
-  readonly plugin: AnyPlugin;
+  readonly plugin: AnyHookPlugin;
   /** The cause its `ctx.write` writes get. */
   readonly cause: WriteCause;
   hooks: PluginHooks<unknown>;
@@ -86,16 +86,16 @@ interface Bucket {
 }
 
 /** The plugins in run order: install order, except that each one comes after the names in its `after`. */
-function order(plugins: readonly AnyPlugin[]): AnyPlugin[] {
-  const byName = new Map<string, AnyPlugin>();
+function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
+  const byName = new Map<string, AnyHookPlugin>();
   for (const plugin of plugins) {
     if (byName.has(plugin.name)) throw failure("name", plugin.name);
     byName.set(plugin.name, plugin);
   }
-  const ordered: AnyPlugin[] = [];
+  const ordered: AnyHookPlugin[] = [];
   // False while a plugin's `after` list is being visited, true once the plugin is placed.
-  const placed = new Map<AnyPlugin, boolean>();
-  const visit = (plugin: AnyPlugin) => {
+  const placed = new Map<AnyHookPlugin, boolean>();
+  const visit = (plugin: AnyHookPlugin) => {
     const state = placed.get(plugin);
     if (state) return;
     if (state === false) throw failure("cycle", plugin.name);
@@ -118,7 +118,7 @@ function order(plugins: readonly AnyPlugin[]): AnyPlugin[] {
  */
 export function createPluginHost(
   raw: StoreCore<unknown, unknown>,
-  plugins: readonly AnyPlugin[],
+  plugins: readonly AnyHookPlugin[],
   report: PluginErrorHandler = rethrowLater,
 ): PluginHost {
   const entries: Entry[] = [];
@@ -138,6 +138,7 @@ export function createPluginHost(
   // The plugins with a `sync` `onWrite`, in run order, and the buckets of the other two timings.
   const sync: Entry[] = [];
   const deferred: Bucket = { observers: [], records: [], due: false };
+  const apis: Record<string, unknown> = {};
   const idle: Bucket = { observers: [], records: [], due: false };
 
   // Runs one of `entry`'s hooks. A throw goes to `report`, and `fallback` is returned.
@@ -352,6 +353,7 @@ export function createPluginHost(
       }
       transforms = entries.filter((entry) => entry.hooks.beforeWrite !== undefined);
       for (const entry of entries) {
+        if (entry.hooks.api !== undefined) apis[entry.plugin.name] = entry.hooks.api;
         if (!entry.hooks.onWrite) continue;
         listening = true;
         const when: When = entry.hooks.when ?? "sync";
@@ -383,6 +385,6 @@ export function createPluginHost(
       each((hooks) => hooks.onSubmitted?.(submission));
     },
     flush,
-    api: (plugin) => entries.find((entry) => entry.plugin === plugin)?.hooks.api,
+    apis,
   };
 }

@@ -11,7 +11,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ schemas: [valibot()], fields: { TextField } });
+const forms = createForms({ plugins: [valibot()], fields: { TextField } });
 const Order = forms.define({
   schema: v.object({ customer: v.string(), rows: v.array(v.object({ title: v.string() })) }),
   defaultValues: { customer: "Ada", rows: [{ title: "first" }, { title: "second" }] },

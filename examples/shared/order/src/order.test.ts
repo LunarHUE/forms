@@ -19,7 +19,7 @@ import {
   takenEmail,
 } from "./index.js";
 
-const forms = createFormsCore({ schemas: [valibot()] });
+const forms = createFormsCore({ plugins: [valibot()] });
 const definition = forms.define({
   schema: OrderSchema,
   defaultValues: loadOrder(),

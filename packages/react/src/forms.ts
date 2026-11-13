@@ -1,8 +1,9 @@
 import type {
   AnyFieldHandle,
   AnyFormStore,
+  Combined,
+  DefineConfig,
   DefinedValue,
-  Definition,
   DisabledInvalid,
   ErrorOf,
   FormDefinition,
@@ -11,7 +12,8 @@ import type {
   FormSnapshot,
   FormStore,
   IntentArgs,
-  SchemaAdapter,
+  PluginApis,
+  Plugins,
   SchemaValue,
   StandardSchemaV1,
   StoreInstance,
@@ -70,7 +72,8 @@ export type ReservedName =
   | "id"
   | "formProps"
   | "submit"
-  | "handleSubmit";
+  | "handleSubmit"
+  | "plugins";
 
 /**
  * The props a bound component takes for itself, which a registered component
@@ -95,11 +98,8 @@ export type CheckedFields<F extends FieldComponentMap> = {
 };
 
 /** Settings for `createForms`: core's settings plus the adapter's. */
-export interface FormsOptions<
-  A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
-> extends FormsConfig<A, E> {
+export interface FormsOptions<P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>
+  extends FormsConfig<P, E> {
   /** What happens after a submit ends invalid. Defaults to `true`. */
   readonly focusOnInvalid?: FocusOnInvalid<E>;
   /**
@@ -161,10 +161,16 @@ export interface FormComponentProps<T> {
  */
 export type FormComponent<T> = (props: FormComponentProps<T>) => ReactElement;
 
-/** The form's own members, on top of the scope at its root. */
-export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields> {
+/** The form's own members, on top of the scope at its root. `P` is every plugin the form has. */
+export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields, P extends Plugins = []> {
   /** The core store. Every handle's `store` is this object. */
-  readonly store: FormStore<V, E, I, R>;
+  readonly store: FormStore<V, E, I, R, PluginApis<P>>;
+  /**
+   * The API of each installed plugin that has one, by plugin name, from the
+   * shared list and the definition's: `form.plugins.history.undo()`. The
+   * same object as `store.plugins`.
+   */
+  readonly plugins: PluginApis<P>;
   /** The store id. */
   readonly id: string;
   /** The form element props, the same object `form.Form` passes to its child first. */
@@ -178,9 +184,9 @@ export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields>
   /** As `store.handleSubmit`, then applies `focusOnInvalid` when the submit ends invalid. Bound. */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
   /** The headless provider. See `FormComponent`. */
-  readonly Form: FormComponent<FormInstance<V, E, I, R, F>>;
+  readonly Form: FormComponent<FormInstance<V, E, I, R, F, P>>;
   /** Renders a selection of the form snapshot. See `FormStateComponent`. */
-  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F>>;
+  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F, P>>;
 }
 
 /**
@@ -196,7 +202,8 @@ export type FormInstance<
   I = undefined,
   R = unknown,
   F extends FieldComponentMap = NoFields,
-> = Scope<V, E, F> & FormMembers<V, E, I, R, F>;
+  P extends Plugins = [],
+> = Scope<V, E, F, P> & FormMembers<V, E, I, R, F, P>;
 
 /** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
 export type UnknownForm = FormInstance<unknown, unknown, unknown>;
@@ -218,9 +225,10 @@ export interface ReactFormDefinition<
   R = unknown,
   O = void,
   F extends FieldComponentMap = NoFields,
-> extends FormDefinition<V, E, I, R, O> {
+  P extends Plugins = [],
+> extends FormDefinition<V, E, I, R, O, P> {
   /** Type information only, always undefined at runtime: the form `useForm` makes from this definition. */
-  readonly "~form"?: FormInstance<V, E, I, R, F>;
+  readonly "~form"?: FormInstance<V, E, I, R, F, P>;
 }
 
 /** The form a definition makes: `FormOf<typeof signUp>`. */
@@ -256,10 +264,10 @@ export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>)
  * does, `useForm` makes a new form from it with the current arguments and
  * returns that one from then on. The old form's values are dropped.
  */
-export type UseForm = <V, E, I, R, O, F extends FieldComponentMap>(
-  definition: ReactFormDefinition<V, E, I, R, O, F>,
+export type UseForm = <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
+  definition: ReactFormDefinition<V, E, I, R, O, F, P>,
   ...args: NoInfer<UseFormArgs<O, E>>
-) => FormInstance<V, E, I, R, F>;
+) => FormInstance<V, E, I, R, F, P>;
 
 /**
  * Reads a form from the nearest `form.Form` above. Every `form.Form`
@@ -279,7 +287,9 @@ export interface UseFormContext {
    * such as a dialog's form inside a page's form, are skipped. Throws when no
    * form of that definition is above.
    */
-  <V, E, I, R, O, F extends FieldComponentMap>(definition: ReactFormDefinition<V, E, I, R, O, F>): FormInstance<V, E, I, R, F>;
+  <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
+    definition: ReactFormDefinition<V, E, I, R, O, F, P>,
+  ): FormInstance<V, E, I, R, F, P>;
 }
 
 /** What `forms.scope` needs: an object handle. */
@@ -292,19 +302,15 @@ export interface ObjectHandleLike extends HandleLike {
  * What `createForms` returns: `define` for forms, `scope` for the bound
  * components of any object handle, and `fieldset` for reusable shapes.
  */
-export interface Forms<
-  A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
-> {
+export interface Forms<P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields> {
   /**
    * As core's `FormsCore.define`, returning a definition for `useForm` and
-   * `useFormContext`. The same three cases decide the value type, and `E`,
-   * `I` and `R` are inferred the same way.
+   * `useFormContext`. The same cases decide the value type, and `E`, `I`,
+   * `R` and the definition's own plugins `D` are inferred the same way.
    */
-  define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
-    config: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
-  ): ReactFormDefinition<DefinedValue<V, S, A>, E, I, R, O, F>;
+  define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
+    config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+  ): ReactFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**
    * Returns the scope rooted at an object handle of any form made here.
    * Scopes are cached per handle, so one handle always gives the same object
@@ -312,30 +318,27 @@ export interface Forms<
    * state, so it can be called anywhere, render included, and needs no
    * `form.Form` above.
    */
-  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F>;
+  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F, P>;
   /**
    * Makes a reusable shape from a schema. The shape is the schema's value
-   * type as `define` would type it: the `Draft` of its input when a
-   * registered adapter supports the schema, its input otherwise. The schema
-   * only types the shape. It is never run, since the form's own schema
-   * validates.
+   * type as `define` would type it: the `Draft` of its input when an
+   * installed schema plugin accepts the schema, its input otherwise. The
+   * schema only types the shape. It is never run, since the form's own
+   * schema validates.
    */
-  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, A>, E, F>;
+  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F, P>;
   /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
-  fieldset<V>(): Fieldset<V, E, F>;
+  fieldset<V>(): Fieldset<V, E, F, P>;
 }
 
 /**
  * The adapter's entry point. It wraps `createFormsCore`. Call it once at
- * module scope. `E` is inferred from `mapError` and `F` from `fields`.
+ * module scope. `P` is inferred from `plugins` as a tuple, `E` from
+ * `mapError` and `F` from `fields`.
  */
-export type CreateForms = <
-  const A extends readonly SchemaAdapter<never>[] = [],
-  E = FormError,
-  F extends FieldComponentMap = NoFields,
->(
-  options?: FormsOptions<A, E, F>,
-) => Forms<A, E, F>;
+export type CreateForms = <const P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>(
+  options?: FormsOptions<P, E, F>,
+) => Forms<P, E, F>;
 
 /** A form as the runtime builds it. */
 type AnyForm = AnyScope & { readonly store: AnyFormStore<unknown> };
@@ -387,7 +390,7 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
     const selected = useSelected(formSource(store), props.select, props.isEqual);
     return createElement(Fragment, null, props.children(selected, form));
   }
-  const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form, State };
+  const form: AnyForm = { ...scope, store, id: store.id, plugins: store.plugins, formProps, submit, handleSubmit, Form, State };
   return form;
 }
 

@@ -1,7 +1,7 @@
 import type { Baseline } from "../baseline.js";
 import type { StoreCore } from "../core.js";
 import type { PluginHost } from "../plugins.js";
-import type { Validation } from "../validation.js";
+import type { Validation } from "../runner.js";
 
 /** The parts of a form store that commands outside the main entry need. */
 export interface StoreParts {

@@ -1,29 +1,27 @@
-import type { Plugin, PluginDefinition } from "./plugin.js";
+import type { HookPlugin, MetaSource, PluginDefinition } from "./plugin.js";
 import { partsOf } from "./store/baseline/registry.js";
 import { createPluginHost } from "./store/plugins.js";
 
 export { refuse } from "./store/plugins.js";
 
 /**
- * Makes a plugin from its definition. Install it with
+ * Makes a hook plugin from its definition. Install it with
  * `createFormsCore({ plugins })` or a definition's `plugins`. The plugin
- * carries the code that runs plugins, so a store without plugins never
+ * carries the code that runs plugins, so a store without hook plugins never
  * loads it.
+ *
+ * Its meta types come from `setup`'s parameter. Annotate it as
+ * `PluginContext<M, F>`, where `M` is its meta on a field and `F` its meta
+ * on the form, and the plugin's `meta` and `formMeta` readers return them.
  */
-export function definePlugin<A = undefined, N extends string = string>(definition: PluginDefinition<A, N>): Plugin<A, N> {
-  return { ...definition, host: createPluginHost };
-}
-
-/**
- * The `api` that `plugin`'s setup returned in `store`, typed from the plugin.
- * Undefined when the plugin isn't installed there.
- */
-// `any` lets a plugin of any name fit.
-// oxlint-disable-next-line typescript/no-explicit-any
-export function pluginApi<A>(store: object, plugin: Plugin<A, any>): A | undefined {
-  // The host keeps each plugin's api with the plugin, so it has the plugin's type.
+export function definePlugin<A = undefined, N extends string = string, M = unknown, F = unknown>(
+  definition: PluginDefinition<A, N, M, F>,
+): HookPlugin<A, N, M, F> {
+  const { name } = definition;
+  // The host writes each plugin's meta under its name, with the type its context took.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return partsOf(store)?.host?.api(plugin) as A | undefined;
+  const read = (source: MetaSource) => source.meta?.[name] as (M & F) | undefined;
+  return { ...definition, host: createPluginHost, meta: read, formMeta: read };
 }
 
 /**

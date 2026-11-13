@@ -8,8 +8,8 @@ import * as z3 from "zod/v3";
 import { valibot } from "./valibot.js";
 import { zod, type ZodSchema } from "./zod.js";
 
-const defaultValue = (schema: ZodSchema) => zod().defaultValue(schema);
-const itemValue = (schema: ZodSchema, path: Path) => zod().itemValue(schema, path);
+const defaultValue = (schema: ZodSchema) => zod().schema.defaultValue(schema);
+const itemValue = (schema: ZodSchema, path: Path) => zod().schema.itemValue(schema, path);
 
 const auth = z.discriminatedUnion("type", [
   z.object({ type: z.literal("password"), password: z.string() }),
@@ -166,7 +166,7 @@ describe("defaultValue", () => {
 
   it("gives undefined for a Zod 3 schema, which reports the same vendor", () => {
     const old = z3.object({ a: z3.string() });
-    expect(old["~standard"].vendor).toBe(zod().vendor);
+    expect(old["~standard"].vendor).toBe(zod().schema.vendor);
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const asZod = old as unknown as ZodSchema;
     expect(defaultValue(asZod)).toBeUndefined();
@@ -236,17 +236,17 @@ describe("itemValue", () => {
   });
 });
 
-describe("the adapter", () => {
+describe("the plugin", () => {
   it("names the zod vendor, which classic and mini schemas report", () => {
-    expect(zod().vendor).toBe("zod");
-    expect(schema["~standard"].vendor).toBe(zod().vendor);
-    expect(zm.string()["~standard"].vendor).toBe(zod().vendor);
+    expect(zod().schema.vendor).toBe("zod");
+    expect(schema["~standard"].vendor).toBe(zod().schema.vendor);
+    expect(zm.string()["~standard"].vendor).toBe(zod().schema.vendor);
     expect(zod()).toBe(zod());
   });
 });
 
 describe("with core", () => {
-  const core = createFormsCore({ schemas: [zod()] });
+  const core = createFormsCore({ plugins: [zod()] });
 
   const profile = z.object({
     name: z.string().min(1, "Name required"),
@@ -341,8 +341,8 @@ describe("with core", () => {
     expect(await store.submit()).toEqual({ status: "succeeded", result: undefined });
   });
 
-  it("works next to the valibot adapter, each schema with its own", () => {
-    const both = createFormsCore({ schemas: [zod(), valibot()] });
+  it("works next to the valibot plugin, each schema with its own", () => {
+    const both = createFormsCore({ plugins: [zod(), valibot()] });
     const fromZod = both.define({ schema: z.object({ a: z.string(), list: z.array(z.boolean()) }) }).createStore();
     const fromValibot = both.define({ schema: v.object({ b: v.boolean(), list: v.array(v.string()) }) }).createStore();
     expect(fromZod.root.peek().value).toEqual({ a: "", list: [] });

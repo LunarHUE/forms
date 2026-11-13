@@ -5,6 +5,7 @@ import { createFormsCore } from "./index.js";
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
+import { defineSchemaPlugin, validation } from "./validation.js";
 
 /** A hand-written Standard Schema of vendor `vendor`. */
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -22,12 +23,12 @@ const fakeSchema = <I, O = I>(validate: Validate = passAll, vendor = "fake"): Fa
   "~standard": { version: 1, vendor, validate: validate as (value: unknown) => StandardSchemaV1.Result<O> },
 });
 
-/** A fake adapter whose methods are spies. */
+/** A fake schema plugin whose adapter methods are spies. */
 const fakeAdapter = (defaults: unknown, item?: unknown, vendor = "fake") => {
   const defaultValue = vi.fn<(schema: FakeSchema<unknown>) => unknown>(() => structuredClone(defaults));
   const itemValue = vi.fn<(schema: FakeSchema<unknown>, path: Path) => unknown>(() => structuredClone(item));
   const adapter: SchemaAdapter<FakeSchema<unknown>> = { vendor, defaultValue, itemValue };
-  return { adapter, defaultValue, itemValue };
+  return { plugin: defineSchemaPlugin(adapter), defaultValue, itemValue };
 };
 
 // Core declares no globals beyond es2020, so the tests declare the one they use.
@@ -44,26 +45,27 @@ const userDefaults: User = { name: "", address: { city: "", zip: "" }, tags: [] 
 const err = (message: string): FormError => ({ message });
 
 describe("defaults", () => {
-  it("start from the adapter's defaults when a schema has an adapter", () => {
-    const { adapter, defaultValue } = fakeAdapter(userDefaults);
+  it("start from the schema plugin's defaults", () => {
+    const { plugin, defaultValue } = fakeAdapter(userDefaults);
     const schema = fakeSchema<User>();
-    const store = createFormsCore({ schemas: [adapter] }).define({ schema }).createStore();
+    const store = createFormsCore({ plugins: [plugin] }).define({ schema }).createStore();
     expect(store.root.peek().value).toEqual(userDefaults);
     expect(defaultValue).toHaveBeenCalledWith(schema);
   });
 
-  it("merge partial defaultValues over the adapter's, object by object", () => {
-    const { adapter } = fakeAdapter({ ...userDefaults, tags: ["a"] });
-    const store = createFormsCore({ schemas: [adapter] })
+  it("merge partial defaultValues over the schema plugin's, object by object", () => {
+    const { plugin } = fakeAdapter({ ...userDefaults, tags: ["a"] });
+    const store = createFormsCore({ plugins: [plugin] })
       .define({ schema: fakeSchema<User>(), defaultValues: { name: undefined, address: { city: "Paris" }, tags: ["b", "c"] } })
       .createStore();
     expect(store.root.peek().value).toEqual({ name: "", address: { city: "Paris", zip: "" }, tags: ["b", "c"] });
   });
 
-  it("use complete defaultValues as given when no adapter supports the schema", () => {
-    const { adapter, defaultValue } = fakeAdapter(userDefaults);
+  it("use complete defaultValues as given when no schema plugin has the schema's vendor", () => {
+    const { plugin, defaultValue } = fakeAdapter(userDefaults);
     const defaultValues: User = { name: "Ada", address: { city: "Paris", zip: "75" }, tags: [] };
-    const store = createFormsCore({ schemas: [adapter] })
+    const store = createFormsCore({ plugins: [plugin] })
+      // The types can't see a vendor. At runtime no plugin has this one, so the complete defaultValues are used.
       .define({ schema: fakeSchema<User>(undefined, "other"), defaultValues })
       .createStore();
     expect(store.root.peek().value).toEqual(defaultValues);
@@ -71,23 +73,23 @@ describe("defaults", () => {
   });
 
   it("use defaultValues as given without a schema", () => {
-    const { adapter, defaultValue } = fakeAdapter(userDefaults);
-    const store = createFormsCore({ schemas: [adapter] }).define({ defaultValues: { a: 1 } }).createStore();
+    const { plugin, defaultValue } = fakeAdapter(userDefaults);
+    const store = createFormsCore({ plugins: [plugin] }).define({ defaultValues: { a: 1 } }).createStore();
     expect(store.root.peek().value).toEqual({ a: 1 });
     expect(defaultValue).not.toHaveBeenCalled();
   });
 
-  it("throw at createStore for a schema with no adapter and no defaultValues", () => {
+  it("throw at createStore for a schema with no schema plugin and no defaultValues", () => {
     const schema = fakeSchema<User>(undefined, "other");
-    // @ts-expect-error: no adapter supports this schema, so defaultValues is required
-    const form = createFormsCore().define({ schema });
+    // @ts-expect-error: no schema plugin accepts this schema, so defaultValues is required
+    const form = createFormsCore({ plugins: [validation()] }).define({ schema });
     expect(() => form.createStore()).toThrow(/vendor "other".*defaultValues/);
   });
 
-  it("ask the first of two adapters with the same vendor", () => {
+  it("ask the first of two schema plugins with the same vendor", () => {
     const first = fakeAdapter({ from: "first" });
     const second = fakeAdapter({ from: "second" });
-    const store = createFormsCore({ schemas: [first.adapter, second.adapter] })
+    const store = createFormsCore({ plugins: [first.plugin, second.plugin] })
       .define({ schema: fakeSchema<{ from: string }>() })
       .createStore();
     expect(store.root.peek().value).toEqual({ from: "first" });
@@ -96,16 +98,16 @@ describe("defaults", () => {
 });
 
 describe("item values", () => {
-  it("come from the adapter on a bare push", () => {
-    const { adapter, itemValue } = fakeAdapter({ rows: [] }, { title: "" });
+  it("come from the schema plugin on a bare push", () => {
+    const { plugin, itemValue } = fakeAdapter({ rows: [] }, { title: "" });
     const schema = fakeSchema<{ rows: { title: string }[] }>();
-    const store = createFormsCore({ schemas: [adapter] }).define({ schema }).createStore();
+    const store = createFormsCore({ plugins: [plugin] }).define({ schema }).createStore();
     store.root.at("rows").push();
     expect(store.root.peek().value).toEqual({ rows: [{ title: "" }] });
     expect(itemValue).toHaveBeenCalledWith(schema, ["rows"]);
   });
 
-  it("are undefined without an adapter", () => {
+  it("are undefined without a schema", () => {
     const store = createFormsCore().define<{ rows: (string | undefined)[] }>({ defaultValues: { rows: [] } }).createStore();
     store.root.at("rows").push();
     expect(store.root.peek().value).toEqual({ rows: [undefined] });
@@ -141,7 +143,7 @@ const required = (value: string) => (value === "" ? err("Required") : undefined)
 describe("shared settings and per-definition overrides", () => {
 
   it("use the shared show unless the definition has its own", () => {
-    const core = createFormsCore({ show: "always" });
+    const core = createFormsCore({ plugins: [validation()], show: "always" });
     const shared = core.define({ defaultValues: { a: "" }, validate: { fields: { a: required } } }).createStore();
     const own = core.define({ defaultValues: { a: "" }, show: "submitted", validate: { fields: { a: required } } }).createStore();
     void shared.validate();
@@ -151,7 +153,7 @@ describe("shared settings and per-definition overrides", () => {
   });
 
   it("use the shared timing unless the definition has its own", () => {
-    const core = createFormsCore({ validate: "input" });
+    const core = createFormsCore({ plugins: [validation()], validate: "input" });
     const shared = core.define({ defaultValues: { a: "x" }, validate: { fields: { a: required } } }).createStore();
     const own = core.define({ defaultValues: { a: "x" }, validate: { on: "blur", fields: { a: required } } }).createStore();
     shared.root.at("a").setValue("");
@@ -192,7 +194,8 @@ describe("shared settings and per-definition overrides", () => {
 
   it("send schema issues and thrown errors through the shared mapError", () => {
     const schema = fakeSchema<{ a: string }>((value) => ({ issues: [{ message: "bad", path: ["a"] }], value }));
-    const store = createFormsCore({ mapError: (raw) => ({ code: `${raw.source}:${raw.message}` }) })
+    const { plugin } = fakeAdapter({ a: "" });
+    const store = createFormsCore({ plugins: [plugin], mapError: (raw) => ({ code: `${raw.source}:${raw.message}` }) })
       .define({
         schema,
         defaultValues: { a: "" },
@@ -222,15 +225,15 @@ describe("instance settings", () => {
 });
 
 describe("no side effects", () => {
-  it("runs nothing at createFormsCore or define, and only the adapter's defaults at createStore", () => {
-    const { adapter, defaultValue, itemValue } = fakeAdapter({ a: "", rows: [] });
+  it("runs nothing at createFormsCore or define, and only the schema plugin's defaults at createStore", () => {
+    const { plugin, defaultValue, itemValue } = fakeAdapter({ a: "", rows: [] });
     const validate = vi.fn<Validate>((value) => ({ value }));
     const field = vi.fn<() => undefined>(() => undefined);
     const form = vi.fn<() => undefined>(() => undefined);
     const onSubmit = vi.fn<() => void>();
     const mapError = vi.fn<(raw: RawError) => FormError>((raw) => ({ message: raw.message }));
     const equals = vi.fn<Equals>((a, b, _ctx, next) => next(a, b));
-    const core = createFormsCore({ schemas: [adapter], mapError, equals });
+    const core = createFormsCore({ plugins: [plugin], mapError, equals });
     const definition = core.define({
       schema: fakeSchema<{ a: string; rows: string[] }>(validate),
       validate: { on: "input", form, fields: { a: field } },
@@ -267,9 +270,9 @@ describe("end to end", () => {
   });
 
   it("defines, writes, blurs, fails a submit, and passes the schema output once fixed", async () => {
-    const { adapter } = fakeAdapter({ name: "", age: "" });
+    const { plugin } = fakeAdapter({ name: "", age: "" });
     const onSubmit = vi.fn<(value: Output) => string>((value) => `saved ${value.name}`);
-    const store = createFormsCore({ schemas: [adapter] }).define({ schema, onSubmit }).createStore();
+    const store = createFormsCore({ plugins: [plugin] }).define({ schema, onSubmit }).createStore();
     const name = store.root.at("name");
     const age = store.root.at("age");
 

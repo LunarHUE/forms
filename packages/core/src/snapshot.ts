@@ -1,5 +1,4 @@
 import type { FormError } from "./errors.js";
-import type { FieldMeta, FormMeta } from "./index.js";
 import type { DeepReadonly, ShapeOf } from "./value.js";
 
 /** The members every field snapshot has. See `FieldSnapshot`. */
@@ -34,9 +33,10 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly readOnly: boolean;
   /**
    * Plugin state by plugin name. Missing until a plugin sets some on this
-   * field. Plugins declare their slot types on `FieldMeta`.
+   * field. Read a plugin's slot, typed, with the plugin's `meta` reader:
+   * `rules.meta(snapshot)`.
    */
-  readonly meta?: Readonly<Partial<FieldMeta>>;
+  readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 /** The extra member on an array field's snapshot. */
@@ -99,7 +99,8 @@ export interface FormSnapshot<I = undefined, R = unknown> {
   readonly submitCount: number;
   /**
    * Plugin state by plugin name. Missing until a plugin sets some on the
-   * form. Plugins declare their slot types on `FormMeta`.
+   * form. Read a plugin's slot, typed, with the plugin's `formMeta` reader:
+   * `rules.formMeta(snapshot)`.
    */
-  readonly meta?: Readonly<Partial<FormMeta>>;
+  readonly meta?: Readonly<Record<string, unknown>>;
 }

@@ -11,7 +11,7 @@ describe("server rendering", () => {
   });
 
   it("reads the server snapshot, not a value written during the render", () => {
-    const Profile = createForms({ schemas: [valibot()] }).define({
+    const Profile = createForms({ plugins: [valibot()] }).define({
       schema: v.object({ name: v.string(), tags: v.array(v.string()) }),
       defaultValues: { name: "initial", tags: ["a"] },
     });

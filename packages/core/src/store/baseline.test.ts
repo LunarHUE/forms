@@ -5,13 +5,14 @@ import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { rebase } from "../rebase.js";
+import { validation as runner } from "../validation.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 import { isContainer } from "./tree.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, ...options });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [runner()], ...options });
   return { ...parts, root: parts.store.root };
 };
 

@@ -1,27 +1,27 @@
-import { createFormsCore, type FormStore, type HasAdapter, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import { createFormsCore, type FormStore, type HasSchemaPlugin, type HasValidation, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
 
-type Adapters = readonly [ReturnType<typeof valibot>];
+type Installed = readonly [ReturnType<typeof valibot>];
 
 const user = v.object({ name: v.string(), age: v.pipe(v.string(), v.transform(Number)) });
 const userAsync = v.objectAsync({ name: v.pipeAsync(v.string(), v.checkAsync(async () => true)) });
 
-// A schema from a vendor no adapter is registered for.
+// A schema from a vendor no installed plugin accepts.
 declare const other: StandardSchemaV1<{ name: string }> & { readonly other: true };
 
 describe("valibot()", () => {
   it("supports concrete sync and async valibot schemas", () => {
-    expectTypeOf<HasAdapter<typeof user, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<typeof userAsync, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<v.ArraySchema<v.StringSchema<undefined>, undefined>, Adapters>>().toEqualTypeOf<true>();
-    expectTypeOf<HasAdapter<typeof other, Adapters>>().toEqualTypeOf<false>();
+    expectTypeOf<HasSchemaPlugin<typeof user, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<typeof userAsync, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<v.ArraySchema<v.StringSchema<undefined>, undefined>, Installed>>().toEqualTypeOf<true>();
+    expectTypeOf<HasSchemaPlugin<typeof other, Installed>>().toEqualTypeOf<false>();
     expectTypeOf(user).toExtend<ValibotSchema>();
   });
 
   it("makes defaultValues optional for a valibot schema", () => {
-    const core = createFormsCore({ schemas: [valibot()] });
+    const core = createFormsCore({ plugins: [valibot()] });
     const store = core.define({ schema: user }).createStore();
     expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
     core.define({ schema: userAsync });
@@ -35,7 +35,7 @@ describe("valibot()", () => {
   });
 
   it("types the value as the draft of the schema's input", () => {
-    const core = createFormsCore({ schemas: [valibot()] });
+    const core = createFormsCore({ plugins: [valibot()] });
     const order = v.object({
       title: v.string(),
       qty: v.number(),
@@ -63,15 +63,22 @@ describe("valibot()", () => {
     expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
     store.root.at("lines").push({ sku: "", price: undefined });
     store.root.at("channels").push("sms");
-    // @ts-expect-error: the adapter has no empty channel to add
+    // @ts-expect-error: the schema plugin has no empty channel to add
     store.root.at("channels").push();
   });
 
-  it("still requires defaultValues for a schema of another vendor", () => {
-    const core = createFormsCore({ schemas: [valibot()] });
-    // @ts-expect-error: no registered adapter supports this schema
+  it("still requires defaultValues for a schema of another vendor, which its runner validates", () => {
+    const core = createFormsCore({ plugins: [valibot()] });
+    // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: other });
     const store = core.define({ schema: other, defaultValues: { name: "" } }).createStore();
     expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf<HasSchemaPlugin<typeof other, Installed>>().toEqualTypeOf<false>();
+  });
+
+  it("brings the validation runner", () => {
+    const core = createFormsCore({ plugins: [valibot()] });
+    core.define({ schema: user, validate: { fields: { name: (value) => (value ? undefined : { message: "Required" }) } } });
+    expectTypeOf<HasValidation<Installed>>().toEqualTypeOf<true>();
   });
 });
