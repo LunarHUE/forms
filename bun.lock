@@ -108,7 +108,7 @@
         "react-dom": "catalog:",
       },
       "peerDependencies": {
-        "react": ">=18",
+        "react": ">=16.8",
       },
     },
     "packages/react/compat/react-16": {
