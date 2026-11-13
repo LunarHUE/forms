@@ -248,14 +248,14 @@ const stale: unknown = Symbol("stale");
 
 const idleSubmission: Submission<never, never> = freeze({ status: "idle" });
 
-// The part of a `Flags` declaration under one child. A tuple's entry applies to every item.
-const declUnder = (decl: unknown, seg: string): unknown =>
-  Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined;
-
-const flagFrom = (decl: unknown, parent: Flag | undefined): Flag => {
+const flagFrom = (decl: unknown, inherited: boolean): Flag => {
   const own = decl === true;
-  return { decl, own, on: own || (parent?.on ?? false) };
+  return { decl, own, on: own || inherited };
 };
+
+// The flag of the child at `seg`. A tuple's entry in the declaration applies to every item.
+const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
+  flagFrom(Array.isArray(decl) ? decl[0] : isPlainObject(decl) ? childOf(decl, seg) : undefined, on);
 
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
@@ -473,7 +473,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     withErrors.delete(node);
     if (node.validating) for (const owner of node.validating) ownerNodes.get(owner)?.delete(node);
     if (node.byOwner) for (const owner of node.byOwner.keys()) ownerNodes.get(owner)?.delete(node);
-    if (node.children) for (const child of node.children.values()) bury(child);
+    node.children?.forEach(bury);
   };
 
   // Moves the child at item key `key` to `removed`, takes its state out of the
@@ -521,8 +521,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       editedCount: 0,
       invalidCount: 0,
       validatingCount: 0,
-      disabled: parent ? flagFrom(declUnder(parent.disabled.decl, seg), parent.disabled) : flagFrom(options.disabled, undefined),
-      readOnly: parent ? flagFrom(declUnder(parent.readOnly.decl, seg), parent.readOnly) : flagFrom(options.readOnly, undefined),
+      disabled: parent ? flagUnder(parent.disabled, seg) : flagFrom(options.disabled, false),
+      readOnly: parent ? flagUnder(parent.readOnly, seg) : flagFrom(options.readOnly, false),
       validating: undefined,
       byOwner: undefined,
       validation: none,
@@ -534,7 +534,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     place(node);
     node.name = nameOf(node);
     syncKeys(node);
-    node.snapshot = settle(build(node), undefined, undefined);
+    node.snapshot = freeze(build(node));
     if (changes === 0) node.server = node.snapshot;
     return node;
   };
@@ -591,7 +591,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     if (moved) node.name = nameOf(node);
     syncKeys(node);
     rebuild(node);
-    if (node.children) for (const child of node.children.values()) update(child, moved);
+    node.children?.forEach((child) => update(child, moved));
   };
 
   // Updates `node` and its ancestors, root first, without visiting their other children.
@@ -682,13 +682,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   // key list starts with, and the flags it started with.
   const initialPlace = (node: Node<E>): InitialPlace => {
     if (!node.parent) {
-      const disabled = flagFrom(options.disabled, undefined);
-      const readOnly = flagFrom(options.readOnly, undefined);
+      const disabled = flagFrom(options.disabled, false);
+      const readOnly = flagFrom(options.readOnly, false);
       return { value: initial, name: "", blocked: false, disabled, readOnly };
     }
     const parent = initialPlace(node.parent);
-    const disabled = flagFrom(declUnder(parent.disabled.decl, node.seg), parent.disabled);
-    const readOnly = flagFrom(declUnder(parent.readOnly.decl, node.seg), parent.readOnly);
+    const disabled = flagUnder(parent.disabled, node.seg);
+    const readOnly = flagUnder(parent.readOnly, node.seg);
     const at = (value: unknown, segment: string, blocked: boolean): InitialPlace => ({
       value,
       name: parent.name === "" ? segment : `${parent.name}.${segment}`,
@@ -714,7 +714,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const { value, name, disabled, readOnly } = initialPlace(node);
     const keys = Array.isArray(value) ? initialKeys(value.length) : undefined;
     const state = { ...idle, disabled: disabled.on, readOnly: readOnly.on };
-    node.server = settle(entries(value, name, keys && freeze(keys), state), undefined, undefined);
+    node.server = freeze(entries(value, name, keys && freeze(keys), state));
     return node.server;
   };
 
@@ -730,10 +730,48 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       if (next === flag.on) return;
       flag.on = next;
       rebuild(n);
-      if (n.children) for (const child of n.children.values()) inherit(child);
+      n.children?.forEach(inherit);
     };
     inherit(node);
     return finish(true);
+  };
+
+  // Clears user errors at and below `path`, plus touched and edited with
+  // `state`, plus validation errors with `validation`.
+  const clearBelow = (path: Path, state: boolean, validation: boolean): boolean => {
+    const start = findNode(path);
+    if (!start || start.dead) return false;
+    let changed = false;
+    const visit = (node: Node<E>) => {
+      let dirty = false;
+      if (state && node.touched) {
+        node.touched = false;
+        dirty = true;
+      }
+      if (state && node.marked) {
+        node.marked = false;
+        changed = true;
+        // Rebuilds this node and those above it whose edited state flips.
+        bump(node, "editedCount", -1);
+      }
+      if (node.user.length > 0) {
+        node.user = none;
+        dirty = true;
+      }
+      if (validation && node.byOwner && node.byOwner.size > 0) {
+        const owners = [...node.byOwner.keys()];
+        node.byOwner = undefined;
+        for (const owner of owners) untrack(owner, node);
+        dirty = true;
+      }
+      if (dirty) {
+        changed = true;
+        refreshErrors(node);
+      }
+      node.children?.forEach(visit);
+    };
+    visit(start);
+    return finish(changed);
   };
 
   const listen = <S>(cell: Cell<S>, listener: () => void): (() => void) => {
@@ -754,7 +792,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
 
   const form = (): Cell<FormSnapshot<I, R>> =>
     (formCell ??= {
-      snapshot: settle(buildForm(), serverFormSnapshot(), undefined),
+      snapshot: settle(buildForm(), serverFormSnapshot()),
       before: undefined,
       subscriptions: undefined,
     });
@@ -882,57 +920,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       refreshErrors(node);
       return finish(true);
     },
-    clearUserErrors(path) {
-      const start = findNode(path);
-      if (!start || start.dead) return false;
-      let changed = false;
-      const visit = (node: Node<E>) => {
-        if (node.user.length > 0) {
-          node.user = none;
-          changed = true;
-          refreshErrors(node);
-        }
-        if (node.children) for (const child of node.children.values()) visit(child);
-      };
-      visit(start);
-      return finish(changed);
-    },
-    clearState(path, clearOptions) {
-      const start = findNode(path);
-      if (!start || start.dead) return false;
-      const validation = clearOptions?.validation === true;
-      let changed = false;
-      const visit = (node: Node<E>) => {
-        let dirty = false;
-        if (node.touched) {
-          node.touched = false;
-          dirty = true;
-        }
-        if (node.marked) {
-          node.marked = false;
-          changed = true;
-          // Rebuilds this node and those above it whose edited state flips.
-          bump(node, "editedCount", -1);
-        }
-        if (node.user.length > 0) {
-          node.user = none;
-          dirty = true;
-        }
-        if (validation && node.byOwner && node.byOwner.size > 0) {
-          const owners = [...node.byOwner.keys()];
-          node.byOwner = undefined;
-          for (const owner of owners) untrack(owner, node);
-          dirty = true;
-        }
-        if (dirty) {
-          changed = true;
-          refreshErrors(node);
-        }
-        if (node.children) for (const child of node.children.values()) visit(child);
-      };
-      visit(start);
-      return finish(changed);
-    },
+    clearUserErrors: (path) => clearBelow(path, false, false),
+    clearState: (path, clearOptions) => clearBelow(path, true, clearOptions?.validation === true),
     removeOwner(owner) {
       ownerRank.delete(owner);
       const nodes = ownerNodes.get(owner);
@@ -970,7 +959,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const visit = (node: Node<E>) => {
         node.dirtyFor = stale;
         rebuild(node);
-        if (node.children) for (const child of node.children.values()) visit(child);
+        node.children?.forEach(visit);
       };
       if (root) visit(root);
       finish(true);
@@ -1065,8 +1054,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const count = (node: Node<E>) => {
         nodes++;
         if (node.subscriptions) subscribed++;
-        if (node.children) for (const child of node.children.values()) count(child);
-        if (node.removed) for (const child of node.removed.values()) count(child);
+        node.children?.forEach(count);
+        node.removed?.forEach(count);
       };
       if (root) count(root);
       return { nodes, subscribed };

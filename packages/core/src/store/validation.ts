@@ -463,11 +463,9 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       const runs = new Set<Run>();
       along(runsAt, path, true, runs);
       for (const reg of patterns) {
-        if (reg.timing !== "blur") continue;
-        const { pattern } = reg;
-        const exact = pattern.length === path.length;
-        if ((exact || (reg.reaches && pattern.length < path.length)) && matches(pattern, path, pattern.length))
-          runs.add(runOf(reg, path.slice(0, pattern.length)));
+        const { length } = reg.pattern;
+        if (reg.timing === "blur" && (length === path.length || (reg.reaches && length < path.length)))
+          patternRuns(reg, path, true, runs);
       }
       const key = keyOf(path);
       for (const run of runs) {

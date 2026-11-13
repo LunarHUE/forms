@@ -51,7 +51,7 @@ export const blank: Snapshot<never> = entries(undefined, "", undefined, idle);
  * `before` is the one listeners last saw, so a change that is undone before
  * they run gets that object back.
  */
-export function settle<S extends object>(candidate: S, previous: S | undefined, before: S | undefined): S {
+export function settle<S extends object>(candidate: S, previous: S | undefined, before?: S): S {
   if (previous && sameMembers(candidate, previous)) return previous;
   if (before && sameMembers(candidate, before)) return before;
   return freeze(candidate);

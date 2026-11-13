@@ -81,5 +81,5 @@ export function along<T>(root: Slot<T>, path: Path, self: boolean, out: Set<T>):
 export function below<T>(at: Slot<T> | undefined, self: boolean, out: Set<T>): void {
   if (!at) return;
   if (self && at.values) for (const value of at.values) out.add(value);
-  if (at.children) for (const child of at.children.values()) below(child, true, out);
+  at.children?.forEach((child) => below(child, true, out));
 }
