@@ -49,9 +49,9 @@ export default defineConfig({
   },
   overrides: [
     {
-      // The adapter, the React examples and the parked inspector's React
-      // wrapper follow the same rules.
-      files: ["packages/react/**", "examples/react/**", "parked/inspector/src/react.tsx"],
+      // The adapter, the React examples, the e2e React app and the parked
+      // inspector's React wrapper follow the same rules.
+      files: ["packages/react/**", "examples/react/**", "e2e/apps/react/**", "parked/inspector/src/react.tsx"],
       // An override's `plugins` replaces the base list.
       plugins: [...basePlugins, "react"],
       // `react` is a reserved plugin name, so the upstream plugin gets an alias.
