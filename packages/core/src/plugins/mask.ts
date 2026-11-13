@@ -1,8 +1,6 @@
-import { hookPlugin } from "../hook-plugin.js";
 import type { Path } from "../path.js";
 import type { HookPlugin } from "../plugin.js";
-import { order } from "../store/host/order.js";
-import { transforms } from "../store/host/transforms.js";
+import { definePlugin } from "../plugins.js";
 
 /** A cleaner for one field. It gets the value so far and the caller's original input. */
 export type Mask = (value: unknown, input: unknown) => unknown;
@@ -68,7 +66,7 @@ export function mask(fields: Readonly<Record<string, Mask>>, options: MaskOption
     }
     return value;
   };
-  return hookPlugin([transforms, order], {
+  return definePlugin({
     name: options.name ?? "mask",
     ...(options.after && { after: options.after }),
     initial: (value) => run([], value, value),

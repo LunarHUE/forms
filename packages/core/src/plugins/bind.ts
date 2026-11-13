@@ -1,8 +1,6 @@
-import { hookPlugin } from "../hook-plugin.js";
 import type { HookPlugin, WriteRecord } from "../plugin.js";
+import { definePlugin } from "../plugins.js";
 import { freeze } from "../store/freeze.js";
-import { active } from "../store/host/active.js";
-import { recorder } from "../store/host/recorder.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
 
 /** What `bind` takes: a store the app owns, seen as one value. */
@@ -59,7 +57,7 @@ const none = {};
 export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
   const { get, set, subscribe, incoming = "replace", initial = "outside" } = options;
   const outside = initial === "outside";
-  return hookPlugin([recorder, active], {
+  return definePlugin({
     name: "bind",
     // The store starts from the outside value, so the server renders it too.
     initial: () => (outside ? get() : undefined),

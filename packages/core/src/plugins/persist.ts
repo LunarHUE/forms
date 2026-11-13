@@ -1,8 +1,5 @@
-import { hookPlugin } from "../hook-plugin.js";
 import type { HookPlugin } from "../plugin.js";
-import { active } from "../store/host/active.js";
-import { recorder } from "../store/host/recorder.js";
-import { timing } from "../store/host/timing.js";
+import { definePlugin } from "../plugins.js";
 
 /** The part of `Storage` that `persist` uses. `localStorage` and `sessionStorage` fit. */
 export interface StorageLike {
@@ -27,7 +24,7 @@ declare const localStorage: StorageLike | undefined;
  * parse is removed and the form starts from its defaults.
  */
 export function persist(key: string, storage?: StorageLike): HookPlugin<undefined, "persist"> {
-  return hookPlugin([recorder, timing, active], {
+  return definePlugin({
     name: "persist",
     setup(ctx) {
       const { store } = ctx;

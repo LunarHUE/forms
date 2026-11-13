@@ -4,7 +4,7 @@ import type { Submission } from "./snapshot.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { AnyFormStore } from "./store.js";
 import type { CreateDirty } from "./store/dirty.js";
-import type { CreateHost, HostPart } from "./store/plugins.js";
+import type { CreateHost } from "./store/plugins.js";
 import type { CreateValidation } from "./store/runner.js";
 
 /**
@@ -265,8 +265,6 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
   initial?(value: unknown): unknown;
   /** A hook plugin's: makes the store's plugin host. Internal. */
   readonly "~host"?: CreateHost;
-  /** A hook plugin's: the host parts its hooks need. Internal. */
-  readonly "~parts"?: readonly HostPart[];
   /** A hook plugin's: reads its meta from a field. */
   meta?(source: MetaSource): M | undefined;
   /** A hook plugin's: reads its meta from the form snapshot. */
@@ -286,7 +284,6 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
 export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown> extends Plugin<A, N, M, F> {
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
   readonly "~host": CreateHost;
-  readonly "~parts": readonly HostPart[];
   /**
    * Reads this plugin's meta from a field snapshot or a field object, as
    * `rules.meta(field)?.hidden`. Undefined until the plugin sets some there.
