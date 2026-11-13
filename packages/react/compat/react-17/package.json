@@ -1,0 +1,9 @@
+{
+  "name": "@lunarhue/forms-react-compat-17",
+  "private": true,
+  "description": "React 17 for the React adapter's compatibility tests. It has a package of its own so react-dom resolves this React, not the workspace's.",
+  "dependencies": {
+    "react": "catalog:react17",
+    "react-dom": "catalog:react17"
+  }
+}

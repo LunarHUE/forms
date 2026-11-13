@@ -1,0 +1,137 @@
+import { fireEvent } from "@testing-library/dom";
+import { renderToString } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import type { FieldApi } from "../src/index.js";
+import { act, hydrate, modern } from "./render.js";
+
+type Adapter = typeof import("../src/index.js");
+
+/**
+ * Loads a fresh copy of the adapter. With `server`, it loads with no
+ * `document`, as on a server, so on React 16 and 17 it picks its server
+ * fallback. React itself stays the one copy, since Node loads it.
+ */
+async function loadAdapter(server: boolean): Promise<Adapter> {
+  vi.resetModules();
+  if (server) vi.stubGlobal("document", undefined);
+  try {
+    return await import("../src/index.js");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+}
+
+interface Order {
+  customer: string;
+  plan: "free" | "pro";
+  lines: { item: string }[];
+}
+const initial: Order = { customer: "Ada", plan: "free", lines: [{ item: "pen" }, { item: "ink" }] };
+
+function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
+  return (
+    <label htmlFor={props.field.id}>
+      {props.label}
+      <input {...props.field.inputProps()} />
+    </label>
+  );
+}
+
+/** Two order forms, built on one copy of the adapter. `ids` gives each form an `id`. */
+function makeApp(adapter: Adapter, ids: boolean) {
+  const order = adapter.createForms({ fields: { TextField } }).define({ defaultValues: initial });
+
+  function Plan() {
+    const plan = order.useFormContext().root.at("plan");
+    return (
+      <>
+        <input {...adapter.useInputProps(plan, { kind: "radio", value: "free" })} />
+        <input {...adapter.useInputProps(plan, { kind: "radio", value: "pro" })} />
+      </>
+    );
+  }
+
+  function Status() {
+    const dirty = adapter.useFormState(adapter.useFormContext(), (snapshot) => snapshot.dirty);
+    return <p>{dirty ? "dirty" : "clean"}</p>;
+  }
+
+  function OrderForm(props: { readonly id: string }) {
+    const form = order.useForm(ids ? { id: props.id } : {});
+    return (
+      <form.Form>
+        {({ submit: _submit, ...formProps }) => (
+          <form {...formProps}>
+            <form.TextField name="customer" label="Customer" />
+            <Plan />
+            <form.Items name="lines">{(line) => <form.TextField handle={line.at("item")} label="Item" />}</form.Items>
+            <Status />
+          </form>
+        )}
+      </form.Form>
+    );
+  }
+
+  return function App() {
+    return (
+      <main>
+        <OrderForm id="first" />
+        <OrderForm id="second" />
+      </main>
+    );
+  };
+}
+
+/** Renders on the server copy of the adapter, then hydrates on a client copy. */
+async function serverThenClient(ids: boolean): Promise<HTMLElement> {
+  const ServerApp = makeApp(await loadAdapter(true), ids);
+  const html = renderToString(<ServerApp />);
+  const container = document.body.appendChild(document.createElement("div"));
+  container.innerHTML = html;
+  const serverIds = [...container.querySelectorAll("[id]")].map((element) => element.id);
+  expect(new Set(serverIds).size).toBe(serverIds.length);
+  expect(serverIds.length).toBeGreaterThan(8);
+
+  const ClientApp = makeApp(await loadAdapter(false), ids);
+  const recoverable = vi.fn<(error: unknown) => void>();
+  await hydrate(container, <ClientApp />, recoverable);
+  expect(recoverable).not.toHaveBeenCalled();
+  expect([...container.querySelectorAll("[id]")].map((element) => element.id)).toEqual(serverIds);
+  return container;
+}
+
+const missingId = /server rendered without an `id`/;
+
+describe("server rendering and hydration", () => {
+  it("hydrates forms with an id, with no warning, and they stay live", async () => {
+    const container = await serverThenClient(true);
+    const customer = container.querySelector<HTMLInputElement>("#first--customer");
+    expect(customer?.value).toBe("Ada");
+    expect(container.querySelector("#first p")?.textContent).toBe("clean");
+    await act(() => fireEvent.change(customer ?? container, { target: { value: "Grace" } }));
+    expect(customer?.value).toBe("Grace");
+    expect(container.querySelector("#first p")?.textContent).toBe("dirty");
+    expect(container.querySelector("#second p")?.textContent).toBe("clean");
+  });
+
+  it.runIf(modern)("hydrates forms without an id on React 18 and later", async () => {
+    const container = await serverThenClient(false);
+    expect(container.querySelector<HTMLInputElement>("form input")?.value).toBe("Ada");
+  });
+
+  it("warns once about forms server rendered without an id, on React 16 and 17 only", async () => {
+    vi.mocked(console.warn).mockImplementation(() => {});
+    const Unnamed = makeApp(await loadAdapter(true), false);
+    renderToString(<Unnamed />);
+    renderToString(<Unnamed />);
+    const warnings = vi.mocked(console.warn).mock.calls.filter(([message]) => missingId.test(String(message)));
+    expect(warnings).toHaveLength(modern ? 0 : 1);
+    vi.mocked(console.warn).mockClear();
+  });
+
+  it("doesn't warn when an id is passed", async () => {
+    const Named = makeApp(await loadAdapter(true), true);
+    renderToString(<Named />);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+});

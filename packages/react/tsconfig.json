@@ -6,5 +6,5 @@
     "noEmit": true,
     "customConditions": ["@lunarhue/source"]
   },
-  "include": ["src"]
+  "include": ["src", "compat"]
 }
