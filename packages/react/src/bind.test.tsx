@@ -42,7 +42,11 @@ interface TextFieldProps {
   readonly label: string;
 }
 
+// Counts renders, so a test can tell that hydration rendered once.
+const rendered = vi.fn<() => void>();
+
 function TextField({ field, label }: TextFieldProps) {
+  rendered();
   return <input aria-label={label} {...field.inputProps()} />;
 }
 
@@ -128,20 +132,19 @@ describe("instance plugins", () => {
 });
 
 describe("server rendering with bind", () => {
-  it('renders the defaults with initial "outside", hydrates without a mismatch, then shows the outside value', async () => {
-    // Writes made in plugin setup don't reach the server snapshot, so the
-    // server HTML and the hydrating render show the definition's defaults.
+  it('renders the outside value with initial "outside" and hydrates in one render', async () => {
     const server = outside({ name: "outside" });
     const html = renderToString(<Bound store={server} label="name" />);
     const container = document.createElement("div");
     container.innerHTML = html;
     document.body.append(container);
-    expect(container.querySelector("input")?.value).toBe("default");
+    expect(container.querySelector("input")?.value).toBe("outside");
     expect(server.listeners.size).toBe(0);
 
     const client = outside({ name: "outside" });
     const errors = vi.spyOn(console, "error");
     const recoverable = vi.fn<(error: unknown) => void>();
+    rendered.mockClear();
     await act(async () => {
       hydrateRoot(container, <Bound store={client} label="name" />, { onRecoverableError: recoverable });
     });
@@ -149,6 +152,8 @@ describe("server rendering with bind", () => {
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
     expect(container.querySelector("input")?.value).toBe("outside");
+    // The binding wrote nothing, so the field didn't render again after hydrating.
+    expect(rendered).toHaveBeenCalledTimes(1);
     expect(client.listeners.size).toBe(1);
     container.remove();
   });

@@ -13,6 +13,7 @@ import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
 import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
+import type { Validation } from "./runner.js";
 import { freeze } from "./freeze.js";
 
 // Core has no DOM or node types, so this declares the platform globals the host uses.
@@ -62,8 +63,12 @@ export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly An
 export interface PluginHost {
   /** The value store with its write commands wrapped, for the rest of the form store to use. */
   readonly core: StoreCore<unknown, unknown>;
-  /** Runs each plugin's setup. The form store calls it once the store and its baseline exist. */
-  start(store: AnyFormStore<unknown>, baseline: Baseline): void;
+  /**
+   * Runs each plugin's setup. The form store calls it once the store, its
+   * baseline and its validation exist. It makes `validation.changed` wait
+   * for the end of the batch, so validators rerun once for all its writes.
+   */
+  start(store: AnyFormStore<unknown>, baseline: Baseline, validation: Pick<Validation<unknown>, "changed">): void;
   /** Runs `run`, the reset of the field at `path`, with `cause: "reset"`, then calls `onReset` in the same batch. */
   reset(path: Path, run: () => void): void;
   /** Calls `onSubmit`, and returns a promise that settles once `settled` and every promise `onSubmit` returned have. */
@@ -82,7 +87,7 @@ export const hosts: WeakMap<object, PluginHost> = new WeakMap();
 /** One installed plugin. */
 interface Entry {
   readonly plugin: AnyHookPlugin;
-  /** The cause its `ctx.write` writes get. */
+  /** The cause its `ctx.write` writes get unless it asks for `"rebase"`. */
   readonly cause: WriteCause;
   hooks: PluginHooks<unknown>;
   /** The cleanup its `onActive` returned. */
@@ -147,7 +152,11 @@ export function createPluginHost(
   // Records of the batch that is open, for the `sync` observers.
   let records: WriteRecord[] = [];
   // Plugin writes and meta waiting for the round to end.
-  let queue: (readonly [Entry, () => void])[] = [];
+  let queue: (readonly [Entry, () => void, WriteCause])[] = [];
+  // Paths that writes other than user edits changed in this batch, and
+  // validation's own `changed`, which reruns their validators once the writes end.
+  const paths: Path[] = [];
+  let changed: ((list: readonly Path[]) => void) | undefined;
   // The plugins with a `sync` `onWrite`, in run order, and the buckets of the other two timings.
   const sync: Entry[] = [];
   const deferred: Bucket = { observers: [], records: [], due: false };
@@ -212,7 +221,7 @@ export function createPluginHost(
     settling = true;
     try {
       let rounds = 0;
-      while (records.length > 0 || queue.length > 0) {
+      while (records.length > 0 || queue.length > 0 || paths.length > 0) {
         if (++rounds > maxRounds) {
           const writers = new Set<string>();
           for (const record of records) if (typeof record.cause === "object") writers.add(record.cause.plugin);
@@ -223,6 +232,7 @@ export function createPluginHost(
           report(failure("loop", names), names);
           break;
         }
+        if (paths.length > 0) changed?.(paths.splice(0));
         const round = records;
         records = [];
         if (round.length > 0) {
@@ -235,9 +245,9 @@ export function createPluginHost(
         }
         const writes = queue;
         queue = [];
-        for (const [entry, fn] of writes) {
+        for (const [entry, fn, by] of writes) {
           try {
-            as(entry.cause, fn);
+            as(by, fn);
           } catch (error) {
             report(error, entry.plugin.name);
           }
@@ -356,9 +366,11 @@ export function createPluginHost(
   const contextFor = (entry: Entry, store: AnyFormStore<unknown>, baseline: PluginBaseline): PluginContext => {
     const { name } = entry.plugin;
     // Inside a hook the write waits for the round to end. Outside one it runs now.
-    const write = (fn: () => void) => {
-      if (inHook > 0) queue.push([entry, fn]);
-      else as(entry.cause, () => batch(fn));
+    // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
+    const write = (fn: () => void, asked?: unknown) => {
+      const by = asked === "rebase" ? asked : entry.cause;
+      if (inHook > 0) queue.push([entry, fn, by]);
+      else as(by, () => batch(fn));
     };
     return {
       store,
@@ -377,15 +389,16 @@ export function createPluginHost(
 
   const host: PluginHost = {
     core,
-    start(store, { read, equals, move }) {
+    start(store, { read, equals, move }, validation) {
       hosts.set(store, host);
+      // Every write runs in a batch of the host's, so the paths wait for it to end.
+      changed = validation.changed;
+      validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       const baseline: PluginBaseline = { read, equals, move };
       // Setup counts as a hook, so writes it makes wait until every plugin's setup has run.
       for (const plugin of order(plugins)) {
-        // Rebase is a plugin, but its writes keep the cause they had as a command.
-        const { name } = plugin;
-        const entry: Entry = { plugin, cause: name === "rebase" ? name : freeze({ plugin: name }), hooks: {} };
+        const entry: Entry = { plugin, cause: freeze({ plugin: plugin.name }), hooks: {} };
         entries.push(entry);
         entry.hooks = call(entry, () => plugin.setup(contextFor(entry, store, baseline)), {});
       }

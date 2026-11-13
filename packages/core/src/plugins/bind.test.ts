@@ -65,8 +65,11 @@ const causes = (records: readonly WriteRecord[]) => records.map((record) => [rec
 describe("bind", () => {
   it("starts with the outside value as value and baseline", () => {
     const box = outside<Profile>({ name: "Ada", email: "ada@x", tags: ["a"] });
-    const store = profile.createStore(undefined, { plugins: [bind(box.options)] });
+    const seen: WriteRecord[] = [];
+    const spy = definePlugin({ name: "spy", setup: () => ({ onWrite: (records) => void seen.push(...records) }) });
+    const store = profile.createStore(undefined, { plugins: [bind(box.options), spy] });
     expect(store.root.peek().value).toEqual({ name: "Ada", email: "ada@x", tags: ["a"] });
+    expect(seen).toEqual([]);
     expect(store.getFormSnapshot().dirty).toBe(false);
     expect(store.changes()).toEqual([]);
     expect(box.sets).not.toHaveBeenCalled();
@@ -250,11 +253,12 @@ describe("bind", () => {
     expect(() => twice.createStore(undefined, { plugins: [bind(box.options)] })).toThrow('Two plugins are named "bind".');
   });
 
-  it("keeps the server snapshot at the definition's defaults", () => {
-    // Setup writes don't reach the server snapshot, so server rendering shows the defaults.
+  it('starts the server snapshot at the outside value with initial "outside", and at the defaults with "form"', () => {
     const box = outside<Profile>({ ...defaults, name: "outside" });
     const store = profile.createStore(undefined, { plugins: [bind(box.options)] });
-    expect(store.getServerSnapshot(["name"]).value).toBe("form");
+    expect(store.getServerSnapshot(["name"]).value).toBe("outside");
     expect(store.getSnapshot(["name"]).value).toBe("outside");
+    const kept = profile.createStore(undefined, { plugins: [bind({ ...box.options, initial: "form" })] });
+    expect(kept.getServerSnapshot(["name"]).value).toBe("form");
   });
 });

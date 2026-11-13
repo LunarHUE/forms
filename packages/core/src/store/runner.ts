@@ -44,7 +44,9 @@ export interface Validation<E> {
   /**
    * Called after writes that were not user edits changed the values at
    * `paths`, inside their batch. Reruns the validators that already run on
-   * input and touch those paths. It arms nothing.
+   * input and touch those paths. It arms nothing. In a store with hook
+   * plugins the host gathers the paths of one batch and calls it once at
+   * the end, so each validator reruns once for the whole batch.
    */
   changed(paths: readonly Path[]): void;
   /** Runs what submit needs and resolves once no validator is running. */

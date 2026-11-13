@@ -48,6 +48,29 @@ describe("plugin types", () => {
     expectTypeOf(free.meta({})).toBeUnknown();
   });
 
+  it('lets ctx.write claim "rebase" and no other cause', () => {
+    const writer = definePlugin({
+      name: "writer",
+      setup(ctx) {
+        ctx.write(() => {});
+        ctx.write(() => {}, "rebase");
+        // @ts-expect-error A plugin can't claim a user edit.
+        ctx.write(() => {}, "user");
+        // @ts-expect-error A plugin can't claim a reset.
+        ctx.write(() => {}, "reset");
+        // @ts-expect-error Its own cause is the default, not something it passes.
+        ctx.write(() => {}, { plugin: "writer" });
+        return {};
+      },
+    });
+    expectTypeOf(writer.name).toEqualTypeOf<"writer">();
+  });
+
+  it("takes initial on a plugin definition", () => {
+    const start = definePlugin({ name: "start", initial: () => ({ name: "a" }), setup: () => ({}) });
+    expectTypeOf<(typeof start)["initial"]>().toEqualTypeOf<((value: unknown) => unknown) | undefined>();
+  });
+
   it("puts each API on store.plugins, typed and not optional", () => {
     const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
     const shared = createFormsCore({ plugins: [validation(), counter] });

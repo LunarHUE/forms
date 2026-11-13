@@ -50,8 +50,15 @@ export interface FormInternals<V, E, I, R> {
 
 /** Makes a form store and returns it with its value store. */
 export function createFormInternals<V, E = FormError, I = undefined, R = unknown, O = V>(
-  options: FormStoreOptions<V, E, I, R, O>,
+  given: FormStoreOptions<V, E, I, R, O>,
 ): FormInternals<V, E, I, R> {
+  const plugins = given.plugins ?? [];
+  let initial: unknown = given.initial;
+  // Each plugin can replace the starting value, so the last one that does wins.
+  for (const plugin of plugins) initial = plugin.initial?.(initial) ?? initial;
+  // A plugin's starting value is one the form's value type allows, as a write's is.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const options = { ...given, initial: initial as V };
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
@@ -61,7 +68,6 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // Only a store with hook plugins gets a host, and only a store with a plugin
   // that brings the runner gets validation. The plugins bring that code with
   // them, so core neither carries nor runs it for a store without.
-  const plugins = options.plugins ?? [];
   const hooked = plugins.filter((plugin): plugin is AnyHookPlugin => plugin.setup !== undefined);
   const host = hooked[0]?.host(raw, hooked, options.onPluginError);
   // Each copy of core has its own host and its own `refuse`, so plugins from
@@ -125,7 +131,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
   };
-  host?.start(store, baseline);
+  host?.start(store, baseline, validation);
   return { store, core, baseline, validation, submit };
 }
 

@@ -48,7 +48,7 @@ export function rebase(): HookPlugin<Rebase, "rebase"> {
         // end, and the result lists nothing taken yet.
         ctx.write(() => {
           taken = rebaseTo(ctx, handle.path.map(String), incoming, resolve);
-        });
+        }, "rebase");
         return freeze({ taken: freeze(taken) });
       };
       return { api };
