@@ -197,6 +197,21 @@
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
       "limit": "10.9 kB"
+    },
+    {
+      "name": "solid, everything on",
+      "import": {
+        "dist/esm/index.js": "*",
+        "../schema/dist/esm/valibot.js": "{ valibot }",
+        "dist/esm/plugins/history.js": "{ history }",
+        "dist/esm/plugins/mask.js": "{ mask }",
+        "dist/esm/plugins/persist.js": "{ persist }",
+        "dist/esm/plugins/rules.js": "{ rules }",
+        "dist/esm/plugins/rebase.js": "{ rebase }",
+        "dist/esm/plugins/bind.js": "{ bind }",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "16.35 kB"
     }
   ]
 }

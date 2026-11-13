@@ -207,6 +207,21 @@
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
       "limit": "13.75 kB"
+    },
+    {
+      "name": "react, everything on",
+      "import": {
+        "dist/esm/index.js": "*",
+        "../schema/dist/esm/valibot.js": "{ valibot }",
+        "dist/esm/plugins/history.js": "{ history }",
+        "dist/esm/plugins/mask.js": "{ mask }",
+        "dist/esm/plugins/persist.js": "{ persist }",
+        "dist/esm/plugins/rules.js": "{ rules }",
+        "dist/esm/plugins/rebase.js": "{ rebase }",
+        "dist/esm/plugins/bind.js": "{ bind }",
+        "dist/esm/plugins/dirty.js": "{ dirty }"
+      },
+      "limit": "16.3 kB"
     }
   ]
 }
