@@ -1,0 +1,28 @@
+{
+  "name": "@lunarhue/forms-example-next",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc -p tsconfig.json",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@lunarhue/forms-example-order": "workspace:*",
+    "@lunarhue/forms-example-react": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "babel-plugin-react-compiler": "catalog:",
+    "typescript": "catalog:"
+  }
+}

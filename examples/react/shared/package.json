@@ -1,0 +1,28 @@
+{
+  "name": "@lunarhue/forms-example-react",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@lunarhue/forms-example-inspector": "workspace:*",
+    "@lunarhue/forms-example-order": "workspace:*",
+    "@lunarhue/forms-react": "workspace:*",
+    "@lunarhue/forms-schema": "workspace:*",
+    "valibot": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "react": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

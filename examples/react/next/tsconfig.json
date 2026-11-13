@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    // The base config's `nodenext` stays on purpose. Turbopack reads
+    // `moduleResolution` from this file, and only with `node16` or
+    // `nodenext` does it resolve `./schema.js` to `schema.ts`, which the
+    // example packages' source needs. With `bundler` it fails to find them.
+    // So the app's own imports carry `.js` suffixes too, `next/server.js`
+    // included.
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "incremental": true,
+    "types": ["node"],
+    "customConditions": ["@lunarhue/source"],
+    "plugins": [{ "name": "next" }]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}

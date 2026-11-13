@@ -17,6 +17,11 @@ repo with `workspace:*`.
     in plain DOM. `mountInspector(element, store, options)` renders it and
     returns the function that removes it.
 - `examples/react/*` holds the React apps.
+  - `shared` (`@lunarhue/forms-example-react`): the form, its field
+    components, the render badges and the inspector wrapper, as TSX source.
+    `OrderPage` takes the save function, the starting values and a header
+    from each app.
+  - `next` (`@lunarhue/forms-example-next`): the Next.js App Router app.
 - `examples/solid/*` holds the Solid apps.
 
 ## Commands
