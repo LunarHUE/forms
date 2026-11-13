@@ -124,18 +124,6 @@ function SubmitButton() {
   );
 }
 
-// `useFormContext(signUp)` returns the sign-up form fully typed, so the
-// result of a submit that succeeded is the string `onSubmit` returned.
-function SignUpStatus() {
-  const form = useFormContext(signUp);
-  const submission = useFormState(form, (snapshot) => snapshot.submission);
-  return (
-    <span className="form-status" role="status">
-      {submission.status === "succeeded" ? submission.result : null}
-    </span>
-  );
-}
-
 // 6. The page. `useForm` makes the form once. `form.Form` puts it in context
 // and hands its render function the props for the `<form>` element, then the
 // form itself, which this page doesn't need. Fields are named by path, and the
@@ -179,7 +167,16 @@ export default function BasicPage() {
               </fieldset>
               <div className="form-actions">
                 <SubmitButton />
-                <SignUpStatus />
+                {/* `form.State` reads the form state in place. Only its children re-render,
+                    and only when the submission changes. The result of a submit that
+                    succeeded is the string `onSubmit` returned. */}
+                <form.State select={(snapshot) => snapshot.submission}>
+                  {(submission) => (
+                    <span className="form-status" role="status">
+                      {submission.status === "succeeded" ? submission.result : null}
+                    </span>
+                  )}
+                </form.State>
               </div>
             </form>
           )}
