@@ -12,9 +12,15 @@ Nothing is published yet.
 
 ## What it looks like
 
-A profile form in React. Zod validates it, a Zustand store holds its values,
-the address is a reusable fieldset, and Refresh pulls the server's copy without
-wiping what the user has typed.
+A profile form in React. Zod validates it, the address is a reusable fieldset,
+and Refresh pulls the server's copy without wiping what the user has typed.
+
+It is also bound to a Zustand store. That part is easy to misread, so to be
+clear: the form's state does not live in Zustand. The form always keeps its own
+store, with the values, errors, touched flags and everything else. The binding
+only keeps the two in step. A change in the form is copied out to your store,
+and a change in your store is copied into the form. Take the binding away and
+the form works exactly the same.
 
 Fair warning: this is where the API is headed. The plugin list, `rebase()` as
 a plugin and the Zustand binding are still in open pull requests and issues.
@@ -72,7 +78,8 @@ const Profile = z.object({
   address: Address,
 });
 
-// The form's values live in your zustand store.
+// A store your app already has. The form does not
+// live in it. The binding below copies values both ways.
 const useProfileStore = create(() => ({
   name: "",
   email: "",
@@ -87,6 +94,7 @@ const saveProfile = (value: z.infer<typeof Profile>) =>
 
 const profile = forms.define({
   schema: Profile,
+  // Keep this form's value and the store in step.
   plugins: [zustand(useProfileStore)],
   onSubmit: saveProfile,
 });
@@ -187,7 +195,7 @@ them, so you import from the package you already have.
 | `rules()`      | Works out `disabled` and `hidden` for a field from the rest of the form's value.               |
 | `persist()`    | Saves the draft to storage when the page is idle and restores it on load.                      |
 | `rebase()`     | Takes a fresh copy of the data and lets you decide, leaf by leaf, whether to keep the user's edit. |
-| `bind()`       | Keeps the form's value in a store you own, in both directions.                                 |
+| `bind()`       | Copies the form's value to a store you own and back. The form keeps its own state; only the value is shared. |
 
 ### Schema
 
@@ -204,7 +212,9 @@ Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
 once validation is installed. You give `defaultValues` yourself in that case.
 
 Bindings for outside stores follow the same rule. `zustand()` will ship from
-`@lunarhue/forms-bind/zustand`, not from core.
+`@lunarhue/forms-bind/zustand`, not from core. A binding never replaces the
+form's store. It is a two-way copy of the value, set up per form, so two forms
+can bind to two different stores.
 
 ### Where they stand
 
@@ -236,23 +246,3 @@ Run these from the repo root with `bun run <name>`. Each one covers every packag
   with `tsc`. Packages build in dependency order.
 - `check:package`: publint and arethetypeswrong on the packed package. Needs a build.
 - `size`: size-limit on each entry point. Needs a build.
-
-## Working on it
-
-In a LunarHUE workspace this repo is checked out at `~/repos/forms` and runs
-in its own pod.
-
-- **Shell in the pod:** `ssh forms.<workspace>.repos` from your machine, or
-  `ws attach forms` in the workspace.
-- **Long-running commands** (dev servers, watchers):
-  `ws run forms --name dev --wait-port <port> -- <command>`, then
-  `ws ps`, `ws logs forms dev` and `ws stop forms dev`.
-- **Dev environment:** `flake.nix` defines it. The pod enters its default
-  devShell for every command. Add tools to `packages` there and commit
-  `flake.lock`.
-- **One-off commands from the parent:**
-  `ws-route forms <dir> -- <command>` runs a command in the pod at
-  `/workspace/<dir>` (`.` for the root), with the dev environment loaded.
-- **Outside Coder:** `.devcontainer/devcontainer.json` opens the repo in the
-  same image the pod uses. Run `docker login ghcr.io` first; the image is
-  private.
