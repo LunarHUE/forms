@@ -8,12 +8,15 @@
       "packages/react/compat/*",
       "apps/*",
       "examples/*",
-      "parked/*"
+      "parked/*",
+      "e2e",
+      "e2e/apps/*"
     ],
     "catalog": {
       "@arethetypeswrong/cli": "0.18.5",
       "@babel/core": "7.29.13",
       "@changesets/cli": "3.0.3",
+      "@playwright/test": "1.64.1",
       "@size-limit/preset-small-lib": "14.3.0",
       "@solidjs/vite-plugin": "3.0.0-next.57",
       "@solidjs/web": "2.0.0-rc.21",
@@ -21,6 +24,7 @@
       "@testing-library/react": "16.3.3",
       "@testing-library/user-event": "14.6.8",
       "@types/babel__core": "7.20.5",
+      "@types/node": "24.19.2",
       "@types/react": "19.3.0",
       "@types/react-dom": "19.3.0",
       "babel-plugin-react-compiler": "1.0.0",
@@ -58,12 +62,14 @@
   },
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './examples/*' --filter './parked/*' typecheck",
+    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './examples/*' --filter './parked/*' --filter './e2e' --filter './e2e/apps/*' typecheck",
     "lint": "oxlint",
     "test": "vitest run",
     "check:package": "bun run --filter './packages/*' check:package",
     "size": "bun run --filter './packages/*' size",
-    "bench": "vitest bench --run"
+    "bench": "vitest bench --run",
+    "e2e": "bun e2e/run.ts --all",
+    "e2e:changed": "bun e2e/run.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

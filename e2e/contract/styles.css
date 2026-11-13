@@ -1,0 +1,43 @@
+/* The same styles for every app. The shared server inlines them in the page. */
+body {
+  font: 16px/1.4 system-ui, sans-serif;
+  margin: 2rem;
+}
+
+.field {
+  margin-bottom: 0.5rem;
+}
+
+.field > label {
+  display: block;
+}
+
+/* Room for one error is kept, so an error appearing moves nothing below it. */
+.errors {
+  min-height: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #b00020;
+  line-height: 22px;
+}
+
+.checking {
+  margin-left: 0.5rem;
+}
+
+output[data-testid^="renders-"] {
+  margin-left: 0.5rem;
+  font-size: 12px;
+  color: #666;
+}
+
+[data-testid="probe"] {
+  font-size: 12px;
+  background: #f4f4f4;
+  padding: 0.5rem;
+}
+
+[hidden] {
+  display: none !important;
+}

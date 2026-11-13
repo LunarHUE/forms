@@ -1,0 +1,34 @@
+import { rulesScenario as scenario } from "@lunarhue/forms-e2e/contract";
+import { useField, useForm } from "@lunarhue/forms-react";
+import { forms, Probe, Status, SubmitButton } from "../parts.js";
+
+const delivery = forms.define(scenario.definition);
+const { labels } = scenario;
+
+export function RulesPage() {
+  const form = useForm(delivery);
+  const hidden = useField(form.root.at("message"), (snapshot) => scenario.deliveryRules.meta(snapshot)?.hidden === true);
+  return (
+    <>
+      <form.Form>
+        {(formProps) => (
+          <form {...formProps}>
+            <form.TextField name="reference" label={labels.reference} />
+            <form.Checkbox name="insured" label={labels.insured} />
+            <form.Checkbox name="pickup" label={labels.pickup} />
+            <fieldset>
+              <legend>{labels.address}</legend>
+              <form.TextField name="address.street" label={labels.street} />
+              <form.TextField name="address.city" label={labels.city} />
+            </fieldset>
+            <form.Checkbox name="gift" label={labels.gift} />
+            {hidden ? null : <form.TextField name="message" label={labels.message} />}
+            <SubmitButton {...scenario.submit} />
+            <Status />
+          </form>
+        )}
+      </form.Form>
+      <Probe store={form.store} />
+    </>
+  );
+}

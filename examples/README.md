@@ -37,5 +37,5 @@ There is no Vue example yet.
 - The inspector, the dev panel that shows a form store as it changes, is
   parked in `parked/inspector` until the docs site can render these forms
   with it beside them.
-- Browser tests don't live here. They belong in a separate suite that runs
-  the same checks against every adapter, tracked in issue #69.
+- Browser tests don't live here. The suite in [`e2e`](../e2e/README.md) runs
+  the same checks against every adapter.
