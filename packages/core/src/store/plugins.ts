@@ -1,7 +1,17 @@
-import type { AnyHookPlugin, PluginContext, PluginErrorHandler, PluginHooks, When, WriteCause, WriteRecord } from "../plugin.js";
+import type {
+  AnyHookPlugin,
+  PluginBaseline,
+  PluginContext,
+  PluginErrorHandler,
+  PluginHooks,
+  When,
+  WriteCause,
+  WriteRecord,
+} from "../plugin.js";
 import type { Path } from "../path.js";
 import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
+import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
 import { freeze } from "./freeze.js";
 
@@ -52,10 +62,8 @@ export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly An
 export interface PluginHost {
   /** The value store with its write commands wrapped, for the rest of the form store to use. */
   readonly core: StoreCore<unknown, unknown>;
-  /** Runs `fn` with `cause` as the cause of the writes it makes. */
-  as<T>(cause: WriteCause, fn: () => T): T;
-  /** Runs each plugin's setup. The form store calls it once the store exists. */
-  start(store: AnyFormStore<unknown>): void;
+  /** Runs each plugin's setup. The form store calls it once the store and its baseline exist. */
+  start(store: AnyFormStore<unknown>, baseline: Baseline): void;
   /** Runs `run`, the reset of the field at `path`, with `cause: "reset"`, then calls `onReset` in the same batch. */
   reset(path: Path, run: () => void): void;
   /** Calls `onSubmit`, and returns a promise that settles once `settled` and every promise `onSubmit` returned have. */
@@ -67,6 +75,9 @@ export interface PluginHost {
   /** The `api` each plugin's setup returned, by plugin name. Filled by `start`. */
   readonly apis: Record<string, unknown>;
 }
+
+/** The host of each store with plugins, for `flushPlugins`. */
+export const hosts: WeakMap<object, PluginHost> = new WeakMap();
 
 /** One installed plugin. */
 interface Entry {
@@ -320,7 +331,7 @@ export function createPluginHost(
     runIdle();
   };
 
-  const contextFor = (entry: Entry, store: AnyFormStore<unknown>): PluginContext => {
+  const contextFor = (entry: Entry, store: AnyFormStore<unknown>, baseline: PluginBaseline): PluginContext => {
     const { name } = entry.plugin;
     // Inside a hook the write waits for the round to end. Outside one it runs now.
     const write = (fn: () => void) => {
@@ -333,6 +344,7 @@ export function createPluginHost(
       setFormMeta: (value) => write(() => raw.setMeta(name, value)),
       write,
       flush,
+      baseline,
     };
   };
 
@@ -341,15 +353,19 @@ export function createPluginHost(
     for (const entry of entries) call(entry, () => fn(entry.hooks), undefined);
   };
 
-  return {
+  const host: PluginHost = {
     core,
-    as,
-    start(store) {
+    start(store, { read, equals, move }) {
+      hosts.set(store, host);
+      // Only the plugin's part of the baseline.
+      const baseline: PluginBaseline = { read, equals, move };
       // Setup counts as a hook, so writes it makes wait until every plugin's setup has run.
       for (const plugin of order(plugins)) {
-        const entry: Entry = { plugin, cause: freeze({ plugin: plugin.name }), hooks: {} };
+        // Rebase is a plugin, but its writes keep the cause they had as a command.
+        const { name } = plugin;
+        const entry: Entry = { plugin, cause: name === "rebase" ? name : freeze({ plugin: name }), hooks: {} };
         entries.push(entry);
-        entry.hooks = call(entry, () => plugin.setup(contextFor(entry, store)), {});
+        entry.hooks = call(entry, () => plugin.setup(contextFor(entry, store, baseline)), {});
       }
       transforms = entries.filter((entry) => entry.hooks.beforeWrite !== undefined);
       for (const entry of entries) {
@@ -387,4 +403,5 @@ export function createPluginHost(
     flush,
     apis,
   };
+  return host;
 }

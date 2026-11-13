@@ -5,7 +5,6 @@ import type { Path } from "../path.js";
 import type { AnyHookPlugin, AnyPlugin, PluginErrorHandler } from "../plugin.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
-import { registerStore } from "./baseline/registry.js";
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
@@ -118,8 +117,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
   };
-  registerStore(store, { core, baseline, validation, host });
-  host?.start(store);
+  host?.start(store, baseline);
   return { store, core, baseline, validation, submit };
 }
 

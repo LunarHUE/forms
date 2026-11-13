@@ -6,6 +6,7 @@ export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 export type {
   AnyHookPlugin,
   AnyPlugin,
+  BaselineAt,
   HasSchemaPlugin,
   HasValidation,
   HookPlugin,
@@ -13,6 +14,7 @@ export type {
   MetaSource,
   Plugin,
   PluginApis,
+  PluginBaseline,
   PluginContext,
   PluginDefinition,
   PluginErrorHandler,
@@ -124,4 +126,3 @@ export type {
   DefineConfig,
   WithPlugins,
 } from "./definition.js";
-export type { Rebase, RebaseChoice, RebaseLeaf, RebaseResult, Resolve } from "./rebase.js";

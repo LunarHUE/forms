@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormError } from "../errors.js";
 import { createFormsCore } from "../forms-core.js";
-import { rebase } from "../rebase.js";
+import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import { defineSchemaPlugin, validation } from "../validation.js";
 
@@ -71,12 +71,12 @@ describe("a form with no validation runner", () => {
   });
 
   it("writes, blurs, resets and rebases as with the runner", () => {
-    const store = bare();
+    const store = createFormsCore({ plugins: [rebase()] }).define({ defaultValues: contact() }).createStore();
     const name = store.root.at("name");
     name.setValue("Ada");
     name.handleBlur();
     expect(name.peek()).toMatchObject({ value: "Ada", touched: true, dirty: true });
-    expect(rebase(store.root, { name: "Bob", rows: [{ title: "a" }] }, () => "take").taken).toEqual([["name"]]);
+    expect(store.plugins.rebase(store.root, { name: "Bob", rows: [{ title: "a" }] }, () => "take").taken).toEqual([["name"]]);
     store.reset();
     expect(name.peek()).toMatchObject({ value: "Bob", touched: false, dirty: false });
   });
