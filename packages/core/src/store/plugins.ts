@@ -30,7 +30,8 @@ type Problem = "name" | "cycle" | "write" | "loop";
 /**
  * The error for `problem`. Development gets a sentence, built from `detail`.
  * A bundler replaces the read of NODE_ENV with "production", folds the check
- * to false and drops the sentences, so production gets `plugins:<problem>`.
+ * to false and drops the sentences, so production gets
+ * `@lunarhue/forms-core: plugins:<problem>`, which docs/errors.md lists.
  */
 function failure(problem: Problem, detail: string): Error {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -42,7 +43,7 @@ function failure(problem: Problem, detail: string): Error {
     };
     return new Error(sentences[problem]);
   }
-  return new Error(`plugins:${problem}`);
+  return new Error(`@lunarhue/forms-core: plugins:${problem}`);
 }
 
 /** Returned from `beforeWrite` to stop the write. */
@@ -67,12 +68,17 @@ export interface PluginHost {
    * Runs each plugin's setup. The form store calls it once the store, its
    * baseline and its validation exist. It makes `validation.changed` wait
    * for the end of the batch, so validators rerun once for all its writes.
+   * The writes setup makes leave no records and become the starting state.
    */
   start(store: AnyFormStore<unknown>, baseline: Baseline, validation: Pick<Validation<unknown>, "changed">): void;
   /** Runs `run`, the reset of the field at `path`, with `cause: "reset"`, then calls `onReset` in the same batch. */
   reset(path: Path, run: () => void): void;
-  /** Calls `onSubmit`, and returns a promise that settles once `settled` and every promise `onSubmit` returned have. */
-  submitting(settled: Promise<void>): Promise<void>;
+  /**
+   * Calls `onSubmit`, and returns a promise that settles once `settled` and
+   * every promise `onSubmit` returned have. It resolves true when a plugin
+   * returned `refuse`, directly or from its promise.
+   */
+  submitting(settled: Promise<unknown>): Promise<boolean>;
   /** Calls `onSubmitted`. */
   submitted(submission: Submission<unknown>): void;
   /** Delivers waiting `deferred` and `idle` records now. */
@@ -307,6 +313,17 @@ export function createPluginHost(
   const valueAt = (path: Path) => raw.getSnapshot(path).value;
   const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
 
+  // Runs `input` through each `beforeWrite`. Returns the value to write, or `refuse`.
+  const transform = (path: Path, input: unknown, before: unknown): unknown => {
+    let value = input;
+    for (const entry of transforms) {
+      const write = freeze({ path, input, value, before, cause });
+      value = call(entry, () => entry.hooks.beforeWrite?.(write), value);
+      if (value === refuse) break;
+    }
+    return value;
+  };
+
   const core: StoreCore<unknown, unknown> = {
     ...raw,
     batch,
@@ -315,21 +332,26 @@ export function createPluginHost(
     set: (path, input) =>
       recorded(() => {
         const before = valueAt(path);
-        let value = input;
-        for (const entry of transforms) {
-          const write = freeze({ path, input, value, before, cause });
-          const next = call(entry, () => entry.hooks.beforeWrite?.(write), value);
-          if (next === refuse) return false;
-          value = next;
-        }
-        if (!raw.set(path, value)) return false;
+        const value = transform(path, input, before);
+        if (value === refuse || !raw.set(path, value)) return false;
         push({ type: "value", path, before, after: value, cause });
         return true;
       }),
-    insert: (path, index, item) =>
+    // The row's key exists only once it is in, so `beforeWrite` sees the row
+    // after the insert, as a write at the row's path. A refused row comes out again.
+    insert: (path, index, input) =>
       recorded(() => {
         const before = valueAt(path);
-        const key = raw.insert(path, index, item);
+        let key = raw.insert(path, index, input);
+        let item = input;
+        if (key !== undefined && transforms.length > 0) {
+          const row = [...path, key];
+          item = transform(row, input, undefined);
+          if (item === refuse) {
+            raw.remove(path, keysAt(path).indexOf(key));
+            key = undefined;
+          } else raw.set(row, item);
+        }
         if (key !== undefined)
           push({ type: "insert", path, before, after: valueAt(path), index: keysAt(path).indexOf(key), key, item, cause });
         return key;
@@ -403,6 +425,10 @@ export function createPluginHost(
         entry.hooks = call(entry, () => plugin.setup(contextFor(entry, store, baseline)), {});
       }
       transforms = entries.filter((entry) => entry.hooks.beforeWrite !== undefined);
+      // Setup's writes land before any observer is known, so they leave no
+      // records. They are the store's starting state, so the server snapshot shows them.
+      if (queue.length > 0) batch(() => {});
+      raw.started();
       for (const entry of entries) {
         if (entry.hooks.api !== undefined) apis[entry.plugin.name] = entry.hooks.api;
         if (!entry.hooks.onWrite) continue;
@@ -411,7 +437,6 @@ export function createPluginHost(
         if (when === "sync") sync.push(entry);
         else (when === "deferred" ? deferred : idle).observers.push(entry);
       }
-      if (queue.length > 0) batch(() => {});
     },
     reset(path, run) {
       as("reset", () =>
@@ -422,15 +447,24 @@ export function createPluginHost(
       );
     },
     submitting(settled) {
-      // A rejection is reported like a throw, and the submit goes on.
-      const work = entries.map(async (entry) => {
-        try {
-          await call(entry, () => entry.hooks.onSubmit?.(), undefined);
-        } catch (error) {
-          report(error, entry.plugin.name);
-        }
-      });
-      return Promise.all([settled, ...work]).then(() => {});
+      let refused = false;
+      const work = [settled];
+      for (const entry of entries) {
+        // A refusal returned at once stops the plugins after it.
+        if (refused) break;
+        const out = call(entry, () => entry.hooks.onSubmit?.(), undefined);
+        refused = out === refuse;
+        // A rejection is reported like a throw, and the submit goes on.
+        work.push(
+          Promise.resolve(out).then(
+            (value) => {
+              if (value === refuse) refused = true;
+            },
+            (error: unknown) => report(error, entry.plugin.name),
+          ),
+        );
+      }
+      return Promise.all(work).then(() => refused);
     },
     submitted(submission) {
       each((hooks) => hooks.onSubmitted?.(submission));

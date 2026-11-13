@@ -3,11 +3,15 @@ import { renderToString } from "@solidjs/web";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createDisabledErrors, createField, createForm, createForms, createItems } from "../index.js";
-import { App, serverHtml } from "./ssr-app.js";
+import { App, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
 describe("server rendering", () => {
   it("renders the form from its initial snapshot with ids from createUniqueId", () => {
     expect(renderToString(() => <App />)).toBe(serverHtml);
+  });
+
+  it("renders the flags rules set when the store is made", () => {
+    expect(renderToString(() => <ShippingApp />)).toBe(shippingHtml);
   });
 
   it("reads the server snapshot, not a value written during the render", () => {

@@ -20,9 +20,9 @@ export interface RulesMeta {
  * store is made and after every batch that wrote a value, before
  * listeners, so the flags land in the same render as the value.
  *
- * This does not settle issue #7, a disabled flag that follows another
- * field's value. The server snapshot ignores writes made during setup, so
- * the server can still render a flag the rules would change.
+ * What the rules set when the store is made is part of its starting state,
+ * so the server renders it and hydration sees the same flags. Disabling an
+ * object, such as `"shipping"`, disables every field below it.
  */
 // `V` only types the rules for the caller. The plugin hands them the store's value as a `V`.
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters

@@ -20,7 +20,7 @@ export function definePlugin<A = undefined, N extends string = string, M = unkno
   // The host writes each plugin's meta under its name, with the type its context took.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const read = (source: MetaSource) => source.meta?.[name] as (M & F) | undefined;
-  return { ...definition, host: createPluginHost, meta: read, formMeta: read };
+  return { ...definition, "~host": createPluginHost, meta: read, formMeta: read };
 }
 
 /**

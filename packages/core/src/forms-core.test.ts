@@ -84,6 +84,12 @@ describe("defaults", () => {
     // @ts-expect-error: no schema plugin accepts this schema, so defaultValues is required
     const form = createFormsCore({ plugins: [validation()] }).define({ schema });
     expect(() => form.createStore()).toThrow(/vendor "other".*defaultValues/);
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(() => form.createStore()).toThrow(/^@lunarhue\/forms-core: schema:defaults$/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("ask the first of two schema plugins with the same vendor", () => {

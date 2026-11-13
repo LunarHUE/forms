@@ -115,6 +115,18 @@ describe("install", () => {
     expect(() => make(contact(), [a, b])).toThrow(/part of an `after` cycle/);
   });
 
+  it("throws the package and a short code in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const one = definePlugin({ name: "one", setup: () => ({}) });
+      expect(() => make(contact(), [one, one])).toThrow(/^@lunarhue\/forms-core: plugins:name$/);
+      const { rebase: api } = make(contact(), [rebase()]).plugins;
+      expect(() => api(make(contact(), []).root, contact(), () => "keep")).toThrow(/^@lunarhue\/forms-core: rebase:store$/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("warns in development when the plugins come from two copies of core", () => {
     const warn = vi.fn<(message: string) => void>();
     vi.stubGlobal("console", { warn });
@@ -123,7 +135,7 @@ describe("install", () => {
     make(contact(), [one, two]);
     expect(warn).not.toHaveBeenCalled();
     // Another copy's plugin carries that copy's host.
-    const copy = { ...two, host: (...args: Parameters<typeof two.host>) => two.host(...args) };
+    const copy = { ...two, "~host": (...args: Parameters<(typeof two)["~host"]>) => two["~host"](...args) };
     make(contact(), [one, copy]);
     expect(warn).toHaveBeenCalledWith("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
   });
@@ -189,13 +201,49 @@ describe("beforeWrite", () => {
     expect(frozen).toBe(true);
   });
 
-  it("doesn't see the items push and insert add", () => {
-    const before = vi.fn<(write: Write) => unknown>((write) => write.value);
-    const store = make({ tags: ["a"] }, [definePlugin({ name: "look", setup: () => ({ beforeWrite: before }) })]);
-    store.root.at("tags").push("b");
-    store.root.at("tags").insert(0, "c");
-    expect(store.root.at("tags").peek().value).toEqual(["c", "a", "b"]);
-    expect(before).not.toHaveBeenCalled();
+  it("sees each row push and insert add as a write at the row's path, and stores the row it returns", () => {
+    const writes: Write[] = [];
+    const tag = definePlugin({
+      name: "tag",
+      setup: () => ({ beforeWrite: (write) => (writes.push(write), `${String(write.value)}!`) }),
+    });
+    const { plugin, calls } = watcher("watch");
+    const store = make({ tags: ["a"] }, [tag, plugin]);
+    const tags = store.root.at("tags");
+    tags.push("b");
+    tags.insert(0, "c");
+    expect(tags.peek().value).toEqual(["c!", "a", "b!"]);
+    const [c, , b] = tags.peek().keys;
+    expect(writes).toEqual([
+      { path: ["tags", b], input: "b", value: "b", before: undefined, cause: "user" },
+      { path: ["tags", c], input: "c", value: "c", before: undefined, cause: "user" },
+    ]);
+    // The record has the row the store took.
+    expect(calls.flat().map((record) => record.type === "insert" && record.item)).toEqual(["b!", "c!"]);
+  });
+
+  it("takes a refused row out again, with no record and nothing edited", () => {
+    const { plugin, calls } = watcher("watch");
+    const lock = definePlugin({ name: "lock", setup: () => ({ beforeWrite: (write) => (write.value === "no" ? refuse : write.value) }) });
+    const store = make({ tags: ["a", "b"] }, [lock, plugin]);
+    const tags = store.root.at("tags");
+    const before = tags.peek();
+    tags.insert(1, "no");
+    expect(tags.peek()).toMatchObject({ value: ["a", "b"], keys: before.keys, edited: false });
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(calls).toEqual([]);
+    tags.push("yes");
+    expect(tags.peek().value).toEqual(["a", "b", "yes"]);
+    expect(tags.peek().keys.slice(0, 2)).toEqual(before.keys);
+  });
+
+  it("sees a write of an object once, at the object's path", () => {
+    const paths: unknown[] = [];
+    const look = definePlugin({ name: "look", setup: () => ({ beforeWrite: (write) => (paths.push(write.path), write.value) }) });
+    const store = make({ address: { zip: "" } }, [look]);
+    store.root.at("address").setValue({ zip: "1" });
+    store.root.setValue({ address: { zip: "2" } }, { replace: true });
+    expect(paths).toEqual([["address"], []]);
   });
 });
 
@@ -636,6 +684,24 @@ describe("timing", () => {
   });
 });
 
+/** A captcha plugin: it asks `fetchToken` for a token on submit and refuses the submit when that fails. */
+const captcha = (fetchToken: () => Promise<string>) =>
+  definePlugin({
+    name: "captcha",
+    setup: (ctx) => ({
+      async onSubmit() {
+        try {
+          const token = await fetchToken();
+          ctx.write(() => ctx.store.root.at("code").setValue(token, { edited: false }));
+          return undefined;
+        } catch {
+          ctx.store.root.setErrors({ message: "Couldn't check you're human. Try again." });
+          return refuse;
+        }
+      },
+    }),
+  });
+
 describe("reset and submit", () => {
   it("calls onReset inside the reset's batch, after the values went back", () => {
     const seen: unknown[] = [];
@@ -707,38 +773,111 @@ describe("reset and submit", () => {
     expect(await store.submit()).toEqual({ status: "succeeded", result: "sent" });
     expect(errors.map(([error, name]) => [String(error), name])).toEqual([["Error: upload failed", "failing"]]);
   });
+
+  it("lets a plugin refuse a submit, which ends as a failed validation does", async () => {
+    const ended: string[] = [];
+    const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
+    const onSubmit = vi.fn<() => string>(() => "sent");
+    const store = createFormsCore()
+      .define({ defaultValues: contact(), plugins: [captcha(() => Promise.reject(new Error("offline"))), end], onSubmit })
+      .createStore();
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(ended).toEqual(["invalid"]);
+    expect(store.getSnapshot([]).shownErrors).toEqual([{ message: "Couldn't check you're human. Try again." }]);
+    expect(store.getFormSnapshot()).toMatchObject({ submitting: false, submitCount: 1 });
+  });
+
+  it("submits when the plugin gets its token, and the token isn't a user edit", async () => {
+    const onSubmit = vi.fn<(value: Contact) => string>(() => "sent");
+    const store = createFormsCore()
+      .define({ defaultValues: contact(), plugins: [captcha(() => Promise.resolve("t0k"))], onSubmit })
+      .createStore();
+    expect(await store.submit()).toEqual({ status: "succeeded", result: "sent" });
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({ phone: "", code: "t0k" });
+    expect(store.getSnapshot(["code"]).edited).toBe(false);
+  });
+
+  it("skips the onSubmit of later plugins after a refusal returned at once", async () => {
+    const later = vi.fn<() => void>();
+    const store = createFormsCore()
+      .define({
+        defaultValues: contact(),
+        plugins: [
+          definePlugin({ name: "no", setup: () => ({ onSubmit: () => refuse }) }),
+          definePlugin({ name: "later", setup: () => ({ onSubmit: later }) }),
+        ],
+      })
+      .createStore();
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(later).not.toHaveBeenCalled();
+  });
 });
 
-describe("server rendering", () => {
-  it("keeps plugin work off the server snapshots and leaves no timer open", async () => {
-    vi.useFakeTimers();
-    interface Order {
-      sameAsBilling: boolean;
-      shipping: { street: string };
-    }
-    const order: Order = { sameAsBilling: true, shipping: { street: "" } };
-    const store = make(order, [
-      rules<Order>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) }),
-      history(),
-      persist("order"),
-      definePlugin({
-        name: "form",
-        setup: (ctx) => {
-          ctx.setFormMeta(true);
-          return {};
-        },
-      }),
-    ]);
-    // Setup ran: the current snapshots have the plugins' work.
-    expect(store.getSnapshot(["shipping"])).toMatchObject({ disabled: true, meta: { rules: { hidden: true } } });
-    expect(store.getFormSnapshot().meta).toEqual({ form: true });
-    // The server snapshots are the definition's alone.
+interface Shipment {
+  sameAsBilling: boolean;
+  shipping: { street: string };
+}
+
+const shipment = (): Shipment => ({ sameAsBilling: true, shipping: { street: "" } });
+
+const shippingRules = () => rules<Shipment>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) });
+
+describe("setup and server rendering", () => {
+  /** A plugin that writes the street and sets form meta in its setup. */
+  const writesAtSetup = definePlugin({
+    name: "form",
+    setup: (ctx) => {
+      ctx.write(() => ctx.store.root.at("shipping").at("street").setValue("1 Main St", { edited: false }));
+      ctx.setFormMeta(true);
+      return {};
+    },
+  });
+
+  it("puts what setup wrote in the server snapshots, the same objects the store reads now", () => {
+    const store = make(shipment(), [shippingRules(), writesAtSetup]);
+    const shipping = store.getSnapshot(["shipping"]);
+    expect(shipping).toMatchObject({ disabled: true, meta: { rules: { hidden: true } }, value: { street: "1 Main St" } });
+    expect(store.getServerSnapshot(["shipping"])).toBe(shipping);
+    expect(store.getServerFormSnapshot()).toBe(store.getFormSnapshot());
+    expect(store.getServerFormSnapshot().meta).toEqual({ form: true });
+    // So does a field below it.
+    expect(store.getServerSnapshot(["shipping", "street"])).toMatchObject({ value: "1 Main St", disabled: true });
+  });
+
+  it("keeps today's baseline: a value written in setup is dirty against the defaults", () => {
+    const store = make(shipment(), [writesAtSetup]);
+    expect(store.getFormSnapshot().dirty).toBe(true);
+    expect(store.getServerFormSnapshot().dirty).toBe(true);
+    expect(store.getSnapshot(["shipping", "street"]).edited).toBe(false);
+  });
+
+  it("keeps the server snapshots once the store is written to", () => {
+    const store = make(shipment(), [shippingRules()]);
     const server = store.getServerSnapshot(["shipping"]);
-    expect(server.disabled).toBe(false);
-    expect("meta" in server).toBe(false);
-    expect("meta" in store.getServerFormSnapshot()).toBe(false);
+    store.root.at("sameAsBilling").setValue(false);
+    expect(store.getSnapshot(["shipping"]).disabled).toBe(false);
+    expect(store.getServerSnapshot(["shipping"])).toBe(server);
+    expect(store.getServerSnapshot(["shipping"]).disabled).toBe(true);
+  });
+
+  it("makes no records for setup's writes, so a store never written to schedules nothing", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("localStorage", memory(new Map([["order", '{"sameAsBilling":false}']])));
+    const deferred = watcher("deferred", "deferred");
+    const idle = watcher("idle", "idle");
+    const sync = watcher("sync");
+    const store = make(shipment(), [shippingRules(), writesAtSetup, history(), persist("order"), deferred.plugin, idle.plugin, sync.plugin]);
+    expect(store.getSnapshot(["shipping"]).disabled).toBe(true);
+    await Promise.resolve();
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
+    expect([deferred.calls, idle.calls, sync.calls]).toEqual([[], [], []]);
+    // Nothing waits either: a flush finds no records.
+    flushPlugins(store);
+    expect([deferred.calls, idle.calls]).toEqual([[], []]);
+    // Nothing read storage: persist restores at the first listener.
+    expect(store.getSnapshot(["sameAsBilling"]).value).toBe(true);
   });
 });
 
@@ -931,7 +1070,7 @@ describe("history, mask, rules and persist", () => {
     expect(seen).toEqual([["", { canUndo: false, canRedo: true }]]);
   });
 
-  it("persist saves on idle and restores at creation without marking anything edited", () => {
+  it("persist saves on idle and restores at the first listener without marking anything edited", () => {
     vi.useFakeTimers();
     const storage = memory();
     const { saved } = storage;
@@ -941,12 +1080,27 @@ describe("history, mask, rules and persist", () => {
     vi.runAllTimers();
     expect(saved.get("contact")).toBe('{"phone":"123","code":""}');
     const second = make(contact(), [persist("contact", storage)]);
+    // Defaults until something listens, as on the server and in the render that hydrates.
+    expect(second.root.peek().value).toEqual(contact());
+    second.subscribe(["phone"], () => {});
     expect(second.root.peek()).toMatchObject({ value: { phone: "123", code: "" }, edited: false });
+    expect(second.getServerSnapshot([]).value).toEqual(contact());
+  });
+
+  it("persist restores once per store, not each time it gets listeners again", () => {
+    const storage = memory(new Map([["contact", '{"phone":"1","code":""}']]));
+    const store = make(contact(), [persist("contact", storage)]);
+    const stop = store.subscribeForm(() => {});
+    stop();
+    store.root.at("phone").setValue("2");
+    store.subscribeForm(() => {});
+    expect(store.getSnapshot(["phone"]).value).toBe("2");
   });
 
   it("persist starts from the defaults and removes a saved value that doesn't parse", () => {
     const storage = memory(new Map([["contact", "{not json"]]));
     const store = make(contact(), [persist("contact", storage)]);
+    store.subscribeForm(() => {});
     expect(store.getSnapshot([]).value).toEqual(contact());
     expect(storage.saved.has("contact")).toBe(false);
   });
@@ -954,6 +1108,7 @@ describe("history, mask, rules and persist", () => {
   it("persist carries on when storage throws", () => {
     vi.useFakeTimers();
     const reads = make(contact(), [persist("contact", { ...memory(), getItem: blocked, removeItem: blocked })]);
+    reads.subscribeForm(() => {});
     expect(reads.getSnapshot([]).value).toEqual(contact());
     // A full storage: the write lands and the save is dropped.
     const writes = make(contact(), [persist("contact", { ...memory(), setItem: blocked })]);
@@ -967,6 +1122,7 @@ describe("history, mask, rules and persist", () => {
     const storage = memory(new Map([["contact", '{"phone":"5","code":""}']]));
     vi.stubGlobal("localStorage", storage);
     const store = make(contact(), [persist("contact")]);
+    store.subscribeForm(() => {});
     expect(store.getSnapshot(["phone"]).value).toBe("5");
     store.root.at("phone").setValue("6");
     vi.runAllTimers();
@@ -974,6 +1130,7 @@ describe("history, mask, rules and persist", () => {
 
     vi.stubGlobal("localStorage", undefined);
     const server = make(contact(), [persist("contact")]);
+    server.subscribeForm(() => {});
     expect(server.getSnapshot(["phone"]).value).toBe("");
     server.root.at("phone").setValue("7");
     // No storage means no idle save is scheduled.
@@ -989,6 +1146,7 @@ describe("history, mask, rules and persist", () => {
     });
     try {
       const store = make(contact(), [persist("contact")]);
+      store.subscribeForm(() => {});
       expect(store.getSnapshot([]).value).toEqual(contact());
     } finally {
       Reflect.deleteProperty(globalThis, "localStorage");
@@ -1048,5 +1206,75 @@ describe("onActive", () => {
     expect(store.root.peek().value.code).toBe("on");
     stop();
     expect(errors).toEqual(["Error: start", "Error: cleanup"]);
+  });
+});
+
+interface Account {
+  phone: string;
+  address: { zip: string; city: string };
+  lines: { sku: string }[];
+}
+
+const account = (): Account => ({ phone: "(555) 01", address: { zip: "ab 1", city: "x" }, lines: [{ sku: "a-1" }] });
+const masks = () => mask({ phone: digits, "address.zip": upper, "lines.*.sku": upper });
+
+describe("mask", () => {
+
+  it("cleans the starting value, so the baseline is clean and the form starts clean", () => {
+    const store = make(account(), [masks()]);
+    expect(store.getSnapshot([]).value).toEqual({ phone: "55501", address: { zip: "AB 1", city: "x" }, lines: [{ sku: "A-1" }] });
+    expect(store.getServerSnapshot([]).value).toEqual(store.getSnapshot([]).value);
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(store.changes()).toEqual([]);
+  });
+
+  it("leaves the form not dirty after a reset from a clean start", () => {
+    const store = make(account(), [masks()]);
+    store.root.at("phone").setValue("9");
+    store.reset();
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(store.getSnapshot(["phone"]).value).toBe("55501");
+    store.root.at("phone").setValue("9");
+    store.reset({ to: "initial" });
+    expect(store.getFormSnapshot().dirty).toBe(false);
+  });
+
+  it("cleans a row push and insert add", () => {
+    const store = make(account(), [masks()]);
+    const lines = store.root.at("lines");
+    lines.push({ sku: "b-2" });
+    lines.insert(0, { sku: "c-3" });
+    expect(lines.peek().value).toEqual([{ sku: "C-3" }, { sku: "A-1" }, { sku: "B-2" }]);
+  });
+
+  it("cleans the fields below a written parent object or a replaced root", () => {
+    const store = make(account(), [masks()]);
+    store.root.at("address").setValue({ zip: "cd 2" });
+    expect(store.getSnapshot(["address"]).value).toEqual({ zip: "CD 2", city: "x" });
+    store.root.setValue({ phone: "1-2", address: { zip: "ef", city: "y" }, lines: [{ sku: "d" }, { sku: "e" }] }, { replace: true });
+    expect(store.getSnapshot([]).value).toEqual({ phone: "12", address: { zip: "EF", city: "y" }, lines: [{ sku: "D" }, { sku: "E" }] });
+  });
+
+  it("writes an untouched parent as it came, the same object", () => {
+    const store = make(account(), [masks()]);
+    const address = { zip: "CLEAN", city: "z" };
+    store.root.at("address").setValue(address, { replace: true });
+    expect(store.getSnapshot(["address"]).value).toBe(address);
+  });
+
+  it("cleans plugin writes, such as a value persist restores", () => {
+    const storage = memory(new Map([["account", JSON.stringify({ ...account(), phone: "(7) 7" })]]));
+    const store = make(account(), [masks(), persist("account", storage)]);
+    store.subscribeForm(() => {});
+    expect(store.getSnapshot(["phone"]).value).toBe("77");
+    expect(store.getSnapshot(["phone"]).edited).toBe(false);
+  });
+
+  it("skips rebase writes, so the baseline moves to the server's copy as it came", () => {
+    const store = make(account(), [masks(), rebase()]);
+    const incoming = { ...account(), phone: "(555) 02" };
+    store.plugins.rebase(store.root, incoming, () => "take");
+    expect(store.getSnapshot(["phone"]).value).toBe("(555) 02");
+    expect(store.getFormSnapshot().dirty).toBe(false);
   });
 });

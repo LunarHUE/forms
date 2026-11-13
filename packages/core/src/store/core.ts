@@ -130,6 +130,12 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /** Asks the `dirty` option again for every field and the form, after the baseline changed. */
   recheckDirty(): void;
   /**
+   * Makes the state now the starting state: the server snapshots show it
+   * from here on. The plugin host calls it after plugin setup, so what setup
+   * wrote renders on the server too.
+   */
+  started(): void;
+  /**
    * The stable path of the field with dotted name `name` (`rows.0.title`),
    * or undefined when an index is out of range or a step goes into a leaf.
    */
@@ -269,7 +275,9 @@ const flagUnder = ({ decl, on }: Flag, seg: string): Flag =>
 
 /** Makes a value store. It does nothing until something reads, subscribes or writes. */
 export function createStoreCore<E = FormError, I = undefined, R = unknown>(options: StoreCoreOptions): StoreCore<E, I, R> {
-  const { id, initial } = options;
+  const { id } = options;
+  // The value the server snapshots start from. `started` moves it.
+  let initial = options.initial;
   const show = options.show ?? "touched-or-submitted";
   const dirtyHook = options.dirty;
   let current = initial;
@@ -984,6 +992,17 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       };
       if (root) visit(root);
       finish(true);
+    },
+    started() {
+      if (!changes) return;
+      changes = 0;
+      initial = current;
+      serverForm = form().snapshot;
+      const visit = (node: Node<E>) => {
+        node.server = node.snapshot;
+        node.children?.forEach(visit);
+      };
+      if (root) visit(root);
     },
     pathOf(name) {
       // A property name that contains a dot can't be told apart from two

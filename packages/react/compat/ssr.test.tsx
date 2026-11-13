@@ -5,18 +5,19 @@ import { describe, expect, it, vi } from "vitest";
 import type { FieldApi } from "../src/index.js";
 import { act, hydrate, modern } from "./render.js";
 
-type Adapter = typeof import("../src/index.js");
+type Adapter = typeof import("../src/index.js") & typeof import("../src/plugins/rules.js");
 
 /**
- * Loads a fresh copy of the adapter. With `server`, it loads with no
- * `document`, as on a server, so on React 16 and 17 it picks its server
- * fallback. React itself stays the one copy, since Node loads it.
+ * Loads a fresh copy of the adapter, with `rules` from the same copy of core.
+ * With `server`, it loads with no `document`, as on a server, so on React 16
+ * and 17 it picks its server fallback. React itself stays the one copy,
+ * since Node loads it.
  */
 async function loadAdapter(server: boolean): Promise<Adapter> {
   vi.resetModules();
   if (server) vi.stubGlobal("document", undefined);
   try {
-    return await import("../src/index.js");
+    return { ...(await import("../src/index.js")), ...(await import("../src/plugins/rules.js")) };
   } finally {
     vi.unstubAllGlobals();
   }
@@ -155,5 +156,69 @@ describe("server rendering and hydration", () => {
     const Named = makeApp(await loadAdapter(true), true);
     renderToString(<Named />);
     expect(console.warn).not.toHaveBeenCalled();
+  });
+});
+
+interface Shipping {
+  sameAsBilling: boolean;
+  gift: boolean;
+  street: string;
+  note: string;
+  city: string;
+}
+
+/** A form whose `rules` disable `street` and hide `note` from the start, on one copy of the adapter. */
+function makeShipping(adapter: Adapter) {
+  const shippingRules = adapter.rules<Shipping>({
+    street: (value) => ({ disabled: value.sameAsBilling }),
+    note: (value) => ({ hidden: !value.gift }),
+  });
+
+  interface RuledTextProps {
+    readonly field: FieldApi<string>;
+    readonly label: string;
+  }
+
+  function RuledText({ field, label }: RuledTextProps) {
+    useCommits(label);
+    if (shippingRules.meta(field)?.hidden === true) return null;
+    return <input aria-label={label} {...field.inputProps()} />;
+  }
+
+  const shipping = adapter.createForms({ fields: { RuledText } }).define({
+    defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
+    plugins: [shippingRules],
+  });
+
+  return function ShippingForm() {
+    const form = adapter.useForm(shipping, { id: "shipping" });
+    return (
+      <form {...form.formProps}>
+        <form.RuledText name="street" label="street" />
+        <form.RuledText name="note" label="note" />
+        <form.RuledText name="city" label="city" />
+      </form>
+    );
+  };
+}
+
+describe("rules in server rendering", () => {
+  it("renders what rules set in server HTML, and hydrates it with no mismatch and no extra commit", async () => {
+    const Server = makeShipping(await loadAdapter(true));
+    const container = document.body.appendChild(document.createElement("div"));
+    container.innerHTML = renderToString(<Server />);
+    expect(container.querySelector<HTMLInputElement>("[aria-label=street]")?.disabled).toBe(true);
+    expect(container.querySelector("[aria-label=note]")).toBeNull();
+
+    commits.clear();
+    const Client = makeShipping(await loadAdapter(false));
+    const recoverable = vi.fn<(error: unknown) => void>();
+    await hydrate(container, <Client />, recoverable);
+    expect(recoverable).not.toHaveBeenCalled();
+    expect(container.querySelector<HTMLInputElement>("[aria-label=street]")?.disabled).toBe(true);
+    expect(container.querySelector("[aria-label=note]")).toBeNull();
+    // The ruled fields commit as often as the plain one, so the rules caused no second render.
+    expect(commits.get("street")).toBe(commits.get("city"));
+    expect(commits.get("note")).toBe(commits.get("city"));
   });
 });

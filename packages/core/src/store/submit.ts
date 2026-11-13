@@ -63,12 +63,12 @@ export function createSubmit<V, E, I, R, O = V>(
     return submission;
   };
 
-  const execute = async (controller: Controller, intent: I, settled: Promise<void>): Promise<Submission<I, R>> => {
-    await settled;
-    const out = aborted.has(controller) || core.invalidAt([]) ? undefined : await validation.schemaOutput();
+  // `settled` resolves true when a plugin refused the submit.
+  const execute = async (controller: Controller, intent: I, settled: Promise<unknown>): Promise<Submission<I, R>> => {
+    const out = (await settled) || aborted.has(controller) || core.invalidAt([]) ? undefined : await validation.schemaOutput();
     const idle = aborted.get(controller);
     if (idle) return idle;
-    // Errors that landed while the schema ran again block the submit too.
+    // Errors that landed while the schema ran block the submit too, and so does a plugin's refusal.
     if (!out || core.invalidAt([])) return end(controller, { status: "invalid" });
     const ctx: SubmitContext<V, E, I> = {
       store: context.store(),
@@ -92,7 +92,7 @@ export function createSubmit<V, E, I, R, O = V>(
     if (running) return running.promise;
     idleNow = false;
     const controller = new AbortController();
-    let settled: Promise<void> = Promise.resolve();
+    let settled: Promise<unknown> = Promise.resolve();
     // One batch: the previous attempt's user errors go, the count and status
     // change, and validators that finish at once land.
     core.batch(() => {
