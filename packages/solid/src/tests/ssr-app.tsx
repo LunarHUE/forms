@@ -96,3 +96,39 @@ export const shippingHtml =
   '<form _hk=0 id="shipping" novalidate tabindex="-1">' +
   '<!--$--><input _hk=11 aria-label="street" value="1 Main St" type="text" id="shipping--street" name="street" disabled /><!--/-->' +
   "<!--$--><!--/--></form>";
+
+interface Delivery {
+  sameAsBilling: boolean;
+  note: string;
+  shipping: { street: string };
+}
+
+interface LabeledTextProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+function LabeledText(props: LabeledTextProps) {
+  return <input aria-label={props.label} {...props.field.inputProps()} />;
+}
+
+const Deliveries = createForms({ fields: { LabeledText } }).define({
+  defaultValues: { sameAsBilling: true, note: "", shipping: { street: "1 Main St" } },
+  plugins: [rules<Delivery>({ shipping: (value) => ({ disabled: value.sameAsBilling }) })],
+});
+
+/** Writes `note` before `shipping.street` is first read, so the street's server snapshot is built after a change. */
+export function DeliveryApp() {
+  const form = createForm(Deliveries, { id: "delivery" });
+  form.root.at("note").setValue("typed");
+  return (
+    <form {...form.formProps}>
+      <form.LabeledText name="shipping.street" label="street" />
+    </form>
+  );
+}
+
+/** `DeliveryApp`'s markup, as `renderToString` returns it: `street` disabled through its parent. */
+export const deliveryHtml =
+  '<form _hk=0 id="delivery" novalidate tabindex="-1">' +
+  '<input _hk=1 aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>';

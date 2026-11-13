@@ -3,7 +3,7 @@ import { renderToString } from "@solidjs/web";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createDisabledErrors, createField, createForm, createForms, createItems } from "../index.js";
-import { App, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
+import { App, DeliveryApp, deliveryHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
 describe("server rendering", () => {
   it("renders the form from its initial snapshot with ids from createUniqueId", () => {
@@ -12,6 +12,10 @@ describe("server rendering", () => {
 
   it("renders the flags rules set when the store is made", () => {
     expect(renderToString(() => <ShippingApp />)).toBe(shippingHtml);
+  });
+
+  it("renders a field disabled through a parent rules disabled, when the store changed before the field was read", () => {
+    expect(renderToString(() => <DeliveryApp />)).toBe(deliveryHtml);
   });
 
   it("reads the server snapshot, not a value written during the render", () => {

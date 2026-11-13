@@ -1,7 +1,7 @@
 import { hydrate } from "@solidjs/web";
 import { flush } from "solid-js";
 import { expect, it, vi } from "vitest";
-import { App, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
+import { App, DeliveryApp, deliveryHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
 /** Installs the `_$HY` global that `generateHydrationScript()` puts in a server page. */
 function installHydrationGlobal(): void {
@@ -54,6 +54,25 @@ it("hydrates what rules set without flipping it", () => {
   expect(host.querySelector("[aria-label=street]")).toBe(street);
   expect(street?.disabled).toBe(true);
   expect(host.querySelector("[aria-label=note]")).toBeNull();
+  dispose();
+  host.remove();
+});
+
+it("hydrates a field disabled through its parent when the store changed before the field was read", () => {
+  const host = document.createElement("div");
+  host.innerHTML = deliveryHtml;
+  document.body.append(host);
+  const street = host.querySelector<HTMLInputElement>("[aria-label=street]");
+  installHydrationGlobal();
+  const warn = vi.spyOn(console, "warn");
+  const error = vi.spyOn(console, "error");
+
+  const dispose = hydrate(() => <DeliveryApp />, host);
+  expect(street?.disabled).toBe(true);
+  flush();
+  expect([...warn.mock.calls, ...error.mock.calls]).toEqual([]);
+  expect(host.querySelector("[aria-label=street]")).toBe(street);
+  expect(street?.disabled).toBe(true);
   dispose();
   host.remove();
 });

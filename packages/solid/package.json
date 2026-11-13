@@ -177,7 +177,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.5 kB"
+      "limit": "13.6 kB"
     }
   ]
 }

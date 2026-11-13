@@ -881,6 +881,63 @@ describe("setup and server rendering", () => {
   });
 });
 
+interface Parcel {
+  note: string;
+  shipping: { street: string; city: string };
+  rows: { t: string }[];
+}
+
+const parcel = (): Parcel => ({ note: "", shipping: { street: "", city: "Oslo" }, rows: [{ t: "a" }, { t: "b" }, { t: "c" }] });
+
+/** Writes the whole `shipping` object and drops the first row, so no node below either is made in setup. */
+const fills = definePlugin({
+  name: "fill",
+  setup: (ctx) => {
+    ctx.write(() => {
+      ctx.store.root.at("shipping").setValue({ street: "1 Main St", city: "Oslo" }, { edited: false });
+      ctx.store.root.at("rows").remove(0, { edited: false });
+    });
+    return {};
+  },
+});
+
+// `server` is read before any write, the way the server renders. `client`
+// has a write first, so the field is made after the store changed.
+function both(path: string[]) {
+  const server = make(parcel(), [fills]);
+  const client = make(parcel(), [fills]);
+  client.root.at("note").setValue("typed");
+  return { server: server.getServerSnapshot(path), client: client.getServerSnapshot(path) };
+}
+
+describe("server snapshot of a field first read after a write, when setup wrote above it", () => {
+  it("is dirty for a child whose value setup changed", () => {
+    const { server, client } = both(["shipping", "street"]);
+    expect(server).toMatchObject({ value: "1 Main St", dirty: true });
+    expect(client).toEqual(server);
+  });
+
+  it("is clean for a child whose value setup kept", () => {
+    const { server, client } = both(["shipping", "city"]);
+    expect(server).toMatchObject({ value: "Oslo", dirty: false });
+    expect(client).toEqual(server);
+  });
+
+  it("finds an item by the key it had after setup, not by its starting position", () => {
+    const { server, client } = both(["rows", "k1", "t"]);
+    expect(server).toMatchObject({ value: "b", name: "rows.0.t", dirty: false });
+    expect(client).toEqual(server);
+    expect(both(["rows", "k1"]).client).toEqual(both(["rows", "k1"]).server);
+    expect(both(["rows", "k0", "t"]).client).toEqual(both(["rows", "k0", "t"]).server);
+  });
+
+  it("keeps the item's place after setup when the user moves items before it is read", () => {
+    const store = make(parcel(), [fills]);
+    store.root.at("rows").move(0, 1);
+    expect(store.getServerSnapshot(["rows", "k2", "t"])).toMatchObject({ value: "c", name: "rows.1.t" });
+  });
+});
+
 describe("revalidation", () => {
   it("reruns a form validator once for every path one ctx.write changed", async () => {
     let fill: (() => void) | undefined;
