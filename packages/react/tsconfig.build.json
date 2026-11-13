@@ -2,11 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["es2020", "dom"],
+    "jsx": "react-jsx",
     "rootDir": "src",
     "outDir": "dist/esm",
     "declaration": true,
     "emitDeclarationOnly": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test-d.ts", "src/**/*.bench.ts", "src/bench"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test-d.ts", "src/**/*.test-d.tsx", "src/**/*.bench.ts", "src/bench"]
 }
