@@ -438,11 +438,21 @@ export type SolidForm<
 > = Scope<V, E, F, P> & FormMembers<V, E, I, R, F, P>;
 
 /**
- * A form with its value, error, intent and result types unknown, as the
- * generic `useFormContext` returns it. Enough for `submit`, `formProps`,
- * `state` and `store`.
+ * A form with its value, intent and result types unknown, as the generic
+ * `useFormContext` returns it. Enough for `submit`, `formProps`, `state` and
+ * `store`. With no arguments its error type is unknown too, and it has no
+ * plugins or field components. `useFormContext(forms)` fills in the shared
+ * plugins `P`, the error type `E` and the field components `F` of that
+ * `createForms` call.
  */
-export type AnyForm = SolidForm<unknown, unknown, unknown>;
+export type AnyForm<P extends Plugins = [], E = unknown, F extends FieldComponents = NoFieldComponents> = SolidForm<
+  unknown,
+  E,
+  unknown,
+  unknown,
+  F,
+  P
+>;
 
 /** Per-form settings for `createForm`. `V` is the form's value type and `X` its own plugins. */
 export interface FormSettings<E = FormError, V = unknown, X extends Plugins = Plugins> {
@@ -491,7 +501,10 @@ export interface SolidFormDefinition<
   readonly "~form"?: SolidForm<V, E, I, R, F, P>;
 }
 
-/** The form a definition makes: `FormOf<typeof Signup>`. */
+/**
+ * The form a definition makes, `FormOf<typeof Signup>`, or the form
+ * `useFormContext(forms)` returns, `FormOf<typeof forms>`.
+ */
 export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
 
 /**
@@ -585,6 +598,8 @@ export interface FormsOptions<P extends Plugins = [], E = FormError, F extends F
  * what `onSubmit` returns.
  */
 export interface SolidForms<P extends Plugins = [], E = FormError, F extends FieldComponents = NoFieldComponents> {
+  /** Type information only, always undefined at runtime: the form `useFormContext` returns for these forms. */
+  readonly "~form"?: AnyForm<P, E, F>;
   /** Defines a form. See core's `FormsCore.define`. Its own `plugins` join the shared ones. */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
@@ -634,10 +649,19 @@ export interface UseFormContext {
   <V, E, I, R, O, F extends FieldComponents, P extends Plugins>(
     definition: SolidFormDefinition<V, E, I, R, O, F, P>,
   ): SolidForm<V, E, I, R, F, P>;
+  /**
+   * Returns the nearest form defined by `forms`, the object `createForms`
+   * returned, for a part shared by its forms such as an undo button. Its
+   * value type is unknown. Its plugins are the shared ones, its error type
+   * and field components those of `forms`. Plugins a definition or a form
+   * adds are not in its type. Forms from other `createForms` calls are
+   * skipped. Throws when no form of `forms` is above.
+   */
+  <P extends Plugins, E, F extends FieldComponents>(forms: SolidForms<P, E, F>): AnyForm<P, E, F>;
 }
 
 /** See `UseFormContext`. */
-// The context holds forms of any types. A form found by its definition is that definition's form.
+// The context holds forms of any types. A form found by its definition or its forms is the form their types describe.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
 export const useFormContext: UseFormContext = useAnyForm as unknown as UseFormContext;
 

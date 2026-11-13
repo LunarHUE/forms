@@ -15,21 +15,26 @@ const formContext = createContext<FormNode | null>(null);
 /** The definition each form was made from. */
 export const madeFrom = new WeakMap<RuntimeForm, object>();
 
+/** The `createForms` result each form was defined by. */
+export const madeBy = new WeakMap<RuntimeForm, object>();
+
 /**
- * See `UseFormContext`. With a definition it walks up from the nearest
- * `form.Form` to the first form made from that definition. Throws a clear
- * error when there is none.
+ * See `UseFormContext`. With a definition, or a `createForms` result, it
+ * walks up from the nearest `form.Form` to the first form made from it.
+ * Throws a clear error when there is none.
  */
 export function useAnyForm(definition?: object): RuntimeForm {
   let node = useContext(formContext);
   if (definition !== undefined) {
-    while (node !== null && madeFrom.get(node.form) !== definition) node = node.parent;
+    while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
   }
   if (node === null) {
     throw new Error(
       definition === undefined
         ? "@lunarhue/forms-solid: useFormContext() found no form. Render it inside the form's `form.Form`."
-        : "@lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.",
+        : "define" in definition
+          ? "@lunarhue/forms-solid: useFormContext(forms) found no form made from those forms. It skips forms of other `createForms` calls. Render it inside the `form.Form` of a form made from one of their definitions."
+          : "@lunarhue/forms-solid: useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.",
     );
   }
   return node.form;
