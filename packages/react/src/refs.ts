@@ -1,4 +1,5 @@
 import type { AnyFieldHandle, AnyFormStore } from "@lunarhue/forms-core";
+import { version } from "react";
 import type { FocusOnInvalid } from "./forms.js";
 import type { FieldRef } from "./input.js";
 import { cached } from "./select.js";
@@ -16,17 +17,21 @@ function connected(set: Set<HTMLElement>): Set<HTMLElement> {
   return set;
 }
 
+/** True when React calls the cleanup a ref callback returns. React 18.3 warns about one instead. */
+const refCleanups = Number(version.split(".")[0]) >= 19;
+
 /**
- * Makes a ref callback that records its elements for `key`. React 19 calls
- * the cleanup it returns. React 18 ignores the cleanup and calls the
- * callback with `null` without saying which element left, so that call does
- * nothing and lookups skip elements that left the document.
+ * Makes a ref callback that records its elements for `key`. On React 19 it
+ * returns a cleanup that forgets the element. Earlier versions get no cleanup
+ * and call the callback with `null` without saying which element left, so
+ * that call does nothing and lookups skip elements that left the document.
  */
 function recorder(key: object): FieldRef {
   return (element) => {
     if (element === null) return undefined;
     const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
     set.add(element);
+    if (!refCleanups) return undefined;
     return () => {
       set.delete(element);
     };

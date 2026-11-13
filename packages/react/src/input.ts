@@ -8,10 +8,11 @@ import { fieldRef } from "./refs.js";
 
 /**
  * The ref callback the adapter puts on a field's element. It records the
- * element for focus after an invalid submit and returns the cleanup that
- * forgets it. React 19 calls the cleanup. React 18 calls the callback again
- * with `null`, which does nothing: an element that left the document is
- * skipped by focus and dropped the next time an element is recorded.
+ * element for focus after an invalid submit. On React 19 it returns the
+ * cleanup that forgets it. Earlier versions get no cleanup, since React 18.3
+ * warns about one, and call the callback again with `null`, which does
+ * nothing: an element that left the document is skipped by focus and dropped
+ * the next time an element is recorded.
  */
 export type FieldRef = (element: HTMLElement | null) => (() => void) | undefined;
 
