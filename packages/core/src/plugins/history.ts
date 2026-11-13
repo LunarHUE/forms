@@ -1,5 +1,5 @@
-import type { HookPlugin, WriteRecord } from "../../index.js";
-import { definePlugin } from "../../plugins.js";
+import type { HookPlugin, WriteRecord } from "../plugin.js";
+import { definePlugin } from "../plugins.js";
 
 /** The API of `history`, as `form.plugins.history`. */
 export interface HistoryApi {
@@ -7,7 +7,9 @@ export interface HistoryApi {
   undo(): boolean;
   /** Writes the latest undone step again. False when there is none. */
   redo(): boolean;
+  /** True when there is a step to undo. */
   readonly canUndo: boolean;
+  /** True when there is an undone step to write again. */
   readonly canRedo: boolean;
 }
 
@@ -17,12 +19,14 @@ type Step = readonly WriteRecord[];
 const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]);
 
 /**
- * A test fixture, not shipped. Keeps the user's value and array writes in
- * steps, one per delivery of `deferred` records: everything written in one
- * task, such as one keystroke or one batch. Its own writes, resets and
- * rebases aren't recorded, and a reset clears both stacks. Array steps are
- * replayed as array commands, so the items that stay keep their keys and
- * their per-field state.
+ * Undo and redo for the user's value and array writes. Its API is
+ * `form.plugins.history`, a `HistoryApi`.
+ *
+ * A step is one delivery of `deferred` records: everything written in one
+ * task, such as one keystroke or one batch. It keeps the latest `limit`
+ * steps. Its own writes, resets and rebases aren't recorded, and a reset
+ * clears both stacks. Array steps are replayed as array commands, so the
+ * items that stay keep their keys and their per-field state.
  */
 export function history(limit = 100): HookPlugin<HistoryApi, "history"> {
   return definePlugin({

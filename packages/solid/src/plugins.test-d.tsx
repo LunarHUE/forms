@@ -1,5 +1,5 @@
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { validation } from "@lunarhue/forms-core/validation";
+import { definePlugin } from "./plugins.js";
+import { validation } from "./plugins/validation.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";

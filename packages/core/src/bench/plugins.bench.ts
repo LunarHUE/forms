@@ -1,9 +1,9 @@
 import { test } from "vitest";
 import { type AnyHookPlugin, createFormsCore, type When } from "../index.js";
-import { history } from "../plugins/fixtures/history.js";
-import { mask, upper } from "../plugins/fixtures/mask.js";
-import { persist } from "../plugins/fixtures/persist.js";
-import { rules } from "../plugins/fixtures/rules.js";
+import { history } from "../plugins/history.js";
+import { mask, upper } from "../plugins/mask.js";
+import { persist } from "../plugins/persist.js";
+import { rules } from "../plugins/rules.js";
 import { definePlugin } from "../plugins.js";
 import { pluginRowsForm } from "./plugin-rows.js";
 
@@ -29,7 +29,7 @@ const cases: readonly (readonly [label: string, plugins: readonly AnyHookPlugin[
     [noopBefore("a"), noopBefore("b"), noopObserver("c", "sync"), noopObserver("d", "deferred"), noopObserver("e", "idle")],
   ],
   [
-    "four fixtures",
+    "four shipped plugins",
     [
       mask({ [`rows.${String(firstKey)}.name`]: upper }),
       rules<{ rows: { name: string }[] }>({ rows: (value) => ({ hidden: value.rows[0]?.name === "HIDE" }) }),

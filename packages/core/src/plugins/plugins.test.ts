@@ -9,11 +9,11 @@ import {
   type WriteRecord,
 } from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
-import { validation } from "../validation.js";
-import { history } from "./fixtures/history.js";
-import { digits, mask, upper } from "./fixtures/mask.js";
-import { persist } from "./fixtures/persist.js";
-import { rules } from "./fixtures/rules.js";
+import { validation } from "./validation.js";
+import { history } from "./history.js";
+import { digits, mask, upper } from "./mask.js";
+import { persist } from "./persist.js";
+import { rules } from "./rules.js";
 import { rebase } from "./rebase.js";
 
 interface Contact {
@@ -100,6 +100,19 @@ describe("install", () => {
     const a = definePlugin({ name: "a", after: ["b"], setup: () => ({}) });
     const b = definePlugin({ name: "b", after: ["a"], setup: () => ({}) });
     expect(() => make(contact(), [a, b])).toThrow(/part of an `after` cycle/);
+  });
+
+  it("warns in development when the plugins come from two copies of core", () => {
+    const warn = vi.fn<(message: string) => void>();
+    vi.stubGlobal("console", { warn });
+    const one = definePlugin({ name: "one", setup: () => ({}) });
+    const two = definePlugin({ name: "two", setup: () => ({}) });
+    make(contact(), [one, two]);
+    expect(warn).not.toHaveBeenCalled();
+    // Another copy's plugin carries that copy's host.
+    const copy = { ...two, host: (...args: Parameters<typeof two.host>) => two.host(...args) };
+    make(contact(), [one, copy]);
+    expect(warn).toHaveBeenCalledWith("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
   });
 
   it("ignores a name in `after` that isn't installed", () => {
@@ -693,7 +706,7 @@ describe("server rendering", () => {
   });
 });
 
-describe("fixtures", () => {
+describe("history, mask, rules and persist", () => {
   interface Order {
     sameAsBilling: boolean;
     shipping: { street: string };

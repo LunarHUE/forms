@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm, useFormContext, useFormState } from "./index.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
-import { defineSchemaPlugin } from "@lunarhue/forms-core/validation";
+import { defineSchemaPlugin } from "./plugins/validation.js";
 
 // Fast Refresh runs an edited module again and keeps the state of its mounted
 // components. These tests do the same: `load` stands for the module body, and

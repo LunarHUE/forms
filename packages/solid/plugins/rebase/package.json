@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/cjs/plugins/rebase.js",
+  "module": "../../dist/esm/plugins/rebase.js",
+  "types": "../../dist/cjs/plugins/rebase.d.ts"
+}

@@ -1,5 +1,5 @@
 import type { Path, SchemaPlugin } from "@lunarhue/forms-core";
-import { defineSchemaPlugin } from "@lunarhue/forms-core/validation";
+import { defineSchemaPlugin } from "@lunarhue/forms-core/plugins/validation";
 import { getDefault, type GenericSchema, type GenericSchemaAsync } from "valibot";
 
 /** A valibot schema, sync or async. */

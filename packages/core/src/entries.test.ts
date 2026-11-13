@@ -13,5 +13,5 @@ it("leaves the validation runner out of the main entry", async () => {
 
 it("fails an import that loads the runner, as the validation entry does", async () => {
   // The check above works: the validation entry does load the runner, so its import fails here.
-  await expect(import("./validation.js")).rejects.toThrow(/mock/);
+  await expect(import("./plugins/validation.js")).rejects.toThrow(/mock/);
 });

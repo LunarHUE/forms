@@ -2,7 +2,7 @@ import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "../plugins/validation.js";
 
 /** The props each registered component was given, by label. */
 const given: Record<string, readonly string[]> = {};

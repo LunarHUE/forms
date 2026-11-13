@@ -1,6 +1,6 @@
 import type { SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { validation } from "@lunarhue/forms-core/validation";
+import { definePlugin } from "./plugins.js";
+import { validation } from "./plugins/validation.js";
 import { describe, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm } from "./index.js";
 

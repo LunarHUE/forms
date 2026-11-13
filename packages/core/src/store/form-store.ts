@@ -11,6 +11,9 @@ import { createHandles } from "./handles.js";
 import { noValidation, type Validation, type ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
 
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+declare const console: { warn(message: string): void };
+
 /** What `createFormStore` takes. Each module adds the options it reads to its own options type. */
 export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, O = V>
   extends BaselineOptions<V>, ValidationOptions<V, E>, SubmitOptions<V, E, I, R, O> {
@@ -61,6 +64,11 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   const plugins = options.plugins ?? [];
   const hooked = plugins.filter((plugin): plugin is AnyHookPlugin => plugin.setup !== undefined);
   const host = hooked[0]?.host(raw, hooked, options.onPluginError);
+  // Each copy of core has its own host and its own `refuse`, so plugins from
+  // two copies don't work together. Development only: production drops it.
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin.host !== hooked[0]?.host)) {
+    console.warn("This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.");
+  }
   const runner = plugins.find((plugin) => plugin.validation)?.validation ?? noValidation;
   // The host's core wraps this store's and keeps its types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

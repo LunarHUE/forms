@@ -1,0 +1,5 @@
+{
+  "main": "../dist/cjs/plugins.js",
+  "module": "../dist/esm/plugins.js",
+  "types": "../dist/cjs/plugins.d.ts"
+}

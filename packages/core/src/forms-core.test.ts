@@ -5,7 +5,7 @@ import { createFormsCore } from "./index.js";
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
-import { defineSchemaPlugin, validation } from "./validation.js";
+import { defineSchemaPlugin, validation } from "./plugins/validation.js";
 
 /** A hand-written Standard Schema of vendor `vendor`. */
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {

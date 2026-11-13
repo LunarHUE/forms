@@ -53,9 +53,11 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * - schema plugins such as `valibot()` from `@lunarhue/forms-schema/valibot`,
    *   which give their library's schemas default values and bring the
    *   validation runner;
-   * - `validation()` from `@lunarhue/forms-core/validation`, the runner
-   *   alone, for function validators and for any other Standard Schema;
-   * - hook plugins from `definePlugin` in `@lunarhue/forms-core/plugins`.
+   * - `validation()` from `@lunarhue/forms-core/plugins/validation`, the
+   *   runner alone, for function validators and for any other Standard Schema;
+   * - first-class plugins such as `history()`, each from its own
+   *   `@lunarhue/forms-core/plugins/<name>` entry, and hook plugins from
+   *   `definePlugin` in `@lunarhue/forms-core/plugins`.
    *
    * The list's type decides what `define` accepts: `schema` and `validate`
    * need the runner, a schema a schema plugin accepts makes `defaultValues`

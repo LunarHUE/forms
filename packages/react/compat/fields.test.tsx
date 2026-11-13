@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "../src/plugins/validation.js";
 
 const commits: Commits = new Map();
 beforeEach(() => commits.clear());

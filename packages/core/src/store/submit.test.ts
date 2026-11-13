@@ -4,7 +4,7 @@ import type { FormError, MapError, ShowMode } from "../errors.js";
 import type { Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
-import { validation as runner } from "../validation.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 
 // Core declares no timer globals, so the tests declare the one they use.

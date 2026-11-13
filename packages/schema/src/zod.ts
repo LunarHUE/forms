@@ -1,5 +1,5 @@
 import type { Path, SchemaPlugin } from "@lunarhue/forms-core";
-import { defineSchemaPlugin } from "@lunarhue/forms-core/validation";
+import { defineSchemaPlugin } from "@lunarhue/forms-core/plugins/validation";
 import type { $ZodType, $ZodTypes } from "zod/v4/core";
 
 /** A Zod 4 schema, from `zod` or `zod/mini`. */
