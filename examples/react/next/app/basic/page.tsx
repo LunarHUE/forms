@@ -1,6 +1,6 @@
 "use client";
 import { Inspector } from "@lunarhue/forms-example-react";
-import { createForms, type FieldApi, type HandleOf, useFormState } from "@lunarhue/forms-react";
+import { createForms, type FieldApi, type HandleOf, useForm, useFormContext, useFormState } from "@lunarhue/forms-react";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 
@@ -108,20 +108,29 @@ function AddressFields({ field }: AddressFieldsProps) {
   );
 }
 
-// 5. A component that finds the form through context, so it needs no props.
-// It reads only the submission, so typing elsewhere doesn't re-render it.
+// 5. Components that find the form through context, so they need no props.
+// `useFormContext()` returns the nearest form with its types unknown, which
+// is all a submit button needs, so this button fits any form. It reads only
+// `submitting`, so typing elsewhere doesn't re-render it.
 function SubmitButton() {
-  const form = signUp.useFormContext();
+  const form = useFormContext();
+  const submitting = useFormState(form, (snapshot) => snapshot.submitting);
+  return (
+    <button type="submit" className="button button-primary" disabled={submitting}>
+      {submitting ? "Signing up..." : "Sign up"}
+    </button>
+  );
+}
+
+// `useFormContext(signUp)` returns the sign-up form fully typed, so the
+// result of a submit that succeeded is the string `onSubmit` returned.
+function SignUpStatus() {
+  const form = useFormContext(signUp);
   const submission = useFormState(form, (snapshot) => snapshot.submission);
   return (
-    <div className="form-actions">
-      <button type="submit" className="button button-primary" disabled={submission.status === "submitting"}>
-        {submission.status === "submitting" ? "Signing up..." : "Sign up"}
-      </button>
-      <span className="form-status" role="status">
-        {submission.status === "succeeded" ? submission.result : null}
-      </span>
-    </div>
+    <span className="form-status" role="status">
+      {submission.status === "succeeded" ? submission.result : null}
+    </span>
   );
 }
 
@@ -130,7 +139,7 @@ function SubmitButton() {
 // `submit`, which this form doesn't need. Fields are named by path, and the
 // registered components are checked against each field's type.
 export default function BasicPage() {
-  const form = signUp.useForm();
+  const form = useForm(signUp);
   const team = form.root.at("team");
   return (
     <main className="page">
@@ -166,7 +175,10 @@ export default function BasicPage() {
                   Add member
                 </button>
               </fieldset>
-              <SubmitButton />
+              <div className="form-actions">
+                <SubmitButton />
+                <SignUpStatus />
+              </div>
             </form>
           )}
         </form.Form>

@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { useSelected } from "./select.js";
 import { useInputProps } from "./input.js";
-import { createForms, useField, useFormState, useItems, useValidator } from "./index.js";
+import { createForms, useField, useForm, useFormState, useItems, useValidator } from "./index.js";
 
 const forms = createForms();
 const profile = forms.define({ defaultValues: { name: "Ada" } });
 
 function NameLabel() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   const name = useField(form.root.at("name"), (snapshot) => snapshot.value.toUpperCase());
   return <p>{name}</p>;
 }

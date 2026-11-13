@@ -1,6 +1,6 @@
 import { fireEvent } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
-import { createForms, useFormContext, useFormState, useInputProps } from "../src/index.js";
+import { createForms, useForm, useFormContext, useFormState, useInputProps } from "../src/index.js";
 import { settle } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -16,7 +16,7 @@ const account = createForms().define({
 });
 
 function Text(props: { readonly name: "name" | "email" }) {
-  const form = account.useFormContext();
+  const form = useFormContext(account);
   return <input aria-label={props.name} {...useInputProps(form.root.at(props.name))} />;
 }
 
@@ -28,7 +28,7 @@ function Status() {
 }
 
 function Account() {
-  const form = account.useForm({ id: "account" });
+  const form = useForm(account, { id: "account" });
   return (
     <form.Form>
       {({ submit: _submit, ...props }) => (

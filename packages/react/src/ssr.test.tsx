@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { createForms, type FieldApi, useFormContext, useFormState, useInputProps } from "./index.js";
+import { createForms, type FieldApi, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -23,7 +23,7 @@ const initial: Order = { customer: "Ada", plan: "free", lines: [{ item: "pen" },
 const order = createForms({ fields: { TextField } }).define({ defaultValues: initial });
 
 function Plan() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const plan = form.root.at("plan");
   return (
     <>
@@ -40,7 +40,7 @@ function Status() {
 }
 
 function Order() {
-  const form = order.useForm();
+  const form = useForm(order);
   return (
     <form.Form>
       {({ submit: _submit, ...props }) => (

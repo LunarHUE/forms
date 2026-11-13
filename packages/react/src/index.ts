@@ -1,6 +1,6 @@
 // Binds React to the form store in @lunarhue/forms-core.
 export * from "@lunarhue/forms-core";
-export { createForms, useDisabledErrors, useFormContext } from "./forms.js";
+export { createForms, useDisabledErrors, useForm, useFormContext } from "./forms.js";
 export type {
   CheckedFields,
   CreateForms,
@@ -11,6 +11,7 @@ export type {
   FormElementProps,
   FormInstance,
   FormMembers,
+  FormOf,
   FormRenderProps,
   Forms,
   FormsOptions,
@@ -19,6 +20,7 @@ export type {
   ReservedName,
   UnknownForm,
   UseDisabledErrors,
+  UseForm,
   UseFormArgs,
   UseFormContext,
   UseFormOptions,

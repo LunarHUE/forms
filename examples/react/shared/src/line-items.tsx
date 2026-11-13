@@ -1,5 +1,5 @@
 import { type OrderDraft, orderTotal, type ReadonlyOrderDraft } from "@lunarhue/forms-example-order";
-import { errorId, type FieldHandle, type HandleOf, useField } from "@lunarhue/forms-react";
+import { errorId, type FieldHandle, type HandleOf, useField, useFormContext } from "@lunarhue/forms-react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { FieldErrors } from "./fields.js";
 import { LineItemFieldset, order } from "./order.js";
@@ -109,7 +109,7 @@ function OrderTotalRow(props: { readonly lineItems: LineItemsHandle }) {
  * moved. So each row keeps its DOM node, focus included, when it moves.
  */
 export function LineItems() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const lineItems = form.root.at("lineItems");
   const count = useField(lineItems, (snapshot) => snapshot.keys.length);
   const errors = useField(lineItems, (snapshot) => snapshot.shownErrors);

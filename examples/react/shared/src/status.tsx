@@ -1,6 +1,6 @@
 import { amountDue } from "@lunarhue/forms-example-order";
 import { useDisabledErrors, useField, useFormContext, useFormState } from "@lunarhue/forms-react";
-import { useDeferredValue } from "react";
+import { type ReactNode, useDeferredValue } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { money } from "./line-items.js";
 import { order } from "./order.js";
@@ -25,27 +25,44 @@ export function SubmitButton() {
   );
 }
 
+/** Props for `FormStatus`. */
+export interface FormStatusProps {
+  /** What to show after a submit succeeds. It depends on the form's result, which this component doesn't know. */
+  readonly saved: ReactNode;
+}
+
 /**
- * One line saying where the last submit stands. It uses the definition's
- * own `order.useFormContext()`, which types the submission's result as the
- * fake server's `SaveResult`.
+ * One line saying where the last submit stands. Like `SubmitButton` it
+ * takes the form with the untyped `useFormContext`, so it fits every form.
+ * The result's type is unknown here, so what a success says comes in as
+ * `saved`.
  */
-export function FormStatus() {
-  const form = order.useFormContext();
-  const submission = useFormState(form, (snapshot) => snapshot.submission);
-  let text = "";
-  if (submission.status === "submitting") text = "Saving the order.";
-  else if (submission.status === "invalid") text = "Fix the errors above, then try again.";
-  else if (submission.status === "failed") text = "The save failed. Try again.";
-  else if (submission.status === "succeeded") {
-    const { result } = submission;
-    text = result.ok ? `Saved as ${result.id}.` : "The server refused the order.";
-  }
+export function FormStatus(props: FormStatusProps) {
+  const form = useFormContext();
+  const status = useFormState(form, (snapshot) => snapshot.submission.status);
+  let text: ReactNode = "";
+  if (status === "submitting") text = "Saving the order.";
+  else if (status === "invalid") text = "Fix the errors above, then try again.";
+  else if (status === "failed") text = "The save failed. Try again.";
+  else if (status === "succeeded") text = props.saved;
   return (
-    <span className="form-status" role="status" data-status={submission.status}>
+    <span className="form-status" role="status" data-status={status}>
       {text}
     </span>
   );
+}
+
+/**
+ * What a successful order save says. It reads the order form with
+ * `useFormContext(order)`, which types the submission's result as the fake
+ * server's `SaveResult`.
+ */
+export function SaveOutcome() {
+  const form = useFormContext(order);
+  const submission = useFormState(form, (snapshot) => snapshot.submission);
+  if (submission.status !== "succeeded") return null;
+  const { result } = submission;
+  return result.ok ? `Saved as ${result.id}.` : "The server refused the order.";
 }
 
 /**
@@ -53,7 +70,7 @@ export function FormStatus() {
  * refuses a save. Core puts them on the root field.
  */
 export function FormErrors() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const errors = useField(form.root, (snapshot) => snapshot.shownErrors);
   return (
     <ul className="form-errors" aria-label="Form errors">
@@ -71,7 +88,7 @@ export function FormErrors() {
  * Untick "same as billing" to fix them.
  */
 export function DisabledErrors() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const disabled = useDisabledErrors(form);
   return (
     <ul className="form-errors" aria-label="Errors in disabled fields">
@@ -95,7 +112,7 @@ export function DisabledErrors() {
  * and it still ends on the value the store holds.
  */
 export function OrderSummary() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const due = useField(form.root, (snapshot) => amountDue(snapshot.value));
   const deferred = useDeferredValue(due);
   const badge = useRenderBadge();

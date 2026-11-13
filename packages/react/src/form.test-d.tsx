@@ -6,6 +6,7 @@ import {
   type FieldHandle,
   type FormError,
   type FormInstance,
+  type FormOf,
   type FormSnapshot,
   type FormStore,
   type HandleOf,
@@ -17,6 +18,9 @@ import {
   type SchemaAdapter,
   type StandardSchemaV1,
   type Submission,
+  type UnknownForm,
+  useDisabledErrors,
+  useForm,
   useFormContext,
   useFormState,
 } from "./index.js";
@@ -99,7 +103,7 @@ type Fields = { readonly TextField: typeof TextField; readonly NumberField: type
 type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, Fields>;
 
 function OrderPage() {
-  const form = order.useForm();
+  const form = useForm(order);
   expectTypeOf(form).toEqualTypeOf<OrderForm>();
   expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<DraftOrder>>();
   expectTypeOf(form.store).toEqualTypeOf<FormStore<DraftOrder, FormError, "save" | "send" | undefined, { id: string }>>();
@@ -139,7 +143,7 @@ function OrderPage() {
 
 // Fields given by handle, here an item handle passed as a prop with no provider.
 function Line({ line }: { readonly line: ItemHandle<DraftLine> }) {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   return (
     <>
       <form.TextField handle={line.at("item")} label="Item" />
@@ -170,7 +174,7 @@ function SubmitButton() {
 }
 
 function WrongUsage() {
-  const form = order.useForm();
+  const form = useForm(order);
   const line = form.root.at("lines").item("k");
   return (
     <>
@@ -284,7 +288,7 @@ const emptyAddress: DraftAddress = { street: "", city: "", zip: "", geo: { lat: 
 const profile = forms.define({ defaultValues: { home: emptyAddress } });
 
 function ProfileForm() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   return (
     <form.Form>
       <AddressFields field={form.root.at("home")} title="Home" />
@@ -293,7 +297,7 @@ function ProfileForm() {
 }
 
 function OrderWithFieldsets() {
-  const form = order.useForm();
+  const form = useForm(order);
   // A cached lookup, not a hook: the same handle gives the same scope and components.
   const billing = forms.scope(form.root.at("billing"));
   return (
@@ -321,7 +325,7 @@ function OrderWithFieldsets() {
 const plainForm = forms.define({ defaultValues: { count: 0, title: "" } });
 
 function PlainNumbers() {
-  const form = plainForm.useForm();
+  const form = useForm(plainForm);
   return (
     <>
       <form.NumberField name="count" label="Count" />
@@ -336,21 +340,97 @@ function PlainNumbers() {
 const lineDialog = forms.define({ defaultValues: { item: "", qty: 0 } });
 
 function LineDialogBody() {
-  const outer = order.useFormContext();
-  const inner = lineDialog.useFormContext();
+  const outer = useFormContext(order);
+  const inner = useFormContext(lineDialog);
   expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder>>();
   expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }>>();
   return <inner.Field name="qty">{(field) => <input {...field.inputProps({ kind: "number", empty: 0 })} />}</inner.Field>;
 }
 
 function LineDialog() {
-  const dialog = lineDialog.useForm({ id: "line-dialog" });
+  const dialog = useForm(lineDialog, { id: "line-dialog" });
   return (
     <dialog.Form>
       <LineDialogBody />
     </dialog.Form>
   );
 }
+
+// Reusable parts for any form. They read the nearest form with no definition and need no cast.
+function GenericSubmit() {
+  const form = useFormContext();
+  expectTypeOf(form).toEqualTypeOf<UnknownForm>();
+  const submitting = useFormState(form, (snapshot) => snapshot.submitting);
+  return (
+    <>
+      <button type="submit" disabled={submitting} onClick={() => void form.submit()}>
+        Save
+      </button>
+      <form {...form.formProps} onSubmit={(event) => void form.handleSubmit(event)} />
+    </>
+  );
+}
+
+function GenericReset() {
+  const form = useFormContext();
+  const dirty = useFormState(form, (snapshot) => snapshot.dirty);
+  return (
+    <button type="button" disabled={!dirty} onClick={() => form.store.reset()}>
+      Reset
+    </button>
+  );
+}
+
+function GenericStatus() {
+  const form = useFormContext();
+  const state = useFormState(form);
+  const disabled = useDisabledErrors(form);
+  expectTypeOf(state.submission.status).toEqualTypeOf<"idle" | "submitting" | "invalid" | "succeeded" | "failed">();
+  return (
+    <p>
+      {[state.valid, state.validating, state.dirty, state.submitting, state.submitCount, disabled.length].join(" ")}
+    </p>
+  );
+}
+
+// A definition made with the function form takes options in `useForm`.
+const seeded = forms.define((options: { readonly title: string }) => ({ defaultValues: { title: options.title } }));
+
+function OptionForms() {
+  const form = useForm(seeded, { title: "a" }, { id: "seeded" });
+  expectTypeOf(form).toEqualTypeOf<FormOf<typeof seeded>>();
+  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ title: string }>>();
+  expectTypeOf(useFormContext(seeded)).toEqualTypeOf<FormOf<typeof seeded>>();
+  // @ts-expect-error: the options are required
+  useForm(seeded);
+  // @ts-expect-error: the options have the wrong type
+  useForm(seeded, { title: 1 });
+  // @ts-expect-error: a definition from a plain config takes no options
+  useForm(profile, { title: "a" }, { id: "profile" });
+  // @ts-expect-error: the settings come first when there are no options, and these are not settings
+  useForm(profile, { title: "a" });
+  return <form.Form>{null}</form.Form>;
+}
+
+describe("useForm and useFormContext", () => {
+  it("types the form from the definition in both call forms", () => {
+    expectTypeOf(useForm(order)).toEqualTypeOf<OrderForm>();
+    expectTypeOf(useFormContext(order)).toEqualTypeOf<OrderForm>();
+    expectTypeOf<FormOf<typeof order>>().toEqualTypeOf<OrderForm>();
+    expectTypeOf(useFormContext()).toEqualTypeOf<UnknownForm>();
+    expectTypeOf(OptionForms).toBeFunction();
+    // @ts-expect-error: a form is not a definition
+    useFormContext(useForm(order));
+    // @ts-expect-error: a store is not a definition
+    useForm(order.createStore());
+  });
+
+  it("gives a generic submit button, reset button and status line all they need with no cast", () => {
+    expectTypeOf(GenericSubmit).toBeFunction();
+    expectTypeOf(GenericReset).toBeFunction();
+    expectTypeOf(GenericStatus).toBeFunction();
+  });
+});
 
 describe("fieldsets and scopes", () => {
   it("types fieldsets from a schema and from a type, at two paths, in rows and in a second form", () => {

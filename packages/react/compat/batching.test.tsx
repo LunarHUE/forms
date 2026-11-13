@@ -1,16 +1,16 @@
 import { useLayoutEffect } from "react";
 import { expect, it } from "vitest";
-import { createForms, useField, useFormState } from "../src/index.js";
+import { createForms, type FormOf, useField, useForm, useFormState } from "../src/index.js";
 import { modern, render } from "./render.js";
 
 const profile = createForms().define({ defaultValues: { name: "" } });
-type ProfileForm = ReturnType<typeof profile.useForm>;
+type ProfileForm = FormOf<typeof profile>;
 const holder: { form?: ProfileForm } = {};
 const shown: string[] = [];
 
 /** Reads the field and the form, so one write wakes two of its listeners. */
 function Both() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   const name = useField(form.root.at("name"), (snapshot) => snapshot.value);
   const dirty = useFormState(form, (snapshot) => snapshot.dirty);
   const text = `${name}:${dirty}`;

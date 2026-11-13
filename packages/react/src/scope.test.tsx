@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type HandleOf } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type HandleOf, useForm } from "./index.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -52,7 +52,7 @@ const address = (street: string): Address => ({ street, geo: { lat: undefined } 
 const trip = forms.define({
   defaultValues: { billing: address("Main"), shipping: address("Side"), stops: [address("A"), address("B"), address("C")] },
 });
-type TripForm = ReturnType<typeof trip.useForm>;
+type TripForm = FormOf<typeof trip>;
 const holder: { form?: TripForm } = {};
 const current = (): TripForm => {
   if (holder.form === undefined) throw new Error("no form rendered");
@@ -60,7 +60,7 @@ const current = (): TripForm => {
 };
 
 function Trip() {
-  const form = trip.useForm({ id: "trip" });
+  const form = useForm(trip, { id: "trip" });
   useEffect(() => {
     holder.form = form;
   });
@@ -83,7 +83,7 @@ function Trip() {
 const input = (label: string) => screen.getByLabelText<HTMLInputElement>(label);
 
 function ByHandle() {
-  const form = trip.useForm();
+  const form = useForm(trip);
   const geo = form.root.at("billing").at("geo");
   return (
     <>

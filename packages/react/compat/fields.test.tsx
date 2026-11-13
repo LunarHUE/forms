@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/dom";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type LeafHandle, useField, useInputProps } from "../src/index.js";
+import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -28,7 +28,7 @@ interface Values {
 const defaultValues: Values = { name: "", email: "", age: 30, agree: false, tags: [{ title: "a" }, { title: "b" }] };
 const forms = createForms({ fields: { TextField } });
 const profile = forms.define({ defaultValues });
-type ProfileForm = ReturnType<typeof profile.useForm>;
+type ProfileForm = FormOf<typeof profile>;
 
 const holder: { form?: ProfileForm; live?: Listeners } = {};
 const current = (): ProfileForm => {
@@ -53,7 +53,7 @@ function NameFilled(props: { readonly field: LeafHandle<string> }) {
 }
 
 function Profile() {
-  const form = profile.useForm();
+  const form = useForm(profile);
   const [live] = useState(() => countListeners(form.store));
   useEffect(() => {
     holder.form = form;

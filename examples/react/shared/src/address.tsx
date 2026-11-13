@@ -1,5 +1,5 @@
 import { countries } from "@lunarhue/forms-example-order";
-import { errorId, type HandleOf, useField, useInputProps } from "@lunarhue/forms-react";
+import { errorId, type HandleOf, useField, useFormContext, useInputProps } from "@lunarhue/forms-react";
 import { useEffect } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { FieldErrors, SelectField } from "./fields.js";
@@ -60,7 +60,7 @@ export function AddressFields(props: AddressFieldsProps) {
  * one blocks the submit and shows up in the "disabled fields" list.
  */
 export function SameAsBilling() {
-  const form = order.useFormContext();
+  const form = useFormContext(order);
   const same = form.root.at("sameAsBilling");
   const shipping = form.root.at("shipping");
   const input = useInputProps(same, { kind: "checkbox" });
