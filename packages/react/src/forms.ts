@@ -8,18 +8,24 @@ import type {
   FormDefinition,
   FormError,
   FormsConfig,
+  FormSnapshot,
   FormStore,
   IntentArgs,
   SchemaAdapter,
   SchemaValue,
   StandardSchemaV1,
+  StoreInstance,
   Submission,
   ValueOf,
 } from "@lunarhue/forms-core";
-import type { ReactElement, ReactNode } from "react";
+import { createFormsCore } from "@lunarhue/forms-core";
+import { type Context, createContext, createElement, type ReactElement, type ReactNode, useContext, useId, useState } from "react";
+import { type AnyScope, makeScope } from "./bound.js";
 import type { HandleLike } from "./field.js";
-import { notImplemented } from "./not-implemented.js";
-import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope, SchemaFieldset } from "./scope.js";
+import { focusInvalid, formRef } from "./refs.js";
+import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, Scope } from "./scope.js";
+import { cached, useSelected } from "./select.js";
+import { formSource, storeOf } from "./sources.js";
 
 /**
  * What a failed submit leaves to focus. The adapter builds it from core's
@@ -75,7 +81,8 @@ export interface FormsOptions<
   /**
    * The app's field components. Each is an ordinary component with a
    * `field: FieldApi<T>` prop and any props of its own, and shows up bound,
-   * under the same name, on every form and scope.
+   * under the same name, on every form and scope. See `FieldApi` for which
+   * fields fit, and `BoundFieldComponents` for a known hole in error types.
    */
   readonly fields?: F & CheckedFields<F>;
 }
@@ -235,9 +242,11 @@ export interface Forms<
   /**
    * Makes a reusable shape from a schema. The shape is the schema's value
    * type as `define` would type it: the `Draft` of its input when a
-   * registered adapter supports the schema, its input otherwise.
+   * registered adapter supports the schema, its input otherwise. The schema
+   * only types the shape. It is never run, since the form's own schema
+   * validates.
    */
-  fieldset<S extends StandardSchemaV1>(schema: S): SchemaFieldset<SchemaValue<S, A>, E, F>;
+  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, A>, E, F>;
   /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
   fieldset<V>(): Fieldset<V, E, F>;
 }
@@ -254,8 +263,100 @@ export type CreateForms = <
   options?: FormsOptions<A, E, F>,
 ) => Forms<A, E, F>;
 
-/** See `CreateForms`. Not implemented yet: it throws. */
-export const createForms: CreateForms = notImplemented("createForms");
+/** A form as the runtime builds it. */
+type AnyForm = AnyScope & { readonly store: AnyFormStore<unknown> };
+
+/** The context every `form.Form` provides, whatever its definition. */
+const SharedContext = createContext<AnyForm | null>(null);
+
+/** Returns the form a context holds, or throws when no `form.Form` is above. */
+function useProvidedForm(context: Context<AnyForm | null>): AnyForm {
+  const form = useContext(context);
+  if (form === null) {
+    throw new Error(
+      "@lunarhue/forms-react: no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop.",
+    );
+  }
+  return form;
+}
+
+/** Makes a form on the first render and returns the same one after. */
+function useNewForm(make: (generatedId: string) => AnyForm): AnyForm {
+  const generatedId = useId();
+  const [form] = useState(() => make(generatedId));
+  return form;
+}
+
+/** Builds the form object around a new store. */
+function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, own: Context<AnyForm | null>, focus: FocusOnInvalid<unknown>): AnyForm {
+  const submit = async (...args: [intent?: unknown]) => {
+    const submission = await store.submit(...args);
+    if (submission.status === "invalid") focusInvalid(store, focus);
+    return submission;
+  };
+  const handleSubmit = async (event?: { preventDefault(): void }) => {
+    event?.preventDefault();
+    await submit();
+  };
+  const formProps: FormElementProps = {
+    id: store.id,
+    noValidate: true,
+    tabIndex: -1,
+    onSubmit: (event) => {
+      void handleSubmit(event);
+    },
+    ref: formRef(store),
+  };
+  const renderProps = { ...formProps, submit };
+  // `Form` only runs after `form` below is made.
+  function Form(props: FormComponentProps<unknown, unknown>): ReactElement {
+    const { children } = props;
+    const content = typeof children === "function" ? children(renderProps) : children;
+    return createElement(SharedContext.Provider, { value: form }, createElement(own.Provider, { value: form }, content));
+  }
+  const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form };
+  return form;
+}
+
+/** Core's `define` as the runtime calls it, with every type erased. */
+interface LooseCore {
+  define(config: unknown): { createStore(options: unknown, instance: StoreInstance): AnyFormStore<unknown> };
+}
+
+/** See `CreateForms`. */
+export const createForms: CreateForms = (options = {}) => {
+  // The runtime is untyped inside. The contract's types are checked by the type tests.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const core = createFormsCore(options) as unknown as LooseCore;
+  const fields: FieldComponentMap = options.fields ?? {};
+  const scopes = new WeakMap<object, AnyScope>();
+  // Every form made here shares this cache, so one handle always gives the same components.
+  const scope = (handle: AnyScope["root"]): AnyScope => cached(scopes, handle, () => makeScope(handle, fields));
+  // `E` only types errors, so the runtime reads the setting with any error type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const defaultFocus = (options.focusOnInvalid ?? true) as FocusOnInvalid<unknown>;
+
+  const define = (config: unknown) => {
+    const definition = core.define(config);
+    const own = createContext<AnyForm | null>(null);
+    const takesOptions = typeof config === "function";
+    const createForm = (args: readonly unknown[], generatedId: string): AnyForm => {
+      // `useForm` takes the definition's options first only when the definition is a function.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const instance = (takesOptions ? args[1] : args[0]) as UseFormOptions<unknown> | undefined;
+      const store = definition.createStore(takesOptions ? args[0] : undefined, { id: instance?.id ?? generatedId });
+      return makeForm(store, scope(store.root), own, instance?.focusOnInvalid ?? defaultFocus);
+    };
+    return {
+      createStore: (storeOptions: unknown, instance: StoreInstance = {}) => definition.createStore(storeOptions, instance),
+      useForm: (...args: unknown[]) => useNewForm((generatedId) => createForm(args, generatedId)),
+      useFormContext: () => useProvidedForm(own),
+    };
+  };
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return { define, scope, fieldset: () => ({ scope }) } as never;
+};
 
 /**
  * Returns the form from the nearest `form.Form`, whatever its definition.
@@ -265,8 +366,11 @@ export const createForms: CreateForms = notImplemented("createForms");
  */
 export type UseFormContext = () => UnknownForm;
 
-/** See `UseFormContext`. Not implemented yet: it throws. */
-export const useFormContext: UseFormContext = notImplemented("useFormContext");
+/** See `UseFormContext`. */
+export const useFormContext: UseFormContext = () =>
+  // The shared context holds forms of every definition, which `UnknownForm` covers.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  useProvidedForm(SharedContext) as unknown as UnknownForm;
 
 /**
  * Returns the disabled fields whose errors blocked the last submit that
@@ -281,5 +385,31 @@ export type UseDisabledErrors = <E>(
   form: AnyFormStore<E> | { readonly store: AnyFormStore<E> },
 ) => readonly DisabledInvalid<E>[];
 
-/** See `UseDisabledErrors`. Not implemented yet: it throws. */
-export const useDisabledErrors: UseDisabledErrors = notImplemented("useDisabledErrors");
+/** The disabled fields that blocked one submit, by the submit count they belong to. */
+interface DisabledList {
+  readonly submitCount: number;
+  readonly list: readonly DisabledInvalid<unknown>[];
+}
+
+const noneDisabled: readonly DisabledInvalid<unknown>[] = [];
+const disabledLists = new WeakMap<object, DisabledList>();
+
+/** The list for one form snapshot. It is taken once per submit that ends invalid and kept until the next. */
+function disabledFor(store: AnyFormStore<unknown>, snapshot: FormSnapshot<unknown>): readonly DisabledInvalid<unknown>[] {
+  if (snapshot.submission.status !== "invalid") return noneDisabled;
+  let entry = disabledLists.get(store);
+  if (entry?.submitCount !== snapshot.submitCount) {
+    entry = { submitCount: snapshot.submitCount, list: store.disabledInvalid() };
+    disabledLists.set(store, entry);
+  }
+  return entry.list;
+}
+
+/** See `UseDisabledErrors`. */
+export const useDisabledErrors: UseDisabledErrors = <E>(form: AnyFormStore<E> | { readonly store: AnyFormStore<E> }) => {
+  // The error type only types the list, which comes from this store.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const store = storeOf(form) as AnyFormStore<unknown>;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return useSelected(formSource(store), (snapshot) => disabledFor(store, snapshot)) as readonly DisabledInvalid<E>[];
+};

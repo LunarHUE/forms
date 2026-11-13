@@ -12,6 +12,7 @@ import {
   type ItemHandle,
   type LeafHandle,
   type ObjectHandle,
+  type Fieldset,
   type ReactFormDefinition,
   type SchemaAdapter,
   type StandardSchemaV1,
@@ -37,7 +38,9 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-function NumberField(props: { readonly field: FieldApi<number | undefined>; readonly label: string }) {
+function NumberField(props: { readonly field: FieldApi<number>; readonly label: string }) {
+  expectTypeOf(props.field.value).toEqualTypeOf<number | undefined>();
+  expectTypeOf<number | undefined>().toExtend<Parameters<typeof props.field.setValue>[0]>();
   return (
     <label>
       {props.label}
@@ -183,7 +186,7 @@ function WrongUsage() {
       <form.Items name="billing">{() => null}</form.Items>
       {/* @ts-expect-error: the component's own label prop is required */}
       <form.TextField name="customer" />
-      {/* @ts-expect-error: customer is a string, NumberField edits number | undefined */}
+      {/* @ts-expect-error: customer is a string, NumberField edits numbers */}
       <form.NumberField name="customer" label="Customer" />
       {/* @ts-expect-error: age is number | undefined, TextField edits string */}
       <form.TextField name="age" label="Age" />
@@ -239,7 +242,7 @@ const GeoShape = forms.fieldset<{ lat: number | undefined; lng: number | undefin
 const ContactShape = forms.fieldset<{ customer: string; email: string }>();
 
 function GeoFields(props: { readonly field: HandleOf<typeof GeoShape> }) {
-  const scope = GeoShape.useScope(props.field);
+  const scope = GeoShape.scope(props.field);
   return (
     <>
       <scope.NumberField name="lat" label="Latitude" />
@@ -249,7 +252,7 @@ function GeoFields(props: { readonly field: HandleOf<typeof GeoShape> }) {
 }
 
 function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; readonly title: string }) {
-  const scope = AddressShape.useScope(props.field);
+  const scope = AddressShape.scope(props.field);
   expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<DraftAddress>>();
   return (
     <fieldset>
@@ -265,7 +268,7 @@ function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; r
 }
 
 function ContactFields(props: { readonly field: HandleOf<typeof ContactShape> }) {
-  const scope = ContactShape.useScope(props.field);
+  const scope = ContactShape.scope(props.field);
   return (
     <>
       <scope.TextField name="customer" label="Customer" />
@@ -273,6 +276,8 @@ function ContactFields(props: { readonly field: HandleOf<typeof ContactShape> })
     </>
   );
 }
+
+declare const emptyHandle: HandleOf<typeof AddressShape>;
 
 // A second form that uses the same fieldset.
 const emptyAddress: DraftAddress = { street: "", city: "", zip: "", geo: { lat: undefined, lng: undefined } };
@@ -312,11 +317,19 @@ function OrderWithFieldsets() {
   );
 }
 
-function SkipSchema(props: { readonly field: HandleOf<typeof AddressShape> }) {
-  const scope = AddressShape.useScope(props.field, { validate: false });
-  // @ts-expect-error: a fieldset made from a type has no schema to skip
-  GeoShape.useScope(scope.root.at("geo"), { validate: false });
-  return <scope.TextField name="street" label="Street" />;
+// A plain form whose number field has no undefined fits a FieldApi<number> component too.
+const plainForm = forms.define({ defaultValues: { count: 0, title: "" } });
+
+function PlainNumbers() {
+  const form = plainForm.useForm();
+  return (
+    <>
+      <form.NumberField name="count" label="Count" />
+      <form.NumberField handle={form.root.at("count")} label="Count" />
+      {/* @ts-expect-error: title is a string */}
+      <form.NumberField name="title" label="Title" />
+    </>
+  );
 }
 
 // One form's dialog inside another form's tree. Each typed reader finds its own definition's form.
@@ -346,7 +359,11 @@ describe("fieldsets and scopes", () => {
     expectTypeOf(ContactFields).toBeFunction();
     expectTypeOf(ProfileForm).toBeFunction();
     expectTypeOf(OrderWithFieldsets).toBeFunction();
-    expectTypeOf(SkipSchema).toBeFunction();
+    expectTypeOf(PlainNumbers).toBeFunction();
+    // A fieldset only types the shape: it has no hook and takes no options.
+    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields>>();
+    // @ts-expect-error: scope takes the handle only
+    AddressShape.scope(emptyHandle, { validate: false });
   });
 
   it("takes the schema's draft as the shape and any handle that fits it", () => {

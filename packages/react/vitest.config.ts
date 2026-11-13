@@ -1,12 +1,48 @@
+import { transformAsync } from "@babel/core";
+import reactCompiler from "babel-plugin-react-compiler";
+import type { Plugin } from "vite";
 import { packageTests } from "../../vitest.base.ts";
 
 const base = packageTests();
 
+/**
+ * Runs the React Compiler over this package's source and tests before Vite
+ * strips the types. Babel only parses TypeScript and JSX here, so the code
+ * it hands on is still TypeScript. `panicThreshold: "all_errors"` turns any
+ * function the Compiler gives up on into a failed transform, so a test run
+ * fails instead of quietly running uncompiled code.
+ */
+function reactCompilerPlugin(): Plugin {
+  return {
+    name: "lunarhue:react-compiler",
+    enforce: "pre",
+    async transform(code, id) {
+      const file = id.split("?")[0] ?? id;
+      if (!/\/packages\/react\/src\/.+\.tsx?$/.test(file) || /\.test-d\.tsx?$/.test(file)) return null;
+      const result = await transformAsync(code, {
+        filename: file,
+        babelrc: false,
+        configFile: false,
+        sourceMaps: true,
+        parserOpts: { plugins: ["typescript", "jsx"] },
+        plugins: [[reactCompiler, { target: "19", panicThreshold: "all_errors" }]],
+      });
+      if (result?.code === null || result?.code === undefined) return null;
+      return { code: result.code, map: result.map ?? null };
+    },
+  };
+}
+
 // The type tests here use JSX, so they are .test-d.tsx as well as .test-d.ts.
+// Runtime tests are .test.tsx and run in jsdom, all under StrictMode (see src/test/setup.tsx).
 export default {
   ...base,
+  plugins: [reactCompilerPlugin()],
   test: {
     ...base.test,
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.tsx"],
     typecheck: { ...base.test?.typecheck, include: ["src/**/*.test-d.ts", "src/**/*.test-d.tsx"] },
   },
 };

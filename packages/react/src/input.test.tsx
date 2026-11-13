@@ -1,0 +1,236 @@
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+import { useEffect } from "react";
+import { describe, expect, it } from "vitest";
+import { createForms, errorId, useInputProps } from "./index.js";
+
+interface Settings {
+  title: string;
+  bio: string;
+  age: number | undefined;
+  volume: number;
+  newsletter: boolean;
+  tags: string[];
+  plan: "free" | "pro";
+  country: string;
+}
+const initial: Settings = {
+  title: "hello",
+  bio: "one two",
+  age: undefined,
+  volume: 5,
+  newsletter: false,
+  tags: [],
+  plan: "free",
+  country: "",
+};
+const forms = createForms();
+const settings = forms.define({ defaultValues: initial });
+
+type SettingsForm = ReturnType<typeof settings.useForm>;
+const holder: { form?: SettingsForm } = {};
+const current = (): SettingsForm => {
+  if (holder.form === undefined) throw new Error("no form rendered");
+  return holder.form;
+};
+const values = () => current().root.peek().value;
+
+function Settings() {
+  const form = settings.useForm({ id: "settings" });
+  useEffect(() => {
+    holder.form = form;
+  });
+  const root = form.root;
+  return (
+    <>
+      <input aria-label="title" {...useInputProps(root.at("title"))} />
+      <textarea aria-label="bio" {...useInputProps(root.at("bio"))} />
+      <input aria-label="age" {...useInputProps(root.at("age"), { kind: "number" })} />
+      <input aria-label="volume" {...useInputProps(root.at("volume"), { kind: "range", empty: 0 })} />
+      <input aria-label="newsletter" {...useInputProps(root.at("newsletter"), { kind: "checkbox" })} />
+      <input aria-label="urgent" {...useInputProps(root.at("tags"), { kind: "checkbox", value: "urgent" })} />
+      <input aria-label="later" {...useInputProps(root.at("tags"), { kind: "checkbox", value: "later" })} />
+      <input aria-label="free" {...useInputProps(root.at("plan"), { kind: "radio", value: "free" })} />
+      <input aria-label="pro" {...useInputProps(root.at("plan"), { kind: "radio", value: "pro" })} />
+      <select aria-label="country" {...useInputProps(root.at("country"), { kind: "select", empty: "" })}>
+        <option value="">Pick one</option>
+        <option value="se">Sweden</option>
+        <option value="no">Norway</option>
+      </select>
+    </>
+  );
+}
+
+// jsdom clears text such as `1.` from a number input. A text input stands in
+// for a browser that reports the text as typed.
+function RawAge() {
+  const form = settings.useForm();
+  useEffect(() => {
+    holder.form = form;
+  });
+  return <input aria-label="raw age" {...useInputProps(form.root.at("age"), { kind: "number" })} type="text" />;
+}
+
+const input = (label: string) => screen.getByLabelText<HTMLInputElement>(label);
+
+describe("text and textarea", () => {
+  it("keeps the caret after an edit in the middle", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    const title = input("title");
+    await user.type(title, "X", { initialSelectionStart: 2, initialSelectionEnd: 2 });
+    expect(title.value).toBe("heXllo");
+    expect(title.selectionStart).toBe(3);
+    await user.keyboard("YZ");
+    expect(title.value).toBe("heXYZllo");
+    expect(title.selectionStart).toBe(5);
+    expect(values().title).toBe("heXYZllo");
+
+    const bio = screen.getByLabelText<HTMLTextAreaElement>("bio");
+    await user.type(bio, "and ", { initialSelectionStart: 4, initialSelectionEnd: 4 });
+    expect(bio.value).toBe("one and two");
+    expect(bio.selectionStart).toBe(8);
+    expect(values().bio).toBe("one and two");
+  });
+
+  it("names, ids and error links", async () => {
+    render(<Settings />);
+    const title = input("title");
+    expect(title.name).toBe("title");
+    expect(title.id).toBe("settings--title");
+    expect(title.getAttribute("aria-invalid")).toBe("false");
+    expect(title.getAttribute("aria-describedby")).toBeNull();
+    act(() => {
+      current().root.at("title").setErrors({ message: "taken" });
+      current().root.at("title").setTouched();
+    });
+    expect(title.getAttribute("aria-invalid")).toBe("true");
+    expect(title.getAttribute("aria-describedby")).toBe(errorId(current().root.at("title")));
+    expect(input("pro").id).toBe("settings--plan--pro");
+  });
+});
+
+describe("number and range", () => {
+  it("keeps partial text in the input while it is not a number", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    const age = input("age");
+    expect(age.value).toBe("");
+    await user.type(age, "-");
+    expect(values().age).toBeUndefined();
+    await user.type(age, "4");
+    expect(values().age).toBe(-4);
+    await user.clear(age);
+    expect(values().age).toBeUndefined();
+    await user.type(age, "1.");
+    expect(values().age).toBe(1);
+    await user.type(age, "5");
+    expect(values().age).toBe(1.5);
+    expect(age.value).toBe("1.5");
+  });
+
+  it("keeps the typed text where the browser reports it raw", async () => {
+    render(<RawAge />);
+    const user = userEvent.setup();
+    const age = input("raw age");
+    await user.type(age, "-");
+    expect(age.value).toBe("-");
+    expect(values().age).toBeUndefined();
+    await user.type(age, "1.");
+    expect(age.value).toBe("-1.");
+    expect(values().age).toBe(-1);
+    await user.type(age, "0");
+    expect(age.value).toBe("-1.0");
+    expect(values().age).toBe(-1);
+    await user.type(age, "5");
+    expect(values().age).toBe(-1.05);
+    await user.type(age, "{Backspace}{Backspace}");
+    expect(age.value).toBe("-1.");
+    await user.tab();
+    expect(age.value).toBe("-1");
+  });
+
+  it("shows the recorded text, then the number after blur", () => {
+    render(<Settings />);
+    const age = input("age");
+    // A browser that reports the raw text, as Firefox does for `1.`.
+    fireEvent.change(age, { target: { value: "12" } });
+    expect(values().age).toBe(12);
+    fireEvent.blur(age);
+    act(() => current().root.at("age").setValue(3));
+    expect(age.value).toBe("3");
+    fireEvent.change(age, { target: { value: "" } });
+    expect(values().age).toBeUndefined();
+  });
+
+  it("writes a range's number, and its empty option", () => {
+    render(<Settings />);
+    const volume = input("volume");
+    expect(volume.type).toBe("range");
+    fireEvent.change(volume, { target: { value: "7" } });
+    expect(values().volume).toBe(7);
+  });
+});
+
+describe("checkboxes, radios and selects", () => {
+  it("writes a boolean checkbox", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    await user.click(input("newsletter"));
+    expect(values().newsletter).toBe(true);
+    expect(input("newsletter").checked).toBe(true);
+    await user.click(input("newsletter"));
+    expect(values().newsletter).toBe(false);
+  });
+
+  it("adds and removes options in a checkbox group", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    await user.click(input("urgent"));
+    await user.click(input("later"));
+    expect(values().tags).toEqual(["urgent", "later"]);
+    expect(input("urgent").checked).toBe(true);
+    expect(input("urgent").value).toBe("urgent");
+    await user.click(input("urgent"));
+    expect(values().tags).toEqual(["later"]);
+    expect(input("urgent").checked).toBe(false);
+  });
+
+  it("writes the chosen radio and select option", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    expect(input("free").checked).toBe(true);
+    await user.click(input("pro"));
+    expect(values().plan).toBe("pro");
+    expect(input("free").checked).toBe(false);
+    expect(input("pro").name).toBe("plan");
+    await user.selectOptions(screen.getByLabelText("country"), "se");
+    expect(values().country).toBe("se");
+    await user.selectOptions(screen.getByLabelText("country"), "");
+    expect(values().country).toBe("");
+  });
+
+  it("writes nothing while read-only", async () => {
+    render(<Settings />);
+    const user = userEvent.setup();
+    act(() => current().root.setReadOnly(true));
+    expect(input("newsletter").getAttribute("aria-readonly")).toBe("true");
+    expect(input("title").readOnly).toBe(true);
+    await user.click(input("newsletter"));
+    await user.click(input("urgent"));
+    await user.click(input("pro"));
+    await user.selectOptions(screen.getByLabelText("country"), "no");
+    expect(values()).toMatchObject({ newsletter: false, tags: [], plan: "free", country: "" });
+    expect(input("newsletter").checked).toBe(false);
+    expect(input("urgent").checked).toBe(false);
+    expect(input("free").checked).toBe(true);
+    expect(screen.getByLabelText<HTMLSelectElement>("country").value).toBe("");
+  });
+
+  it("disables the element with the field", () => {
+    render(<Settings />);
+    act(() => current().root.at("plan").setDisabled(true));
+    expect(input("free").disabled).toBe(true);
+    expect(input("title").disabled).toBe(false);
+  });
+});

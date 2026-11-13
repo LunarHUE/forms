@@ -1,4 +1,6 @@
 import type {
+  Draft,
+  ErrorOf,
   FieldHandle,
   FieldSnapshot,
   FormError,
@@ -7,7 +9,6 @@ import type {
   ItemOf,
   Path,
   ValueOf,
-  ErrorOf,
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
 import type { ArrayHandleLike, HandleLike, IsEqual, SnapshotOf } from "./field.js";
@@ -27,14 +28,15 @@ type CommandsOf<V, E> = Omit<
 >;
 
 /**
- * One field as a single object: the members of its snapshot (`value`,
- * `errors`, `shownErrors`, `touched`, `dirty`, `name` and the rest), the
- * commands of its handle kind (`setValue`, `setErrors`, `handleBlur`,
- * `reset`, `push` on arrays, `at` on objects and so on, all bound), the
- * handle itself, `inputProps` and `errorId`. A new object comes with each
- * new snapshot. This is the `field` prop of a registered field component.
+ * One field as a single object, for a field whose value type is exactly
+ * `V`: the members of its snapshot (`value`, `errors`, `shownErrors`,
+ * `touched`, `dirty`, `name` and the rest), the commands of its handle kind
+ * (`setValue`, `setErrors`, `setTouched`, `handleBlur`, `reset`, `push` on
+ * arrays, `at` on objects and so on, all bound), the handle itself,
+ * `inputProps` and `errorId`. A new object comes with each new snapshot.
+ * `Field` passes this to its children. Registered components take `FieldApi`.
  */
-export type FieldApi<V, E = FormError> = FieldSnapshot<V, E> &
+export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
   CommandsOf<V, E> & {
     /** The handle, for passing on and for `at` and `item` when the field has children. */
     readonly handle: FieldHandle<V, E>;
@@ -50,8 +52,26 @@ export type FieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     readonly "~types"?: HandleTypes<V, E>;
   };
 
-/** The field object for a handle type. */
-export type FieldApiOf<H> = FieldApi<ValueOf<H>, ErrorOf<H>>;
+/**
+ * The `field` prop of a registered field component: the field object for a
+ * `Draft<T>` value. So `FieldApi<number>` has `value: number | undefined`
+ * and its `setValue` takes `number | undefined`, which is what a schema form
+ * holds before the user fills the field in. `FieldApi<string>` is the field
+ * object for a string, since `Draft<string>` is `string`.
+ *
+ * A field fits the component when its value type is `Draft<T>`, which is
+ * every field of a form built from a schema. A field typed exactly `T`, as a
+ * plain form's `number` field is, fits too. That side is loose: the
+ * component may write `undefined` into a field typed `number`, and the type
+ * checker won't catch it.
+ */
+export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
+  /** Type information only: the `T` the component was written for. */
+  readonly "~fits"?: { readonly value: T };
+};
+
+/** The field object for a handle type, with the handle's exact value type. */
+export type FieldApiOf<H> = ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
 
 /**
  * Props of a bound `Field` naming its field by path. Without `select`,
@@ -79,7 +99,7 @@ export interface FieldByHandle<H extends HandleLike, T> {
 
 /** `scope.Field`: renders one field with exactly one of `name` or `handle`. */
 export interface BoundField<V, E> {
-  <N extends FieldPath<V>, T = FieldApi<ValueAt<V, N>, E>>(props: FieldByName<V, E, N, T>): ReactElement;
+  <N extends FieldPath<V>, T = ExactFieldApi<ValueAt<V, N>, E>>(props: FieldByName<V, E, N, T>): ReactElement;
   <H extends HandleLike, T = FieldApiOf<H>>(props: FieldByHandle<H, T>): ReactElement;
 }
 
@@ -131,15 +151,30 @@ export type FieldPropOf<C extends FieldComponentType> = PropsOf<C> extends { rea
 export type OwnPropsOf<C extends FieldComponentType> = Omit<PropsOf<C>, "field">;
 
 /**
- * The names relative to a scope of value `V` whose field fits a component
- * whose field value type is `T`. A field fits when its handle type is
- * assignable to `FieldHandle<T, E>`, the rule core's handles follow: leaves
- * must match exactly, objects may have more keys than `T` asks for.
+ * The value types a registered component's field accepts, each wrapped as
+ * `{ value: T }` so a union of them stays apart. A `FieldApi<T>` accepts
+ * `Draft<T>` and `T`. A field object typed another way, such as
+ * `FieldApiOf<H>`, accepts its value type only.
  */
-export type NameFitting<V, E, T> =
+export type AcceptedValues<A> = "~fits" extends keyof A
+  ? A extends { readonly "~fits"?: { readonly value: infer T } }
+    ? { readonly value: Draft<T> } | { readonly value: T }
+    : never
+  : { readonly value: ValueOf<A> };
+
+/** The handles a component that accepts `A` (see `AcceptedValues`) takes. */
+export type AcceptedHandle<A, E> = A extends { readonly value: infer T } ? FieldHandle<T, E> : never;
+
+/**
+ * The names relative to a scope of value `V` whose field fits a component
+ * that accepts `A`, see `AcceptedValues`. A field fits when its handle type
+ * is assignable to one of the accepted handle types, the rule core's handles
+ * follow: leaves must match exactly, objects may have more keys than asked for.
+ */
+export type NameFitting<V, E, A> =
   FieldPath<V> extends infer P
     ? P extends string
-      ? [FieldHandle<ValueAt<V, P>, E>] extends [FieldHandle<T, E>]
+      ? [FieldHandle<ValueAt<V, P>, E>] extends [AcceptedHandle<A, E>]
         ? P
         : never
       : never
@@ -148,21 +183,25 @@ export type NameFitting<V, E, T> =
 /**
  * A registered component bound to a scope. It takes the component's own
  * props and exactly one of `name` or `handle`, then renders the component
- * with `field` filled in. Only fields that fit the component's field type
- * are accepted, see `NameFitting`.
+ * with `field` filled in. Only fields that fit the component are accepted,
+ * see `AcceptedValues` and `FieldApi`.
  */
-export interface BoundFieldComponent<V, E, T, P> {
-  (props: P & { readonly name: NameFitting<V, E, T>; readonly handle?: never }): ReactElement;
-  (props: P & { readonly handle: FieldHandle<T, E>; readonly name?: never }): ReactElement;
+export interface BoundFieldComponent<V, E, A, P> {
+  (props: P & { readonly name: NameFitting<V, E, A>; readonly handle?: never }): ReactElement;
+  (props: P & { readonly handle: AcceptedHandle<A, E>; readonly name?: never }): ReactElement;
 }
 
 /**
  * The registered components as bound on a scope. A component whose field
  * error type doesn't accept the form's error type is `never` there.
+ *
+ * Known hole: a component typed for a narrower error type still fits a form
+ * whose error type extends it, and its `setErrors` then takes the narrower
+ * type. So it can set errors that lack the form's extra members.
  */
 export type BoundFieldComponents<V, E, F extends FieldComponentMap> = {
   readonly [K in keyof F]: [E] extends [ErrorOf<FieldPropOf<F[K]>>]
-    ? BoundFieldComponent<V, E, ValueOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
+    ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
     : never;
 };
 
@@ -184,38 +223,21 @@ export interface ScopeMembers<V, E> {
 export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields> = ScopeMembers<V, E> &
   BoundFieldComponents<V, E, F>;
 
-/** Options for a schema fieldset's `useScope`. */
-export interface FieldsetScopeOptions {
-  /**
-   * False skips registering the fieldset's schema on the handle. By default
-   * the schema is a validator on the handle while the component is mounted.
-   */
-  readonly validate?: boolean;
-}
-
 /**
- * A reusable shape for a part of a form, made by `forms.fieldset<V>()`. It
- * is a token, not a component: the app writes an ordinary component that
- * takes a `HandleOf<typeof token>` prop and calls `useScope` in its body.
+ * A reusable shape for a part of a form, made by `forms.fieldset(schema)` or
+ * `forms.fieldset<V>()`. It is for type safety only: it registers no
+ * validator, since the form's own schema validates. It is a token, not a
+ * component: the app writes an ordinary component that takes a
+ * `HandleOf<typeof token>` prop and calls `scope` in its body.
  */
 export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields> {
   /** Type information only. Read it with `HandleOf`. */
   readonly "~types"?: HandleTypes<V, E>;
   /**
-   * Returns the scope of `handle`, as `forms.scope` does. A hook, so the
-   * schema form below can register its validator.
+   * Returns the scope of `handle`, the same object `forms.scope` returns,
+   * typed to the shape. A cached lookup, not a hook.
    */
-  useScope(handle: FieldHandle<V, E>): Scope<V, E, F>;
-}
-
-/** A fieldset made from a schema by `forms.fieldset(schema)`. */
-export interface SchemaFieldset<V, E = FormError, F extends FieldComponentMap = NoFields> extends Fieldset<V, E, F> {
-  /**
-   * Returns the scope of `handle`, and registers the schema as a validator
-   * on it while the component is mounted, through the same path as
-   * `useValidator`. Pass `{ validate: false }` to skip that.
-   */
-  useScope(handle: FieldHandle<V, E>, options?: FieldsetScopeOptions): Scope<V, E, F>;
+  scope(handle: FieldHandle<V, E>): Scope<V, E, F>;
 }
 
 /**

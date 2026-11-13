@@ -1,5 +1,7 @@
 import type {
   ErrorOf,
+  StandardSchemaV1,
+  Validator,
   FieldSnapshot,
   FormSnapshot,
   FormStore,
@@ -8,7 +10,9 @@ import type {
   ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
-import { notImplemented } from "./not-implemented.js";
+import { useEffect, useMemo, useRef } from "react";
+import { useSelected } from "./select.js";
+import { fieldSource, formSource, storeOf } from "./sources.js";
 
 /**
  * What the hooks need from a handle: its id, its stable path, and a store to
@@ -49,8 +53,19 @@ export interface UseField {
   <H extends HandleLike, T>(handle: H, select: (snapshot: SnapshotOf<H>) => T, isEqual?: IsEqual<T>): T;
 }
 
-/** See `UseField`. Not implemented yet: it throws. */
-export const useField: UseField = notImplemented("useField");
+const whole = <S>(snapshot: S): S => snapshot;
+
+/** See `UseField`. */
+export const useField: UseField = <H extends HandleLike, T>(
+  handle: H,
+  select?: (snapshot: SnapshotOf<H>) => T,
+  isEqual?: IsEqual<T>,
+) => {
+  // Snapshots of `handle` are its value and error types, which `~types` records.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const pick = (select ?? whole) as (snapshot: FieldSnapshot<unknown, unknown>) => T;
+  return useSelected(fieldSource(handle), pick, isEqual);
+};
 
 /** What `useFormState` needs from a store. Every `FormStore` fits. */
 export type FormStateSource<I, R> = Pick<
@@ -72,8 +87,17 @@ export interface UseFormState {
   ): T;
 }
 
-/** See `UseFormState`. Not implemented yet: it throws. */
-export const useFormState: UseFormState = notImplemented("useFormState");
+/** See `UseFormState`. */
+export const useFormState: UseFormState = <I, R, T>(
+  form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> },
+  select?: (snapshot: FormSnapshot<I, R>) => T,
+  isEqual?: IsEqual<T>,
+) => {
+  // The store's form snapshots carry its own intent and result types.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const pick = (select ?? whole) as (snapshot: FormSnapshot<unknown>) => T;
+  return useSelected(formSource(storeOf(form)), pick, isEqual);
+};
 
 /** What `useItems` needs from an array handle. Array handles and loose handles fit. */
 export interface ArrayHandleLike extends HandleLike {
@@ -89,8 +113,18 @@ export interface ArrayHandleLike extends HandleLike {
  */
 export type UseItems = <H extends ArrayHandleLike>(handle: H) => readonly ReturnType<H["item"]>[];
 
-/** See `UseItems`. Not implemented yet: it throws. */
-export const useItems: UseItems = notImplemented("useItems");
+const noKeys: readonly string[] = [];
+const keysOf = (snapshot: FieldSnapshot<unknown, unknown>): readonly string[] => snapshot.keys ?? noKeys;
+const sameKeys = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((key, index) => key === b[index]);
+
+/** See `UseItems`. */
+export const useItems: UseItems = <H extends ArrayHandleLike>(handle: H) => {
+  const keys = useSelected(fieldSource(handle), keysOf, sameKeys);
+  // `item` returns the handle typed for the array's items.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return useMemo(() => keys.map((key) => handle.item(key)), [handle, keys]) as ReturnType<H["item"]>[];
+};
 
 /** What `useValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {
@@ -114,5 +148,55 @@ export type UseValidator = <H extends ValidatorHandleLike>(
   validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
 ) => void;
 
-/** See `UseValidator`. Not implemented yet: it throws. */
-export const useValidator: UseValidator = notImplemented("useValidator");
+/** A validator input as the runtime reads it. */
+type AnyValidatorInput = ValidatorInput<unknown, unknown> | undefined | null | false;
+
+/** True for a Standard Schema, which validators also accept. */
+const isSchema = (value: unknown): value is StandardSchemaV1 =>
+  typeof value === "object" && value !== null && "~standard" in value;
+
+/** The function to call for a run: the latest function given, read when the run starts. */
+function latestFunction(input: AnyValidatorInput): Validator<unknown, unknown> | undefined {
+  if (typeof input === "function") return input;
+  if (input && !isSchema(input) && typeof input.validate === "function") return input.validate;
+  return undefined;
+}
+
+/** See `UseValidator`. */
+export const useValidator: UseValidator = (handle, validator) => {
+  // The validator was checked against the handle's types, which the runtime doesn't need.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const input = validator as AnyValidatorInput;
+  const latest = useRef(input);
+  useEffect(() => {
+    latest.current = input;
+  });
+
+  // What decides whether to register again. A function or an options object
+  // may be new on every render, so only these parts of it count.
+  const options = input && typeof input === "object" && !isSchema(input) ? input : undefined;
+  const check = options ? options.validate : input;
+  const schema = isSchema(check) ? check : undefined;
+  const active = Boolean(input);
+  const withOptions = options !== undefined;
+  const debounce = options?.debounce;
+  const on = options?.on;
+  const recheckOnSubmit = options?.recheckOnSubmit;
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const run: Validator<unknown, unknown> = (value, ctx) => latestFunction(latest.current)?.(value, ctx);
+    const validate = schema ?? run;
+    const registered: ValidatorInput<unknown, unknown> = withOptions
+      ? {
+          validate,
+          ...(debounce === undefined ? {} : { debounce }),
+          ...(on === undefined ? {} : { on }),
+          ...(recheckOnSubmit === undefined ? {} : { recheckOnSubmit }),
+        }
+      : validate;
+    // The handle's validator type is its own value type, which `validator` was checked against.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return handle.registerValidator(registered as never);
+  }, [handle, active, withOptions, schema, debounce, on, recheckOnSubmit]);
+};

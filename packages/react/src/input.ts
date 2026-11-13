@@ -1,7 +1,10 @@
 import type { ItemOf, ShapeOf, ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import type { HandleLike } from "./field.js";
-import { notImplemented } from "./not-implemented.js";
+import { useSyncExternalStore } from "react";
+import { type HandleLike, useField } from "./field.js";
+import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
+import { numberTextSource } from "./number-text.js";
+import { fieldRef } from "./refs.js";
 
 /**
  * The ref callback the adapter puts on a field's element. It records the
@@ -186,8 +189,15 @@ export interface UseInputProps {
   <H extends InputHandleLike>(handle: H, ...options: NoOptionsArgs<ValueOf<H>>): TextInputProps;
 }
 
-/** See `UseInputProps`. Not implemented yet: it throws. */
-export const useInputProps: UseInputProps = notImplemented("useInputProps");
+/** See `UseInputProps`. */
+export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: AnyInputOptions) => {
+  const snapshot = useField(handle);
+  const texts = numberTextSource(handle);
+  const text = useSyncExternalStore(texts.subscribe, texts.get, texts.server);
+  // The props match the options by kind, which the overloads check against the value type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return inputPropsFor(handle, snapshot, text, options) as never;
+};
 
 /**
  * Returns a ref callback that records an element for a field, for custom
@@ -196,8 +206,8 @@ export const useInputProps: UseInputProps = notImplemented("useInputProps");
  */
 export type UseFieldRef = (handle: HandleLike) => FieldRef;
 
-/** See `UseFieldRef`. Not implemented yet: it throws. */
-export const useFieldRef: UseFieldRef = notImplemented("useFieldRef");
+/** See `UseFieldRef`. It reads no state, so it is a plain lookup. */
+export const useFieldRef: UseFieldRef = (handle) => fieldRef(handle, "");
 
 /**
  * The id of the element that shows a field's errors: the handle id with
@@ -206,5 +216,5 @@ export const useFieldRef: UseFieldRef = notImplemented("useFieldRef");
  */
 export type ErrorId = (handle: { readonly id: string }) => string;
 
-/** See `ErrorId`. Not implemented yet: it throws. */
-export const errorId: ErrorId = notImplemented("errorId");
+/** See `ErrorId`. */
+export const errorId: ErrorId = (handle) => `${handle.id}---error`;

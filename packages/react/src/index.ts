@@ -1,5 +1,4 @@
-// Binds React to the form store in @lunarhue/forms-core. The exports below are
-// the contract only: every runtime export is a stub that throws until it is implemented.
+// Binds React to the form store in @lunarhue/forms-core.
 export * from "@lunarhue/forms-core";
 export { createForms, useDisabledErrors, useFormContext } from "./forms.js";
 export type {
@@ -25,6 +24,8 @@ export type {
   UseFormOptions,
 } from "./forms.js";
 export type {
+  AcceptedHandle,
+  AcceptedValues,
   BoundField,
   BoundFieldComponent,
   BoundFieldComponents,
@@ -35,9 +36,9 @@ export type {
   FieldByName,
   FieldComponentMap,
   FieldComponentType,
+  ExactFieldApi,
   FieldPropOf,
   Fieldset,
-  FieldsetScopeOptions,
   HandleOf,
   InputPropsMethod,
   ItemsByHandle,
@@ -46,7 +47,6 @@ export type {
   NoFields,
   OwnPropsOf,
   PropsOf,
-  SchemaFieldset,
   Scope,
   ScopeMembers,
 } from "./scope.js";
