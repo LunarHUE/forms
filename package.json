@@ -40,7 +40,8 @@
       "valibot": "1.5.0",
       "vite": "8.3.8",
       "vitest": "5.1.0",
-      "zod": "4.6.7"
+      "zod": "4.6.7",
+      "zustand": "5.0.16"
     },
     "catalogs": {
       "react16": {

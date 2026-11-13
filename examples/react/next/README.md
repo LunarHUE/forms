@@ -1,6 +1,6 @@
 # Next.js example
 
-Two pages in a Next.js App Router app:
+Three pages in a Next.js App Router app:
 
 - `/` is the full "New order" form. The form itself lives in
   `@lunarhue/forms-example-react` (`examples/react/shared`), built to be
@@ -10,6 +10,9 @@ Two pages in a Next.js App Router app:
   few components: the schema, `createForms` with two field components,
   `define`, a reusable address fieldset, a submit button that reads the
   form from context, and the page with `form.Field` and `form.Items`.
+- `/bind` binds a form to a zustand store with `zustand()` from
+  `@lunarhue/forms-bind/zustand`, in `app/bind/page.tsx`. The store's state
+  shows beside the form, and a button changes the store from outside.
 
 ## Run it
 

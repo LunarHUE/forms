@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Forms, Next.js example",
 };
 
-/** The root layout: a nav between the two pages. The shared stylesheet is the only styling. */
+/** The root layout: a nav between the pages. The shared stylesheet is the only styling. */
 export default function RootLayout(props: { readonly children: ReactNode }) {
   return (
     <html lang="en">
@@ -16,6 +16,7 @@ export default function RootLayout(props: { readonly children: ReactNode }) {
         <nav className="site-nav" aria-label="Examples">
           <a href="/">Full example</a>
           <a href="/basic">Basic example</a>
+          <a href="/bind">Bind example</a>
         </nav>
         {props.children}
       </body>
