@@ -1,4 +1,5 @@
 import { fireEvent } from "@testing-library/dom";
+import { useEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { FieldApi } from "../src/index.js";
@@ -28,7 +29,17 @@ interface Order {
 }
 const initial: Order = { customer: "Ada", plan: "free", lines: [{ item: "pen" }, { item: "ink" }] };
 
+/** Commits by component instance, counted in an effect, so only on the client. */
+const commits = new Map<string, number>();
+
+function useCommits(name: string): void {
+  useEffect(() => {
+    commits.set(name, (commits.get(name) ?? 0) + 1);
+  });
+}
+
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
+  useCommits(props.field.id);
   return (
     <label htmlFor={props.field.id}>
       {props.label}
@@ -52,7 +63,9 @@ function makeApp(adapter: Adapter, ids: boolean) {
   }
 
   function Status() {
-    const dirty = adapter.useFormState(adapter.useFormContext(), (snapshot) => snapshot.dirty);
+    const form = adapter.useFormContext();
+    const dirty = adapter.useFormState(form, (snapshot) => snapshot.dirty);
+    useCommits(`${form.id} status`);
     return <p>{dirty ? "dirty" : "clean"}</p>;
   }
 
@@ -112,6 +125,15 @@ describe("server rendering and hydration", () => {
     expect(customer?.value).toBe("Grace");
     expect(container.querySelector("#first p")?.textContent).toBe("dirty");
     expect(container.querySelector("#second p")?.textContent).toBe("clean");
+  });
+
+  it("commits each field as often as the rest of the form when it hydrates", async () => {
+    commits.clear();
+    await serverThenClient(true);
+    // StrictMode runs mount effects twice on React 18 and later, so the
+    // count to match is the one from a component that reads form state.
+    expect(commits.size).toBe(8);
+    expect(new Set(commits.values()).size).toBe(1);
   });
 
   it.runIf(modern)("hydrates forms without an id on React 18 and later", async () => {
