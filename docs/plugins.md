@@ -302,9 +302,85 @@ logs a warning.
 ## Community
 
 Anyone can publish a plugin. Name the package `forms-plugin-<name>` and build
-it with `definePlugin` from `@lunarhue/forms-core/plugins`, with core as a
-peer dependency. We may list community plugins, but a listing doesn't mean we
-reviewed the code.
+it with `definePlugin` from `@lunarhue/forms-core/plugins`. We may list
+community plugins, but a listing doesn't mean we reviewed the code.
+
+A plugin takes `@lunarhue/forms-core` as a peer dependency and never imports
+an adapter. Every adapter wraps the same core store, so a plugin written
+against core works under React, Solid and any adapter to come. One that
+imports `@lunarhue/forms-react` only works in React apps.
+
+```json
+{
+  "name": "forms-plugin-trim",
+  "peerDependencies": { "@lunarhue/forms-core": "^1.0.0" },
+  "devDependencies": { "@lunarhue/forms-core": "^1.0.0" }
+}
+```
+
+The dev dependency gives your own tests a copy of core.
+
+### Testing a plugin
+
+Test against core too, with `testStore` from
+`@lunarhue/forms-core/plugins/testing`. It makes a store from a form
+definition with your plugin in its `plugins`, records what each timing
+delivers, and collects what your hooks throw. It imports no test runner, so
+it works with Vitest, Jest, `node:test` or Bun's runner. Its entry is apart
+from the others, so it never ends up in an app bundle.
+
+```ts
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { testStore } from "@lunarhue/forms-core/plugins/testing";
+import { expect, it } from "vitest";
+
+// Trims the ends of every string written at `fields`.
+const trim = (...fields: string[]) =>
+  definePlugin({
+    name: "trim",
+    setup: () => ({
+      beforeWrite: (write) =>
+        typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value,
+    }),
+  });
+
+it("trims the fields it names", () => {
+  const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
+  store.root.at("name").setValue("  Ada ");
+  store.root.at("note").setValue(" hi ");
+  expect(store.root.peek().value).toEqual({ name: "Ada", note: " hi " });
+  expect(records.sync[0]).toMatchObject({ path: ["name"], after: "Ada", cause: "user" });
+  expect(errors).toEqual([]);
+});
+```
+
+`testStore` takes what `define` takes, `defaultValues` or a `schema`,
+`validate`, `onSubmit` and the rest, with the plugins under test in
+`plugins`. Put `dirty()`, `validation()` or a schema plugin there too when
+the test needs them. It returns:
+
+- `store`: the store, typed as an app's would be, so `store.plugins.<name>`
+  has your plugin's API. Drive it as an app would: `store.root.at("name")`
+  writes, `store.submit()` runs `onSubmit` and `onSubmitted`, and
+  `store.reset()` or a field's `reset()` runs `onReset`.
+- `records`: the write records each timing delivered, as `records.sync`,
+  `records.deferred` and `records.idle`. Three recording plugins run after
+  yours to fill them. Empty one with `records.sync.length = 0`.
+- `errors`: what plugin hooks threw, as `{ plugin, error }`. Nothing is
+  rethrown, so end a test with `expect(errors).toEqual([])`.
+- `flush()`: delivers the waiting `deferred` and `idle` records now, with no
+  timers, real or fake. A `deferred` delivery also comes on its own after
+  `await Promise.resolve()`, as it does in an app.
+- `listen()`: gives the store a listener, as a mounted component does, so
+  `onActive` runs. Call the function it returns to remove the listener and
+  run the cleanup.
+- `server()`: the server snapshots, as `{ form, fields }`, with `fields`
+  keyed by each field's dotted name and the root under `""`. Setup must give
+  the same result on the server and the client, so check it with
+  `expect(testStore(config).server()).toEqual(testStore(config).server())`.
+
+`testStore` runs no framework. To see your plugin in a rendered React or
+Solid form, test it there as well.
 
 ## Plugins in a shared component
 
