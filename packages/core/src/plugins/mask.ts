@@ -1,5 +1,5 @@
-import type { HookPlugin } from "../../index.js";
-import { definePlugin } from "../../plugins.js";
+import type { HookPlugin } from "../plugin.js";
+import { definePlugin } from "../plugins.js";
 
 /** A cleaner for one field. It gets the value so far and the caller's original input. */
 export type Mask = (value: unknown, input: unknown) => unknown;
@@ -19,8 +19,10 @@ export interface MaskOptions {
 }
 
 /**
- * A test fixture, not shipped. Cleans the value written at each named field,
- * by dotted stable path, so the store holds the clean value.
+ * Cleans the value written at each named field before the store takes it,
+ * so the store only ever holds the clean value. `fields` maps a dotted
+ * stable path, such as `"address.zip"`, to its `Mask`. Every write goes
+ * through it, including resets and other plugins' writes.
  */
 export function mask(fields: Readonly<Record<string, Mask>>, options: MaskOptions = {}): HookPlugin {
   return definePlugin({

@@ -3,7 +3,7 @@ import type { FormError } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
-import { validation as runner } from "../validation.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;

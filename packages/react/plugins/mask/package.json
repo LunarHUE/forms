@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/cjs/plugins/mask.js",
+  "module": "../../dist/esm/plugins/mask.js",
+  "types": "../../dist/cjs/plugins/mask.d.ts"
+}

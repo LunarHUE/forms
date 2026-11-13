@@ -1,7 +1,7 @@
-import type { SchemaPlugin, ValidationPlugin } from "./plugin.js";
-import type { SchemaAdapter } from "./schema-adapter.js";
-import type { StandardSchemaV1 } from "./standard-schema.js";
-import { createValidation } from "./store/validation.js";
+import type { SchemaPlugin, ValidationPlugin } from "../plugin.js";
+import type { SchemaAdapter } from "../schema-adapter.js";
+import type { StandardSchemaV1 } from "../standard-schema.js";
+import { createValidation } from "../store/validation.js";
 
 const plugin: ValidationPlugin = { name: "validation", validation: createValidation };
 

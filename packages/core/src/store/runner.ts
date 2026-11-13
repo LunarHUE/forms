@@ -67,8 +67,8 @@ export interface SchemaOutput {
 
 /**
  * Makes the validation of one store. The runner in
- * `@lunarhue/forms-core/validation` is one, and a plugin hands it to the
- * store. Internal.
+ * `@lunarhue/forms-core/plugins/validation` is one, and a plugin hands it to
+ * the store. Internal.
  */
 export type CreateValidation = <V, E, I, R>(context: FormContext<V, E, I, R>, options: ValidationOptions<V, E>) => Validation<E>;
 
@@ -89,7 +89,7 @@ function missing(asker: Asker): Error {
         "A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner.",
     };
     return new Error(
-      `${sentences[asker]} Add \`validation()\` from "@lunarhue/forms-core/validation", or a schema plugin such as \`valibot()\`, to \`plugins\`.`,
+      `${sentences[asker]} Add \`validation()\` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as \`valibot()\`, to \`plugins\`.`,
     );
   }
   return new Error(`validation:${asker}`);

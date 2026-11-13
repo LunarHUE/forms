@@ -1,6 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { type Rebase, rebase } from "@lunarhue/forms-core/plugins/rebase";
+import { definePlugin } from "../plugins.js";
+import { type Rebase, rebase } from "../plugins/rebase.js";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createForm, createForms, type FormOf } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";

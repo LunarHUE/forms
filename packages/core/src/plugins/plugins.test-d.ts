@@ -1,6 +1,6 @@
 import type { FieldSnapshot, HookPlugin, PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "@lunarhue/forms-core/plugins/validation";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 

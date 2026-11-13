@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "./plugins/validation.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];

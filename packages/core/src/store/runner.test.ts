@@ -3,7 +3,7 @@ import type { FormError } from "../errors.js";
 import { createFormsCore } from "../forms-core.js";
 import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import { defineSchemaPlugin, validation } from "../validation.js";
+import { defineSchemaPlugin, validation } from "../plugins/validation.js";
 
 interface Contact {
   name: string;
@@ -84,7 +84,7 @@ describe("a form with no validation runner", () => {
   it("throws a clear error in development when a validator is added", () => {
     const store = bare();
     expect(() => store.root.at("name").registerValidator(required)).toThrow(
-      "A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
+      "A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/plugins/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
     );
     expect(() => store.registerValidator(["name"], () => undefined)).toThrow(/no plugin brings the validation runner/);
   });
@@ -96,7 +96,7 @@ describe("a form with no validation runner", () => {
       validate: { fields: { name: required } },
     });
     expect(() => withValidate.createStore()).toThrow(
-      "This form's definition has `validate` or `schema`, but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
+      "This form's definition has `validate` or `schema`, but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/plugins/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
     );
     const schema: StandardSchemaV1<Contact> = {
       // The store passes the form value, which is a `Contact`.

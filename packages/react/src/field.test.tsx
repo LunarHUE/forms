@@ -15,7 +15,7 @@ import {
   type ValidatorInput,
 } from "./index.js";
 import { type Commits, countListeners, type Listeners, settle, useCommits } from "./test/helpers.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "./plugins/validation.js";
 
 const commits: Commits = new Map();
 beforeEach(() => commits.clear());

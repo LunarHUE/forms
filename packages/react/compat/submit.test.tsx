@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createForms, useForm, useFormContext, useFormState, useInputProps } from "../src/index.js";
 import { settle } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "../src/plugins/validation.js";
 
 const required = (value: string) => (value === "" ? { message: "required" } : undefined);
 const saved: unknown[] = [];

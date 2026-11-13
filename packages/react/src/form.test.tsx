@@ -15,7 +15,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
-import { validation } from "@lunarhue/forms-core/validation";
+import { validation } from "./plugins/validation.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (

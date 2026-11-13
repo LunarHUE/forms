@@ -4,7 +4,7 @@ import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import type { Validator } from "../validator.js";
-import { validation as runner } from "../validation.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormStore, type FormStoreOptions } from "./form-store.js";
 
 interface Value {

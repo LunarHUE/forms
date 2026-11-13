@@ -3,7 +3,7 @@ import type { AnyPlugin } from "../plugin.js";
 import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals } from "../store/form-store.js";
-import { validation as runner } from "../validation.js";
+import { validation as runner } from "./validation.js";
 import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
 
 const make = (initial: unknown, plugins: readonly AnyPlugin[] = [runner(), rebasePlugin()]) => {

@@ -1,23 +1,28 @@
-import type { HookPlugin, Path, PluginContext } from "../../index.js";
-import { definePlugin } from "../../plugins.js";
+import type { Path } from "../path.js";
+import type { HookPlugin, PluginContext } from "../plugin.js";
+import { definePlugin } from "../plugins.js";
 
-/** What a rule decides for its field. */
+/** What a rule decides for its field. A flag left out stays as it is. */
 export interface RuleResult {
   readonly disabled?: boolean;
   readonly hidden?: boolean;
 }
 
-/** The meta `rules` sets on fields with a rule. */
+/** The meta `rules` sets on fields with a rule. Read it with `rules().meta(field)`. */
 export interface RulesMeta {
   readonly hidden: boolean;
 }
 
 /**
- * A test fixture, not shipped, and not the answer to issue #7. Derives
- * `disabled` and a `hidden` meta flag from the form value for each named
- * field, by dotted stable path. It runs at setup and after every batch that
- * wrote a value, before listeners, so the flags land in the same render as
- * the value.
+ * Derives each named field's `disabled` flag and a `hidden` meta flag from
+ * the form value. `fields` maps a dotted stable path, such as
+ * `"address.state"`, to a rule that gets the whole value. Rules run when the
+ * store is made and after every batch that wrote a value, before
+ * listeners, so the flags land in the same render as the value.
+ *
+ * This does not settle issue #7, a disabled flag that follows another
+ * field's value. The server snapshot ignores writes made during setup, so
+ * the server can still render a flag the rules would change.
  */
 // `V` only types the rules for the caller. The plugin hands them the store's value as a `V`.
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters

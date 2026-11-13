@@ -3,7 +3,7 @@ import type { ErrorMap, FormError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { PlatformAbortSignal } from "../../value.js";
-import { validation as runner } from "../../validation.js";
+import { validation as runner } from "../../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "../form-store.js";
 
 type Options<V> = Omit<FormStoreOptions<V>, "id" | "initial">;

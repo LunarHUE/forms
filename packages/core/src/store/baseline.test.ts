@@ -5,7 +5,7 @@ import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import { type Rebase, rebase as rebasePlugin } from "../plugins/rebase.js";
 import type { FormStore } from "../store.js";
-import { validation as runner } from "../validation.js";
+import { validation as runner } from "../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 import { isContainer } from "./tree.js";
 

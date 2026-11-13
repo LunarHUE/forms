@@ -202,8 +202,8 @@ export interface MetaSource {
  * - a schema adapter, which gives its library's schemas default values, so
  *   their forms need no `defaultValues` (see `SchemaPlugin`);
  * - the validation runner, which `validation()` from
- *   `@lunarhue/forms-core/validation` brings alone and every schema plugin
- *   brings too.
+ *   `@lunarhue/forms-core/plugins/validation` brings alone and every schema
+ *   plugin brings too.
  *
  * The host and the runner come with the plugin, so a store whose plugins
  * bring neither never loads their code.
