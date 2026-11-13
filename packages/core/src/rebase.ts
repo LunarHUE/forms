@@ -1,4 +1,4 @@
-import type { HandleBase, ValueOf } from "./handle.js";
+import type { HandleBase } from "./handle.js";
 import type { Path } from "./path.js";
 import { ownKeys } from "./store/baseline/equality.js";
 import { childKeys, keysOf, locate, type KeysFor, type KeyTrie } from "./store/baseline/keys.js";
@@ -42,11 +42,10 @@ export interface RebaseResult {
  * other leaf `resolve` decides the value. Listeners run once, after the
  * whole rebase.
  */
-export type Rebase = <H extends HandleBase<unknown, unknown>>(
-  handle: H,
-  incoming: ValueOf<H>,
-  resolve: Resolve,
-) => RebaseResult;
+// Generic in the error type rather than taking `HandleBase<unknown, unknown>`:
+// whether a handle with a concrete error type is assignable to that depended
+// on the order the checker met the types in.
+export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V>, resolve: Resolve) => RebaseResult;
 
 const freeze = <T extends object>(value: T): T => (dev ? Object.freeze(value) : value);
 
