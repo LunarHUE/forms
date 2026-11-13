@@ -8,7 +8,8 @@ import type { UserConfig } from "tsdown";
 // package.json decides the format and one set of tsc .d.ts files works in both trees.
 
 const shared: UserConfig = {
-  entry: ["src/**/*.ts", "!src/**/*.test.ts", "!src/**/*.test-d.ts"],
+  // Tests, benchmarks and their fixtures under src/bench never ship.
+  entry: ["src/**/*.ts", "!src/**/*.test.ts", "!src/**/*.test-d.ts", "!src/**/*.bench.ts", "!src/bench/**"],
   root: "src",
   unbundle: true,
   target: "es2020",
