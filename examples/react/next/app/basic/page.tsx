@@ -135,8 +135,8 @@ function SignUpStatus() {
 }
 
 // 6. The page. `useForm` makes the form once. `form.Form` puts it in context
-// and hands its render function the props for the `<form>` element, plus
-// `submit`, which this form doesn't need. Fields are named by path, and the
+// and hands its render function the props for the `<form>` element, then the
+// form itself, which this page doesn't need. Fields are named by path, and the
 // registered components are checked against each field's type.
 export default function BasicPage() {
   const form = useForm(signUp);
@@ -145,7 +145,7 @@ export default function BasicPage() {
     <main className="page">
       <section className="page-form">
         <form.Form>
-          {({ submit: _submit, ...formProps }) => (
+          {(formProps) => (
             <form {...formProps} className="order-form" aria-label="Sign up">
               <form.TextField name="name" label="Name" />
               <form.TextField name="email" label="Email" />

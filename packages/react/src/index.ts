@@ -12,7 +12,6 @@ export type {
   FormInstance,
   FormMembers,
   FormOf,
-  FormRenderProps,
   Forms,
   FormsOptions,
   ObjectHandleLike,

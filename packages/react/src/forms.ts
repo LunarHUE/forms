@@ -121,34 +121,30 @@ export interface FormElementProps {
   readonly ref: (element: HTMLFormElement | null) => (() => void) | undefined;
 }
 
-/** What `form.Form` passes to a function child: the form element props and `submit`. */
-export interface FormRenderProps<I, R> extends FormElementProps {
-  /** The form's `submit`, for buttons that submit with an intent. */
-  readonly submit: (...args: IntentArgs<I>) => Promise<Submission<I, R>>;
-}
-
-/** Props for `form.Form`. */
-export interface FormComponentProps<I, R> {
+/** Props for `form.Form`, where `T` is the form that owns it. */
+export interface FormComponentProps<T> {
   /**
-   * A function gets the form element props and `submit`, to spread on a real
-   * `<form>`. Plain nodes are rendered as they are, with the context only.
+   * A function gets the form element props and the form:
+   * `{(formProps, form) => <form {...formProps}>...</form>}`. Spread the
+   * first on a real `<form>` as it is. Plain nodes are rendered as they are,
+   * with the context only.
    */
-  readonly children?: ((props: FormRenderProps<I, R>) => ReactNode) | ReactNode;
+  readonly children?: ((formProps: FormElementProps, form: T) => ReactNode) | ReactNode;
 }
 
 /**
  * `form.Form`: renders no element. It provides the form to everything
- * below, for `useFormContext`.
+ * below, for `useFormContext`. `T` is the form that owns it.
  */
-export type FormComponent<I, R> = (props: FormComponentProps<I, R>) => ReactElement;
+export type FormComponent<T> = (props: FormComponentProps<T>) => ReactElement;
 
 /** The form's own members, on top of the scope at its root. */
-export interface FormMembers<V, E, I, R> {
+export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields> {
   /** The core store. Every handle's `store` is this object. */
   readonly store: FormStore<V, E, I, R>;
   /** The store id. */
   readonly id: string;
-  /** The form element props, the same object `form.Form` passes to its child without `submit`. */
+  /** The form element props, the same object `form.Form` passes to its child first. */
   readonly formProps: FormElementProps;
   /**
    * Submits with an intent, as `store.submit` does, then applies
@@ -159,7 +155,7 @@ export interface FormMembers<V, E, I, R> {
   /** As `store.handleSubmit`, then applies `focusOnInvalid` when the submit ends invalid. Bound. */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
   /** The headless provider. See `FormComponent`. */
-  readonly Form: FormComponent<I, R>;
+  readonly Form: FormComponent<FormInstance<V, E, I, R, F>>;
 }
 
 /**
@@ -175,7 +171,7 @@ export type FormInstance<
   I = undefined,
   R = unknown,
   F extends FieldComponentMap = NoFields,
-> = Scope<V, E, F> & FormMembers<V, E, I, R>;
+> = Scope<V, E, F> & FormMembers<V, E, I, R, F>;
 
 /** A form of unknown value, error, intent and result type, as the generic context reader returns it. */
 export type UnknownForm = FormInstance<unknown, unknown, unknown>;
@@ -334,13 +330,12 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
     },
     ref: formRef(store),
   };
-  const renderProps = { ...formProps, submit };
   // `Form` only runs after `form` below is made.
-  function Form(props: FormComponentProps<unknown, unknown>): ReactElement {
+  function Form(props: FormComponentProps<AnyForm>): ReactElement {
     const { children } = props;
     const parent = useContext(FormContext);
     const node = useMemo(() => ({ form, parent }), [parent]);
-    const content = typeof children === "function" ? children(renderProps) : children;
+    const content = typeof children === "function" ? children(formProps, form) : children;
     return createElement(FormContext.Provider, { value: node }, content);
   }
   const form: AnyForm = { ...scope, store, id: store.id, formProps, submit, handleSubmit, Form };

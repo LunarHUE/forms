@@ -67,8 +67,6 @@ export function buildForm(parts: FormParts): RuntimeForm {
       registerFormElement(store, element);
     },
   } as const;
-  const renderProps = { ...formProps, submit };
-
   const form: Record<string, unknown> = {
     ...scope,
     store,
@@ -81,7 +79,6 @@ export function buildForm(parts: FormParts): RuntimeForm {
   form.Form = (props: { readonly children: FormChildren }): SolidElement =>
     createComponent(ProvideForm, {
       form,
-      renderProps,
       get children() {
         return props.children;
       },

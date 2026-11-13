@@ -183,7 +183,7 @@ function SignupPage() {
   const disabledErrors = createDisabledErrors(form);
   return (
     <form.Form>
-      {({ submit, ...props }) => (
+      {(props, owner) => (
         <form {...props}>
           <form.TextField name="name" label="Name" placeholder="Ada" />
           <form.NumberField name="age" label="Age" />
@@ -206,7 +206,7 @@ function SignupPage() {
           <SignupSummary />
           <For each={disabledErrors()}>{(entry) => <p>{entry.name}</p>}</For>
           <SubmitButton label="Save" />
-          <button type="button" onClick={() => void submit("publish")}>
+          <button type="button" onClick={() => void owner.submit("publish")}>
             Publish
           </button>
         </form>
@@ -299,6 +299,12 @@ describe("the form object", () => {
   });
 
   it("type-checks Form with a function child and with plain children", () => {
+    type RenderArgs = Parameters<Extract<Parameters<SignupForm["Form"]>[0]["children"], (...args: never[]) => unknown>>;
+    expectTypeOf<RenderArgs[0]>().toEqualTypeOf<SignupForm["formProps"]>();
+    expectTypeOf<RenderArgs[1]>().toEqualTypeOf<SignupForm>();
+    // The first argument spreads onto a form element as it is, checked against Solid's form element props.
+    const formProps: RenderArgs[0] = createForm(Signup).formProps;
+    void (<form {...formProps} />);
     expectTypeOf(SignupPage).toBeFunction();
     expectTypeOf(CompanyPage).toBeFunction();
     expectTypeOf(NestedForms).toBeFunction();
