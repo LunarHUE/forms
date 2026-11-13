@@ -39,21 +39,21 @@ import { zustand } from "@lunarhue/forms-bind/zustand";
 
 // Your own input, registered once.
 interface TextFieldProps {
-  field: FieldApi<string>;
-  label: string;
+  readonly field: FieldApi<string>;
+  readonly label: string;
 }
 
 function TextField({ field, label }: TextFieldProps) {
   return (
-    <label>
-      {label}
+    <div>
+      <label htmlFor={field.id}>{label}</label>
       <input {...field.inputProps()} />
-      {field.shownErrors.map((error) => (
-        <p key={error.message} id={field.errorId}>
-          {error.message}
-        </p>
-      ))}
-    </label>
+      <ul id={field.errorId}>
+        {field.shownErrors.map((error) => (
+          <li key={error.message}>{error.message}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -101,7 +101,7 @@ const profile = forms.define({
 const AddressFieldset = forms.fieldset(Address);
 
 interface AddressFieldsProps {
-  field: HandleOf<typeof AddressFieldset>;
+  readonly field: HandleOf<typeof AddressFieldset>;
 }
 
 function AddressFields({ field }: AddressFieldsProps) {
@@ -128,7 +128,7 @@ function SubmitButton() {
   );
 }
 
-export function ProfileForm() {
+export default function ProfileForm() {
   const form = useForm(profile);
 
   // Take the server's copy,
