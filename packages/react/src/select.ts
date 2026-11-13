@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSyncExternalStore } from "./compat.js";
+import { hooks } from "./compat.js";
 import type { IsEqual } from "./field.js";
 
 /** An external value as `useSyncExternalStore` reads it. Each function keeps its identity. */
@@ -59,7 +59,7 @@ function newSelection<S, T>(): Selection<S, T> {
  */
 export function useSelected<S, T>(source: Source<S>, select: (snapshot: S) => T, isEqual: IsEqual<T> = Object.is): T {
   const [read] = useState<Selection<S, T>>(newSelection);
-  return useSyncExternalStore(
+  return hooks.useSyncExternalStore(
     source.subscribe,
     () => read(source.get(), select, isEqual),
     () => read(source.server(), select, isEqual),
