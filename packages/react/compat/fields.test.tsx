@@ -151,6 +151,53 @@ describe("array items", () => {
   });
 });
 
+// A bound component and a `Field`, each with an inline validate prop, under a switch that unmounts both.
+const contact = forms.define({ defaultValues: { email: "", phone: "" } });
+const contactHolder: { form?: ReturnType<typeof contact.useForm> } = {};
+const emailIs = (value: string) => (value.endsWith("@x.io") ? undefined : { message: "work email" });
+
+function Contact() {
+  const form = contact.useForm();
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    contactHolder.form = form;
+  });
+  return (
+    <>
+      <button type="button" onClick={() => setShown(!shown)}>
+        toggle
+      </button>
+      {shown && (
+        <>
+          <form.TextField name="email" label="Email" validate={(value) => emailIs(value)} />
+          <form.Field name="phone" validate={(value) => (value === "" ? { message: "phone" } : undefined)}>
+            {(field) => <p data-testid="phone">{field.errors.map((error) => error.message).join(",")}</p>}
+          </form.Field>
+        </>
+      )}
+    </>
+  );
+}
+
+describe("the validate prop", () => {
+  it("adds its errors while mounted and removes them on unmount", async () => {
+    const { container } = await render(<Contact />);
+    const root = contactHolder.form?.root;
+    if (root === undefined) throw new Error("no form rendered");
+    await act(() => root.validate());
+    expect(root.at("email").peek().errors.map((error) => error.message)).toEqual(["work email"]);
+    expect(container.querySelector("[data-testid=phone]")?.textContent).toBe("phone");
+    await act(() => fireEvent.change(input(container, "Email"), { target: { value: "ada@x.io" } }));
+    expect(root.at("email").peek().errors).toEqual([]);
+    await act(() => root.at("email").setValue("ada@y.io"));
+    expect(root.at("email").peek().errors.map((error) => error.message)).toEqual(["work email"]);
+    const toggle = container.querySelector("button");
+    await act(() => toggle?.click());
+    expect(root.at("email").peek().errors).toEqual([]);
+    expect(root.at("phone").peek().errors).toEqual([]);
+  });
+});
+
 describe("unmount", () => {
   it("removes every subscription", async () => {
     const { unmount } = await render(<Profile />);

@@ -34,12 +34,14 @@ export type {
   OwnProps,
   PropsOf,
   ReservedName,
+  ReservedProp,
   Scope,
   ScopeMembers,
   SolidForm,
   SolidFormDefinition,
   SolidForms,
   UseFormContext,
+  ValidateProp,
 } from "./forms.js";
 export { createField, createItems, createValidator } from "./field.js";
 export type {

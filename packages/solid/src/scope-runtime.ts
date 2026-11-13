@@ -1,4 +1,4 @@
-import type { AnyFieldHandle } from "@lunarhue/forms-core";
+import type { AnyFieldHandle, Validator, ValidatorInput } from "@lunarhue/forms-core";
 import { createComponent, For, merge, omit, untrack, type Accessor, type Element as SolidElement } from "solid-js";
 import { createFieldApi } from "./field-api.js";
 import { createItemList } from "./items.js";
@@ -28,9 +28,16 @@ interface FieldTarget {
   readonly handle?: RuntimeHandle;
 }
 
+/** A `validate` prop as the runtime reads it. */
+type AnyValidateProp = ValidatorInput<unknown, unknown> | undefined | null | false;
+
+/** The props of a bound component that renders one field: its target and its `validate`. */
+interface OneField extends FieldTarget {
+  readonly validate?: AnyValidateProp;
+}
+
 /** Props of the bound `Field`. */
-interface FieldProps extends FieldTarget {
-  readonly validate?: unknown;
+interface FieldProps extends OneField {
   readonly children: (field: object) => SolidElement;
 }
 
@@ -51,10 +58,38 @@ function resolveField(root: RuntimeHandle, props: FieldTarget): RuntimeHandle {
   });
 }
 
+/** The options object of a validate prop, or undefined for a function, a schema or none. */
+function optionsOf(input: AnyValidateProp) {
+  return input && typeof input === "object" && !("~standard" in input) ? input : undefined;
+}
+
+/** The function a validate prop gives, read when a run starts. Undefined for a schema or none. */
+function functionOf(input: AnyValidateProp): Validator<unknown, unknown> | undefined {
+  const check = optionsOf(input)?.validate ?? input;
+  return typeof check === "function" ? check : undefined;
+}
+
+/**
+ * Adds a bound component's `validate` prop for the life of its owner. The
+ * kind and the options are read at mount. A function is read from the prop
+ * when each run starts, so a reactive prop that gives another function
+ * takes effect without registering again.
+ */
+function addPropValidator(handle: RuntimeHandle, props: OneField): void {
+  const input = untrack(() => props.validate);
+  if (functionOf(input) === undefined) {
+    addValidator(handle, input);
+    return;
+  }
+  const run: Validator<unknown, unknown> = (value, ctx) => functionOf(untrack(() => props.validate))?.(value, ctx);
+  const options = optionsOf(input);
+  addValidator(handle, options ? { ...options, validate: run } : run);
+}
+
 /** `scope.Field`: the field object for one field, passed to the children once. */
 function ScopeField(props: FieldProps & { readonly root: RuntimeHandle }): SolidElement {
   const handle = resolveField(props.root, props);
-  addValidator(handle, untrack(() => props.validate));
+  addPropValidator(handle, props);
   const field = createFieldApi(handle);
   return untrack(() => props.children(field));
 }
@@ -74,10 +109,12 @@ function ScopeItems(props: ItemsProps & { readonly root: RuntimeHandle }): Solid
 }
 
 /** A registered component bound to a scope: it renders the app's component with `field` filled in. */
-function RegisteredField(props: FieldTarget & { readonly root: RuntimeHandle; readonly component: RuntimeComponent }): SolidElement {
-  const field = createFieldApi(resolveField(props.root, props));
+function RegisteredField(props: OneField & { readonly root: RuntimeHandle; readonly component: RuntimeComponent }): SolidElement {
+  const handle = resolveField(props.root, props);
+  addPropValidator(handle, props);
+  const field = createFieldApi(handle);
   const component = untrack(() => props.component);
-  return createComponent(component, merge(omit(props, "root", "component", "name", "handle"), { field }));
+  return createComponent(component, merge(omit(props, "root", "component", "name", "handle", "validate"), { field }));
 }
 
 /** Builds the scope rooted at `root`, with the registered components in `fields`. */
@@ -88,7 +125,7 @@ function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, Runtime
     Items: (props: ItemsProps) => createComponent(ScopeItems, merge(props, { root })),
   };
   for (const [name, component] of Object.entries(fields)) {
-    scope[name] = (props: FieldTarget) => createComponent(RegisteredField, merge(props, { root, component }));
+    scope[name] = (props: OneField) => createComponent(RegisteredField, merge(props, { root, component }));
   }
   return scope;
 }
