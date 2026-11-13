@@ -4,6 +4,7 @@
  * on :root. Framework code uses these class names and nothing else.
  *
  * Page
+ *   .site-nav           a row of links above the page, one per example page
  *   .page               two columns: form left, inspector right; one column under 900px
  *   .page-header        title and intro above the columns (h1, p)
  *   .page-form          the left column
@@ -92,6 +93,18 @@ body {
 }
 
 /* Page */
+
+.site-nav {
+  display: flex;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+
+.site-nav a {
+  color: var(--accent);
+}
 
 .page-header {
   max-width: 1400px;

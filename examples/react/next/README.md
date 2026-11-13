@@ -1,8 +1,15 @@
 # Next.js example
 
-The "New order" form in a Next.js App Router app. The form itself lives in
-`@lunarhue/forms-example-react` (`examples/react/shared`); this app is the
-shell around it.
+Two pages in a Next.js App Router app:
+
+- `/` is the full "New order" form. The form itself lives in
+  `@lunarhue/forms-example-react` (`examples/react/shared`), built to be
+  shared by several apps, and this app is the shell around it.
+- `/basic` is a small "Sign up" form in one file,
+  `app/basic/page.tsx`. Read it top to bottom to see the whole API in a
+  few components: the schema, `createForms` with two field components,
+  `define`, a reusable address fieldset, a submit button that reads the
+  form from context, and the page with `form.Field` and `form.Items`.
 
 ## Run it
 
@@ -31,6 +38,9 @@ dev` is running, point the tests at it with
 `E2E_BASE_URL=http://localhost:3000 bun run e2e`.
 
 ## What to look at
+
+Start with `app/basic/page.tsx` if the library is new to you. The rest of
+this list is about the full example.
 
 - `app/page.tsx` is a server component. It loads the order with
   `loadOrder()` and passes it to `OrderPage` as `defaultValues`, so the HTML

@@ -5,14 +5,20 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "New order, Next.js",
+  title: "Forms, Next.js example",
 };
 
-/** The root layout. The shared stylesheet is the page's only styling. */
+/** The root layout: a nav between the two pages. The shared stylesheet is the only styling. */
 export default function RootLayout(props: { readonly children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{props.children}</body>
+      <body>
+        <nav className="site-nav" aria-label="Examples">
+          <a href="/">Full example</a>
+          <a href="/basic">Basic example</a>
+        </nav>
+        {props.children}
+      </body>
     </html>
   );
 }

@@ -1,4 +1,4 @@
-import type { SaveOrder } from "@lunarhue/forms-example-order";
+import { invalidOrder, type SaveOrder, serverSettings } from "@lunarhue/forms-example-order";
 import type { ReactNode } from "react";
 import { RenderBadge, useRenderBadge } from "./badge.js";
 import { Inspector } from "./inspector.js";
@@ -43,7 +43,7 @@ export function OrderPage(props: OrderPageProps) {
           <OrderForm />
         </section>
         <aside className="page-inspector" aria-label="Inspector">
-          <Inspector store={form.store} />
+          <Inspector store={form.store} settings={serverSettings} invalidValue={invalidOrder} />
         </aside>
       </main>
     </form.Form>
