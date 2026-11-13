@@ -1,7 +1,7 @@
 import { createFormsCore } from "@lunarhue/forms-core";
 import type { Path } from "@lunarhue/forms-core";
 import * as v from "valibot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
 
 const defaultValue = (schema: ValibotSchema) => valibot().defaultValue(schema);
@@ -242,6 +242,27 @@ describe("with core", () => {
       { name: "Ada", age: 36, address: { city: "", zip: "" }, rows: [] },
       { name: "Ada", age: "36", address: { city: "", zip: "" }, rows: [] },
     ]);
+  });
+
+  it("types a number field as undefined until filled in, and submits a number", async () => {
+    const order = v.object({ title: v.string(), qty: v.number() });
+    const submitted: number[] = [];
+    const store = core
+      .define({
+        schema: order,
+        onSubmit: (value) => {
+          expectTypeOf(value.qty).toEqualTypeOf<number>();
+          submitted.push(value.qty);
+        },
+      })
+      .createStore();
+    const qty = store.root.at("qty");
+    expectTypeOf(qty.peek().value).toEqualTypeOf<number | undefined>();
+    expect(qty.peek().value).toBeUndefined();
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    qty.setValue(2);
+    expect(await store.submit()).toEqual({ status: "succeeded", result: undefined });
+    expect(submitted).toEqual([2]);
   });
 
   it("validates with an async schema", async () => {

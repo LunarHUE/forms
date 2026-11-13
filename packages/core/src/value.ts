@@ -105,3 +105,57 @@ export type ShapeOf<V> =
         : [NonNullable<V>] extends [object]
           ? "object"
           : "leaf";
+
+/** True when `T` has more than one member. */
+type IsUnion<T, All = T> = T extends unknown ? ([All] extends [T] ? false : true) : never;
+
+/** True when every member of `T` is a plain object: not a leaf and not an array. */
+type IsPlainObjects<T> = [T] extends [object] ? ([Extract<T, LeafValue | readonly unknown[]>] extends [never] ? true : false) : false;
+
+/**
+ * True when a union has no empty value for an adapter to start from: two or
+ * more members besides `null` and `undefined`, where `boolean` counts as one
+ * member. A union of plain objects doesn't count, since it is read as a
+ * discriminated union.
+ */
+type IsPlainUnion<T, N = NonNullable<T>, R = Exclude<N, boolean>> = [R] extends [never]
+  ? false
+  : [Extract<N, boolean>] extends [never]
+    ? IsPlainObjects<R> extends true
+      ? false
+      : true extends IsUnion<R>
+        ? true
+        : false
+    : true;
+
+/** `Draft` of one union member. */
+type DraftMember<T> = T extends string | boolean | null | undefined
+  ? T
+  : T extends number | bigint
+    ? number extends T
+      ? T | undefined
+      : bigint extends T
+        ? T | undefined
+        : T
+    : T extends LeafValue
+      ? T | undefined
+      : T extends readonly unknown[]
+        ? number extends T["length"]
+          ? { [K in keyof T]: Draft<T[K]> }
+          : { [K in keyof T]: Draft<T[K]> } | undefined
+        : { [K in keyof T]: Draft<T[K]> };
+
+/**
+ * The value a form holds before the user fills it in, when a schema adapter
+ * builds its defaults. Strings and booleans stay as they are, since they
+ * start at `""` and `false`. A single string, number or bigint literal stays
+ * as it is, since it starts at its value. Arrays become arrays of drafts.
+ * Tuples become tuples of drafts or `undefined`. Plain objects get a draft
+ * of each property and keep their modifiers. A union of plain objects is
+ * read as a discriminated union and gets a draft of each member. Every other
+ * value, including `number`, `Date` and unions of literals, may also be
+ * `undefined`. A class instance other than the leaves in `LeafValue` can't be
+ * told apart from a plain object, so it is drafted as one. `unknown` and
+ * `any` stay as they are.
+ */
+export type Draft<T> = unknown extends T ? T : IsPlainUnion<T> extends true ? DraftMember<T> | undefined : DraftMember<T>;

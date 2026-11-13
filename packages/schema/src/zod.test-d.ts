@@ -1,4 +1,4 @@
-import { createFormsCore, type FormStore, type HasAdapter, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import { createFormsCore, type FormStore, type HasAdapter, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
@@ -38,6 +38,34 @@ describe("zod()", () => {
         expectTypeOf(value).toEqualTypeOf<{ name: string; age: number }>();
       },
     });
+  });
+
+  it("types the value as the draft of the schema's input", () => {
+    const core = createFormsCore({ schemas: [zod()] });
+    const order = z.object({
+      title: z.string(),
+      qty: z.number(),
+      kind: z.enum(["a", "b"]),
+      fixed: z.literal("x"),
+      lines: z.array(z.object({ sku: z.string(), price: z.number() })),
+      auth: z.discriminatedUnion("type", [
+        z.object({ type: z.literal("password"), password: z.string() }),
+        z.object({ type: z.literal("key"), port: z.number() }),
+      ]),
+    });
+    const store = core.define({ schema: order }).createStore();
+    expectTypeOf(store).toEqualTypeOf<
+      FormStore<{
+        title: string;
+        qty: number | undefined;
+        kind: "a" | "b" | undefined;
+        fixed: "x";
+        lines: { sku: string; price: number | undefined }[];
+        auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
+      }>
+    >();
+    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    store.root.at("lines").push({ sku: "", price: undefined });
   });
 
   it("still requires defaultValues for a valibot schema", () => {

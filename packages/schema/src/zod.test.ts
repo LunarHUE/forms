@@ -1,7 +1,7 @@
 import { createFormsCore } from "@lunarhue/forms-core";
 import type { Path } from "@lunarhue/forms-core";
 import * as v from "valibot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { z } from "zod";
 import * as zm from "zod/mini";
 import * as z3 from "zod/v3";
@@ -304,6 +304,27 @@ describe("with core", () => {
       { name: "Ada", age: 36, address: { city: "", zip: "" }, rows: [] },
       { name: "Ada", age: "36", address: { city: "", zip: "" }, rows: [] },
     ]);
+  });
+
+  it("types a number field as undefined until filled in, and submits a number", async () => {
+    const order = z.object({ title: z.string(), qty: z.number() });
+    const submitted: number[] = [];
+    const store = core
+      .define({
+        schema: order,
+        onSubmit: (value) => {
+          expectTypeOf(value.qty).toEqualTypeOf<number>();
+          submitted.push(value.qty);
+        },
+      })
+      .createStore();
+    const qty = store.root.at("qty");
+    expectTypeOf(qty.peek().value).toEqualTypeOf<number | undefined>();
+    expect(qty.peek().value).toBeUndefined();
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    qty.setValue(2);
+    expect(await store.submit()).toEqual({ status: "succeeded", result: undefined });
+    expect(submitted).toEqual([2]);
   });
 
   it("validates with an async refinement", async () => {

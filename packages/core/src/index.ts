@@ -8,6 +8,7 @@ export type {
   ChildValue,
   DeepPartial,
   DeepReadonly,
+  Draft,
   IsUnknown,
   ItemOf,
   KeysOf,
@@ -87,6 +88,7 @@ export type {
   NestedFlags,
   PlainDefinition,
   SchemaDefinition,
+  SchemaValue,
   StoreInstance,
   SubmitContext,
 } from "./definition.js";

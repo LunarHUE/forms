@@ -4,7 +4,7 @@ import type { HasAdapter, SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
-import type { ChildValue, DeepPartial, DeepReadonly, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf } from "./value.js";
+import type { ChildValue, DeepPartial, DeepReadonly, Draft, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf } from "./value.js";
 
 /**
  * Compares two values for dirty tracking. Return true when they count as
@@ -99,8 +99,17 @@ export interface DefinitionOptions<V, O, E, I, R> {
 }
 
 /**
+ * The value type of a form with schema `S`. When a registered adapter
+ * supports the schema's type it is the `Draft` of the schema's input type,
+ * since the adapter's defaults leave fields such as numbers undefined.
+ * Otherwise it is the schema's input type.
+ */
+export type SchemaValue<S extends StandardSchemaV1, A extends readonly SchemaAdapter<never>[]> =
+  HasAdapter<S, A> extends true ? Draft<StandardSchemaV1.InferInput<S>> : StandardSchemaV1.InferInput<S>;
+
+/**
  * A definition with a schema. The schema validates the whole value, as
- * `validate.form` would, and sets the value type to its input type. When a
+ * `validate.form` would, and sets the value type (see `SchemaValue`). When a
  * registered adapter supports the schema's type, `defaultValues` is optional
  * and deep partial, and overrides the adapter's defaults. Otherwise it is
  * required and complete.
@@ -117,7 +126,7 @@ export type SchemaDefinition<S extends StandardSchemaV1, A extends readonly Sche
       /** The starting value. Required because no registered adapter supports this schema's type. */
       readonly defaultValues: StandardSchemaV1.InferInput<S>;
     }) &
-  DefinitionOptions<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>, E, I, R>;
+  DefinitionOptions<SchemaValue<S, A>, StandardSchemaV1.InferOutput<S>, E, I, R>;
 
 /** A definition without a schema. `defaultValues` is required and sets the value type. */
 export type PlainDefinition<V, E, I, R> = {
@@ -150,16 +159,16 @@ export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O 
 /**
  * Defines forms. Three cases decide where the value type comes from:
  * 1. A `schema` whose type a registered adapter supports: the value type is
- *    the schema's input type and `defaultValues` is optional and deep partial.
+ *    the `Draft` of the schema's input type, so fields the adapter starts
+ *    undefined are typed that way, and `defaultValues` is optional and deep
+ *    partial. `onSubmit` still gets the schema's output type.
  * 2. A `schema` with no adapter for it: the value type comes from the schema
  *    and `defaultValues` is required and complete.
  * 3. No `schema`: `defaultValues` is required and sets the value type, or
  *    give it explicitly as `define<V>(...)`.
  *
  * `R` is inferred from what `onSubmit` returns. `I` is inferred from the
- * annotation on `onSubmit`'s `ctx.intent` and defaults to `undefined`. With an
- * explicit `V`, `I` and `R` fall back to `undefined` and `unknown` unless
- * given too, since TypeScript has no partial inference.
+ * annotation on `onSubmit`'s `ctx.intent` and defaults to `undefined`.
  *
  * Each case also has a function form, `define((options: O) => config)`,
  * which runs once per `createStore(options)`. A plain config has `O` of
@@ -170,10 +179,17 @@ export interface FormsCore<A extends readonly SchemaAdapter<never>[] = [], E = F
    * Defines a form from a config, or from a function of per-store options
    * that returns one. `S` comes from `schema` and `V` from `defaultValues`
    * when there is no schema.
+   *
+   * You normally don't pass `V`. It is inferred from `defaultValues`, or from
+   * the schema. TypeScript has no partial type argument inference, so once
+   * you pass `V` every type argument you leave out takes its default: `S` is
+   * `never`, so the config has no schema, `O` is `void`, `I` is `undefined`
+   * and `R` is `unknown`. Pass `I` and `R` too, as
+   * `define<V, never, void, I, R>(...)`, to keep them.
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
     config: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
-  ): FormDefinition<DefinedValue<V, S>, E, I, R, O>;
+  ): FormDefinition<DefinedValue<V, S, A>, E, I, R, O>;
 }
 
 /** A definition's config: `SchemaDefinition` when `S` is a schema, `PlainDefinition` when it is `never`. */
@@ -181,8 +197,10 @@ export type Definition<V, S extends StandardSchemaV1, A extends readonly SchemaA
   ? PlainDefinition<V, E, I, R>
   : SchemaDefinition<S, A, E, I, R>;
 
-/** The value type of a definition: the schema's input type, or `V` without a schema. */
-export type DefinedValue<V, S extends StandardSchemaV1> = [S] extends [never] ? V : StandardSchemaV1.InferInput<S>;
+/** The value type of a definition: `SchemaValue` with a schema, or `V` without one. */
+export type DefinedValue<V, S extends StandardSchemaV1, A extends readonly SchemaAdapter<never>[] = []> = [S] extends [never]
+  ? V
+  : SchemaValue<S, A>;
 
 /**
  * Core's entry point. Framework adapters wrap it in their own `createForms`.

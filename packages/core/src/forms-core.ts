@@ -83,7 +83,7 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
 
   const define = <V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown>(
     definition: Definition<V, S, A, E, I, R> | ((options: O) => Definition<V, S, A, E, I, R>),
-  ): FormDefinition<DefinedValue<V, S>, E, I, R, O> => {
+  ): FormDefinition<DefinedValue<V, S, A>, E, I, R, O> => {
     // `Definition` is a conditional type the runtime can't narrow. Every branch of it is an `AnyConfig`.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const source = definition as unknown as AnyConfig | ((options: O) => AnyConfig);
@@ -93,7 +93,7 @@ export const createFormsCore: CreateFormsCore = <const A extends readonly Schema
         const resolved = typeof source === "function" ? source(options) : source;
         // The options were built from a config of these types, which the store keeps.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        return createFormStore(storeOptions(resolved, instance)) as unknown as FormStore<DefinedValue<V, S>, E, I, R>;
+        return createFormStore(storeOptions(resolved, instance)) as unknown as FormStore<DefinedValue<V, S, A>, E, I, R>;
       },
     };
   };

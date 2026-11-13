@@ -3,12 +3,15 @@ import type {
   CreateFormsCore,
   DeepPartial,
   DefinedValue,
+  Draft,
   FieldSnapshot,
   Flags,
   FormDefinition,
   FormError,
   FormStore,
   HasAdapter,
+  ItemHandle,
+  LeafHandle,
   ObjectHandle,
   PlainDefinition,
   SchemaAdapter,
@@ -34,8 +37,16 @@ interface User {
   address: { city: string; zip: string };
 }
 
+// User as the adapter's defaults leave it: the number starts undefined.
+interface DraftUser {
+  name: string;
+  age: number | undefined;
+  address: { city: string; zip: string };
+}
+
 declare const userSchema: FakeSchema<User>;
 declare const otherUserSchema: OtherSchema<User>;
+declare const rowsSchema: FakeSchema<{ rows: { title: string; qty: number }[] }>;
 declare const parsedSchema: FakeSchema<{ age: string }, { age: number }>;
 
 const core = createFormsCore({ schemas: [fakeAdapter] });
@@ -52,16 +63,63 @@ type DefaultsOf<S extends StandardSchemaV1, A extends readonly SchemaAdapter<nev
 type StoreOf<D> = D extends FormDefinition<infer V, infer E, infer I, infer R, infer _O> ? FormStore<V, E, I, R> : never;
 
 describe("defaults case 1: schema with a registered adapter", () => {
-  it("takes no defaultValues", () => {
+  it("takes no defaultValues and types the value as a draft", () => {
     const form = core.define({ schema: userSchema });
-    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<User>>();
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<User>>();
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<DraftUser>>();
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<Draft<User>>>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser>>();
+    expectTypeOf<DefinedValue<never, FakeSchema<User>, Adapters>>().toEqualTypeOf<Draft<User>>();
   });
 
-  it("takes a deep partial", () => {
+  it("takes a deep partial of the input, not of the draft", () => {
     const form = core.define({ schema: userSchema, defaultValues: { address: { city: "Paris" } } });
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<User>>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser>>();
     expectTypeOf<DefaultsOf<FakeSchema<User>>>().toEqualTypeOf<DeepPartial<User> | undefined>();
+  });
+
+  it("gives a draft leaf a handle that takes undefined", () => {
+    const store = core.define({ schema: userSchema }).createStore();
+    const age = store.root.at("age");
+    expectTypeOf(age).toEqualTypeOf<LeafHandle<number | undefined>>();
+    age.setValue(undefined);
+    age.setValue((previous) => (previous ?? 0) + 1);
+    expectTypeOf(store.root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    expectTypeOf(age.peek().value).toEqualTypeOf<number | undefined>();
+  });
+
+  it("drafts array items, so push takes a draft item", () => {
+    const store = core.define({ schema: rowsSchema }).createStore();
+    const rows = store.root.at("rows");
+    rows.push();
+    rows.push({ title: "", qty: undefined });
+    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }>>();
+    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
+  });
+
+  it("types validators, flags and ctx.input with the draft, and onSubmit's value with the output", () => {
+    core.define({
+      schema: userSchema,
+      validate: {
+        fields: {
+          age: (value) => {
+            expectTypeOf(value).toEqualTypeOf<number | undefined>();
+            return value === undefined ? { message: "required" } : undefined;
+          },
+        },
+        form: (value) => {
+          expectTypeOf(value).toEqualTypeOf<DraftUser>();
+          return undefined;
+        },
+      },
+      disabled: { age: true, address: { city: true } },
+      onSubmit: (value, ctx) => {
+        expectTypeOf(value).toEqualTypeOf<User>();
+        expectTypeOf(ctx.input.age).toEqualTypeOf<number | undefined>();
+        expectTypeOf(ctx.store).toEqualTypeOf<FormStore<DraftUser>>();
+      },
+    });
+    // The whole schema is still a valid form validator for the draft.
+    core.define({ schema: userSchema, validate: { form: userSchema } });
   });
 
   it("rejects defaults of the wrong type", () => {
@@ -134,6 +192,16 @@ describe("defaults case 3: no schema", () => {
     >();
   });
 
+  it("falls back to the default I and R with an explicit V unless they are given too", () => {
+    const loose = core.define<{ name: string }>({ defaultValues: { name: "" }, onSubmit: () => "saved" });
+    expectTypeOf(loose.createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
+    const typed = core.define<{ name: string }, never, void, "save", string>({
+      defaultValues: { name: "" },
+      onSubmit: (_value, ctx) => ctx.intent,
+    });
+    expectTypeOf(typed.createStore()).toEqualTypeOf<FormStore<{ name: string }, FormError, "save", string>>();
+  });
+
   it("checks defaultValues against an explicit V", () => {
     // @ts-expect-error: name is a string
     core.define<{ name: string }>({ defaultValues: { name: 1 } });
@@ -161,7 +229,7 @@ describe("the function form", () => {
 
   it("works with a schema", () => {
     const form = core.define((options: { id: string }) => ({ schema: userSchema, onSubmit: () => options.id }));
-    expectTypeOf(form.createStore({ id: "x" })).toEqualTypeOf<FormStore<User, FormError, undefined, string>>();
+    expectTypeOf(form.createStore({ id: "x" })).toEqualTypeOf<FormStore<DraftUser, FormError, undefined, string>>();
   });
 
   it("a plain config takes no options", () => {
