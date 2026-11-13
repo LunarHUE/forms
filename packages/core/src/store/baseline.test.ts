@@ -6,13 +6,14 @@ import type { Path } from "../path.js";
 import { type Rebase, rebase as rebasePlugin } from "../plugins/rebase.js";
 import type { FormStore } from "../store.js";
 import { validation as runner } from "../plugins/validation.js";
+import { dirty as dirtyPlugin } from "../plugins/dirty.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 import { isContainer } from "./tree.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [runner(), rebasePlugin()], ...options });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [runner(), rebasePlugin(), dirtyPlugin()], ...options });
   // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const rebase = (parts.store.plugins as { readonly rebase: Rebase }).rebase;
@@ -386,5 +387,42 @@ describe("cost", () => {
     root.at("rows").item("k1900").at("title").setValue("x");
     expect(paths.some((path) => path.startsWith("rows.k") && !path.startsWith("rows.k3") && !path.startsWith("rows.k1900"))).toBe(false);
     expect(field(store, ["rows", "k1900", "title"]).peek().dirty).toBe(true);
+  });
+});
+
+/** A store as `make` builds it, without `dirty()`. */
+const bare = (initial: unknown, options: Options = {}) => make(initial, { plugins: [runner(), rebasePlugin()], ...options });
+
+describe("without dirty()", () => {
+  it("is never dirty, on the server or the client, and lists no changes", () => {
+    const equals = vi.fn<Equals>((a, b, _ctx, next) => next(a, b));
+    const { store, root } = bare({ name: "a", rows: ["x"] }, { equals });
+    root.at("name").setValue("b");
+    root.at("rows").push("y");
+    expect(dirty(store, ["name"])).toBe(false);
+    expect(dirty(store, ["rows"])).toBe(false);
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    expect(store.getServerSnapshot(["name"]).dirty).toBe(false);
+    expect(store.changes()).toEqual([]);
+    expect(equals).not.toHaveBeenCalled();
+  });
+
+  it("still resets to the baseline and rebases it", () => {
+    const { store, root, rebase } = bare({ name: "a", rows: ["x", "y"] });
+    root.at("name").setValue("b");
+    root.at("rows").push("w");
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ name: "a", rows: ["x", "y"] });
+    root.at("name").setValue("mine");
+    const { taken } = rebase(root, { name: "server", rows: ["x", "z"] }, (leaf) => (leaf.edited ? "keep" : "take"));
+    expect(taken).toEqual([["rows", "k1"]]);
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ name: "server", rows: ["x", "z"] });
+  });
+
+  it("compares by reference alone for plugins", () => {
+    const { baseline } = bare({ when: new Date(1) });
+    expect(baseline.equals(["when"], new Date(1), new Date(1))).toBe(false);
+    expect(baseline.equals(["name"], "a", "a")).toBe(true);
   });
 });

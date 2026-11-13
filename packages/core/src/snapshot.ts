@@ -23,7 +23,7 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly touched: boolean;
   /** True once a write counted as a user edit at or below this field. Reset clears it. */
   readonly edited: boolean;
-  /** True when the value at or below this field differs from its baseline. */
+  /** True when the value at or below this field differs from its baseline. Always false without `dirty()`. */
   readonly dirty: boolean;
   /** True while a validator at this field is waiting or running. */
   readonly validating: boolean;
@@ -89,7 +89,7 @@ export interface FormSnapshot<I = undefined, R = unknown> {
   readonly valid: boolean;
   /** True while any validator in the form is waiting or running. */
   readonly validating: boolean;
-  /** True when any value in the form differs from its baseline. */
+  /** True when any value in the form differs from its baseline. Always false without `dirty()`. */
   readonly dirty: boolean;
   /** True while a submit runs. The same as `submission.status === "submitting"`. */
   readonly submitting: boolean;

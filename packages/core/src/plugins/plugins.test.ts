@@ -10,6 +10,7 @@ import {
 } from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
 import { validation } from "./validation.js";
+import { dirty } from "./dirty.js";
 import { history } from "./history.js";
 import { digits, mask, upper } from "./mask.js";
 import { persist } from "./persist.js";
@@ -29,7 +30,7 @@ const rethrow: PluginErrorHandler = (error) => {
 
 /** A store with `plugins` on its definition. Plugin errors throw unless `onPluginError` says otherwise. */
 const make = <V, const D extends readonly AnyHookPlugin[]>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
-  createFormsCore({ onPluginError }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
+  createFormsCore({ onPluginError, plugins: [dirty()] }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
 
 /** A plugin that records every `onWrite` delivery it gets. */
 const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
@@ -351,7 +352,7 @@ describe("the baseline on the context", () => {
 
   it("compares with the form's equals", () => {
     const { plugin, baseline } = outside();
-    createFormsCore().define({ defaultValues: { name: "" }, plugins: [plugin], equals: trimmed }).createStore();
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [plugin, dirty()], equals: trimmed }).createStore();
     expect(baseline()?.equals(["name"], "a ", "a")).toBe(true);
     expect(baseline()?.equals(["name"], "a", "b")).toBe(false);
   });

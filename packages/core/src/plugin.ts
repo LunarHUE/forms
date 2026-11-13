@@ -3,6 +3,7 @@ import type { SchemaAdapter } from "./schema-adapter.js";
 import type { Submission } from "./snapshot.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { AnyFormStore } from "./store.js";
+import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
 import type { CreateValidation } from "./store/runner.js";
 
@@ -106,12 +107,17 @@ export interface BaselineAt {
 /**
  * The form's baseline: the value fields are dirty against and reset goes
  * back to. For plugins that bring in a value from outside the form, such as
- * a fresh server copy. Paths are stable paths.
+ * a fresh server copy. Paths are stable paths. The baseline is there with or
+ * without `dirty()`.
  */
 export interface PluginBaseline {
   /** The baseline at `path`, or undefined when `path` names no live field. */
   read(this: void, path: Path): BaselineAt | undefined;
-  /** True when `a` equals `b` at `path` by the form's dirty comparison, `equals` included. */
+  /**
+   * True when `a` equals `b` at `path` by the form's dirty comparison,
+   * `equals` included. Without `dirty()` there is no comparison, and only
+   * the same value, by `Object.is`, is equal.
+   */
   equals(this: void, path: Path, a: unknown, b: unknown): boolean;
   /**
    * Makes `value` the baseline of the subtree at `path`, then rechecks
@@ -234,10 +240,12 @@ export interface MetaSource {
  *   their forms need no `defaultValues` (see `SchemaPlugin`);
  * - the validation runner, which `validation()` from
  *   `@lunarhue/forms-core/plugins/validation` brings alone and every schema
- *   plugin brings too.
+ *   plugin brings too;
+ * - dirty tracking, which `dirty()` from `@lunarhue/forms-core/plugins/dirty`
+ *   brings.
  *
- * The host and the runner come with the plugin, so a store whose plugins
- * bring neither never loads their code.
+ * The host, the runner and dirty tracking come with the plugin, so a store
+ * whose plugins bring none of them never loads their code.
  */
 export interface Plugin<A = undefined, N extends string = string, M = unknown, F = unknown> {
   /** The plugin's name. A hook plugin's must be unique among the store's hook plugins. */
@@ -265,6 +273,8 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
   readonly schema?: SchemaAdapter<never>;
   /** The validation runner, from a schema plugin or `validation()`. Internal. */
   readonly validation?: CreateValidation;
+  /** Dirty tracking, from `dirty()`. Internal. */
+  readonly dirty?: CreateDirty;
 }
 
 /**
@@ -294,6 +304,11 @@ export interface ValidationPlugin extends Plugin<undefined, "validation"> {
   readonly validation: CreateValidation;
 }
 
+/** The plugin `dirty()` returns: dirty tracking. */
+export interface DirtyPlugin extends Plugin<undefined, "dirty"> {
+  readonly dirty: CreateDirty;
+}
+
 /** A plugin of any kind, API, name and meta. */
 // `any` lets a plugin of every `A`, `N`, `M` and `F` fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
@@ -316,6 +331,9 @@ export type Plugins = readonly AnyPlugin[];
 export type HasValidation<P extends Plugins> = [Extract<P[number], { readonly validation: CreateValidation }>] extends [never]
   ? false
   : true;
+
+/** True when a plugin in `P` brings dirty tracking. */
+export type HasDirty<P extends Plugins> = [Extract<P[number], { readonly dirty: CreateDirty }>] extends [never] ? false : true;
 
 /** The schema types the schema plugins in `P` accept. */
 export type PluginSchemas<P extends Plugins> =
@@ -366,3 +384,15 @@ export interface SchemaNeedsValidation {
  */
 export type IfValidation<P extends Plugins, T> =
   HasValidation<P> extends true ? T : (NonNullable<T> & ValidationNotInstalled) | Extract<T, undefined | null | false>;
+
+/**
+ * What `equals` becomes when no plugin brings dirty tracking, which is the
+ * only thing that runs it. The compiler names the missing property, which
+ * says what to install.
+ */
+export interface EqualsNeedsDirty {
+  readonly "Add dirty() to plugins to use equals": never;
+}
+
+/** `T` when a plugin in `P` brings dirty tracking. Otherwise `T` marked as needing it, as `IfValidation` does. */
+export type IfDirty<P extends Plugins, T> = HasDirty<P> extends true ? T : (NonNullable<T> & EqualsNeedsDirty) | Extract<T, undefined>;

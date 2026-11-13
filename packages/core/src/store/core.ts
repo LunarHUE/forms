@@ -42,7 +42,7 @@ export interface StoreCoreOptions {
    * The store calls it when a field's value changes and after `recheckDirty`.
    * The form's `dirty` is its answer for the root. Without it nothing is dirty.
    */
-  readonly dirty?: (path: Path, value: unknown) => boolean;
+  readonly dirty?: ((path: Path, value: unknown) => boolean) | undefined;
 }
 
 /**

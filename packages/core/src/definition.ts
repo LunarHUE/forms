@@ -3,6 +3,7 @@ import type { Path } from "./path.js";
 import type {
   HasSchemaPlugin,
   HasValidation,
+  IfDirty,
   IfValidation,
   PluginApis,
   PluginErrorHandler,
@@ -76,8 +77,12 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
   readonly validate?: ValidateTiming;
   /** When errors show. Defaults to `"touched-or-submitted"`. */
   readonly show?: Show;
-  /** The dirty comparison. A form's own `equals` runs first and reaches this one through `next`. */
-  readonly equals?: Equals;
+  /**
+   * The dirty comparison. A form's own `equals` runs first and reaches this
+   * one through `next`. It needs `dirty()` in `plugins`. Without it it is a
+   * type error.
+   */
+  readonly equals?: IfDirty<P, Equals>;
   /**
    * Called when a plugin hook throws, with the plugin's name. The write and
    * the other plugins carry on. Defaults to throwing the error on a later
@@ -120,8 +125,8 @@ export interface DefinitionOptions<V, O, E, I, R, P extends Plugins = []> {
   readonly validate?: IfValidation<P, DefinitionValidate<V, E>>;
   /** When errors show. Defaults to the shared setting. */
   readonly show?: Show;
-  /** The dirty comparison, asked before the shared one. */
-  readonly equals?: Equals;
+  /** The dirty comparison, asked before the shared one. It needs `dirty()`. Without it it is a type error. */
+  readonly equals?: IfDirty<P, Equals>;
   /** Fields that start disabled. */
   readonly disabled?: Flags<V>;
   /** Fields that start read-only. */

@@ -5,6 +5,7 @@ import { createFormsCore } from "./index.js";
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
+import { dirty } from "./plugins/dirty.js";
 import { defineSchemaPlugin, validation } from "./plugins/validation.js";
 
 /** A hand-written Standard Schema of vendor `vendor`. */
@@ -182,7 +183,7 @@ describe("shared settings and per-definition overrides", () => {
       if (ctx.path.join(".") === "name" && typeof a === "string" && typeof b === "string") return a.toLowerCase() === b.toLowerCase();
       return next(a, b);
     });
-    const store = createFormsCore({ equals: sharedEquals })
+    const store = createFormsCore({ plugins: [dirty()], equals: sharedEquals })
       .define({ defaultValues: { name: "ada", age: 1 }, equals: ownEquals })
       .createStore();
     store.root.at("name").setValue("ADA");
@@ -239,7 +240,7 @@ describe("no side effects", () => {
     const onSubmit = vi.fn<() => void>();
     const mapError = vi.fn<(raw: RawError) => FormError>((raw) => ({ message: raw.message }));
     const equals = vi.fn<Equals>((a, b, _ctx, next) => next(a, b));
-    const core = createFormsCore({ plugins: [plugin], mapError, equals });
+    const core = createFormsCore({ plugins: [plugin, dirty()], mapError, equals });
     const definition = core.define({
       schema: fakeSchema<{ a: string; rows: string[] }>(validate),
       validate: { on: "input", form, fields: { a: field } },

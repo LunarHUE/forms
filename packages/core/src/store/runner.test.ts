@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormError } from "../errors.js";
 import { createFormsCore } from "../forms-core.js";
+import { dirty } from "../plugins/dirty.js";
 import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import { defineSchemaPlugin, validation } from "../plugins/validation.js";
@@ -71,7 +72,7 @@ describe("a form with no validation runner", () => {
   });
 
   it("writes, blurs, resets and rebases as with the runner", () => {
-    const store = createFormsCore({ plugins: [rebase()] }).define({ defaultValues: contact() }).createStore();
+    const store = createFormsCore({ plugins: [rebase(), dirty()] }).define({ defaultValues: contact() }).createStore();
     const name = store.root.at("name");
     name.setValue("Ada");
     name.handleBlur();
