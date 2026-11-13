@@ -18,13 +18,10 @@ interface Node {
   readonly getter: (input: unknown) => unknown;
 }
 
-// A valibot schema is a plain object with these fields for its `type`.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
 const node = (schema: ValibotSchema) => schema as unknown as Node;
 
-// Wrappers that add a value to the type and may declare a default.
 const wrappers = /* @__PURE__ */ new Set(["optional", "exact_optional", "undefinedable", "nullable", "nullish"]);
-// Wrappers that remove a value from the type. A field under one starts from the wrapped schema's value.
 const narrowers = /* @__PURE__ */ new Set(["non_optional", "non_nullable", "non_nullish"]);
 const objects = /* @__PURE__ */ new Set(["object", "loose_object", "strict_object", "object_with_rest"]);
 
