@@ -44,11 +44,8 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
     const definition = core.define(config as never) as unknown as RuntimeDefinition;
     // A function config takes per-form options, so `createForm`'s argument after the definition is those options.
     const takesOptions = typeof config === "function";
-    const made = {
-      createStore: (formOptions: unknown, instance?: { readonly id?: string }) => definition.createStore(formOptions, instance),
-    };
 
-    makers.set(made, (args) => {
+    makers.set(definition, (args) => {
       const [formOptions, settingsArg] = takesOptions ? args : [undefined, args[0]];
       // `CreateFormArgs` types the settings argument.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -59,10 +56,10 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
         scope: scopeOf(store.root),
         focusOnInvalid: settings.focusOnInvalid ?? options.focusOnInvalid ?? true,
       });
-      madeFrom.set(form, made);
+      madeFrom.set(form, definition);
       return form;
     });
-    return made;
+    return definition;
   };
 
   /** A fieldset is a token whose `scope` is `forms.scope`, typed to the shape. */
