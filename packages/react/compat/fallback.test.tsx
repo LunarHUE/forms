@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useLayoutEffect } from "react";
-import { expect, it } from "vitest";
+import { expect, inject, it } from "vitest";
+import { type Added, hooks } from "../src/compat.js";
 import { createForms, type LeafHandle, useField, useForm } from "../src/index.js";
 import { modern, render } from "./render.js";
 
@@ -31,6 +32,11 @@ it("uses React's own hooks on 18 and later and the fallbacks before", () => {
   const exports: object = React;
   expect("useSyncExternalStore" in exports).toBe(modern);
   expect("useId" in exports).toBe(modern);
+  const added: Added = React;
+  expect(hooks.useSyncExternalStore === added.useSyncExternalStore).toBe(modern);
+  expect(hooks.useId === added.useId).toBe(modern);
+  // Only the legacy entry warns about generated ids.
+  expect(hooks.generatedIdUsed !== undefined).toBe(inject("entry") === "legacy");
 });
 
 it("shows a store write that lands in a child's layout effect, before the parent subscribes", async () => {
