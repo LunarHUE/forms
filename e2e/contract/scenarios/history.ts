@@ -11,11 +11,8 @@ export const historyScenario = {
   ...scenario("history", "History", { values: { [labels.title]: "", [labels.body]: "" } }),
   labels,
   submit: { idle: "Save", busy: "Saving..." },
-  /** Whether there is a step to undo or redo. The meta is undefined until the first step. */
-  steps: (snapshot: FormSnapshot<unknown>) => {
-    const meta = undoHistory.formMeta(snapshot);
-    return { canUndo: meta?.canUndo ?? false, canRedo: meta?.canRedo ?? false };
-  },
+  /** Whether there is a step to undo or redo. */
+  steps: (snapshot: FormSnapshot<unknown>) => undoHistory.formMeta(snapshot),
   definition: {
     defaultValues: { title: "", body: "" },
     plugins: [undoHistory] as const,

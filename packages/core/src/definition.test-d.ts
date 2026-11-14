@@ -56,6 +56,7 @@ declare const userSchema: FakeSchema<User>;
 declare const otherUserSchema: OtherSchema<User>;
 declare const rowsSchema: FakeSchema<{ rows: { title: string; qty: number }[] }>;
 declare const parsedSchema: FakeSchema<{ age: string }, { age: number }>;
+declare const methodSchema: OtherSchema<{ method: "card" | "cash" }>;
 
 const core = createFormsCore({ plugins: [fakePlugin] });
 
@@ -370,6 +371,95 @@ describe("defaults case 3: no schema", () => {
         expectTypeOf(value).toEqualTypeOf<{ name: string }>();
       },
     });
+  });
+});
+
+describe("defaults case 3: literals in defaultValues widen", () => {
+  interface Order {
+    pickup: boolean;
+    note: string;
+    qty: number;
+  }
+
+  it("widens what satisfies keeps", () => {
+    const form = core.define({ defaultValues: { pickup: false, note: "", qty: 1 } satisfies Order });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<{ pickup: boolean; note: string; qty: number }>>();
+    expectTypeOf(form.createStore().root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
+  });
+
+  it("widens as const, at any depth, and turns tuples into arrays", () => {
+    const form = core.define({
+      defaultValues: {
+        pickup: true,
+        size: 10n,
+        address: { city: "Paris", lines: ["1 Rue", "2nd floor"] },
+        rows: [{ title: "", qty: 0 }],
+        none: [],
+      } as const,
+    });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<
+      FormStore<{
+        pickup: boolean;
+        size: bigint;
+        address: { city: string; lines: string[] };
+        rows: { title: string; qty: number }[];
+        none: readonly [];
+      }>
+    >();
+    const store = form.createStore();
+    store.root.at("rows").push({ title: "Tea", qty: 2 });
+    store.root.at("address").at("lines").push("3rd floor");
+  });
+
+  it("types validators and onSubmit with the widened value", () => {
+    core.define({
+      defaultValues: { pickup: false, note: "" } as const,
+      validate: {
+        fields: {
+          pickup: (value) => {
+            expectTypeOf(value).toEqualTypeOf<boolean>();
+            return undefined;
+          },
+        },
+      },
+      disabled: { note: true },
+      onSubmit: (value) => {
+        expectTypeOf(value).toEqualTypeOf<{ pickup: boolean; note: string }>();
+      },
+    });
+  });
+
+  it("keeps null, undefined and leaves such as Date", () => {
+    const form = core.define({
+      defaultValues: { at: new Date(0), gone: null, maybe: undefined, flag: false as false | null } as const,
+    });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<
+      FormStore<{ at: Date; gone: null; maybe: undefined; flag: boolean | null }>
+    >();
+  });
+
+  it("keeps a declared union, at the top or inside an array", () => {
+    const form = core.define({
+      // The assertion is what this checks: a declared type, not a literal expression.
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
+      defaultValues: { method: "card", picked: [] } as { method: "card" | "cash"; picked: ("a" | "b")[] },
+    });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<
+      FormStore<{ method: "card" | "cash"; picked: ("a" | "b")[] }>
+    >();
+  });
+
+  it("keeps a declared type with nothing to widen as it is", () => {
+    const start: { readonly tags: readonly string[]; readonly pair: [number, number] } = { tags: [], pair: [0, 0] };
+    const form = core.define({ defaultValues: start });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<typeof start>>();
+    expectTypeOf<DefinedValue<User, never>>().toEqualTypeOf<User>();
+  });
+
+  it("leaves a schema's literal union alone", () => {
+    const withRunner = createFormsCore({ plugins: [validation()] });
+    const form = withRunner.define({ schema: methodSchema, defaultValues: { method: "card" } });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<{ method: "card" | "cash" }>>();
   });
 });
 

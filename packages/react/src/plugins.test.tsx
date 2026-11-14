@@ -112,7 +112,7 @@ function NotePage() {
   return (
     <>
       <form.Field name="text">{(field) => <input aria-label="text" {...field.inputProps()} />}</form.Field>
-      <form.State select={(snapshot) => undoHistory.formMeta(snapshot)?.canUndo ?? false}>
+      <form.State select={(snapshot) => undoHistory.formMeta(snapshot).canUndo}>
         {(canUndo) => (
           <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
             Undo

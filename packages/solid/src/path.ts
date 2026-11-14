@@ -1,23 +1,6 @@
-import type { ChildValue, KeysOf, ShapeOf } from "@lunarhue/forms-core";
+import type { ChildValue, FieldPath, ShapeOf } from "@lunarhue/forms-core";
 
-/** How many segments a field name can have. Deeper fields are reached with `handle` or a scope. */
-export type PathMaxDepth = 8;
-
-/**
- * The dotted names of the fields in a value of type `V`, such as
- * `"address.city"`. A name goes through plain objects only: it has no array
- * indexes, and it stops at an array, so the array field itself has a name
- * but its items don't. Reach items with `Items` and the item handle. A name
- * has at most `PathMaxDepth` segments.
- */
-export type FieldPath<V> = PathsOf<V, []>;
-
-/** The names of `FieldPath<V>` at depth `D["length"]` and below. */
-type PathsOf<V, D extends readonly unknown[]> = D["length"] extends PathMaxDepth
-  ? never
-  : {
-      [K in KeysOf<V>]: `${K}` | (ShapeOf<ChildValue<V, K>> extends "object" ? `${K}.${PathsOf<ChildValue<V, K>, [...D, 0]>}` : never);
-    }[KeysOf<V>];
+export type { FieldPath, PathMaxDepth } from "@lunarhue/forms-core";
 
 /**
  * The value type of the field named `P` in a value of type `V`. Along the

@@ -1,5 +1,6 @@
 import type { FormError, Show } from "../errors.js";
 import type { Path, PathSegment } from "../path.js";
+import { problem } from "../problem.js";
 import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
@@ -24,6 +25,10 @@ import { watchDirty, watchShow } from "./untracked.js";
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 export type { Snapshot } from "./entries.js";
+
+// Core has no node or DOM types, so this declares the globals the development check uses.
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+declare const console: { warn(message: string): void };
 
 /** What `createStoreCore` takes. */
 export interface StoreCoreOptions {
@@ -313,6 +318,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let formDirtyFor: unknown = stale;
   // The form's plugin meta.
   let formMeta: Meta;
+  // True once `submit:unseen` was logged for this store.
+  let warnedUnseen = false;
 
   // Where `node` sits now, from its parent's value and key list.
   const place = (node: Node<E>) => {
@@ -962,6 +969,21 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     setSubmission(next) {
       if (Object.is(next, submission)) return false;
       submission = freeze(next);
+      // Development only. Core can't see the page, so a subscription stands
+      // in for "something renders these errors". Containers alone are named:
+      // an unread leaf may be on a step the app shows after the submit.
+      if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && next.status === "invalid" && !warnedUnseen) {
+        const unseen: string[] = [];
+        let read = false;
+        for (const node of withErrors) {
+          if (node.subscriptions) read = true;
+          else if (!node.parent || node.children?.size) unseen.push(node.parent ? `\`${node.name}\`` : "the root");
+        }
+        if (!read && unseen.length > 0) {
+          warnedUnseen = true;
+          console.warn(problem("submit:unseen", unseen.join(", ")));
+        }
+      }
       return finish(true);
     },
     setSubmitCount(count) {

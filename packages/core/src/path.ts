@@ -1,3 +1,5 @@
+import type { ChildValue, KeysOf, ShapeOf } from "./value.js";
+
 /**
  * One step in a path. In a stable path it is an object key, or an array
  * item's stable key in place of its index. In a dotted path it is an object
@@ -23,3 +25,21 @@ export function splitPath(path: string, separator?: string): readonly PathSegmen
   if (path === "") return [];
   return path.split(separator).map((part) => (/^\d+$/.test(part) ? Number(part) : part));
 }
+
+/** How many segments a field name can have. Deeper fields are reached with a handle. */
+export type PathMaxDepth = 8;
+
+/**
+ * The dotted names of the fields in a value of type `V`, such as
+ * `"address.city"`. A name goes through plain objects only: it has no array
+ * indexes, and it stops at an array, so the array field itself has a name
+ * but its items don't. A name has at most `PathMaxDepth` segments.
+ */
+export type FieldPath<V> = PathsOf<V, []>;
+
+/** The names of `FieldPath<V>` at depth `D["length"]` and below. */
+type PathsOf<V, D extends readonly unknown[]> = D["length"] extends PathMaxDepth
+  ? never
+  : {
+      [K in KeysOf<V>]: `${K}` | (ShapeOf<ChildValue<V, K>> extends "object" ? `${K}.${PathsOf<ChildValue<V, K>, [...D, 0]>}` : never);
+    }[KeysOf<V>];

@@ -10,7 +10,7 @@ import type {
   Submission,
 } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
-import { For, Show, type Accessor } from "solid-js";
+import { For, Match, Show, Switch, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
@@ -276,6 +276,32 @@ describe("the form object", () => {
     if (submission.status === "succeeded") expectTypeOf(submission.result).toEqualTypeOf<SignupResult>();
     // @ts-expect-error: state is read-only
     form.state.submitting = true;
+  });
+
+  it("narrows the submission inside Show and Match with no helper", () => {
+    const form = createForm(Signup);
+    void (
+      <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+        {(submission) => {
+          expectTypeOf(submission().result).toEqualTypeOf<SignupResult>();
+          return <p>{submission().result.id}</p>;
+        }}
+      </Show>
+    );
+    void (
+      <Switch>
+        <Match when={form.state.submission.status === "submitting" && form.state.submission}>
+          {(submission) => {
+            expectTypeOf(submission().intent).toEqualTypeOf<Intent>();
+            return null;
+          }}
+        </Match>
+      </Switch>
+    );
+    // The same narrowing holds in a plain expression.
+    void (<p>{form.state.submission.status === "succeeded" && form.state.submission.result.id}</p>);
+    // @ts-expect-error: without the status check there is no result
+    void form.state.submission.result;
   });
 
   it("passes per-store options through the function form", () => {
@@ -722,5 +748,42 @@ describe("free functions", () => {
       </>
     );
     expectTypeOf(root).toEqualTypeOf<ObjectHandle<SignupDraft>>();
+  });
+});
+
+function Checkbox(props: { field: FieldApi<boolean>; label: string }) {
+  return (
+    <label>
+      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      {props.label}
+    </label>
+  );
+}
+
+interface Pickup {
+  pickup: boolean;
+  note: string;
+}
+
+const checkboxForms = createForms({ fields: { Checkbox, TextField } });
+const PickupOrder = checkboxForms.define({ defaultValues: { pickup: false, note: "" } satisfies Pickup });
+const PickupConst = checkboxForms.define({ defaultValues: { pickup: false, note: "" } as const });
+
+function PickupFields() {
+  const satisfied = createForm(PickupOrder);
+  const constant = createForm(PickupConst);
+  return (
+    <>
+      <satisfied.Checkbox name="pickup" label="Pickup" />
+      <satisfied.TextField name="note" label="Note" />
+      <constant.Checkbox name="pickup" label="Pickup" />
+    </>
+  );
+}
+
+describe("literals in defaultValues", () => {
+  it("widens false from satisfies or as const, so a FieldApi<boolean> component fits", () => {
+    expectTypeOf(PickupFields).toBeFunction();
+    expectTypeOf(createForm(PickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
   });
 });

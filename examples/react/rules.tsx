@@ -14,8 +14,9 @@ interface Order {
 
 // Each rule gets the whole value and returns flags for its field.
 // `disabled` is a field flag. `hidden` is the plugin's own meta, which
-// the component reads. `rules` doesn't know the form, so name the
-// value type.
+// the component reads. Name the value type: a key that isn't a field of
+// `Order` is a type error, and so is installing the rules on a form
+// whose value isn't an `Order`.
 const orderRules = rules<Order>({
   street: (value) => ({ disabled: value.pickup }),
   message: (value) => ({ hidden: !value.gift }),

@@ -49,7 +49,8 @@ export interface TestStore<V, I = undefined, R = unknown, A = {}> {
 /** The config `testStore` takes: a definition with its `plugins`, as `define` takes it. */
 export type TestStoreConfig<V, S extends StandardSchemaV1, I, R, D extends Plugins> = WithPlugins<
   Definition<V, S, D, FormError, I, R>,
-  D
+  D,
+  NoInfer<DefinedValue<V, S, D>>
 >;
 
 const timings: readonly When[] = ["sync", "deferred", "idle"];

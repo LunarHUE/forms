@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SubmitContext } from "../definition.js";
 import type { FormError, MapError, ShowMode } from "../errors.js";
 import type { Submission } from "../snapshot.js";
@@ -615,5 +615,115 @@ describe("store rules", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+/** Replaces `console.warn` with a mock and returns it. */
+const spy = () => {
+  const warn = vi.fn<(message: string) => void>();
+  vi.stubGlobal("console", { warn });
+  return warn;
+};
+
+describe("submit:unseen", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  // Like a schema library's: a missing value fails at the root, an empty
+  // name at `name`, and no rows at `rows`.
+  const schema: StandardSchemaV1<Value> = {
+    "~standard": {
+      version: 1,
+      vendor: "fake",
+      validate(input) {
+        if (typeof input !== "object" || input === null) return { issues: [{ message: "Invalid type: Expected Object but received undefined" }] };
+        // The test only passes values of the form's own type.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const value = input as Value;
+        const issues = [
+          ...(value.name === "" ? [{ message: "Required", path: ["name"] }] : []),
+          ...(value.rows.length === 0 ? [{ message: "Add a row", path: ["rows"] }] : []),
+        ];
+        return issues.length > 0 ? { issues } : { value };
+      },
+    },
+  };
+
+  /** A store whose inputs are mounted: something subscribes to each of `paths`. */
+  const mounted = (paths: string[][], value: Value = initial) => {
+    const { store } = make({ schema }, value);
+    for (const path of paths) store.subscribe(path, () => {});
+    return store;
+  };
+
+  const clear = (store: FormStore<Value, FormError, Intent>) =>
+    // The schema's root error needs a value the type doesn't allow.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    store.root.setValue(undefined as unknown as Value, { replace: true });
+
+  it("warns when the only error is on the root and nothing reads it", async () => {
+    const warn = spy();
+    const store = mounted([["name"], ["rows"]]);
+    clear(store);
+    expect((await store.submit()).status).toBe("invalid");
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/^@lunarhue\/forms-core: A submit failed on errors at the root, and nothing on the page reads them, .+#core:submit:unseen$/),
+    );
+  });
+
+  it("names an object or array field whose errors nothing reads", async () => {
+    const warn = spy();
+    // `rows.0.title` has an input, so `rows` has fields under it.
+    const store = mounted([["name"], ["rows", "0", "title"]], { ...initial, rows: [] });
+    await store.submit();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("errors at `rows`,"));
+  });
+
+  it("stays quiet when the form reads its root errors", async () => {
+    const warn = spy();
+    const store = mounted([["name"], []]);
+    clear(store);
+    await store.submit();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when a field's errors are read", async () => {
+    const warn = spy();
+    const store = mounted([["name"]], { ...initial, name: "" });
+    expect((await store.submit()).status).toBe("invalid");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet about a field with no input", async () => {
+    const warn = spy();
+    // Nothing subscribes to `name`. A wizard may show its step after the submit.
+    const store = mounted([], { ...initial, name: "" });
+    await store.submit();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns once per store", async () => {
+    const warn = spy();
+    const store = mounted([]);
+    clear(store);
+    await store.submit();
+    await store.submit();
+    expect(warn).toHaveBeenCalledOnce();
+    const other = mounted([]);
+    clear(other);
+    await other.submit();
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays quiet in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const warn = spy();
+    const store = mounted([]);
+    clear(store);
+    expect((await store.submit()).status).toBe("invalid");
+    expect(warn).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,13 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import {
+  createField,
   createForm,
   createForms,
   type FieldApi,
   type HandleOf,
   useFormContext,
 } from "@lunarhue/forms-solid";
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
 import * as v from "valibot";
 
 // The schema validates the form and gives it its types.
@@ -87,19 +88,28 @@ function SubmitButton() {
 
 export default function SignUpForm() {
   const form = createForm(signUp);
-  const result = () => {
-    const submission = form.state.submission;
-    return submission.status === "succeeded" ? submission.result : null;
-  };
+  // Errors on the form as a whole sit on the root, such as a
+  // server's. Without this list nothing would show them.
+  const root = createField(form.root);
   return (
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
+          <ul id={root.errorId}>
+            <For each={root.shownErrors}>
+              {(error) => <li>{error.message}</li>}
+            </For>
+          </ul>
           <form.TextField name="name" label="Name" />
           <form.TextField name="email" label="Email" />
           <AddressFields field={form.root.at("address")} />
           <SubmitButton />
-          <p role="status">{result()}</p>
+          <p role="status">
+            {/* The status check narrows the submission, so the callback can read `result`. */}
+            <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+              {(submission) => submission().result}
+            </Show>
+          </p>
         </form>
       )}
     </form.Form>

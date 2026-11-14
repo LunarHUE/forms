@@ -88,7 +88,7 @@ const undoHistory = history();
 const forms = createForms({ plugins: [undoHistory] });
 
 // Inside a component with a form of those forms.
-<form.State select={(snapshot) => undoHistory.formMeta(snapshot)?.canUndo ?? false}>
+<form.State select={(snapshot) => undoHistory.formMeta(snapshot).canUndo}>
   {(canUndo) => (
     <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
       Undo
@@ -97,10 +97,10 @@ const forms = createForms({ plugins: [undoHistory] });
 </form.State>;
 ```
 
-In Solid, read `undoHistory.formMeta(form.state)?.canUndo` in JSX. The meta
-is undefined until a flag first changes, which means both are false. The
-flags change in the same render as an undo, a redo or a reset. After an
-edit they change a microtask later, when `history` records the step.
+In Solid, read `undoHistory.formMeta(form.state).canUndo` in JSX. Both
+flags are false before the first step, on the server too. They change in
+the same render as an undo, a redo or a reset. After an edit they change a
+microtask later, when `history` records the step.
 
 ### What history can't do
 
@@ -139,6 +139,42 @@ It cleans every value that reaches a named field, whatever wrote it:
   moves to it as it came. Cleaning it would make the form dirty against its
   own baseline.
 
+### Rules
+
+`rules` takes a map from a field's dotted name, the same name a `name` prop
+takes, to a rule. Each rule gets the whole form value and returns the
+field's `disabled` and `hidden` flags. Name the form's value type:
+
+```ts
+interface Delivery {
+  pickup: boolean;
+  gift: boolean;
+  address: { street: string; city: string };
+  message: string;
+}
+
+const deliveryRules = rules<Delivery>({
+  address: (value) => ({ disabled: value.pickup }),
+  message: (value) => ({ hidden: !value.gift }),
+});
+
+const delivery = forms.define({ defaultValues, plugins: [deliveryRules] });
+```
+
+The compiler checks both ends. A name that isn't a field of `Delivery`,
+such as `"adress"`, is a type error, and so is putting `deliveryRules` on a
+form whose value isn't a `Delivery`, in a definition's `plugins` or a
+store's own. Leaving out the type is an error too, since there would be
+nothing to check the names against. A form may have fields `Delivery`
+doesn't name. Names go through objects only, so a rule can't name an array
+item. Give the array a rule, or the object around it.
+
+`rules` can't take the type from the definition it sits in. TypeScript
+works out a call such as `rules({ ... })` before it knows the form's value
+type, even when the call is written inside `plugins`.
+
+Read `hidden` with the plugin's own reader, `deliveryRules.meta(field)?.hidden`.
+
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 
 ## Writing a plugin
@@ -172,6 +208,28 @@ So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
 `onActive`, which runs when the store gets its first listener. The server
 never listens, so it never runs there. `persist` restores in `onActive`.
+
+### Meta
+
+`ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field
+or on the form. Annotate `setup`'s parameter as `PluginContext<M, F>` to
+type them, and read them back with the plugin's `meta` and `formMeta`
+readers. Both return undefined until the plugin sets something. When the
+form meta has a sensible value before then, give it as `initialFormMeta`.
+`formMeta` returns it until the plugin sets its own, and its type drops
+`undefined`. The reader works it out from the snapshot alone, so the
+server and the first client render read the same value. `history` starts
+from `{ canUndo: false, canRedo: false }` this way:
+
+```ts
+definePlugin({
+  name: "history",
+  initialFormMeta: { canUndo: false, canRedo: false },
+  setup(ctx: PluginContext<never, HistoryMeta>) {
+    // ...
+  },
+});
+```
 
 ### Writes
 
@@ -294,6 +352,23 @@ merges the value into the state with `setState`, so bind the whole state
 only when the store has no actions. On a form's own `plugins`, the store's
 type must be the form's value type. On `createForms` and on a definition it
 isn't checked.
+
+`signal` binds a Solid 2 signal. Pass the getter and setter `createSignal`
+returns:
+
+```ts
+import { signal } from "@lunarhue/forms-bind/solid";
+
+const [settings, setSettings] = createSignal({ displayName: "Ada", timezone: "Europe/London" });
+const form = createForm(settingsForm, { plugins: [signal(settings, setSettings)] });
+```
+
+A form write sets the signal. A change to the signal reaches the form when
+Solid runs its effects. The binding makes the effect that watches the signal
+in a root of its own when the form gets its first listener, and disposes it
+when the form loses its last, so you write no `createRoot` or `createEffect`.
+On the server no effect runs. The signal's type is checked against the form's
+value type the same way as with `zustand`.
 
 `@lunarhue/forms-schema` and `@lunarhue/forms-bind` take
 `@lunarhue/forms-core` as a peer dependency.

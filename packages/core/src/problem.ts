@@ -24,7 +24,8 @@ export type Code =
   | "validation:validator"
   | "schema:defaults"
   | "rebase:store"
-  | "dirty:untracked";
+  | "dirty:untracked"
+  | "submit:unseen";
 
 /**
  * The message for `code`: the package, then what went wrong. Development
@@ -51,6 +52,8 @@ export function problem(code: Code, value = ""): string {
       "rebase:store": () => "rebase: the handle belongs to another store.",
       "dirty:untracked": () =>
         'This form read `dirty` or called `changes()`, but no plugin tracks dirty state, so `dirty` is always false and `changes()` is empty. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.',
+      "submit:unseen": (where) =>
+        `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
     };
     text = `${sentences[code](value)} ${docs}${code}`;
   }
