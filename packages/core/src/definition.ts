@@ -14,7 +14,7 @@ import type {
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
-import type { ChildValue, DeepPartial, DeepReadonly, Draft, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf } from "./value.js";
+import type { ChildValue, DeepPartial, DeepReadonly, Draft, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf, Widened } from "./value.js";
 
 /**
  * Compares two values for dirty tracking. Return true when they count as
@@ -175,13 +175,16 @@ export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I
     }) &
   DefinitionOptions<SchemaValue<S, P>, StandardSchemaV1.InferOutput<S>, E, I, R, P>;
 
-/** A definition without a schema. `defaultValues` is required and sets the value type. */
+/**
+ * A definition without a schema. `defaultValues` is required and sets the
+ * value type, with its literals widened (see `Widened`).
+ */
 export type PlainDefinition<V, E, I, R, P extends Plugins = []> = {
   /** No schema. */
   readonly schema?: never;
-  /** The starting value. Its type is the form's value type unless one is given explicitly. */
+  /** The starting value. Its type, widened, is the form's value type unless one is given explicitly. */
   readonly defaultValues: V;
-} & DefinitionOptions<NoInfer<V>, NoInfer<V>, E, I, R, P>;
+} & DefinitionOptions<NoInfer<Widened<V>>, NoInfer<Widened<V>>, E, I, R, P>;
 
 /** Per-instance settings for `createStore`. `X` is the instance's own plugins. */
 export interface StoreInstance<X extends Plugins = Plugins> {
@@ -240,7 +243,8 @@ export type Combined<P extends Plugins, D extends Plugins> = readonly [...P, ...
  *    `defaultValues` is required and complete. It needs the validation
  *    runner, from `validation()` or any schema plugin.
  * 3. No `schema`: `defaultValues` is required and sets the value type, or
- *    give it explicitly as `define<V>(...)`.
+ *    give it explicitly as `define<V>(...)`. Literals from `satisfies` or
+ *    `as const` widen, so `false` becomes `boolean` (see `Widened`).
  *
  * Plugins count from the shared list `P` and the definition's own `plugins`.
  *
@@ -280,8 +284,8 @@ export type Definition<V, S extends StandardSchemaV1, P extends Plugins, E, I, R
   ? PlainDefinition<V, E, I, R, P>
   : SchemaDefinition<S, P, E, I, R>;
 
-/** The value type of a definition: `SchemaValue` with a schema, or `V` without one. */
-export type DefinedValue<V, S extends StandardSchemaV1, P extends Plugins = []> = [S] extends [never] ? V : SchemaValue<S, P>;
+/** The value type of a definition: `SchemaValue` with a schema, or `Widened<V>` without one. */
+export type DefinedValue<V, S extends StandardSchemaV1, P extends Plugins = []> = [S] extends [never] ? Widened<V> : SchemaValue<S, P>;
 
 /**
  * Core's entry point. Framework adapters wrap it in their own `createForms`.

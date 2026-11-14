@@ -724,3 +724,40 @@ describe("free functions", () => {
     expectTypeOf(root).toEqualTypeOf<ObjectHandle<SignupDraft>>();
   });
 });
+
+function Checkbox(props: { field: FieldApi<boolean>; label: string }) {
+  return (
+    <label>
+      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      {props.label}
+    </label>
+  );
+}
+
+interface Pickup {
+  pickup: boolean;
+  note: string;
+}
+
+const checkboxForms = createForms({ fields: { Checkbox, TextField } });
+const PickupOrder = checkboxForms.define({ defaultValues: { pickup: false, note: "" } satisfies Pickup });
+const PickupConst = checkboxForms.define({ defaultValues: { pickup: false, note: "" } as const });
+
+function PickupFields() {
+  const satisfied = createForm(PickupOrder);
+  const constant = createForm(PickupConst);
+  return (
+    <>
+      <satisfied.Checkbox name="pickup" label="Pickup" />
+      <satisfied.TextField name="note" label="Note" />
+      <constant.Checkbox name="pickup" label="Pickup" />
+    </>
+  );
+}
+
+describe("literals in defaultValues", () => {
+  it("widens false from satisfies or as const, so a FieldApi<boolean> component fits", () => {
+    expectTypeOf(PickupFields).toBeFunction();
+    expectTypeOf(createForm(PickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
+  });
+});

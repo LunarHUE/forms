@@ -191,3 +191,66 @@ type DraftMember<T> = T extends string | boolean | null | undefined
  * `any` stay as they are.
  */
 export type Draft<T> = unknown extends T ? T : IsPlainUnion<T> extends true ? DraftMember<T> | undefined : DraftMember<T>;
+
+/**
+ * True when `T` reads as a declared union: two or more members besides
+ * `null` and `undefined`, where `boolean` counts as one member. A
+ * `defaultValues` expression gives a single literal per value, never a union.
+ */
+type IsDeclaredUnion<T, N = NonNullable<T>, R = Exclude<N, boolean>> = [R] extends [never]
+  ? false
+  : [Extract<N, boolean>] extends [never]
+    ? true extends IsUnion<R>
+      ? true
+      : false
+    : true;
+
+/**
+ * `W` when `T` is a plain literal of the primitive `W`, and `T` otherwise. A
+ * branded primitive has keys `W` lacks, so it stays as it is.
+ */
+type WidenedLiteral<T, W> = W extends T ? T : [Exclude<keyof T, keyof W>] extends [never] ? W : T;
+
+/** `T` itself when widening changed nothing in it, so declared types keep their names and modifiers. */
+type Unless<T, Wide, Same> = [Wide] extends [Same] ? T : Wide;
+
+/**
+ * An array of `Item`, or `T` itself when `Item` is no wider than `T`'s items.
+ * The items are compared, not the arrays: TypeScript settles an array
+ * comparison while `T` is still generic and gets it wrong.
+ */
+type WidenedArray<T extends readonly unknown[], Item> = [Item] extends [T[number]] ? T : Item[];
+
+/** The union of a tuple's items, each widened on its own so that two literals don't read as a declared union. */
+type WidenedItems<T> = T extends readonly [infer Head, ...infer Rest] ? Widened<Head> | WidenedItems<Rest> : never;
+
+/** `Widened` of one union member. */
+type WidenedMember<T> = T extends string
+  ? WidenedLiteral<T, string>
+  : T extends number
+    ? WidenedLiteral<T, number>
+    : T extends bigint
+      ? WidenedLiteral<T, bigint>
+      : T extends boolean
+        ? WidenedLiteral<T, boolean>
+        : T extends LeafValue
+          ? T
+          : T extends readonly unknown[]
+            ? number extends T["length"]
+              ? WidenedArray<T, Widened<T[number]>>
+              : WidenedArray<T, WidenedItems<T>>
+            : Unless<T, { -readonly [K in keyof T]: Widened<T[K]> }, { -readonly [K in keyof T]: T[K] }>;
+
+/**
+ * The value type `defaultValues` gives a form without a schema. TypeScript
+ * keeps literals in some expressions: `satisfies` keeps `false` where the
+ * type says `boolean`, and `as const` keeps every literal and makes arrays
+ * readonly tuples. This widens a single string, number, bigint or boolean
+ * literal to its primitive at any depth, and turns a tuple into an array of
+ * its widened items. A union of two or more members besides `null` and
+ * `undefined` is left whole, since it comes from a declared type, so
+ * `"card" | "cash"` stays. Other leaves stay as they are, and so does an
+ * object or array with nothing to widen inside it. `unknown` and `any` stay
+ * as they are.
+ */
+export type Widened<T> = unknown extends T ? T : IsDeclaredUnion<T> extends true ? T : WidenedMember<T>;
