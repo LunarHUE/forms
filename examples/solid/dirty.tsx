@@ -3,7 +3,7 @@ import {
   createForms,
   type FieldApi,
 } from "@lunarhue/forms-solid";
-import { dirty } from "@lunarhue/forms-solid/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins/dirty";
 
 interface TextFieldProps {
   readonly field: FieldApi<string>;
@@ -27,8 +27,11 @@ const forms = createForms({
   fields: { TextField },
 });
 
+// `baselineOnSubmit()` makes what a successful save sent the new
+// starting point, so the form is clean once the save is done.
 const profile = forms.define({
   defaultValues: { name: "Ada Lovelace", email: "ada@example.com" },
+  plugins: [baselineOnSubmit()],
   onSubmit: (value) => value,
 });
 
@@ -41,7 +44,7 @@ export default function ProfileForm() {
           <form.TextField name="name" label="Name" />
           <form.TextField name="email" label="Email" />
           {/* Typing a field back to its old value makes it clean
-              again, and the buttons go back to disabled. */}
+              again, and so does a save. Both disable the buttons. */}
           <button type="submit" disabled={!form.state.dirty}>
             Save
           </button>

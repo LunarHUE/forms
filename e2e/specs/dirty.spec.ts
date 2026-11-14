@@ -23,6 +23,27 @@ test("save is enabled only while a value differs from the start", async ({ page 
   await expect.poll(async () => (await probe(page)).form.dirty).toBe(false);
 });
 
+test("after a successful save the form is clean, and a field edited during the save stays dirty", async ({ page }) => {
+  const save = page.getByRole("button", { name: submit.idle });
+  const name = input(page, labels.name);
+  const email = input(page, labels.email);
+  await name.fill("Grace Hopper");
+  await email.fill("grace@example.com");
+  await save.click();
+  // The fake server takes a moment, so this edit lands after the value was sent.
+  await email.fill("grace.h@example.com");
+  await expect(page.getByRole("status")).toHaveText("Saved Grace Hopper.");
+  await expect
+    .poll(async () => {
+      const { form, fields } = await probe(page);
+      return { form: form.dirty, name: fields["name"]?.dirty, email: fields["email"]?.dirty };
+    })
+    .toEqual({ form: true, name: false, email: true });
+  // Typing the saved text back makes the form clean.
+  await email.fill("grace@example.com");
+  await expect(save).toBeDisabled();
+});
+
 test("reset puts back the values and clears errors and touched", async ({ page }) => {
   const name = input(page, labels.name);
   const email = input(page, labels.email);

@@ -53,13 +53,13 @@ export function createSubmit<V, E, I, R, O = V>(
   // False while the submission is anything but idle, so a reset of an idle form changes nothing.
   let idleNow = true;
 
-  // Ends the run with `submission`, unless an abort ended it first.
-  const end = (controller: Controller, submission: Submission<I, R>): Submission<I, R> => {
+  // Ends the run with `submission`, unless an abort ended it first. `input` is the value `onSubmit` got, if it was called.
+  const end = (controller: Controller, submission: Submission<I, R>, input?: unknown): Submission<I, R> => {
     const idle = aborted.get(controller);
     if (idle) return idle;
     running = undefined;
     core.setSubmission(submission);
-    host?.submitted(submission);
+    host?.submitted(submission, input);
     return submission;
   };
 
@@ -82,9 +82,9 @@ export function createSubmit<V, E, I, R, O = V>(
       // The schema's output, or the form value without a schema, which is what `O` names.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const result = options.onSubmit ? await options.onSubmit(out.output as O, ctx) : (undefined as R);
-      return end(controller, { status: "succeeded", result });
+      return end(controller, { status: "succeeded", result }, out.input);
     } catch (error) {
-      return end(controller, { status: "failed", error });
+      return end(controller, { status: "failed", error }, out.input);
     }
   };
 

@@ -122,11 +122,15 @@ export interface PluginBaseline {
   /**
    * Makes `value` the baseline of the subtree at `path`, then rechecks
    * dirty. Each array in it pairs its items with the current items by
-   * index, except at a path where `keep` returns true: there it keeps the
-   * pairing the old baseline had. It writes no value, so to change values
-   * too, call it inside `ctx.write` with the writes.
+   * index, unless `keep` says otherwise for the array's stable path. When
+   * it returns true the array keeps the pairing the old baseline had. When
+   * it returns a key list, baseline item `i` pairs with the current item
+   * whose key is at index `i`, as `BaselineAt.keys` reads, so a key no
+   * current item has leaves that baseline item unpaired. It writes no
+   * value, so to change values too, call it inside `ctx.write` with the
+   * writes.
    */
-  move(this: void, path: Path, value: unknown, keep?: (path: Path) => boolean): void;
+  move(this: void, path: Path, value: unknown, keep?: (path: Path) => boolean | readonly (string | undefined)[]): void;
 }
 
 /**
@@ -196,8 +200,15 @@ export interface PluginHooks<A = undefined> {
    * `onSubmit`. One returned from a promise can't, since they have run.
    */
   onSubmit?(): unknown;
-  /** Runs once a submit has ended, with how it ended. */
-  onSubmitted?(submission: Submission<unknown>): void;
+  /**
+   * Runs once a submit has ended, with how it ended. `input` is the form
+   * value the definition's `onSubmit` got as `ctx.input`, read once
+   * validation finished, so it holds edits made while validation ran. It is
+   * there when the submit ended `"succeeded"` or `"failed"`, and undefined
+   * when it ended `"invalid"`. A submit that a reset aborts doesn't end
+   * here.
+   */
+  onSubmitted?(submission: Submission<unknown>, input: unknown): void;
   /**
    * Runs when the store gets its first listener, as when a component mounts
    * a field. The function it returns runs when the last listener goes. Use

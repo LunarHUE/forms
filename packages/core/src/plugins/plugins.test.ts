@@ -387,6 +387,22 @@ describe("the baseline on the context", () => {
     expect(baseline()?.read(["b"])?.keys).toEqual(["k0", "k1"]);
     expect(store.changes(["b", "k0"])).toEqual([{ path: ["b", "k0"], baseline: "X", value: "x" }]);
   });
+
+  it("pairs an array with the keys a key list gives", () => {
+    const { plugin, baseline } = outside();
+    const store = make({ tags: ["x", "y"] }, [plugin]);
+    const tags = store.root.at("tags");
+    tags.insert(0, "w");
+    tags.remove(2);
+    // Now w, x with keys k2, k0. The list pairs X with k0 and Y with k1, which no current item has.
+    baseline()?.move([], { tags: ["X", "Y"] }, (path) => (path[0] === "tags" ? ["k0", "k1"] : false));
+    expect(baseline()?.read(["tags"])?.keys).toEqual(["k0", "k1"]);
+    expect(store.changes(["tags"])).toEqual([{ path: ["tags"], baseline: ["X", "Y"], value: ["w", "x"] }]);
+    expect(store.getSnapshot(["tags", "k2"]).dirty).toBe(true);
+    expect(store.changes(["tags", "k0"])).toEqual([{ path: ["tags", "k0"], baseline: "X", value: "x" }]);
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ tags: ["X", "Y"] });
+  });
 });
 
 describe("isolation", () => {
@@ -771,6 +787,49 @@ describe("reset and submit", () => {
       .createStore();
     await store.submit();
     expect(ended).toEqual(["invalid"]);
+  });
+
+  it("gives onSubmitted the value onSubmit got, with edits made while validation ran", async () => {
+    const ended: [string, unknown][] = [];
+    const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission, input) => void ended.push([submission.status, input]) }) });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let sent: unknown;
+    let fail = false;
+    const store = createFormsCore({ plugins: [validation()] })
+      .define({
+        defaultValues: contact(),
+        plugins: [end],
+        validate: { fields: { code: () => gate.then(() => undefined) } },
+        onSubmit: (value) => {
+          sent = value;
+          if (fail) throw new Error("down");
+        },
+      })
+      .createStore();
+    const done = store.submit();
+    await Promise.resolve();
+    store.root.at("phone").setValue("typed while validating");
+    release();
+    await done;
+    expect(sent).toEqual({ phone: "typed while validating", code: "" });
+    fail = true;
+    await store.submit();
+    expect(ended).toEqual([
+      ["succeeded", sent],
+      ["failed", sent],
+    ]);
+    expect(ended[0]?.[1]).toBe(sent);
+  });
+
+  it("gives onSubmitted no value when the submit ends invalid", async () => {
+    const inputs: unknown[] = [];
+    const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (_submission, input) => void inputs.push(input) }) });
+    const store = createFormsCore({ plugins: [validation()] })
+      .define({ defaultValues: contact(), plugins: [end], validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } } })
+      .createStore();
+    await store.submit();
+    expect(inputs).toEqual([undefined]);
   });
 
   it("reports a rejected onSubmit and submits anyway", async () => {

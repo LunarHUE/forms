@@ -1,5 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "./plugins.js";
+import { baselineOnSubmit, dirty } from "./plugins/dirty.js";
 import { history } from "./plugins/history.js";
 import { type Rebase, rebase } from "./plugins/rebase.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -140,5 +141,45 @@ describe("the history plugin", () => {
     expect(button.disabled).toBe(true);
     // Only form.State re-rendered the button.
     expect(noteRendered).toHaveBeenCalledTimes(renders);
+  });
+});
+
+const settings = createForms({ plugins: [dirty()] }).define({
+  defaultValues: { name: "" },
+  plugins: [baselineOnSubmit()],
+  onSubmit: async () => "saved",
+});
+
+function SettingsPage() {
+  const form = useForm(settings);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.Field name="name">{(field) => <input aria-label="name" {...field.inputProps()} />}</form.Field>
+          <form.State select={(snapshot) => snapshot.dirty}>
+            {(changed) => (
+              <button type="submit" disabled={!changed}>
+                Save
+              </button>
+            )}
+          </form.State>
+        </form>
+      )}
+    </form.Form>
+  );
+}
+
+describe("the baselineOnSubmit plugin", () => {
+  it("disables the save button again after a successful save", async () => {
+    render(<SettingsPage />);
+    const button = screen.getByText<HTMLButtonElement>("Save");
+    fireEvent.change(screen.getByLabelText("name"), { target: { value: "Ada" } });
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(screen.getByLabelText<HTMLInputElement>("name").value).toBe("Ada");
+    expect(button.disabled).toBe(true);
   });
 });

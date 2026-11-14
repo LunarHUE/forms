@@ -58,7 +58,7 @@ export interface PluginHost {
    */
   submitting(settled: Promise<unknown>): Promise<boolean>;
   /** Calls `onSubmitted`. */
-  submitted(submission: Submission<unknown>): void;
+  submitted(submission: Submission<unknown>, input: unknown): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(): void;
   /** The `api` each plugin's setup returned, by plugin name. Filled by `start`. */
@@ -444,8 +444,8 @@ export function createPluginHost(
       }
       return Promise.all(work).then(() => refused);
     },
-    submitted(submission) {
-      each((hooks) => hooks.onSubmitted?.(submission));
+    submitted(submission, input) {
+      each((hooks) => hooks.onSubmitted?.(submission, input));
     },
     flush,
     apis,
