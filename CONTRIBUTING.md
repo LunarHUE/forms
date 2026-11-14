@@ -79,9 +79,23 @@ passes.
 
 ## Releases
 
-Maintainers do these. Each merge to `main` updates a "Version Packages" pull
-request that collects the pending changesets, bumps the versions and writes
-the changelogs. Merging that pull request publishes to npm.
+Maintainers do these, by hand for now.
+
+1. Each merge to `main` updates a "Version Packages" pull request. It collects
+   the pending changesets, bumps the versions and writes the changelogs. Merge
+   it when you want a release.
+2. On an up-to-date `main`, log in to npm and publish:
+
+   ```sh
+   npm login
+   bun run release
+   git push --follow-tags
+   ```
+
+`bun run release` builds, packs each package with Bun and publishes the
+tarballs in dependency order. It skips versions already on npm, so it is safe
+to run again after a failure. Never run `npm publish` inside a package
+folder. That ships `workspace:` versions nobody can install.
 
 ## Size
 
