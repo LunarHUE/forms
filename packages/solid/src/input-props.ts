@@ -1,4 +1,5 @@
 import { errorId, type FieldSnapshot, optionId, type Path } from "@lunarhue/forms-core";
+import { displayOf } from "./display.js";
 import type { ControlProps } from "./input.js";
 import { elementsOf } from "./refs.js";
 
@@ -88,14 +89,19 @@ function textProps(source: InputSource, options: AnyInputOptions | undefined, te
   const { handle, read } = source;
   const own = {
     get value() {
-      return asText(read().value);
+      const { value, meta } = read();
+      const shown = displayOf(meta);
+      return shown ? shown.display(value) : asText(value);
     },
     get readonly() {
       return read().readOnly;
     },
     onInput: (event: Event) => {
       const input = inputOf(event);
-      if (input) handle.setValue(input.value);
+      if (!input) return;
+      handle.setValue(input.value);
+      const { value, meta } = current(handle);
+      displayOf(meta)?.edit?.(input, value, event);
     },
   };
   // A textarea has no `type`. Defined, not assigned, so the getters above stay getters.

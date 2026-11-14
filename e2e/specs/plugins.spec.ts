@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { bindScenario, historyScenario, maskScenario, persistScenario } from "../contract/index.js";
 import { expect, input, open, probe, test } from "./fixtures.js";
 
@@ -35,6 +35,19 @@ test.describe("history", () => {
   });
 });
 
+/** Where an input's caret is. */
+const caret = (field: Locator) => field.evaluate((element: HTMLInputElement) => element.selectionStart);
+
+/** Focuses an input and selects from `start` to `end`, or puts the caret at `start`. */
+const select = (field: Locator, start: number, end = start) =>
+  field.evaluate(
+    (element: HTMLInputElement, [from, to]) => {
+      element.focus();
+      element.setSelectionRange(from, to);
+    },
+    [start, end] as const,
+  );
+
 test.describe("mask", () => {
   const { labels } = maskScenario;
 
@@ -47,6 +60,86 @@ test.describe("mask", () => {
     await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "5551234567" });
     await page.getByRole("button", { name: maskScenario.submit.idle }).click();
     await expect(page.getByRole("status")).toHaveText("Saved 5551234567.");
+  });
+
+  /** Opens the page with "(555) 123-4" in the phone input. */
+  async function phoneWith7Digits(page: Page): Promise<Locator> {
+    await open(page, "mask");
+    const phone = input(page, labels.phone);
+    await phone.fill("5551234");
+    await expect(phone).toHaveValue("(555) 123-4");
+    return phone;
+  }
+
+  test("typing in the middle keeps the caret after the typed digit", async ({ page }) => {
+    const phone = await phoneWith7Digits(page);
+    await select(phone, 7);
+    await page.keyboard.type("9");
+    await expect(phone).toHaveValue("(555) 192-34");
+    expect(await caret(phone)).toBe(8);
+    await page.keyboard.type("8");
+    await expect(phone).toHaveValue("(555) 198-234");
+    expect(await caret(phone)).toBe(10);
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "555198234" });
+  });
+
+  test("backspace just after an inserted character steps back across it", async ({ page }) => {
+    const phone = await phoneWith7Digits(page);
+    await select(phone, 10);
+    await page.keyboard.press("Backspace");
+    await expect(phone).toHaveValue("(555) 123-4");
+    expect(await caret(phone)).toBe(9);
+    await page.keyboard.press("Backspace");
+    await expect(phone).toHaveValue("(555) 124");
+    expect(await caret(phone)).toBe(8);
+    await select(phone, 6);
+    await page.keyboard.press("Backspace");
+    await expect(phone).toHaveValue("(555) 124");
+    expect(await caret(phone)).toBe(4);
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "555124" });
+  });
+
+  test("forward delete before an inserted character steps over it", async ({ page }) => {
+    const phone = await phoneWith7Digits(page);
+    await select(phone, 9);
+    await page.keyboard.press("Delete");
+    await expect(phone).toHaveValue("(555) 123-4");
+    expect(await caret(phone)).toBe(10);
+    await page.keyboard.press("Delete");
+    await expect(phone).toHaveValue("(555) 123");
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "555123" });
+  });
+
+  test("typing over a selection puts the caret after the typed digit", async ({ page }) => {
+    const phone = await phoneWith7Digits(page);
+    await select(phone, 6, 9);
+    await page.keyboard.type("7");
+    await expect(phone).toHaveValue("(555) 74");
+    expect(await caret(phone)).toBe(7);
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "55574" });
+  });
+
+  test("a paste puts the caret after the pasted digits", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const phone = await phoneWith7Digits(page);
+    await page.evaluate(() => navigator.clipboard.writeText("8-8"));
+    await select(phone, 6);
+    await page.keyboard.press("ControlOrMeta+V");
+    await expect(phone).toHaveValue("(555) 881-234");
+    expect(await caret(phone)).toBe(8);
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "555881234" });
+  });
+
+  test("a rejected character leaves the text and the caret as they were", async ({ page }) => {
+    const phone = await phoneWith7Digits(page);
+    await select(phone, 6);
+    await page.keyboard.type("a");
+    await expect(phone).toHaveValue("(555) 123-4");
+    expect(await caret(phone)).toBe(6);
+    await page.keyboard.type("9");
+    await expect(phone).toHaveValue("(555) 912-34");
+    expect(await caret(phone)).toBe(7);
+    await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "55591234" });
   });
 });
 

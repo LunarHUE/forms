@@ -49,7 +49,9 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   per task. It keeps `canUndo` and `canRedo` in its form meta, so an undo
   button can re-render. See below.
 - `mask`: cleans the value written at named fields before the store takes it,
-  with `digits` and `upper` as ready-made cleaners. See below.
+  with `digits` and `upper` as ready-made cleaners. A field can also get
+  display text, such as `(555) 123-4567` for `5551234567`, which its text
+  inputs show. See below.
 - `rules`: sets `disabled` and a `hidden` meta flag on named fields from the
   form value, when the store is made and after every write. What it sets
   when the store is made is in the server HTML, so a field a rule disables
@@ -141,6 +143,46 @@ It cleans every value that reaches a named field, whatever wrote it:
 - Rebases aren't. The incoming value is the server's copy, and the baseline
   moves to it as it came. Cleaning it would make the form dirty against its
   own baseline.
+
+#### Display text
+
+A cleaner alone changes what the store holds, not what the input shows. To
+show the value formatted, give the field an object with `clean` and
+`display` in place of the cleaner:
+
+```ts
+mask({
+  zip: digits,
+  phone: { clean: digits, display: formatPhone },
+});
+
+<input {...field.inputProps({ type: "tel" })} />
+```
+
+The input shows `(555) 123-4567`, the store and `field.value` hold
+`5551234567`, and `onSubmit` gets the digits. `display` gets the clean
+stored value and returns the text to show. Keep it a pure function of the
+value, since the server and the browser both call it. A value that isn't a
+string reaches it as `""`.
+
+Text inputs and textareas show the display text, on the server too, so the
+page hydrates with it. Number, checkbox, radio and select inputs ignore it.
+
+As the user types, the input keeps the caret where they are typing. It
+counts the characters before the caret that `clean` keeps, then puts the
+caret after as many in the new text. After typing or pasting, the caret
+also steps over the characters the display adds, so typing carries on past
+a `-`. After a backspace it doesn't, so the next backspace deletes a digit.
+A character `clean` drops leaves the text and the caret as they were.
+
+A field with only a cleaner shows the clean value, as before. When a
+cleaner changes the text, as `upper` does, a framework that rewrites the
+input may move the caret to the end. `{ clean: upper, display: (value) =>
+value }` keeps it in place.
+
+Give each field its display in one mask. When two masks, told apart by
+`name`, both give a field a display, the one that runs first wins: the
+input shows its text and keeps the caret with its `clean`.
 
 ### Rules
 
@@ -294,6 +336,47 @@ returns a `HookPlugin<A, N, M, F, MU, FU>`, where `MU` and `FU` are
 `undefined` by default and `never` when the definition gives `initialMeta`
 or `initialFormMeta`. `history()` is a
 `HookPlugin<HistoryApi, "history", never, HistoryMeta, undefined, never>`.
+
+#### Display text from a plugin
+
+A plugin can change what a field's text inputs show, as `mask` does. Set
+meta on the field that fits `FieldDisplay` from `@lunarhue/forms-core`, an
+object with these members:
+
+- `display(value)`: the text to show for the stored value.
+- `edit(input, value, event)`: optional. The adapter calls it after each
+  edit in the input, once the typed text went to the store. `input` still
+  holds the typed text and its caret, and `value` is the field's value now.
+  Put the display text in `input` and place the caret.
+
+The adapters look through the field's meta for the first slot with a
+`display` function, so they need no import of your plugin. Set it with
+`ctx.setMeta`. `initialMeta` isn't enough, since it never lands on the
+field. Make the object once and keep it, as selectors compare meta by
+identity. Set it in `setup` and it is in the server HTML.
+
+For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins/mask`,
+or the same path under your adapter. It takes the input, the text to show,
+a cleaner and the input event, and keeps the caret the way `mask` does.
+Pass the cleaner your `beforeWrite` runs, so the caret counts the
+characters the store keeps:
+
+```ts
+import { replaceText } from "@lunarhue/forms-core/plugins/mask";
+
+const shown: FieldDisplay = {
+  display: (value) => formatCard(String(value ?? "")),
+  edit: (input, value, event) => replaceText(input, formatCard(String(value ?? "")), cleanCard, event),
+};
+
+definePlugin({
+  name: "card",
+  setup(ctx: PluginContext<FieldDisplay>) {
+    ctx.setMeta(["card"], shown);
+    return {};
+  },
+});
+```
 
 ### Writes
 

@@ -1,6 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForm, createForms, useFormContext, type FieldApi } from "../index.js";
+import { createForm, createForms, createInputProps, useFormContext, type FieldApi } from "../index.js";
+import { digits, mask } from "../plugins/mask.js";
 import { rules } from "../plugins/rules.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -132,3 +133,24 @@ export function DeliveryApp() {
 export const deliveryHtml =
   '<form _hk=0 id="delivery" novalidate tabindex="-1">' +
   '<input _hk=1 aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>';
+
+/** Shows "5551234" as "(555) 123-4". */
+export function formatPhone(value: string): string {
+  if (value.length > 6) return `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6)}`;
+  if (value.length > 3) return `(${value.slice(0, 3)}) ${value.slice(3)}`;
+  return value;
+}
+
+const Contact = createForms().define({
+  defaultValues: { phone: "555 1234" },
+  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
+});
+
+/** A phone input whose mask gives it display text, so the server must render that text. */
+export function PhoneApp() {
+  const form = createForm(Contact);
+  return <input aria-label="phone" {...createInputProps(form.root.at("phone"), { type: "tel" })} />;
+}
+
+/** `PhoneApp`'s markup, as `renderToString` returns it. */
+export const phoneHtml = '<input _hk=1 aria-label="phone" value="(555) 123-4" type="tel" id="0--phone" name="phone" />';
