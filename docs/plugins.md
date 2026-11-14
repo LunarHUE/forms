@@ -36,9 +36,9 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   the value differs from its baseline, `store.changes()` lists the fields
   that differ, and a definition or `createForms` can take an `equals`
   comparison. Without it `dirty` is always false, `changes()` is empty and
-  `equals` is a type error. In development, the first read of `dirty` or
-  call to `changes()` on such a form logs the warning
-  [`dirty:untracked`](errors.md). Reset still goes back to the baseline, and
+  `equals` is a type error. In development, the first call to `changes()`
+  on such a form logs the warning [`dirty:untracked`](errors.md). Reading
+  `dirty` doesn't warn. Reset still goes back to the baseline, and
   `rebase` and `bind` still move it, since core keeps the baseline either
   way. Without `dirty`, `rebase` compares values by reference alone, so a
   date with the same time counts as changed and goes to your `resolve`.

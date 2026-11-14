@@ -138,19 +138,16 @@ plugin is installed on.
 
 ### `dirty:untracked`
 
-> This form read `dirty` or called `changes()`, but no plugin tracks dirty state, so `dirty` is always false and `changes()` is empty. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.
+> This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.
 
-A warning, logged in development only, once per form. Something read
-`dirty` from a field or form snapshot, from a `show` function's argument or
-from a field object, or called `changes()`, on a form whose plugins have no
-`dirty()`. Add `dirty()` from `<adapter>/plugins/dirty` to `plugins`, on
-`createForms` or on the definition.
+A warning, logged in development only, once per form. Something called
+`changes()` on a form whose plugins have no `dirty()`. Add `dirty()` from
+`<adapter>/plugins/dirty` to `plugins`, on `createForms` or on the
+definition.
 
-Spreading or serializing a snapshot doesn't count. In development, on a
-form without `dirty()`, `dirty` is a getter on the snapshot's prototype, so
-`Object.keys`, spread and `JSON.stringify` skip it and a copy has no
-`dirty`. A tool that reads `dirty` by name, such as an inspector, does
-trigger the warning.
+Reading `dirty` on such a form gives `false` and logs nothing. So when a
+Save button that waits for `dirty` never enables, first check that the form
+has `dirty()`.
 
 <a id="core:submit:unseen"></a>
 

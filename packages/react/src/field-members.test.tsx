@@ -1,9 +1,8 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createForms, type ExactFieldApi, useForm } from "./index.js";
 import { definePlugin } from "./plugins.js";
-import { dirty } from "./plugins/dirty.js";
 
 // A snapshot has `meta` only once a plugin sets some, so this sets it on
 // every field the test renders. Without it a field object would lack `meta`.
@@ -16,8 +15,7 @@ const marked = definePlugin({
   },
 });
 
-// With `dirty()`, `dirty` is a plain member. Development hides it on a form without.
-const forms = createForms({ plugins: [marked, dirty()] });
+const forms = createForms({ plugins: [marked] });
 const order = forms.define({
   defaultValues: { name: "", address: { city: "" }, rows: [{ title: "a" }] },
 });
@@ -117,25 +115,5 @@ describe("a field object's members", () => {
     expect(ownMembers("array")).toEqual(expectedMembers(arrayMembers));
     // An item's field type is the field type of its value, which has no `key`.
     expect(ownMembers("item")).toEqual(expectedMembers(objectMembers));
-  });
-});
-
-describe("a field object's `dirty` on a form without dirty()", () => {
-  it("warns when read, not when the object is spread", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const plain = createForms().define({ defaultValues: { name: "" } });
-    function Name() {
-      const form = useForm(plain);
-      return <form.Field name="name">{(api) => keep("plain", api)}</form.Field>;
-    }
-    render(<Name />);
-    // The form's field type gives `dirty`, and the test reads it from the field object.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const field = fields.get("plain") as ExactFieldApi<string> | undefined;
-    expect({ ...field }).not.toHaveProperty("dirty");
-    expect(warn).not.toHaveBeenCalled();
-    expect(field?.dirty).toBe(false);
-    expect(warn).toHaveBeenCalledOnce();
-    warn.mockRestore();
   });
 });

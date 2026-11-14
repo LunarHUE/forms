@@ -11,7 +11,6 @@ import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
 import { noValidation, type Validation, type ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
-import { warnUntracked } from "./untracked.js";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 declare const console: { warn(message: string): void };
@@ -65,13 +64,11 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin.dirty)?.dirty;
   // The core reads its own options: id, initial, disabled, readOnly and show.
-  // The object also names the store to the development warning about dirty tracking.
-  const coreOptions = {
+  const raw = createStoreCore<E, I, R>({
     ...options,
     // The core first calls this when something reads, after `baseline` below exists.
-    dirty: createDirty && ((path: Path, value: unknown) => baseline.dirty(path, value)),
-  };
-  const raw = createStoreCore<E, I, R>(coreOptions);
+    dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
+  });
   // Only a store with hook plugins gets a host, and only a store with a plugin
   // that brings the runner gets validation. The plugins bring that code with
   // them, so core neither carries nor runs it for a store without.
@@ -112,6 +109,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     itemValue: options.itemValue ?? (() => undefined),
   });
 
+  // Development only: `changes()` without `dirty()` warns once per store.
+  let warnedUntracked = false;
   const store: FormStore<V, E, I, R> = {
     id: core.id,
     get root() {
@@ -137,7 +136,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     changes:
       typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !createDirty
         ? (path) => {
-            warnUntracked(coreOptions);
+            if (!warnedUntracked) console.warn(problem("dirty:untracked"));
+            warnedUntracked = true;
             return baseline.changes(path);
           }
         : baseline.changes,
