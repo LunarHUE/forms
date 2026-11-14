@@ -3,10 +3,22 @@
   "baseBranch": "main",
   "access": "public",
   "ignore": [],
-  "fixed": [],
+  "fixed": [
+    [
+      "@lunarhue/forms-core",
+      "@lunarhue/forms-react",
+      "@lunarhue/forms-solid",
+      "@lunarhue/forms-schema",
+      "@lunarhue/forms-bind"
+    ]
+  ],
   "linked": [],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  },
   "format": "auto",
   "updateInternalDependencies": "patch",
   "commit": false,
-  "changelog": "@changesets/cli/changelog"
+  "changelog": ["@changesets/changelog-github", { "repo": "LunarHUE/forms" }]
 }
