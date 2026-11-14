@@ -1,4 +1,4 @@
-import type { HookPlugin, PluginContext, WriteRecord } from "../plugin.js";
+import type { HookPluginWithFormMeta, PluginContext, WriteRecord } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
 
 /** The API of `history`, as `form.plugins.history`. */
@@ -10,9 +10,9 @@ export interface HistoryApi {
 }
 
 /**
- * The meta `history` sets on the form. Read it from the form snapshot with
- * the plugin's reader, as `undoHistory.formMeta(snapshot)?.canUndo`. It is
- * undefined until a flag first changes. Read that as both false.
+ * The meta `history` keeps on the form. Read it from the form snapshot with
+ * the plugin's reader, as `undoHistory.formMeta(snapshot).canUndo`. Before
+ * the first step both flags are false.
  */
 export interface HistoryMeta {
   readonly canUndo: boolean;
@@ -23,6 +23,8 @@ export interface HistoryMeta {
 type Edit = Exclude<WriteRecord, { readonly type: "touched" | "disabled" | "readOnly" }>;
 
 type Step = readonly Edit[];
+
+const start: HistoryMeta = { canUndo: false, canRedo: false };
 
 const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]);
 
@@ -40,14 +42,15 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * The meta changes in the same notification as an undo, a redo or a reset.
  * After an edit it changes a microtask later, when the step is recorded.
  */
-export function history(limit = 100): HookPlugin<HistoryApi, "history", never, HistoryMeta> {
+export function history(limit = 100): HookPluginWithFormMeta<HistoryApi, "history", never, HistoryMeta> {
   return definePlugin({
     name: "history",
+    initialFormMeta: start,
     setup(ctx: PluginContext<never, HistoryMeta>) {
       const { store } = ctx;
       const done: Step[] = [];
       const undone: Step[] = [];
-      let meta: HistoryMeta = { canUndo: false, canRedo: false };
+      let meta = start;
 
       // Sets the form meta when a flag changed.
       const show = () => {

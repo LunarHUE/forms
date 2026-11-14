@@ -86,7 +86,7 @@ const undoHistory = history();
 const forms = createForms({ plugins: [undoHistory] });
 
 // Inside a component with a form of those forms.
-<form.State select={(snapshot) => undoHistory.formMeta(snapshot)?.canUndo ?? false}>
+<form.State select={(snapshot) => undoHistory.formMeta(snapshot).canUndo}>
   {(canUndo) => (
     <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
       Undo
@@ -95,10 +95,10 @@ const forms = createForms({ plugins: [undoHistory] });
 </form.State>;
 ```
 
-In Solid, read `undoHistory.formMeta(form.state)?.canUndo` in JSX. The meta
-is undefined until a flag first changes, which means both are false. The
-flags change in the same render as an undo, a redo or a reset. After an
-edit they change a microtask later, when `history` records the step.
+In Solid, read `undoHistory.formMeta(form.state).canUndo` in JSX. Both
+flags are false before the first step, on the server too. They change in
+the same render as an undo, a redo or a reset. After an edit they change a
+microtask later, when `history` records the step.
 
 ### What history can't do
 
@@ -170,6 +170,28 @@ So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
 `onActive`, which runs when the store gets its first listener. The server
 never listens, so it never runs there. `persist` restores in `onActive`.
+
+### Meta
+
+`ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field
+or on the form. Annotate `setup`'s parameter as `PluginContext<M, F>` to
+type them, and read them back with the plugin's `meta` and `formMeta`
+readers. Both return undefined until the plugin sets something. When the
+form meta has a sensible value before then, give it as `initialFormMeta`.
+`formMeta` returns it until the plugin sets its own, and its type drops
+`undefined`. The reader works it out from the snapshot alone, so the
+server and the first client render read the same value. `history` starts
+from `{ canUndo: false, canRedo: false }` this way:
+
+```ts
+definePlugin({
+  name: "history",
+  initialFormMeta: { canUndo: false, canRedo: false },
+  setup(ctx: PluginContext<never, HistoryMeta>) {
+    // ...
+  },
+});
+```
 
 ### Writes
 

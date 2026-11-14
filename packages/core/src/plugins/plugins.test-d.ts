@@ -1,5 +1,6 @@
 import type { FieldSnapshot, HookPlugin, PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { history, type HistoryMeta } from "@lunarhue/forms-core/plugins/history";
 import { validation } from "@lunarhue/forms-core/plugins/validation";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
@@ -34,6 +35,27 @@ describe("plugin types", () => {
     expectTypeOf(upload.formMeta(store.getFormSnapshot())).toEqualTypeOf<UploadFormMeta | undefined>();
     // The snapshots keep meta untyped, so no plugin needs a global declaration.
     expectTypeOf<FieldSnapshot<string>["meta"]>().toEqualTypeOf<Readonly<Record<string, unknown>> | undefined>();
+  });
+
+  it("drops undefined from formMeta when the definition gives initialFormMeta", () => {
+    const queue = definePlugin({
+      name: "queue",
+      initialFormMeta: { pending: 0 },
+      setup(ctx: PluginContext<UploadMeta, UploadFormMeta>) {
+        ctx.setFormMeta({ pending: 1 });
+        return {};
+      },
+    });
+    expectTypeOf(queue.formMeta({})).toEqualTypeOf<UploadFormMeta>();
+    // Field meta has no starting value, so it can still be undefined.
+    expectTypeOf(queue.meta({})).toEqualTypeOf<UploadMeta | undefined>();
+    expectTypeOf(history().formMeta({})).toEqualTypeOf<HistoryMeta>();
+    definePlugin({
+      name: "wrong",
+      // @ts-expect-error The form slot holds `{ pending }`.
+      initialFormMeta: { progress: 0 },
+      setup: (_ctx: PluginContext<UploadMeta, UploadFormMeta>) => ({}),
+    });
   });
 
   it("leaves meta unknown when setup's context isn't annotated", () => {
