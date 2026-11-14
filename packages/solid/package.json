@@ -1,5 +1,6 @@
 {
   "name": "@lunarhue/forms-solid",
+  "license": "MIT",
   "version": "0.0.0",
   "type": "module",
   "sideEffects": false,
