@@ -2,6 +2,10 @@
   "name": "@lunarhue/forms-solid",
   "license": "MIT",
   "version": "0.0.0",
+  "description": "Type-safe forms for Solid, with features as plugins.",
+  "keywords": ["form", "forms", "solid", "solid-js", "typescript", "validation"],
+  "homepage": "https://github.com/LunarHUE/forms#readme",
+  "bugs": "https://github.com/LunarHUE/forms/issues",
   "type": "module",
   "sideEffects": false,
   "repository": {

@@ -2,6 +2,10 @@
   "name": "@lunarhue/forms-schema",
   "license": "MIT",
   "version": "0.0.0",
+  "description": "Zod and Valibot plugins for forms.",
+  "keywords": ["form", "forms", "zod", "valibot", "standard-schema", "validation"],
+  "homepage": "https://github.com/LunarHUE/forms#readme",
+  "bugs": "https://github.com/LunarHUE/forms/issues",
   "type": "module",
   "sideEffects": false,
   "repository": {
