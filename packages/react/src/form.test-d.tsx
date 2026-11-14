@@ -580,3 +580,40 @@ describe("form.State", () => {
     expectTypeOf<UnknownForm["State"]>().toEqualTypeOf<FormStateComponent<unknown, unknown, UnknownForm>>();
   });
 });
+
+function Checkbox(props: { readonly field: FieldApi<boolean>; readonly label: string }) {
+  return (
+    <label>
+      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      {props.label}
+    </label>
+  );
+}
+
+interface Pickup {
+  pickup: boolean;
+  note: string;
+}
+
+const checkboxForms = createForms({ fields: { Checkbox, TextField } });
+const pickupOrder = checkboxForms.define({ defaultValues: { pickup: false, note: "" } satisfies Pickup });
+const pickupConst = checkboxForms.define({ defaultValues: { pickup: false, note: "" } as const });
+
+function PickupFields() {
+  const satisfied = useForm(pickupOrder);
+  const constant = useForm(pickupConst);
+  return (
+    <>
+      <satisfied.Checkbox name="pickup" label="Pickup" />
+      <satisfied.TextField name="note" label="Note" />
+      <constant.Checkbox name="pickup" label="Pickup" />
+    </>
+  );
+}
+
+describe("literals in defaultValues", () => {
+  it("widens false from satisfies or as const, so a FieldApi<boolean> component fits", () => {
+    expectTypeOf(PickupFields).toBeFunction();
+    expectTypeOf(useForm(pickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
+  });
+});

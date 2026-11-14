@@ -53,6 +53,7 @@ export type {
   PlatformBlob,
   PlatformFile,
   ShapeOf,
+  Widened,
 } from "./value.js";
 export type {
   ErrorMap,
