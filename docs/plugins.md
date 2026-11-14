@@ -315,6 +315,23 @@ only when the store has no actions. On a form's own `plugins`, the store's
 type must be the form's value type. On `createForms` and on a definition it
 isn't checked.
 
+`signal` binds a Solid 2 signal. Pass the getter and setter `createSignal`
+returns:
+
+```ts
+import { signal } from "@lunarhue/forms-bind/solid";
+
+const [settings, setSettings] = createSignal({ displayName: "Ada", timezone: "Europe/London" });
+const form = createForm(settingsForm, { plugins: [signal(settings, setSettings)] });
+```
+
+A form write sets the signal. A change to the signal reaches the form when
+Solid runs its effects. The binding makes the effect that watches the signal
+in a root of its own when the form gets its first listener, and disposes it
+when the form loses its last, so you write no `createRoot` or `createEffect`.
+On the server no effect runs. The signal's type is checked against the form's
+value type the same way as with `zustand`.
+
 `@lunarhue/forms-schema` and `@lunarhue/forms-bind` take
 `@lunarhue/forms-core` as a peer dependency.
 A plugin runs on the core copy it was made with, so the app must have one
