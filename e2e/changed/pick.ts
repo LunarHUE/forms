@@ -22,9 +22,15 @@ export interface Choice {
   readonly reasons: readonly string[];
 }
 
-/** True for a file that holds no code: docs, Markdown and changesets. */
+/** True for a file that holds no code: docs, Markdown, changesets and issue templates. */
 export function isDocs(file: string): boolean {
-  return file.startsWith("docs/") || file.startsWith(".changeset/") || file.endsWith(".md") || /(^|\/)LICENSE$/.test(file);
+  return (
+    file.startsWith("docs/") ||
+    file.startsWith(".changeset/") ||
+    file.startsWith(".github/ISSUE_TEMPLATE/") ||
+    file.endsWith(".md") ||
+    /(^|\/)LICENSE$/.test(file)
+  );
 }
 
 /** The package whose directory holds `file`, the innermost one when packages nest. */
