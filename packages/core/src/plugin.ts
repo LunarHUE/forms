@@ -246,6 +246,35 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   readonly initialFormMeta?: F;
 }
 
+/** The parts of a text input or textarea a `FieldDisplay` edits. Every `HTMLInputElement` and `HTMLTextAreaElement` fits. */
+export interface TextControl {
+  value: string;
+  readonly selectionStart: number | null;
+  setSelectionRange(start: number, end: number): void;
+}
+
+/**
+ * Field meta that changes what a text input shows. When a plugin's meta on
+ * a field is an object with a `display` function, the adapters' text and
+ * textarea props show `display(value)` instead of the value. The first such
+ * slot in the field's meta wins. Keep the object stable, since meta
+ * selectors compare it by identity.
+ */
+export interface FieldDisplay {
+  /** The text to show for the stored value. A pure function of it. */
+  readonly display: (value: unknown) => string;
+  /**
+   * Runs after each edit in a text input that shows this display, once the
+   * typed text went to the store. `input` still holds the typed text and
+   * its caret, `value` is the field's value now and `event` is the input
+   * event. Put the display text in `input` and place the caret, as
+   * `replaceText` from `@lunarhue/forms-core/plugins/mask` does. Without
+   * `edit` the framework puts the text in and the caret lands where the
+   * browser leaves it.
+   */
+  readonly edit?: (input: TextControl, value: unknown, event: object) => void;
+}
+
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
 export interface MetaSource {
   readonly meta?: Readonly<Record<string, unknown>> | undefined;

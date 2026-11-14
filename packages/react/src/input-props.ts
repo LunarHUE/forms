@@ -1,5 +1,6 @@
 import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
+import { displayOf } from "./display.js";
 import { type BaseInputProps, errorId, type FieldRef } from "./input.js";
 import { type NumberText, setNumberText } from "./number-text.js";
 import { refFor } from "./refs.js";
@@ -55,6 +56,12 @@ function kindOf(options: AnyInputOptions | undefined): Kind {
   return kind as Kind;
 }
 
+/** The text a text input shows: the field's display text when a plugin gives one, else the value. */
+function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
+  const shown = displayOf(meta);
+  return shown ? shown.display(value) : asText(value);
+}
+
 /** Shows `null` and `undefined` as `""`. */
 const asText = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" || typeof value === "boolean" || typeof value === "bigint" ? String(value) : "";
@@ -108,6 +115,8 @@ function changeHandler(handle: Commands, kind: Kind, option: unknown): Callbacks
     default:
       return (event) => {
         handle.setValue(event.target.value);
+        const { value, meta } = handle.peek();
+        displayOf(meta)?.edit?.(event.target, value, event.nativeEvent);
       };
   }
 }
@@ -168,9 +177,9 @@ function buildProps(
     case "select":
       return { ...base, value: asText(value), "aria-readonly": ariaReadOnly, onChange };
     case "textarea":
-      return { ...base, value: asText(value), readOnly, onChange };
+      return { ...base, value: textOf(snapshot), readOnly, onChange };
     default:
-      return { ...base, type: option ?? "text", value: asText(value), readOnly, onChange };
+      return { ...base, type: option ?? "text", value: textOf(snapshot), readOnly, onChange };
   }
 }
 

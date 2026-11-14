@@ -190,8 +190,7 @@
         "dist/esm/plugins/rebase.js": "{ rebase }",
         "dist/esm/plugins/bind.js": "{ bind }",
         "dist/esm/plugins/dirty.js": "{ dirty, baselineOnSubmit }"
-      },
-      "limit": "17 kB"
+      }
     }
   ]
 }

@@ -20,16 +20,13 @@ interface PhoneFieldProps {
   readonly label: string;
 }
 
-// The input shows the formatted number and sends what the user typed.
-// The mask strips that back to digits before the store takes it.
+// The mask gives the field its display text, so `inputProps` shows the
+// formatted number and keeps the caret where the user is typing.
 function PhoneField({ field, label }: PhoneFieldProps) {
   return (
     <label>
       {label}
-      <input
-        {...field.inputProps({ type: "tel" })}
-        value={formatPhone(field.value)}
-      />
+      <input {...field.inputProps({ type: "tel" })} />
     </label>
   );
 }
@@ -39,7 +36,7 @@ const forms = createForms({ fields: { PhoneField } });
 const contact = forms.define({
   defaultValues: { phone: "" },
   // The store only ever holds digits, so `onSubmit` gets digits.
-  plugins: [mask({ phone: digits })],
+  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
   onSubmit: (value) => value.phone,
 });
 

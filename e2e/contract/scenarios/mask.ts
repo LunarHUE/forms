@@ -13,15 +13,18 @@ function formatPhone(value: string): string {
 
 const labels = { phone: "Phone" };
 
-/** A phone number stored as digits and shown formatted. The starting value is cleaned too. */
+/**
+ * A phone number stored as digits and shown formatted. The mask gives the
+ * field its display text, so the input shows it with no override and keeps
+ * the caret in place. The starting value is cleaned too.
+ */
 export const maskScenario = {
   ...scenario("mask", "Mask", { values: { [labels.phone]: "(555) 000-1111" } }),
   labels,
-  formatPhone,
   submit: { idle: "Save", busy: "Saving..." },
   definition: {
     defaultValues: { phone: "555 000 1111" },
-    plugins: [mask({ phone: digits })] as const,
+    plugins: [mask({ phone: { clean: digits, display: formatPhone } })] as const,
     onSubmit: (value: { phone: string }) => `Saved ${value.phone}.`,
   },
 };

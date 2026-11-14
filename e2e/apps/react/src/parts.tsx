@@ -1,6 +1,5 @@
 import {
   countRender,
-  maskScenario,
   type ProbeSource,
   sharedPlugins,
   startProbe,
@@ -107,12 +106,12 @@ function Checkbox({ field, label }: FieldProps<boolean>) {
   );
 }
 
-/** Shows the digits the store holds as a formatted number. */
+/** A phone input. The mask's display shows the digits the store holds as a formatted number. */
 function PhoneField({ field, label }: FieldProps<string>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} type="tel" value={maskScenario.formatPhone(field.value)} />
+      <input {...field.inputProps({ type: "tel" })} />
       <ErrorList id={field.errorId} errors={field.shownErrors} />
       <Renders id={field.name} />
     </div>
