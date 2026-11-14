@@ -193,7 +193,7 @@ interface RuledTextProps {
 /** A text input that renders nothing while `rules` hides its field. */
 function RuledText({ field, label }: RuledTextProps) {
   useCommits(ruledCommits, label);
-  if (shippingRules.meta(field)?.hidden === true) return null;
+  if (shippingRules.meta(field).hidden) return null;
   return <input aria-label={label} {...field.inputProps()} />;
 }
 

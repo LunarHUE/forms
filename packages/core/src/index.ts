@@ -13,7 +13,6 @@ export type {
   HasSchemaPlugin,
   HasValidation,
   HookPlugin,
-  HookPluginWithFormMeta,
   IfDirty,
   IfValidation,
   MetaSource,

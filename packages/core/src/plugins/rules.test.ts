@@ -17,7 +17,7 @@ describe("rules", () => {
     const seen: unknown[] = [];
     store.subscribe(["shipping"], () => {
       const snapshot = store.getSnapshot(["shipping"]);
-      seen.push({ disabled: snapshot.disabled, hidden: ruleSet.meta(snapshot)?.hidden });
+      seen.push({ disabled: snapshot.disabled, hidden: ruleSet.meta(snapshot).hidden });
     });
     store.root.at("sameAsBilling").setValue(false);
     expect(seen).toEqual([{ disabled: false, hidden: false }]);
@@ -31,5 +31,17 @@ describe("rules", () => {
     expect(fields["shipping"]).toMatchObject({ disabled: true, meta: { rules: { hidden: true } } });
     expect(fields["shipping.street"]?.disabled).toBe(true);
     expect(server()).toEqual(testStore({ defaultValues: order(), plugins: [shippingRules()] }).server());
+  });
+
+  it("reads a field no rule names as shown, the same object on the server and the client", () => {
+    const ruleSet = shippingRules();
+    const { store, errors } = testStore({ defaultValues: order(), plugins: [ruleSet] });
+    const meta = ruleSet.meta(store.getSnapshot(["sameAsBilling"]));
+    expect(meta).toEqual({ hidden: false });
+    expect(store.getSnapshot(["sameAsBilling"])).toMatchObject({ disabled: false, readOnly: false });
+    // A selector that returns it stays stable, so React doesn't render again.
+    expect(ruleSet.meta(store.getSnapshot(["sameAsBilling"]))).toBe(meta);
+    expect(ruleSet.meta(store.getServerSnapshot(["sameAsBilling"]))).toBe(meta);
+    expect(errors).toEqual([]);
   });
 });

@@ -30,7 +30,7 @@ interface TextFieldProps {
 
 function TextField(props: TextFieldProps) {
   return (
-    <Show when={orderRules.meta(props.field)?.hidden !== true}>
+    <Show when={!orderRules.meta(props.field).hidden}>
       <label>
         {props.label}
         {/* `inputProps()` sets `disabled` from the field. */}

@@ -7,7 +7,7 @@ const { labels } = scenario;
 
 export function RulesPage() {
   const form = useForm(delivery);
-  const hidden = useField(form.root.at("message"), (snapshot) => scenario.deliveryRules.meta(snapshot)?.hidden === true);
+  const hidden = useField(form.root.at("message"), (snapshot) => scenario.deliveryRules.meta(snapshot).hidden);
   return (
     <>
       <form.Form>

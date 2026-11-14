@@ -187,7 +187,7 @@ function makeShipping(adapter: Adapter) {
 
   function RuledText({ field, label }: RuledTextProps) {
     useCommits(label);
-    if (shippingRules.meta(field)?.hidden === true) return null;
+    if (shippingRules.meta(field).hidden) return null;
     return <input aria-label={label} {...field.inputProps()} />;
   }
 

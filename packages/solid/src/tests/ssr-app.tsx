@@ -71,7 +71,7 @@ interface RuledTextProps {
 function RuledText(props: RuledTextProps) {
   return (
     <>
-      {shippingRules.meta(props.field)?.hidden === true ? null : <input aria-label={props.label} {...props.field.inputProps()} />}
+      {shippingRules.meta(props.field).hidden ? null : <input aria-label={props.label} {...props.field.inputProps()} />}
     </>
   );
 }
