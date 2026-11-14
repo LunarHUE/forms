@@ -1,6 +1,6 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { definePlugin, refuse } from "../plugins.js";
-import { dirty } from "../plugins/dirty.js";
+import { baselineOnSubmit, dirty } from "../plugins/dirty.js";
 import { history } from "../plugins/history.js";
 import { mask, upper as upperCase } from "../plugins/mask.js";
 import { type Rebase, rebase } from "../plugins/rebase.js";
@@ -174,6 +174,43 @@ describe("mask through the adapter", () => {
     flush();
     expect(skus()).toEqual(["AB-1"]);
     expect(getAs(host, "output", HTMLOutputElement).textContent).toBe("clean");
+  });
+});
+
+const Settings = createForms({ plugins: [dirty()] }).define({
+  defaultValues: { name: "" },
+  plugins: [baselineOnSubmit()],
+  onSubmit: async () => "saved",
+});
+
+function SettingsPage() {
+  const form = createForm(Settings);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.Field name="name">{(field) => <input {...field.inputProps()} />}</form.Field>
+          <button type="submit" disabled={!form.state.dirty}>
+            Save
+          </button>
+        </form>
+      )}
+    </form.Form>
+  );
+}
+
+describe("baselineOnSubmit through the adapter", () => {
+  it("disables the save button again after a successful save", async () => {
+    const { host } = mount(() => <SettingsPage />);
+    const button = getAs(host, "button", HTMLButtonElement);
+    typeText(get(host, "input"), "Ada");
+    flush();
+    expect(button.disabled).toBe(false);
+    getAs(host, "form", HTMLFormElement).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flush();
+    expect(get(host, "input").value).toBe("Ada");
+    expect(button.disabled).toBe(true);
   });
 });
 

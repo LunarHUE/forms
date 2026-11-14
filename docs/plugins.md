@@ -42,6 +42,9 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   `rebase` and `bind` still move it, since core keeps the baseline either
   way. Without `dirty`, `rebase` compares values by reference alone, so a
   date with the same time counts as changed and goes to your `resolve`.
+- `baselineOnSubmit`: from the same entry as `dirty`. When a submit
+  succeeds, the value it sent becomes the baseline, so the form is clean
+  again. See below.
 - `history`: undo and redo of the user's value and array writes, one step
   per task. It keeps `canUndo` and `canRedo` in its form meta, so an undo
   button can re-render. See below.
@@ -176,6 +179,41 @@ type, even when the call is written inside `plugins`.
 Read `hidden` with the plugin's own reader, `deliveryRules.meta(field).hidden`.
 A field no rule hides reads `{ hidden: false }`, so the reader never
 returns undefined.
+
+### Clean after a save
+
+Nothing moves the baseline when a save succeeds. A settings page that stays
+on screen after saving stays dirty, and its Save button never disables
+again. `baselineOnSubmit` fixes that. Import it from the `dirty` entry and
+put it on the definition:
+
+```ts
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-react/plugins/dirty";
+
+const forms = createForms({ plugins: [dirty()] });
+const settings = forms.define({ defaultValues, plugins: [baselineOnSubmit()], onSubmit: saveSettings });
+```
+
+When a submit ends `"succeeded"`, the value the definition's `onSubmit` got
+becomes the baseline. An invalid, refused or failed submit leaves the
+baseline alone, and so does a submit that a reset stops.
+
+- A field the user edits while the save runs keeps the newer text and stays
+  dirty. Typing the saved text back makes it clean.
+- Array items pair by the keys they had when the value was sent. An item
+  inserted, removed or moved during the save keeps its own dirty flag.
+- Moving the baseline writes no value, so `history` records no step.
+- Without `dirty()` nothing is dirty, but the baseline still moves, so a
+  later reset goes back to the saved value.
+
+You need it for a form that stays on screen after saving. You don't need it
+for a create form that navigates away after the save, for a search form, or
+for an app that refetches after saving and calls `rebase` with the fresh
+copy.
+
+The plugin trusts the value that was sent. When the server stores something
+else, such as a trimmed name or a new `updatedAt`, bring its copy in with
+`rebase`. That is `rebase`'s job.
 
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 
@@ -319,6 +357,20 @@ const captcha = definePlugin({
 their `onSubmit`. Returned from a promise it can't, since every `onSubmit`
 started when the submit did. A plugin doesn't know the form's error type,
 so the error it sets must fit the form's `mapError`, if it has one.
+
+### After a submit
+
+`onSubmitted(submission, input)` runs once a submit ends. `input` is the
+form value the definition's `onSubmit` got, read when validation finished,
+so it holds edits the user made while validation ran. It is undefined when
+the submit ended `"invalid"`. A submit that a reset stops never reaches
+`onSubmitted`.
+
+To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
+Each array in `value` pairs its items with the current items by index.
+`keep` changes that for one array, by its stable path: return `true` to
+keep the old baseline's pairing, or a list of item keys to pair with.
+`baselineOnSubmit` passes the keys each array had when the value was sent.
 
 ### Validation and starting values
 

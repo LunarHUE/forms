@@ -1,5 +1,6 @@
-import { dirty } from "@lunarhue/forms-core/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-core/plugins/dirty";
 import * as v from "valibot";
+import { fakeServer } from "../fake-server.js";
 import { scenario } from "../scenario.js";
 
 const Profile = v.object({
@@ -9,7 +10,7 @@ const Profile = v.object({
 
 const labels = { name: "Name", email: "Email", reset: "Reset", resetEmail: "Reset email" };
 
-/** Reset of the form and of one field, and `dirty()` driving a save button. */
+/** Reset of the form and of one field, `dirty()` driving a save button, and `baselineOnSubmit()` making a save clean. */
 export const dirtyScenario = {
   ...scenario("dirty", "Reset and dirty", {
     values: { [labels.name]: "Ada Lovelace", [labels.email]: "ada@example.com" },
@@ -21,7 +22,10 @@ export const dirtyScenario = {
   definition: {
     schema: Profile,
     defaultValues: { name: "Ada Lovelace", email: "ada@example.com" },
-    plugins: [dirty()] as const,
-    onSubmit: (value: v.InferOutput<typeof Profile>) => `Saved ${value.name}.`,
+    plugins: [dirty(), baselineOnSubmit()] as const,
+    onSubmit: async (value: v.InferOutput<typeof Profile>) => {
+      await fakeServer.save(value);
+      return `Saved ${value.name}.`;
+    },
   },
 };

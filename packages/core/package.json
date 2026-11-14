@@ -230,6 +230,13 @@
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
       "limit": "8.1 kB"
+    },
+    {
+      "name": "dirty() + baselineOnSubmit()",
+      "import": {
+        "dist/esm/plugins/dirty.js": "{ dirty, baselineOnSubmit }"
+      },
+      "limit": "3.1 kB"
     }
   ]
 }

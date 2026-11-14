@@ -144,7 +144,10 @@ export function createBaseline<V, E, I, R>(
 
   const move: PluginBaseline["move"] = (path, value, keep) => {
     // `buildKeys` calls this before the baseline changes, so `find` reads the old one.
-    place(path, value, (at, length) => (keep?.(at) ? (pairing(find(at)) ?? []) : currentKeys(at, length)));
+    place(path, value, (at, length) => {
+      const kept = keep?.(at);
+      return kept === true ? (pairing(find(at)) ?? []) : kept || currentKeys(at, length);
+    });
     core.recheckDirty();
   };
 
