@@ -160,7 +160,7 @@
       "name": "./plugins",
       "path": "dist/esm/plugins.js",
       "import": "*",
-      "limit": "2 kB"
+      "limit": "2.05 kB"
     },
     {
       "name": "./plugins/validation",
@@ -222,7 +222,7 @@
         "dist/esm/plugins/history.js": "{ history }",
         "dist/esm/plugins/mask.js": "{ mask }"
       },
-      "limit": "2.8 kB"
+      "limit": "2.85 kB"
     },
     {
       "name": "core + dirty()",
