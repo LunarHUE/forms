@@ -1,9 +1,8 @@
 name: Release
 
-# On every push to main, one of three things happens:
-#   - changesets are waiting: open or update the "Version Packages" PR
-#   - that PR was just merged: pack, publish to npm, tag, and create GitHub releases
-#   - neither: nothing
+# On every push to main with changesets waiting, open or update the
+# "Version Packages" PR. Publishing is by hand for now: `bun run release` on
+# main after that PR is merged. CONTRIBUTING.md has the steps.
 on:
   push:
     branches: [main]
@@ -11,15 +10,14 @@ on:
 # Every job asks for what it needs and nothing more.
 permissions: {}
 
-# One release at a time. A run in progress is never cancelled, since stopping a publish halfway
-# leaves some packages on npm and others not. A newer push waits behind it.
+# One run at a time, so two pushes never update the PR at once.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   select-mode:
-    # Forks get a copy of this workflow; only the real repo releases.
+    # Forks get a copy of this workflow; only the real repo opens the PR.
     if: github.repository == 'LunarHUE/forms'
     runs-on: ubuntu-latest
     permissions:
@@ -68,73 +66,3 @@ jobs:
         with:
           # Also updates bun.lock, which records each workspace package's version.
           script: bun run version
-
-  pack:
-    needs: select-mode
-    if: needs.select-mode.outputs.mode == 'publish'
-    runs-on: ubuntu-latest
-    # The build runs here, away from the job that can mint an npm publish token.
-    permissions:
-      contents: read
-    outputs:
-      pack-dir-artifact-id: ${{ steps.upload.outputs.artifact-id }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          # The packageManager field pins Bun.
-          bun-version-file: package.json
-          no-cache: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          package-manager-cache: false
-      - run: bun install --frozen-lockfile
-      # Packs with Bun rather than `changeset pack`, which uses npm pack and would ship
-      # `workspace:` and `catalog:` versions. See scripts/pack.ts.
-      - run: bun run release:pack --out-dir "$RUNNER_TEMP/changeset-pack"
-      - id: upload
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: changeset-pack
-          path: ${{ runner.temp }}/changeset-pack
-          if-no-files-found: error
-          retention-days: 30
-
-  publish:
-    needs: pack
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # push release tags and create GitHub releases
-      id-token: write # npm trusted publishing
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          # The packageManager field pins Bun.
-          bun-version-file: package.json
-          no-cache: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-      - name: Check npm supports trusted publishing
-        run: |
-          npm_version="$(npm --version)"
-          if [ "$(printf '%s\n' 11.5.1 "$npm_version" | sort -V | head -n 1)" != 11.5.1 ]; then
-            echo "::error::npm $npm_version is too old. Trusted publishing needs npm 11.5.1 or later."
-            exit 1
-          fi
-      # Only the Changesets CLI is needed here. No repo scripts run in the job holding id-token.
-      - run: bun install --frozen-lockfile --ignore-scripts
-      # Runs `changeset publish --from-pack-dir` on the tarballs from the pack job, in
-      # dependency order, skipping versions already on npm. npm adds provenance on its own
-      # when trusted publishing from a public repo.
-      - uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
-        with:
-          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}

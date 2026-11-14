@@ -76,7 +76,8 @@
     "e2e:changed": "bun e2e/run.ts",
     "changeset": "changeset",
     "version": "changeset version && bun install --lockfile-only",
-    "release:pack": "bun run build && bun scripts/pack.ts"
+    "release:pack": "bun run build && bun scripts/pack.ts",
+    "release": "rm -rf .release && bun run release:pack --out-dir .release && changeset publish --from-pack-dir .release"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
