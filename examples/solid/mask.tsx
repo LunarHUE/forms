@@ -27,8 +27,7 @@ function PhoneField(props: PhoneFieldProps) {
     <label>
       {props.label}
       <input
-        {...props.field.inputProps()}
-        type="tel"
+        {...props.field.inputProps({ type: "tel" })}
         value={formatPhone(props.field.value)}
       />
     </label>
