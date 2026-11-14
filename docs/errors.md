@@ -134,6 +134,56 @@ Thrown by `form.plugins.rebase`, as a `TypeError`. The handle passed to
 `rebase` belongs to another store. Pass a handle of the form the `rebase`
 plugin is installed on.
 
+<a id="core:submit:unseen"></a>
+
+### `submit:unseen`
+
+> A submit failed on errors at &lt;where&gt;, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.
+
+A warning, logged in development only, once per store. A submit failed, and
+the only errors are on the root or on an object or array field that nothing
+reads. The user sees nothing, and focus goes to the `<form>`.
+
+Every form should render its root errors. Errors land on the root in three
+ways:
+
+- The schema rejects the value as a whole, such as "Invalid type: Expected
+  Object but received undefined", or a check across fields has no path.
+- A server error comes back for the whole form, through `setErrors({ form })`.
+- An error names a field that doesn't exist, so it falls back to the root.
+
+Errors on an object or array field, such as an empty list that needs a row,
+stay on that field. Render them next to its fields.
+
+In React:
+
+```tsx
+const errors = useField(form.root, (snapshot) => snapshot.shownErrors);
+
+<ul id={errorId(form.root)}>
+  {errors.map((error) => (
+    <li key={error.message}>{error.message}</li>
+  ))}
+</ul>;
+```
+
+In Solid:
+
+```tsx
+const root = createField(form.root);
+
+<ul id={root.errorId}>
+  <For each={root.shownErrors}>{(error) => <li>{error.message}</li>}</For>
+</ul>;
+```
+
+Core can't see the page. It counts an error as read when something
+subscribes to its field, as `useField` and `createField` do. The warning
+stays quiet when any field with an error is read. It names only the root and
+fields that have fields read under them, since an unread field may be on a
+step the app shows after the submit. It can miss a case too. A component
+that reads the root's value, or a list's items, counts as reading its errors.
+
 ## React
 
 These come from `@lunarhue/forms-react`.

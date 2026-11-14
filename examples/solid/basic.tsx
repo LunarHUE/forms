@@ -1,5 +1,6 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import {
+  createField,
   createForm,
   createForms,
   type FieldApi,
@@ -87,6 +88,9 @@ function SubmitButton() {
 
 export default function SignUpForm() {
   const form = createForm(signUp);
+  // Errors on the form as a whole sit on the root, such as a
+  // server's. Without this list nothing would show them.
+  const root = createField(form.root);
   const result = () => {
     const submission = form.state.submission;
     return submission.status === "succeeded" ? submission.result : null;
@@ -95,6 +99,11 @@ export default function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
+          <ul id={root.errorId}>
+            <For each={root.shownErrors}>
+              {(error) => <li>{error.message}</li>}
+            </For>
+          </ul>
           <form.TextField name="name" label="Name" />
           <form.TextField name="email" label="Email" />
           <AddressFields field={form.root.at("address")} />
