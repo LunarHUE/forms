@@ -17,6 +17,7 @@
     "catalog": {
       "@arethetypeswrong/cli": "0.18.5",
       "@babel/core": "7.29.13",
+      "@changesets/changelog-github": "1.0.1",
       "@changesets/cli": "3.0.3",
       "@playwright/test": "1.64.1",
       "@size-limit/preset-small-lib": "14.3.0",
@@ -34,6 +35,7 @@
       "jsdom": "31.0.0",
       "oxlint": "1.93.0",
       "oxlint-tsgolint": "7.0.2007",
+      "pkg-pr-new": "0.0.93",
       "publint": "0.3.25",
       "react": "19.3.1",
       "react-dom": "19.3.1",
@@ -71,15 +73,20 @@
     "size": "bun run --filter './packages/*' size",
     "bench": "vitest bench --run",
     "e2e": "bun e2e/run.ts --all",
-    "e2e:changed": "bun e2e/run.ts"
+    "e2e:changed": "bun e2e/run.ts",
+    "changeset": "changeset",
+    "version": "changeset version && bun install --lockfile-only",
+    "release:pack": "bun run build && bun scripts/pack.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
+    "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
     "@size-limit/preset-small-lib": "catalog:",
     "eslint-plugin-react-hooks": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "pkg-pr-new": "catalog:",
     "publint": "catalog:",
     "size-limit": "catalog:",
     "tsdown": "catalog:",
