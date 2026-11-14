@@ -10,7 +10,7 @@ import type {
   Submission,
 } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
-import { For, Show, type Accessor } from "solid-js";
+import { For, Match, Show, Switch, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
@@ -276,6 +276,32 @@ describe("the form object", () => {
     if (submission.status === "succeeded") expectTypeOf(submission.result).toEqualTypeOf<SignupResult>();
     // @ts-expect-error: state is read-only
     form.state.submitting = true;
+  });
+
+  it("narrows the submission inside Show and Match with no helper", () => {
+    const form = createForm(Signup);
+    void (
+      <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+        {(submission) => {
+          expectTypeOf(submission().result).toEqualTypeOf<SignupResult>();
+          return <p>{submission().result.id}</p>;
+        }}
+      </Show>
+    );
+    void (
+      <Switch>
+        <Match when={form.state.submission.status === "submitting" && form.state.submission}>
+          {(submission) => {
+            expectTypeOf(submission().intent).toEqualTypeOf<Intent>();
+            return null;
+          }}
+        </Match>
+      </Switch>
+    );
+    // The same narrowing holds in a plain expression.
+    void (<p>{form.state.submission.status === "succeeded" && form.state.submission.result.id}</p>);
+    // @ts-expect-error: without the status check there is no result
+    void form.state.submission.result;
   });
 
   it("passes per-store options through the function form", () => {

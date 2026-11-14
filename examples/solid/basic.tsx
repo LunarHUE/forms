@@ -6,7 +6,7 @@ import {
   type HandleOf,
   useFormContext,
 } from "@lunarhue/forms-solid";
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
 import * as v from "valibot";
 
 // The schema validates the form and gives it its types.
@@ -87,10 +87,6 @@ function SubmitButton() {
 
 export default function SignUpForm() {
   const form = createForm(signUp);
-  const result = () => {
-    const submission = form.state.submission;
-    return submission.status === "succeeded" ? submission.result : null;
-  };
   return (
     <form.Form>
       {(formProps) => (
@@ -99,7 +95,12 @@ export default function SignUpForm() {
           <form.TextField name="email" label="Email" />
           <AddressFields field={form.root.at("address")} />
           <SubmitButton />
-          <p role="status">{result()}</p>
+          <p role="status">
+            {/* The status check narrows the submission, so the callback can read `result`. */}
+            <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+              {(submission) => submission().result}
+            </Show>
+          </p>
         </form>
       )}
     </form.Form>
