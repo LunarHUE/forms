@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # "/" covers the workflows. The composite actions need their own entry.
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Dependabot reads bun.lock and the root catalogs.
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dependencies:
+        patterns: ["*"]
+    ignore:
+      # The react16, react17 and react18 catalogs pin the oldest React each
+      # compatibility suite tests, and must not move. Dependabot can't tell
+      # those catalogs apart from the default one, so React is bumped by hand.
+      - dependency-name: react
+      - dependency-name: react-dom
