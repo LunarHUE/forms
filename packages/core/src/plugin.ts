@@ -329,7 +329,9 @@ export type AnyPlugin = Plugin<any, any, any, any>;
 
 /**
  * Plugins that fit a form of value type `V`. A plugin that names the value
- * type it works on, as `bind` does, must name `V`. Every other plugin fits.
+ * type it works on says through `"~value"` how it must match `V`: `bind`
+ * must name `V` itself, and `rules` a type `V` is assignable to. Every
+ * other plugin fits.
  */
 export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: V) => V })[];
 

@@ -215,8 +215,12 @@ export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O 
   ): FormStore<V, E, I, R, PluginApis<Combined<P, X>>>;
 }
 
-/** A definition's config with `plugins`, the plugins it installs for itself. */
-export type WithPlugins<T, D extends Plugins> = T & {
+/**
+ * A definition's config with `plugins`, the plugins it installs for itself.
+ * `V` is the form's value type, which a plugin that names one, such as
+ * `rules<V>`, must fit.
+ */
+export type WithPlugins<T, D extends Plugins, V> = T & {
   /**
    * Plugins for this form only, such as one bound to an outside store this
    * form alone uses. Any kind of plugin goes here, as in the shared list.
@@ -224,7 +228,7 @@ export type WithPlugins<T, D extends Plugins> = T & {
    * together: `schema` and `validate` are checked against both, and the
    * APIs of both are on the store's `plugins`.
    */
-  readonly plugins?: D;
+  readonly plugins?: D & PluginsFor<V>;
 };
 
 /** The plugins a definition's stores get: the shared ones, then the definition's own. */
@@ -272,8 +276,8 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
 
 /** What `define` takes: a config, or a function of per-store options that returns one. `C` is every plugin the form gets. */
 export type DefineConfig<V, S extends StandardSchemaV1, O, C extends Plugins, E, I, R, D extends Plugins> =
-  | WithPlugins<Definition<V, S, C, E, I, R>, D>
-  | ((options: O) => WithPlugins<Definition<V, S, C, E, I, R>, D>);
+  | WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>>
+  | ((options: O) => WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>>);
 
 /** A definition's config: `SchemaDefinition` when `S` is a schema, `PlainDefinition` when it is `never`. */
 export type Definition<V, S extends StandardSchemaV1, P extends Plugins, E, I, R> = [S] extends [never]
