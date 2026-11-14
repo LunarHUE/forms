@@ -134,6 +134,21 @@ Thrown by `form.plugins.rebase`, as a `TypeError`. The handle passed to
 `rebase` belongs to another store. Pass a handle of the form the `rebase`
 plugin is installed on.
 
+<a id="core:dirty:untracked"></a>
+
+### `dirty:untracked`
+
+> This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.
+
+A warning, logged in development only, once per form. Something called
+`changes()` on a form whose plugins have no `dirty()`. Add `dirty()` from
+`<adapter>/plugins/dirty` to `plugins`, on `createForms` or on the
+definition.
+
+Reading `dirty` on such a form gives `false` and logs nothing. So when a
+Save button that waits for `dirty` never enables, first check that the form
+has `dirty()`.
+
 <a id="core:submit:unseen"></a>
 
 ### `submit:unseen`
