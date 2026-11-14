@@ -137,6 +137,42 @@ It cleans every value that reaches a named field, whatever wrote it:
   moves to it as it came. Cleaning it would make the form dirty against its
   own baseline.
 
+### Rules
+
+`rules` takes a map from a field's dotted name, the same name a `name` prop
+takes, to a rule. Each rule gets the whole form value and returns the
+field's `disabled` and `hidden` flags. Name the form's value type:
+
+```ts
+interface Delivery {
+  pickup: boolean;
+  gift: boolean;
+  address: { street: string; city: string };
+  message: string;
+}
+
+const deliveryRules = rules<Delivery>({
+  address: (value) => ({ disabled: value.pickup }),
+  message: (value) => ({ hidden: !value.gift }),
+});
+
+const delivery = forms.define({ defaultValues, plugins: [deliveryRules] });
+```
+
+The compiler checks both ends. A name that isn't a field of `Delivery`,
+such as `"adress"`, is a type error, and so is putting `deliveryRules` on a
+form whose value isn't a `Delivery`, in a definition's `plugins` or a
+store's own. Leaving out the type is an error too, since there would be
+nothing to check the names against. A form may have fields `Delivery`
+doesn't name. Names go through objects only, so a rule can't name an array
+item. Give the array a rule, or the object around it.
+
+`rules` can't take the type from the definition it sits in. TypeScript
+works out a call such as `rules({ ... })` before it knows the form's value
+type, even when the call is written inside `plugins`.
+
+Read `hidden` with the plugin's own reader, `deliveryRules.meta(field)?.hidden`.
+
 To write your own hook plugin, use `definePlugin` from `<adapter>/plugins`.
 
 ## Writing a plugin

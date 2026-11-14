@@ -1,6 +1,7 @@
-import type { Path } from "../path.js";
+import type { FieldPath, Path } from "../path.js";
 import type { HookPlugin, PluginContext } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
+import type { IsUnknown } from "../value.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
 export interface RuleResult {
@@ -13,25 +14,54 @@ export interface RulesMeta {
   readonly hidden: boolean;
 }
 
+/** A rule. It gets the whole form value and returns its field's flags. */
+export type Rule<V> = (value: V) => RuleResult;
+
+/**
+ * What `rules` takes when `V` is left out. The compiler names the missing
+ * property, which says what to write.
+ */
+export interface RulesNeedValueType {
+  readonly "Name the form's value type, as rules<Order>({ ... })": never;
+}
+
+/** What `rules` takes: a rule for each field, keyed by the field's dotted name, as `name` props take it. */
+export type RuleFields<V> = IsUnknown<V> extends true ? RulesNeedValueType : { readonly [P in FieldPath<V>]?: Rule<V> };
+
+/** The plugin `rules` returns. `V` is the value type its rules take. */
+export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta> {
+  /**
+   * Type information only, always undefined at runtime. It lets a form check
+   * that its value fits `V`, since the rules get the form's value as a `V`.
+   */
+  readonly "~value"?: (value: V) => never;
+}
+
 /**
  * Derives each named field's `disabled` flag and a `hidden` meta flag from
- * the form value. `fields` maps a dotted stable path, such as
- * `"address.state"`, to a rule that gets the whole value. Rules run when the
- * store is made and after every batch that wrote a value, before
- * listeners, so the flags land in the same render as the value.
+ * the form value. `fields` maps a field's dotted name, such as
+ * `"address.state"`, to a rule that gets the whole value. Names go through
+ * objects only, as `name` props do, so a rule can't name an array item.
+ * Rules run when the store is made and after every batch that wrote a value,
+ * before listeners, so the flags land in the same render as the value.
+ *
+ * Name the form's value type, as `rules<Order>({ ... })`. A name that isn't
+ * a field of `Order` is a type error, and so is installing the plugin on a
+ * form whose value isn't an `Order`.
  *
  * What the rules set when the store is made is part of its starting state,
  * so the server renders it and hydration sees the same flags. Disabling an
  * object, such as `"shipping"`, disables every field below it.
  */
-// `V` only types the rules for the caller. The plugin hands them the store's value as a `V`.
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
-export function rules<V>(fields: Readonly<Record<string, (value: V) => RuleResult>>): HookPlugin<undefined, "rules", RulesMeta> {
-  const plugin: HookPlugin<undefined, "rules", RulesMeta> = definePlugin({
+export function rules<V>(fields: RuleFields<V>): RulesPlugin<V> {
+  const plugin: RulesPlugin<V> = definePlugin({
     name: "rules",
     setup(ctx: PluginContext<RulesMeta>) {
       const { store } = ctx;
-      const list = Object.entries(fields).map(([name, rule]): [Path, (value: V) => RuleResult] => [name.split("."), rule]);
+      // The parameter's type checked each name against `V`. Here they are plain strings.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const named = fields as Readonly<Record<string, Rule<V>>>;
+      const list = Object.entries(named).map(([name, rule]): [Path, Rule<V>] => [name.split("."), rule]);
       const apply = () => {
         // The root value is the form's value, of type V.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
