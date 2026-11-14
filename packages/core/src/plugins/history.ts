@@ -1,4 +1,4 @@
-import type { HookPluginWithFormMeta, PluginContext, WriteRecord } from "../plugin.js";
+import type { HookPlugin, PluginContext, WriteRecord } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
 
 /** The API of `history`, as `form.plugins.history`. */
@@ -42,7 +42,7 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * The meta changes in the same notification as an undo, a redo or a reset.
  * After an edit it changes a microtask later, when the step is recorded.
  */
-export function history(limit = 100): HookPluginWithFormMeta<HistoryApi, "history", never, HistoryMeta> {
+export function history(limit = 100): HookPlugin<HistoryApi, "history", never, HistoryMeta, undefined, never> {
   return definePlugin({
     name: "history",
     initialFormMeta: start,

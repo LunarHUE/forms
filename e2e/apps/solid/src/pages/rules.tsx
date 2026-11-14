@@ -23,7 +23,7 @@ export function RulesPage() {
               <form.TextField name="address.city" label={labels.city} />
             </fieldset>
             <form.Checkbox name="gift" label={labels.gift} />
-            <Show when={scenario.deliveryRules.meta(message)?.hidden !== true}>
+            <Show when={!scenario.deliveryRules.meta(message).hidden}>
               <form.TextField name="message" label={labels.message} />
             </Show>
             <SubmitButton {...scenario.submit} />
