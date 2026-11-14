@@ -1,14 +1,27 @@
 # forms
 
-Forms for React, Solid and Vue, with the form logic in one small core that
-knows nothing about any of them.
+Forms for React and Solid, with the form logic in one small core that knows
+nothing about either. A Vue adapter is planned.
 
 We wrote it because we wanted three things at once: field names the compiler
 checks, a bundle well under what the big form libraries ship, and a way to add
 features without everyone paying for them. So the core does values, arrays and
 submit. Validation, undo, masks and the rest are plugins you install.
 
-Nothing is published yet.
+## Install
+
+```sh
+npm install @lunarhue/forms-react    # React 16.8 and later
+npm install @lunarhue/forms-solid    # Solid 2, and Solid 1 at ./v1
+```
+
+The adapter brings the core and the plugins that need no other library. Add
+these when you want them:
+
+```sh
+npm install @lunarhue/forms-schema zod    # or valibot
+npm install @lunarhue/forms-bind          # Zustand or a Solid signal
+```
 
 ## What it looks like
 
@@ -169,7 +182,6 @@ Type `name="emial"` and the build fails. Same if you pass `schema` or
 | `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
 | `@lunarhue/forms-react`  | React adapter, React 16.8 and later              |
 | `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
-| `@lunarhue/forms-vue`    | Vue 3 adapter                                    |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
 | `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
 

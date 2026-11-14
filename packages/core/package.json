@@ -2,6 +2,10 @@
   "name": "@lunarhue/forms-core",
   "license": "MIT",
   "version": "0.0.0",
+  "description": "The framework-free core of forms: values, arrays, submit and plugins.",
+  "keywords": ["form", "forms", "headless", "typescript", "validation"],
+  "homepage": "https://github.com/LunarHUE/forms#readme",
+  "bugs": "https://github.com/LunarHUE/forms/issues",
   "type": "module",
   "sideEffects": false,
   "repository": {
