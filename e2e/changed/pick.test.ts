@@ -104,15 +104,22 @@ describe("pickFrameworks", () => {
 });
 
 describe("isDocs", () => {
-  it.each(["docs/errors.md", "README.md", "packages/core/CHANGELOG.md", ".changeset/x.md", "LICENSE"])(
-    "counts %s as docs",
-    (file) => expect(isDocs(file)).toBe(true),
-  );
+  it.each([
+    "docs/errors.md",
+    "README.md",
+    "packages/core/CHANGELOG.md",
+    ".changeset/x.md",
+    "LICENSE",
+    ".github/ISSUE_TEMPLATE/bug.yml",
+  ])("counts %s as docs", (file) => expect(isDocs(file)).toBe(true));
 
-  it.each(["package.json", "packages/core/src/index.ts", "docs-site/index.ts", "e2e/contract/styles.css"])(
-    "counts %s as code",
-    (file) => expect(isDocs(file)).toBe(false),
-  );
+  it.each([
+    "package.json",
+    "packages/core/src/index.ts",
+    "docs-site/index.ts",
+    "e2e/contract/styles.css",
+    ".github/workflows/ci.yml",
+  ])("counts %s as code", (file) => expect(isDocs(file)).toBe(false));
 });
 
 describe("readWorkspace", () => {

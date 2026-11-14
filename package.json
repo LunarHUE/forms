@@ -11,7 +11,8 @@
       "examples/*",
       "parked/*",
       "e2e",
-      "e2e/apps/*"
+      "e2e/apps/*",
+      "scripts"
     ],
     "catalog": {
       "@arethetypeswrong/cli": "0.18.5",
@@ -63,7 +64,7 @@
   },
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './examples/*' --filter './parked/*' --filter './e2e' --filter './e2e/apps/*' typecheck",
+    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './examples/*' --filter './parked/*' --filter './e2e' --filter './e2e/apps/*' --filter './scripts' typecheck",
     "lint": "oxlint",
     "test": "vitest run",
     "check:package": "bun run --filter './packages/*' check:package",

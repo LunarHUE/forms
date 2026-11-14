@@ -229,6 +229,14 @@
         "react",
       ],
     },
+    "scripts": {
+      "name": "@lunarhue/forms-scripts",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
   },
   "catalog": {
     "@arethetypeswrong/cli": "0.18.5",
@@ -435,6 +443,8 @@
     "@lunarhue/forms-react-compat-18": ["@lunarhue/forms-react-compat-18@workspace:packages/react/compat/react-18"],
 
     "@lunarhue/forms-schema": ["@lunarhue/forms-schema@workspace:packages/schema"],
+
+    "@lunarhue/forms-scripts": ["@lunarhue/forms-scripts@workspace:scripts"],
 
     "@lunarhue/forms-solid": ["@lunarhue/forms-solid@workspace:packages/solid"],
 

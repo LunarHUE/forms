@@ -9,6 +9,15 @@ const picked = process.env["E2E_FRAMEWORKS"]?.split(",").filter((name) => name !
 const selected: readonly Framework[] =
   picked === undefined ? frameworks : frameworks.filter((framework) => picked.includes(framework.name));
 
+// E2E_BROWSER runs every framework in another browser. Unset or empty, it is Chromium.
+const browsers = { chromium: "Desktop Chrome", firefox: "Desktop Firefox", webkit: "Desktop Safari" } as const;
+const isBrowser = (name: string): name is keyof typeof browsers => Object.hasOwn(browsers, name);
+const browser = process.env["E2E_BROWSER"] || "chromium";
+if (!isBrowser(browser)) {
+  throw new Error(`E2E_BROWSER is ${browser}. Use one of ${Object.keys(browsers).join(", ")}.`);
+}
+const device = devices[browsers[browser]];
+
 const origin = (framework: Framework): string => `http://127.0.0.1:${framework.port}`;
 
 export default defineConfig<Options>({
@@ -23,7 +32,7 @@ export default defineConfig<Options>({
   // One project per framework, all running the same specs.
   projects: selected.map((framework) => ({
     name: framework.name,
-    use: { ...devices["Desktop Chrome"], baseURL: origin(framework), framework },
+    use: { ...device, baseURL: origin(framework), framework },
   })),
   // One production build and one server per framework, stopped when the run ends.
   webServer: selected.map((framework) => ({
