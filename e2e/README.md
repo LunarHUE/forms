@@ -24,6 +24,15 @@ bun run e2e -- --grep arrays             # anything after -- goes to Playwright
 
 Playwright needs Chromium once: `bunx playwright install chromium` in `e2e`.
 
+Every framework runs in Chromium. Set `E2E_BROWSER` to `firefox` or `webkit`
+to run them all in that browser instead, after installing it the same way:
+
+```sh
+E2E_BROWSER=firefox bun run e2e
+```
+
+CI runs Chromium on every pull request and all three browsers once a week.
+
 Each run builds the apps it needs once, in production mode, and starts one
 server per app on its own port (4311 for React, 4312 for Solid). Playwright
 stops them when the run ends. Specs run in parallel.
@@ -37,8 +46,9 @@ contract and the contract imports the library from source. `run.ts` sets it.
 It lists the files changed against the base (committed, uncommitted and
 untracked), then:
 
-- Docs (`docs/`, Markdown anywhere, changesets) count for nothing. Docs alone
-  run nothing.
+- Docs (`docs/`, Markdown anywhere, changesets, `LICENSE`, issue templates)
+  count for nothing. Docs alone run nothing. CI uses the same rule to skip
+  its checks on a docs-only change.
 - A file outside every workspace package, such as root config or `bun.lock`,
   runs every framework.
 - A file inside a package runs every framework whose app depends on that
