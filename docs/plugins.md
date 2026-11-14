@@ -36,7 +36,9 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   the value differs from its baseline, `store.changes()` lists the fields
   that differ, and a definition or `createForms` can take an `equals`
   comparison. Without it `dirty` is always false, `changes()` is empty and
-  `equals` is a type error. Reset still goes back to the baseline, and
+  `equals` is a type error. In development, the first call to `changes()`
+  on such a form logs the warning [`dirty:untracked`](errors.md). Reading
+  `dirty` doesn't warn. Reset still goes back to the baseline, and
   `rebase` and `bind` still move it, since core keeps the baseline either
   way. Without `dirty`, `rebase` compares values by reference alone, so a
   date with the same time counts as changed and goes to your `resolve`.
@@ -174,7 +176,9 @@ item. Give the array a rule, or the object around it.
 works out a call such as `rules({ ... })` before it knows the form's value
 type, even when the call is written inside `plugins`.
 
-Read `hidden` with the plugin's own reader, `deliveryRules.meta(field)?.hidden`.
+Read `hidden` with the plugin's own reader, `deliveryRules.meta(field).hidden`.
+A field no rule hides reads `{ hidden: false }`, so the reader never
+returns undefined.
 
 ### Clean after a save
 
@@ -250,12 +254,14 @@ never listens, so it never runs there. `persist` restores in `onActive`.
 `ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field
 or on the form. Annotate `setup`'s parameter as `PluginContext<M, F>` to
 type them, and read them back with the plugin's `meta` and `formMeta`
-readers. Both return undefined until the plugin sets something. When the
-form meta has a sensible value before then, give it as `initialFormMeta`.
-`formMeta` returns it until the plugin sets its own, and its type drops
-`undefined`. The reader works it out from the snapshot alone, so the
-server and the first client render read the same value. `history` starts
-from `{ canUndo: false, canRedo: false }` this way:
+readers. Both return undefined until the plugin sets something.
+
+When the meta has a sensible value before then, give it as `initialMeta`
+for fields or `initialFormMeta` for the form. The reader returns it until
+the plugin sets its own, and its type drops `undefined`. The reader works it
+out from the snapshot alone, so the server and the first client render read
+the same value. `history` starts from `{ canUndo: false, canRedo: false }`
+this way:
 
 ```ts
 definePlugin({
@@ -266,6 +272,28 @@ definePlugin({
   },
 });
 ```
+
+Every field shares the one `initialMeta` value. Freeze it and keep it in
+one place, so a selector that returns it gets the same object each time.
+`rules` starts every field as shown:
+
+```ts
+const shown: RulesMeta = Object.freeze({ hidden: false });
+
+definePlugin({
+  name: "rules",
+  initialMeta: shown,
+  setup(ctx: PluginContext<RulesMeta>) {
+    // ...
+  },
+});
+```
+
+The plugin's type says which readers can return undefined. `definePlugin`
+returns a `HookPlugin<A, N, M, F, MU, FU>`, where `MU` and `FU` are
+`undefined` by default and `never` when the definition gives `initialMeta`
+or `initialFormMeta`. `history()` is a
+`HookPlugin<HistoryApi, "history", never, HistoryMeta, undefined, never>`.
 
 ### Writes
 

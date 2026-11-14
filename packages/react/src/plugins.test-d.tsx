@@ -1,5 +1,6 @@
 import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin } from "./plugins.js";
+import { dirty } from "./plugins/dirty.js";
 import { validation } from "./plugins/validation.js";
 import { describe, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
@@ -129,6 +130,14 @@ describe("plugins on the definition", () => {
     expectTypeOf(Page).toBeFunction();
     expectTypeOf<FormOf<typeof checked>["plugins"]["counter"]["count"]>().toEqualTypeOf<() => number>();
     expectTypeOf(forms.define({ schema: profileSchema, plugins: [fakePlugin] })).toBeObject();
+  });
+
+  it("satisfy that form's equals, next to the shared plugins' APIs", () => {
+    const shared = createForms({ plugins: [counter], fields: { TextField } });
+    const tracked = shared.define({ defaultValues: { name: "" }, plugins: [dirty()], equals: (a, b, _ctx, next) => next(a, b) });
+    expectTypeOf<FormOf<typeof tracked>["plugins"]["counter"]["count"]>().toEqualTypeOf<() => number>();
+    // @ts-expect-error: no plugin brings dirty tracking
+    shared.define({ defaultValues: { name: "" }, equals: (a: unknown, b: unknown) => a === b });
   });
 });
 

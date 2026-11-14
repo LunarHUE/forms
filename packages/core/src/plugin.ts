@@ -236,10 +236,13 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   /** Gives the form's starting value. See `Plugin.initial`. */
   initial?(value: unknown): unknown;
   /**
-   * The plugin's form meta before it sets any. The `formMeta` reader
-   * returns it until then, on the server and in the browser alike, so the
-   * reader's type has no `undefined`.
+   * The plugin's meta on a field before it sets any there. The `meta`
+   * reader returns it until then, on the server and in the browser alike,
+   * so the reader's type has no `undefined`. Every field shares it, so a
+   * frozen object keeps a selector that returns it stable.
    */
+  readonly initialMeta?: M;
+  /** The plugin's form meta before it sets any. The `formMeta` reader returns it as `meta` returns `initialMeta`. */
   readonly initialFormMeta?: F;
 }
 
@@ -296,25 +299,19 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
 
 /**
  * A plugin with hooks, as `definePlugin` makes it. `A` is its API, `N` its
- * name, `M` its meta on a field and `F` its meta on the form.
+ * name, `M` its meta on a field and `F` its meta on the form. `MU` and `FU`
+ * are what `meta` and `formMeta` return where the plugin has set nothing:
+ * `undefined`, or `never` when the definition gave `initialMeta` or
+ * `initialFormMeta`, since the reader returns that instead.
  */
-export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown> extends Plugin<A, N, M, F> {
+export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown, MU extends undefined = undefined, FU extends undefined = undefined>
+  extends Plugin<A, N, M, F> {
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
   readonly "~host": CreateHost;
-  /**
-   * Reads this plugin's meta from a field snapshot or a field object, as
-   * `rules.meta(field)?.hidden`. Undefined until the plugin sets some there.
-   */
-  meta(source: MetaSource): M | undefined;
-  /** Reads this plugin's meta from the form snapshot. Undefined until the plugin sets some. */
-  formMeta(source: MetaSource): F | undefined;
-}
-
-/** A hook plugin whose definition gave `initialFormMeta`, so its form meta is never undefined. */
-export interface HookPluginWithFormMeta<A = undefined, N extends string = string, M = unknown, F = unknown>
-  extends HookPlugin<A, N, M, F> {
-  /** Reads this plugin's meta from the form snapshot, or its `initialFormMeta` while it has set none. */
-  formMeta(source: MetaSource): F;
+  /** Reads this plugin's meta from a field snapshot or a field object, as `rules.meta(field).hidden`. */
+  meta(source: MetaSource): M | MU;
+  /** Reads this plugin's meta from the form snapshot. */
+  formMeta(source: MetaSource): F | FU;
 }
 
 /** A plugin that brings a schema adapter for schemas of type `S`, and the validation runner. */
@@ -348,7 +345,7 @@ export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: 
 
 /** A hook plugin of any API, name and meta. */
 // oxlint-disable-next-line typescript/no-explicit-any
-export type AnyHookPlugin = HookPlugin<any, any, any, any>;
+export type AnyHookPlugin = HookPlugin<any, any, any, any, any, any>;
 
 /** A list of plugins, as `createFormsCore({ plugins })` takes it. */
 export type Plugins = readonly AnyPlugin[];
@@ -375,11 +372,11 @@ export type HasSchemaPlugin<S, P extends Plugins> = [S] extends [never]
 /** The name `T` has on `form.plugins`: its name when it is a hook plugin with an API, else never. */
 type ApiName<T> =
   // oxlint-disable-next-line typescript/no-explicit-any
-  T extends HookPlugin<infer A, infer N, any, any> ? ([A] extends [undefined] ? never : N) : never;
+  T extends HookPlugin<infer A, infer N, any, any, any, any> ? ([A] extends [undefined] ? never : N) : never;
 
 /** The API of hook plugin `T`. */
 // oxlint-disable-next-line typescript/no-explicit-any
-type ApiOf<T> = T extends HookPlugin<infer A, string, any, any> ? A : never;
+type ApiOf<T> = T extends HookPlugin<infer A, string, any, any, any, any> ? A : never;
 
 /** The APIs of the hook plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
 export type PluginApis<P extends Plugins> = { readonly [T in P[number] as ApiName<T>]: ApiOf<T> };

@@ -9,10 +9,16 @@ export interface RuleResult {
   readonly hidden?: boolean;
 }
 
-/** The meta `rules` sets on fields with a rule. Read it with `rules().meta(field)`. */
+/**
+ * The meta `rules` keeps on each field. Read it with the plugin's reader, as
+ * `deliveryRules.meta(field).hidden`. A field no rule hides reads
+ * `{ hidden: false }`.
+ */
 export interface RulesMeta {
   readonly hidden: boolean;
 }
+
+const shown: RulesMeta = Object.freeze({ hidden: false });
 
 /** A rule. It gets the whole form value and returns its field's flags. */
 export type Rule<V> = (value: V) => RuleResult;
@@ -29,7 +35,7 @@ export interface RulesNeedValueType {
 export type RuleFields<V> = IsUnknown<V> extends true ? RulesNeedValueType : { readonly [P in FieldPath<V>]?: Rule<V> };
 
 /** The plugin `rules` returns. `V` is the value type its rules take. */
-export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta> {
+export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta, unknown, never> {
   /**
    * Type information only, always undefined at runtime. It lets a form check
    * that its value fits `V`, since the rules get the form's value as a `V`.
@@ -56,6 +62,7 @@ export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta
 export function rules<V>(fields: RuleFields<V>): RulesPlugin<V> {
   const plugin: RulesPlugin<V> = definePlugin({
     name: "rules",
+    initialMeta: shown,
     setup(ctx: PluginContext<RulesMeta>) {
       const { store } = ctx;
       // The parameter's type checked each name against `V`. Here they are plain strings.
@@ -70,7 +77,7 @@ export function rules<V>(fields: RuleFields<V>): RulesPlugin<V> {
           const { disabled, hidden } = rule(value);
           const snapshot = store.getSnapshot(path);
           if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => store.fieldAt(path)?.setDisabled(disabled));
-          if (hidden !== undefined && plugin.meta(snapshot)?.hidden !== hidden) ctx.setMeta(path, { hidden });
+          if (hidden !== undefined && plugin.meta(snapshot).hidden !== hidden) ctx.setMeta(path, { hidden });
         }
       };
       apply();

@@ -1,4 +1,5 @@
 import { definePlugin } from "./plugins.js";
+import { dirty } from "./plugins/dirty.js";
 import { validation } from "./plugins/validation.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
@@ -127,6 +128,19 @@ describe("plugins on the definition", () => {
     expectTypeOf(Page).toBeFunction();
     expectTypeOf<FormOf<typeof Checked>["plugins"]["counter"]["count"]>().toEqualTypeOf<() => number>();
     expectTypeOf(forms.define({ schema: profileSchema, plugins: [valibot()] })).toBeObject();
+  });
+});
+
+describe("a definition's own schema plugin and dirty()", () => {
+  const forms = createForms({ plugins: [counter], fields: { TextField } });
+  const Profile = forms.define({ schema: profileSchema, plugins: [valibot(), dirty()], equals: (a, b, _ctx, next) => next(a, b) });
+
+  it("satisfy that form's schema and equals, next to the shared plugins' APIs", () => {
+    expectTypeOf<FormOf<typeof Profile>["plugins"]["counter"]["count"]>().toEqualTypeOf<() => number>();
+    // @ts-expect-error: no plugin brings dirty tracking
+    forms.define({ schema: profileSchema, plugins: [valibot()], equals: (a: unknown, b: unknown) => a === b });
+    // @ts-expect-error: no plugin brings the runner that runs the schema
+    forms.define({ schema: profileSchema, defaultValues: { name: "" }, plugins: [dirty()] });
   });
 });
 

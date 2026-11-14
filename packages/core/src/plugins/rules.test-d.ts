@@ -1,4 +1,4 @@
-import { type RuleFields, rules, type RulesNeedValueType, type RulesPlugin } from "@lunarhue/forms-core/plugins/rules";
+import { type RuleFields, rules, type RulesMeta, type RulesNeedValueType, type RulesPlugin } from "@lunarhue/forms-core/plugins/rules";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 
@@ -25,6 +25,13 @@ describe("rules types", () => {
     expectTypeOf<keyof RuleFields<Order>>().toEqualTypeOf<"pickup" | "address" | "address.street" | "address.city" | "items">();
     // @ts-expect-error: an array item has no dotted name
     rules<Order>({ "items.0.name": () => ({ hidden: true }) });
+  });
+
+  it("reads meta with no undefined, for a field no rule names too", () => {
+    const deliveryRules = rules<Order>({ pickup: () => ({ hidden: true }) });
+    const store = forms.define({ defaultValues: order, plugins: [deliveryRules] }).createStore();
+    expectTypeOf(deliveryRules.meta(store.getSnapshot(["address", "city"]))).toEqualTypeOf<RulesMeta>();
+    expectTypeOf(deliveryRules.meta({}).hidden).toEqualTypeOf<boolean>();
   });
 
   it("gives each rule the value as a V", () => {

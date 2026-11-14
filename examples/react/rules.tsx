@@ -28,7 +28,7 @@ interface TextFieldProps {
 }
 
 function TextField({ field, label }: TextFieldProps) {
-  if (orderRules.meta(field)?.hidden === true) return null;
+  if (orderRules.meta(field).hidden) return null;
   return (
     <label>
       {label}
