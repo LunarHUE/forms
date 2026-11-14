@@ -227,6 +227,11 @@ adapter, so it works under React and Solid alike. If you publish one, call it
 The full rules are in [docs/plugins.md](docs/plugins.md), and every error code
 is listed in [docs/errors.md](docs/errors.md).
 
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setup, how work lands, changesets and
+the size rules. Report a vulnerability through [SECURITY.md](SECURITY.md).
+
 ## Scripts
 
 Run these from the repo root with `bun run <name>`. Each one covers every package.
