@@ -29,4 +29,24 @@ describe("the plugin host", () => {
     forms.define({ defaultValues: { name: "" } }).createStore();
     expect(createPluginHost).toHaveBeenCalledTimes(2);
   });
+
+  it("applies writes queued from onSubmitted when the hook returns, with one notification", async () => {
+    const plugin = definePlugin({
+      name: "p",
+      setup: (ctx) => ({
+        onSubmitted() {
+          ctx.write(() => ctx.store.root.at("name").setValue("saved"));
+          ctx.write(() => ctx.store.root.at("email").setValue("saved"));
+        },
+      }),
+    });
+    const store = createFormsCore()
+      .define({ defaultValues: { name: "", email: "" }, plugins: [plugin], onSubmit: () => {} })
+      .createStore();
+    const runs = vi.fn<() => void>();
+    store.subscribe([], runs);
+    await store.submit();
+    expect(store.getSnapshot([]).value).toEqual({ name: "saved", email: "saved" });
+    expect(runs).toHaveBeenCalledOnce();
+  });
 });

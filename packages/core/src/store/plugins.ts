@@ -57,7 +57,7 @@ export interface PluginHost {
    * returned `refuse`, directly or from its promise.
    */
   submitting(settled: Promise<unknown>): Promise<boolean>;
-  /** Calls `onSubmitted`. */
+  /** Calls `onSubmitted` in a batch, so the writes it queues land when it returns. */
   submitted(submission: Submission<unknown>, input: unknown): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(): void;
@@ -445,7 +445,7 @@ export function createPluginHost(
       return Promise.all(work).then(() => refused);
     },
     submitted(submission, input) {
-      each((hooks) => hooks.onSubmitted?.(submission, input));
+      batch(() => each((hooks) => hooks.onSubmitted?.(submission, input)));
     },
     flush,
     apis,
