@@ -109,6 +109,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     itemValue: options.itemValue ?? (() => undefined),
   });
 
+  // Development only: `changes()` without `dirty()` warns once per store.
+  let warnedUntracked = false;
   const store: FormStore<V, E, I, R> = {
     id: core.id,
     get root() {
@@ -131,7 +133,14 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     reset: (resetOptions) => reset([], resetOptions),
     registerValidator: validation.register,
     fieldAt: handles.fieldAt,
-    changes: baseline.changes,
+    changes:
+      typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !createDirty
+        ? (path) => {
+            if (!warnedUntracked) console.warn(problem("dirty:untracked"));
+            warnedUntracked = true;
+            return baseline.changes(path);
+          }
+        : baseline.changes,
     firstInvalid: submit.firstInvalid,
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
