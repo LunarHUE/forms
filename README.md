@@ -39,21 +39,21 @@ import { zustand } from "@lunarhue/forms-bind/zustand";
 
 // Your own input, registered once.
 interface TextFieldProps {
-  field: FieldApi<string>;
-  label: string;
+  readonly field: FieldApi<string>;
+  readonly label: string;
 }
 
 function TextField({ field, label }: TextFieldProps) {
   return (
-    <label>
-      {label}
+    <div>
+      <label htmlFor={field.id}>{label}</label>
       <input {...field.inputProps()} />
-      {field.shownErrors.map((error) => (
-        <p key={error.message} id={field.errorId}>
-          {error.message}
-        </p>
-      ))}
-    </label>
+      <ul id={field.errorId}>
+        {field.shownErrors.map((error) => (
+          <li key={error.message}>{error.message}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -101,7 +101,7 @@ const profile = forms.define({
 const AddressFieldset = forms.fieldset(Address);
 
 interface AddressFieldsProps {
-  field: HandleOf<typeof AddressFieldset>;
+  readonly field: HandleOf<typeof AddressFieldset>;
 }
 
 function AddressFields({ field }: AddressFieldsProps) {
@@ -128,7 +128,7 @@ function SubmitButton() {
   );
 }
 
-export function ProfileForm() {
+export default function ProfileForm() {
   const form = useForm(profile);
 
   // Take the server's copy,
@@ -171,7 +171,7 @@ Type `name="emial"` and the build fails. Same if you pass `schema` or
 | `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
 | `@lunarhue/forms-vue`    | Vue 3 adapter                                    |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
-| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand`          |
+| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
 
 ## Plugins
 
@@ -210,7 +210,8 @@ Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
 once validation is installed. You give `defaultValues` yourself in that case.
 
 Bindings for outside stores follow the same rule. `zustand()` comes from
-`@lunarhue/forms-bind/zustand`, not from core. A binding never replaces the
+`@lunarhue/forms-bind/zustand` and `signal()` for a Solid signal from
+`@lunarhue/forms-bind/solid`, not from core. A binding never replaces the
 form's store. It is a two-way copy of the value, set up per form, so two forms
 can bind to two different stores.
 

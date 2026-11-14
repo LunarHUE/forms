@@ -1,10 +1,10 @@
+import { signal } from "@lunarhue/forms-bind/solid";
 import {
   createForm,
   createForms,
   type FieldApi,
 } from "@lunarhue/forms-solid";
-import { bind } from "@lunarhue/forms-solid/plugins/bind";
-import { createEffect, createRoot, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 
 interface TextFieldProps {
   readonly field: FieldApi<string>;
@@ -45,21 +45,9 @@ function Greeting() {
 }
 
 export default function SettingsForm() {
-  // `bind` takes get, set and subscribe. A signal has no subscribe, so
-  // an effect in its own root calls the listener, and disposing the
-  // root unsubscribes. The form starts from the signal's value.
+  // The form starts from the signal's value, and each copies the other's changes.
   const form = createForm(settingsForm, {
-    plugins: [
-      bind({
-        get: settings,
-        set: (value) => setSettings(value),
-        subscribe: (listener) =>
-          createRoot((dispose) => {
-            createEffect(settings, () => listener());
-            return dispose;
-          }),
-      }),
-    ],
+    plugins: [signal(settings, setSettings)],
   });
   return (
     <form.Form>

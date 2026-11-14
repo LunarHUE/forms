@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@lunarhue/forms-bind": "workspace:*",
     "@lunarhue/forms-schema": "workspace:*",
     "@lunarhue/forms-solid": "workspace:*",
     "@solidjs/web": "catalog:",

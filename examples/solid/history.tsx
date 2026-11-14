@@ -37,20 +37,19 @@ const note = forms.define({
 // Works under any form of `forms`, since they all have `history`.
 function UndoButtons() {
   const form = useFormContext(forms);
-  // The meta is undefined until the first step. Read that as false.
   const meta = () => undoHistory.formMeta(form.state);
   return (
     <>
       <button
         type="button"
-        disabled={!(meta()?.canUndo ?? false)}
+        disabled={!meta().canUndo}
         onClick={() => form.plugins.history.undo()}
       >
         Undo
       </button>
       <button
         type="button"
-        disabled={!(meta()?.canRedo ?? false)}
+        disabled={!meta().canRedo}
         onClick={() => form.plugins.history.redo()}
       >
         Redo

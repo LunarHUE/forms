@@ -13,6 +13,7 @@ export type {
   HasSchemaPlugin,
   HasValidation,
   HookPlugin,
+  HookPluginWithFormMeta,
   IfDirty,
   IfValidation,
   MetaSource,
@@ -35,7 +36,7 @@ export type {
   WriteCause,
   WriteRecord,
 } from "./plugin.js";
-export type { Path, PathSegment } from "./path.js";
+export type { FieldPath, Path, PathMaxDepth, PathSegment } from "./path.js";
 export type { StandardSchemaV1 } from "./standard-schema.js";
 export type { Choice, ChoiceHandle, ChoiceValue, HasChoice, WithChoice } from "./choice.js";
 export type {
@@ -52,6 +53,7 @@ export type {
   PlatformBlob,
   PlatformFile,
   ShapeOf,
+  Widened,
 } from "./value.js";
 export type {
   ErrorMap,

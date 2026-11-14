@@ -23,7 +23,8 @@ export type Code =
   | "validation:definition"
   | "validation:validator"
   | "schema:defaults"
-  | "rebase:store";
+  | "rebase:store"
+  | "submit:unseen";
 
 /**
  * The message for `code`: the package, then what went wrong. Development
@@ -48,6 +49,8 @@ export function problem(code: Code, value = ""): string {
         `A validator was added to a field (through \`registerValidator\`, \`useValidator\` or a \`validate\` prop), but no plugin brings the validation runner. ${fix}`,
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
+      "submit:unseen": (where) =>
+        `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
     };
     text = `${sentences[code](value)} ${docs}${code}`;
   }

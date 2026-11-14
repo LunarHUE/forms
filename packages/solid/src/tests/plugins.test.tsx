@@ -110,7 +110,7 @@ function NotePage() {
   return (
     <>
       <form.Field name="text">{(field) => <input {...field.inputProps()} />}</form.Field>
-      <button type="button" disabled={!(undoHistory.formMeta(form.state)?.canUndo ?? false)} onClick={() => form.plugins.history.undo()}>
+      <button type="button" disabled={!undoHistory.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
         Undo
       </button>
     </>

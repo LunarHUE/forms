@@ -224,6 +224,12 @@ export interface PluginDefinition<A = undefined, N extends string = string, M = 
   setup(ctx: PluginContext<M, F>): PluginHooks<A>;
   /** Gives the form's starting value. See `Plugin.initial`. */
   initial?(value: unknown): unknown;
+  /**
+   * The plugin's form meta before it sets any. The `formMeta` reader
+   * returns it until then, on the server and in the browser alike, so the
+   * reader's type has no `undefined`.
+   */
+  readonly initialFormMeta?: F;
 }
 
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
@@ -293,6 +299,13 @@ export interface HookPlugin<A = undefined, N extends string = string, M = unknow
   formMeta(source: MetaSource): F | undefined;
 }
 
+/** A hook plugin whose definition gave `initialFormMeta`, so its form meta is never undefined. */
+export interface HookPluginWithFormMeta<A = undefined, N extends string = string, M = unknown, F = unknown>
+  extends HookPlugin<A, N, M, F> {
+  /** Reads this plugin's meta from the form snapshot, or its `initialFormMeta` while it has set none. */
+  formMeta(source: MetaSource): F;
+}
+
 /** A plugin that brings a schema adapter for schemas of type `S`, and the validation runner. */
 export interface SchemaPlugin<S extends StandardSchemaV1 = StandardSchemaV1, N extends string = string> extends Plugin<undefined, N> {
   readonly schema: SchemaAdapter<S>;
@@ -316,7 +329,9 @@ export type AnyPlugin = Plugin<any, any, any, any>;
 
 /**
  * Plugins that fit a form of value type `V`. A plugin that names the value
- * type it works on, as `bind` does, must name `V`. Every other plugin fits.
+ * type it works on says through `"~value"` how it must match `V`: `bind`
+ * must name `V` itself, and `rules` a type `V` is assignable to. Every
+ * other plugin fits.
  */
 export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: V) => V })[];
 
