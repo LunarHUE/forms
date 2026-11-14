@@ -61,7 +61,7 @@ Every pull request that changes the source of a published package needs a
 changeset. CI fails without one.
 
 ```sh
-bunx changeset
+bun run changeset
 ```
 
 Pick the packages you changed and write one or two sentences for the people
