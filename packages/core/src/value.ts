@@ -222,10 +222,24 @@ type Unless<T, Wide, Same> = [Wide] extends [Same] ? T : Wide;
 type WidenedArray<T extends readonly unknown[], Item> = [Item] extends [T[number]] ? T : Item[];
 
 /** The union of a tuple's items, each widened on its own so that two literals don't read as a declared union. */
-type WidenedItems<T> = T extends readonly [infer Head, ...infer Rest] ? Widened<Head> | WidenedItems<Rest> : never;
+type WidenedItems<T, Seen extends readonly unknown[]> = T extends readonly [infer Head, ...infer Rest]
+  ? WidenedIn<Head, Seen> | WidenedItems<Rest, Seen>
+  : never;
 
-/** `Widened` of one union member. */
-type WidenedMember<T> = T extends string
+/** True when `A` and `B` are the same type, not just assignable to each other. */
+// `G` appears once on purpose. TypeScript compares the two signatures by identity of `A` and `B` only when `G` is free.
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
+type IsSame<A, B> = (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2 ? true : false;
+
+/** True when `T` is one of the types in `Seen`. */
+type IsSeen<T, Seen extends readonly unknown[]> = Seen extends readonly [infer Head, ...infer Rest]
+  ? IsSame<T, Head> extends true
+    ? true
+    : IsSeen<T, Rest>
+  : false;
+
+/** `Widened` of one union member. `Seen` holds the objects being widened around it. */
+type WidenedMember<T, Seen extends readonly unknown[]> = T extends string
   ? WidenedLiteral<T, string>
   : T extends number
     ? WidenedLiteral<T, number>
@@ -237,9 +251,21 @@ type WidenedMember<T> = T extends string
           ? T
           : T extends readonly unknown[]
             ? number extends T["length"]
-              ? WidenedArray<T, Widened<T[number]>>
-              : WidenedArray<T, WidenedItems<T>>
-            : Unless<T, { -readonly [K in keyof T]: Widened<T[K]> }, { -readonly [K in keyof T]: T[K] }>;
+              ? WidenedArray<T, WidenedIn<T[number], Seen>>
+              : WidenedArray<T, WidenedItems<T, Seen>>
+            : // An object met again inside itself is kept as it is. Widening it there
+              // would need its own widened type before that type exists, which
+              // TypeScript rejects as a circular reference.
+              IsSeen<T, Seen> extends true
+              ? T
+              : Unless<T, { -readonly [K in keyof T]: WidenedIn<T[K], [...Seen, T]> }, { -readonly [K in keyof T]: T[K] }>;
+
+/** `Widened` inside the objects in `Seen`. */
+type WidenedIn<T, Seen extends readonly unknown[]> = unknown extends T
+  ? T
+  : IsDeclaredUnion<T> extends true
+    ? T
+    : WidenedMember<T, Seen>;
 
 /**
  * The value type `defaultValues` gives a form without a schema. TypeScript
@@ -253,4 +279,4 @@ type WidenedMember<T> = T extends string
  * object or array with nothing to widen inside it. `unknown` and `any` stay
  * as they are.
  */
-export type Widened<T> = unknown extends T ? T : IsDeclaredUnion<T> extends true ? T : WidenedMember<T>;
+export type Widened<T> = WidenedIn<T, []>;

@@ -463,6 +463,33 @@ describe("defaults case 3: literals in defaultValues widen", () => {
   });
 });
 
+describe("defaults case 3: recursive value types", () => {
+  interface TreeNode {
+    name: string;
+    children: TreeNode[];
+  }
+
+  it("defines a form whose value holds itself", () => {
+    const form = createFormsCore().define<TreeNode>({ defaultValues: { name: "root", children: [] } });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<TreeNode>>();
+    form.createStore().root.at("children").push({ name: "leaf", children: [] });
+  });
+
+  it("defines a form from a value whose items hold each other", () => {
+    interface Folder {
+      name: string;
+      files: Entry[];
+    }
+    interface Entry {
+      name: string;
+      parent: Folder | null;
+    }
+    const start: Folder = { name: "/", files: [] };
+    const form = core.define({ defaultValues: start });
+    expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<Folder>>();
+  });
+});
+
 describe("the function form", () => {
   it("takes per-store options", () => {
     const form = core.define((options: { name: string }) => ({ defaultValues: { name: options.name } }));
