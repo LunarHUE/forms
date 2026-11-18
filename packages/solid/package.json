@@ -149,8 +149,8 @@
     "@lunarhue/forms-core": "workspace:^"
   },
   "peerDependencies": {
-    "solid-js": "^1.8.0 || ^2.0.0-rc.0",
-    "@solidjs/web": "^2.0.0-rc.0"
+    "solid-js": "^1.8.0 || ^2.0.0",
+    "@solidjs/web": "^2.0.0"
   },
   "peerDependenciesMeta": {
     "@solidjs/web": {
