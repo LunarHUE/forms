@@ -1,0 +1,109 @@
+---
+import type { GetStaticPaths } from "astro";
+import { render } from "astro:content";
+
+import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
+import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
+import { alternates, pagination, sidebar } from "@/lib/nav";
+import { docHref } from "@/lib/routes";
+import { VERSIONS } from "@/lib/versions";
+
+// Bare markup until the shell and page frame replace it.
+
+export const getStaticPaths = (async () => {
+  const entries = await getDocs();
+  const pages = entries.map(toNavPage);
+  return VERSIONS.flatMap(({ id: version }) =>
+    AVAILABLE_FRAMEWORKS.flatMap((framework) => {
+      const groups = sidebar(pages, framework, version);
+      return entries
+        .filter((entry) => entry.data.frameworks.includes(framework))
+        .map((entry) => {
+          // The rest param carries the version segment of an older version.
+          const href = docHref({ framework, version, slug: entry.id });
+          return {
+            params: { framework, slug: href.slice(`/${framework}/`.length) },
+            props: {
+              entry,
+              framework,
+              version,
+              sidebar: groups,
+              ...pagination(groups, entry.id),
+              alternates: alternates(pages, entry.id, version),
+            },
+          };
+        });
+    }),
+  );
+}) satisfies GetStaticPaths;
+
+interface Props {
+  entry: DocEntry;
+  framework: Framework;
+  version: string;
+  sidebar: ReturnType<typeof sidebar>;
+  previous?: ReturnType<typeof pagination>["previous"];
+  next?: ReturnType<typeof pagination>["next"];
+  alternates: ReturnType<typeof alternates>;
+}
+
+const { entry, framework, version, sidebar: groups, previous, next, alternates: others } = Astro.props;
+const { Content } = await render(entry);
+const { title, description } = entry.data;
+---
+
+<html lang="en" data-framework={framework}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · {frameworkLabel(framework)} · LunarHUE Forms</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <nav aria-label="Docs">
+      {
+        groups.map((group) => (
+          <section>
+            <h2>{group.label}</h2>
+            <ul>
+              {group.items.map((item) => (
+                <li>
+                  <a href={item.href} aria-current={item.slug === entry.id ? "page" : undefined}>
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </nav>
+    <main>
+      <p>{frameworkLabel(framework)} {version}</p>
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <Content />
+      <nav aria-label="Pagination">
+        {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
+        {next && <a href={next.href} rel="next">Next: {next.label}</a>}
+      </nav>
+      <nav aria-label="Frameworks">
+        <ul>
+          {
+            others.map((other) => (
+              <li>
+                {other.href ? (
+                  <a href={other.href} aria-current={other.framework === framework ? "page" : undefined}>
+                    {other.label}
+                  </a>
+                ) : (
+                  <span>{other.label} (soon)</span>
+                )}
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </main>
+  </body>
+</html>

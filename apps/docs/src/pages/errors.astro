@@ -1,0 +1,26 @@
+---
+import { render } from "astro:content";
+
+import { getErrors } from "@/lib/content";
+
+// Bare markup until the page frame replaces it.
+const entry = await getErrors();
+const { Content } = await render(entry);
+const { title, description } = entry.data;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · LunarHUE Forms</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <main>
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <Content />
+    </main>
+  </body>
+</html>
