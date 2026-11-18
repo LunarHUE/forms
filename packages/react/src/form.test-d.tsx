@@ -617,3 +617,56 @@ describe("literals in defaultValues", () => {
     expectTypeOf(useForm(pickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
   });
 });
+
+// Each field object's commands take back the readonly value the field object holds.
+function WriteBack() {
+  const form = useForm(order);
+  return (
+    <>
+      <form.Field name="billing">
+        {(field) => {
+          field.setValue(field.value, { replace: true });
+          field.setValue({ geo: field.value.geo });
+          // @ts-expect-error: an address has no country
+          field.setValue({ country: "FR" });
+          // @ts-expect-error: city is a string
+          field.setValue({ city: 1 });
+          return null;
+        }}
+      </form.Field>
+      <form.Field name="lines">
+        {(field) => {
+          field.setValue(field.value);
+          const [first] = field.value;
+          if (first) {
+            field.push(first);
+            field.insert(0, first);
+          }
+          // @ts-expect-error: a line has no note
+          field.push({ item: "", qty: 1, note: "" });
+          // @ts-expect-error: qty is a number
+          field.push({ item: "", qty: "1" });
+          return null;
+        }}
+      </form.Field>
+      <form.Field name="channels">
+        {(field) => {
+          field.setValue(field.value);
+          return null;
+        }}
+      </form.Field>
+    </>
+  );
+}
+
+function TagsField(props: { readonly field: FieldApi<string[]> }) {
+  props.field.setValue(props.field.value);
+  return null;
+}
+
+describe("writing back a value read from a field object", () => {
+  it("compiles for objects, arrays and array items", () => {
+    expectTypeOf(WriteBack).toBeFunction();
+    expectTypeOf(TagsField).toBeFunction();
+  });
+});
