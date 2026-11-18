@@ -23,3 +23,6 @@ updates:
       # those catalogs apart from the default one, so React is bumped by hand.
       - dependency-name: react
       - dependency-name: react-dom
+      # The Node types follow the Node in .node-version, which moves by hand.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
