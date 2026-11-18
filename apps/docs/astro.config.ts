@@ -37,5 +37,15 @@ export default defineConfig({
       // The source entries are TypeScript, so they go through Vite's SSR transform.
       noExternal: [/^@lunarhue\//],
     },
+    // Astro builds static pages in its own `prerender` environment, which
+    // doesn't read the `ssr` options above.
+    environments: {
+      prerender: {
+        resolve: {
+          conditions: [sourceCondition, ...defaultServerConditions],
+          noExternal: [/^@lunarhue\//],
+        },
+      },
+    },
   },
 });
