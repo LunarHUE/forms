@@ -6,18 +6,26 @@
     "dev": "astro dev --host 127.0.0.1",
     "build": "astro build",
     "preview": "astro preview --host 127.0.0.1",
-    "typecheck": "astro check"
+    "typecheck": "astro check && tsc -p src/demos/solid/tsconfig.json"
   },
   "dependencies": {
     "@astrojs/mdx": "8.1.6",
+    "@astrojs/react": "7.1.9",
     "@lunarhue/forms-bind": "workspace:*",
     "@lunarhue/forms-react": "workspace:*",
     "@lunarhue/forms-schema": "workspace:*",
     "@lunarhue/forms-solid": "workspace:*",
-    "astro": "7.4.13"
+    "@solidjs/web": "catalog:",
+    "astro": "7.4.13",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "solid-js": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",
+    "@solidjs/vite-plugin": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "typescript": "6.0.3",
     "vite": "catalog:"
   }
