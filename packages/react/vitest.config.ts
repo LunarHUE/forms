@@ -24,7 +24,9 @@ function reactCompilerPlugin(): Plugin {
         babelrc: false,
         configFile: false,
         sourceMaps: true,
-        parserOpts: { plugins: ["typescript", "jsx"] },
+        // Babel 8 reads `<T>(x) =>` as JSX whenever the jsx plugin is on. Like
+        // TypeScript, turn JSX on only for .tsx so generic arrows in .ts parse.
+        parserOpts: { plugins: file.endsWith(".tsx") ? ["typescript", "jsx"] : ["typescript"] },
         plugins: [[reactCompiler, { target: "19", panicThreshold: "all_errors" }]],
       });
       if (result?.code === null || result?.code === undefined) return null;
