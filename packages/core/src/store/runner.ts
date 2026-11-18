@@ -4,6 +4,7 @@ import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorInput } from "../validator.js";
 import { problem } from "../problem.js";
 import type { FormContext } from "./context.js";
+import { copyTree } from "./tree.js";
 
 /** The store options validation reads. */
 export interface ValidationOptions<V, E> {
@@ -53,7 +54,8 @@ export interface Validation<E> {
    * The value submit passes on and what `onSubmit` gets for it. With a form
    * schema that is the schema's output, from its last run when that run
    * passed on the current value. Otherwise the schema runs again now and its
-   * errors land. Without a schema both are the current value. Resolves
+   * errors land. Without a schema the input is the current value and the
+   * output a copy of it that `onSubmit` may change. Resolves
    * undefined when the value fails the schema.
    */
   schemaOutput(): Promise<SchemaOutput | undefined>;
@@ -95,7 +97,8 @@ export const noValidation: CreateValidation = (context, options) => {
     settleForSubmit: async () => {},
     async schemaOutput() {
       const value = context.core.getSnapshot([]).value;
-      return { input: value, output: value };
+      // The value is frozen in development, and onSubmit's type lets it write, so it gets a copy in every build.
+      return { input: value, output: copyTree(value) };
     },
   };
 };

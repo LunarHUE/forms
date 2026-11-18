@@ -284,7 +284,11 @@ export function createPluginHost(
         if (!off) return;
         off();
         off = undefined;
-        if (--listeners === 0) for (const entry of entries) if (entry.off) call(entry, entry.off, undefined);
+        if (--listeners === 0) {
+          for (const entry of entries) if (entry.off) call(entry, entry.off, undefined);
+          // A store with no listeners may never batch again, so writes the cleanups queued run now.
+          if (queue.length > 0) batch(() => {});
+        }
       };
     };
 

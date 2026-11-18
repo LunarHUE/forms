@@ -788,6 +788,20 @@ describe("literals in defaultValues", () => {
   });
 });
 
+interface TreeNode {
+  name: string;
+  children: TreeNode[];
+}
+
+const treeForm = exactForms.define<TreeNode>({ defaultValues: { name: "root", children: [] } });
+
+describe("recursive value types", () => {
+  it("defines a form whose value holds itself", () => {
+    expectTypeOf(createForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    createForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
+  });
+});
+
 function TagsField(props: { field: FieldApi<string[]> }) {
   props.field.setValue(props.field.value);
   return null;

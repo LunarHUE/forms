@@ -60,9 +60,10 @@ describe("submit", () => {
     expect(submission).toEqual({ status: "succeeded", result: "ok" });
     expect(store.getFormSnapshot().submission).toBe(submission);
     expect(store.getFormSnapshot().submitting).toBe(false);
-    // Without a schema `value` is the form value, and `input` is that same value.
-    expect(seen?.value).toBe(store.getSnapshot([]).value);
-    expect(seen?.ctx.input).toBe(seen?.value);
+    // Without a schema `input` is the form value and `value` a copy of it.
+    expect(seen?.ctx.input).toBe(store.getSnapshot([]).value);
+    expect(seen?.value).toEqual(seen?.ctx.input);
+    expect(seen?.value).not.toBe(seen?.ctx.input);
     expect(seen?.ctx.intent).toBe("save");
     expect(seen?.ctx.store).toBe(store);
     expect(seen?.ctx.signal.aborted).toBe(false);
@@ -72,6 +73,32 @@ describe("submit", () => {
     const { store } = make();
     expect(await store.submit()).toEqual({ status: "succeeded", result: undefined });
   });
+
+  for (const [label, plugins] of [
+    ["the validation runner", [runner()]],
+    ["no validation", []],
+  ] as const) {
+    it(`lets onSubmit change the value without touching the store, with ${label}`, async () => {
+      const { store } = make({
+        plugins,
+        onSubmit: (value) => {
+          value.rows.push({ title: "c" });
+          const first = value.rows[0];
+          if (first) first.title = "changed";
+          value.name = "grace";
+          return value;
+        },
+      });
+      const before = store.getSnapshot([]).value;
+      const submission = await store.submit();
+      expect(submission).toEqual({
+        status: "succeeded",
+        result: { name: "grace", rows: [{ title: "changed" }, { title: "b" }, { title: "c" }] },
+      });
+      expect(store.getSnapshot([]).value).toBe(before);
+      expect(store.getSnapshot([]).value).toEqual(initial);
+    });
+  }
 
   it("returns the running submit's promise to a second call", async () => {
     const gate = deferred<string>();

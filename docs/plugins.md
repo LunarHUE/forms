@@ -236,9 +236,9 @@ const forms = createForms({ plugins: [dirty()] });
 const settings = forms.define({ defaultValues, plugins: [baselineOnSubmit()], onSubmit: saveSettings });
 ```
 
-When a submit ends `"succeeded"`, the value the definition's `onSubmit` got
-becomes the baseline. An invalid, refused or failed submit leaves the
-baseline alone, and so does a submit that a reset stops.
+When a submit ends `"succeeded"`, the form value the definition's `onSubmit`
+got as `ctx.input` becomes the baseline. An invalid, refused or failed
+submit leaves the baseline alone, and so does a submit that a reset stops.
 
 - A field the user edits while the save runs keeps the newer text and stays
   dirty. Typing the saved text back makes it clean.
@@ -444,9 +444,9 @@ so the error it sets must fit the form's `mapError`, if it has one.
 ### After a submit
 
 `onSubmitted(submission, input)` runs once a submit ends. `input` is the
-form value the definition's `onSubmit` got, read when validation finished,
-so it holds edits the user made while validation ran. It is undefined when
-the submit ended `"invalid"`. A submit that a reset stops never reaches
+form value the definition's `onSubmit` got as `ctx.input`, read when
+validation finished, so it holds edits the user made while validation ran.
+It is undefined when the submit ended `"invalid"`. A submit that a reset stops never reaches
 `onSubmitted`.
 
 To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
@@ -536,6 +536,55 @@ value type the same way as with `zustand`.
 A plugin runs on the core copy it was made with, so the app must have one
 copy of core. In development, a store whose plugins come from two copies
 logs a warning.
+
+### TS2353 from `define` in a function generic over the schema
+
+A helper that takes any schema and returns a definition fails to compile
+when its type parameter is the schema type:
+
+```ts
+const forms = createFormsCore({ plugins: [zod()] });
+
+export function makeForm<S extends z.ZodObject>(schema: S) {
+  return forms.define({ schema });
+}
+```
+
+```
+error TS2353: Object literal may only specify known properties, and 'schema' does not exist in type
+'(options: void) => WithPlugins<Definition<never, S, readonly [SchemaPlugin<ZodSchema, string>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<never, S, readonly [...]>>>'.
+```
+
+`define` uses conditional types to ask two things about the schema. Is
+there one at all, and does an installed schema plugin accept it? While `S`
+is a type parameter, TypeScript can't answer either, so the config matches
+no case. A bound of
+`S extends StandardSchemaV1`, explicit type arguments such as
+`define<never, S>`, and the function form `define(() => ({ schema }))` fail
+the same way. The adapters' `define` takes the same config, so React and
+Solid show the same error.
+
+Make the helper generic over the schema's values instead. Then the schema
+type is concrete and TypeScript can tell the zod plugin accepts it. The
+form gets the same types an ordinary `define` gives it. These two compile:
+
+```ts
+import { createFormsCore, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import { zod } from "@lunarhue/forms-schema/zod";
+import { z } from "zod";
+
+const forms = createFormsCore({ plugins: [zod()] });
+
+// I is the schema's input and O its output.
+export function makeForm<I extends object, O>(schema: z.ZodType<O, I>, onSubmit: (value: O) => void) {
+  return forms.define({ schema, onSubmit });
+}
+
+// Any Standard Schema. No schema plugin accepts this type, so it needs defaultValues.
+export function makeStandard<V extends object>(schema: StandardSchemaV1<V>, defaultValues: V) {
+  return forms.define({ schema, defaultValues });
+}
+```
 
 ## Community
 

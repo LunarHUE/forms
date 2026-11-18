@@ -67,6 +67,18 @@ export function setAt(root: unknown, path: Path, value: unknown): unknown {
 }
 
 /**
+ * A copy of `value` with a new array or plain object at every depth, none of
+ * them frozen. Leaves such as Date, Map, File and class instances are shared,
+ * since the store never looks inside them either.
+ */
+export function copyTree(value: unknown): unknown {
+  if (!isContainer(value)) return value;
+  const copy = copyOf(value);
+  for (const key of Object.keys(copy)) define(copy, key, copyTree(Reflect.get(copy, key)));
+  return copy;
+}
+
+/**
  * `patch`'s own keys written over a copy of `target`, one level deep. A
  * target that is not a plain object counts as an empty one. Returns `target`
  * itself when it is a plain object that already holds every key of `patch`

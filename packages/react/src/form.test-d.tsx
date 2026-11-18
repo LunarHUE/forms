@@ -618,6 +618,20 @@ describe("literals in defaultValues", () => {
   });
 });
 
+interface TreeNode {
+  name: string;
+  children: TreeNode[];
+}
+
+const treeForm = forms.define<TreeNode>({ defaultValues: { name: "root", children: [] } });
+
+describe("recursive value types", () => {
+  it("defines a form whose value holds itself", () => {
+    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    useForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
+  });
+});
+
 // Each field object's commands take back the readonly value the field object holds.
 function WriteBack() {
   const form = useForm(order);

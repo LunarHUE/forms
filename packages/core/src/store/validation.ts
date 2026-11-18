@@ -22,6 +22,7 @@ import {
   slotAt,
   startsWith,
 } from "./validate/paths.js";
+import { copyTree } from "./tree.js";
 
 // Core has no DOM or node types, so this declares the platform globals validation uses.
 declare function setTimeout(run: () => void, ms: number): unknown;
@@ -474,7 +475,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     },
     async schemaOutput() {
       const value = core.getSnapshot([]).value;
-      if (!schemaReg) return { input: value, output: value };
+      // The value is frozen in development, and onSubmit's type lets it write, so it gets a copy in every build.
+      if (!schemaReg) return { input: value, output: copyTree(value) };
       if (captured && Object.is(captured.input, value)) return captured;
       const run = runOf(schemaReg, []);
       core.batch(() => {
