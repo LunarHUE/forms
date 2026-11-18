@@ -30,7 +30,19 @@ function reactCompilerPlugin(): Plugin {
         plugins: [[reactCompiler, { target: "19", panicThreshold: "all_errors" }]],
       });
       if (result?.code === null || result?.code === undefined) return null;
-      return { code: result.code, map: result.map ?? null };
+      if (result.map === null) return { code: result.code, map: null };
+      // Babel types the map's arrays as readonly and Rolldown wants mutable ones, so copy them.
+      const { names, sources, sourcesContent, ignoreList } = result.map;
+      return {
+        code: result.code,
+        map: {
+          ...result.map,
+          names: [...names],
+          sources: [...sources],
+          sourcesContent: sourcesContent && [...sourcesContent],
+          ignoreList: ignoreList && [...ignoreList],
+        },
+      };
     },
   };
 }
