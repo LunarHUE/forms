@@ -617,3 +617,17 @@ describe("literals in defaultValues", () => {
     expectTypeOf(useForm(pickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
   });
 });
+
+interface TreeNode {
+  name: string;
+  children: TreeNode[];
+}
+
+const treeForm = forms.define<TreeNode>({ defaultValues: { name: "root", children: [] } });
+
+describe("recursive value types", () => {
+  it("defines a form whose value holds itself", () => {
+    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    useForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
+  });
+});
