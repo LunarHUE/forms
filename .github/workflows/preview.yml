@@ -16,8 +16,11 @@ concurrency:
 jobs:
   preview:
     # pkg.pr.new serves every upload at a public URL, so this stays off while the repo is
-    # private. The repository check keeps forks' own copies of the workflow quiet.
-    if: github.event.repository.private == false && github.repository == 'LunarHUE/forms'
+    # private. The repository check keeps forks' own copies of the workflow quiet. The
+    # Version Packages pull request gets no preview, since nobody installs a version bump.
+    if: >-
+      github.event.repository.private == false && github.repository == 'LunarHUE/forms'
+      && github.head_ref != 'changeset-release/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read

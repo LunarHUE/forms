@@ -62,29 +62,38 @@ jobs:
         browser: [chromium, firefox, webkit]
     env:
       E2E_BROWSER: ${{ matrix.browser }}
+      # The Version Packages pull request changes versions and changelogs, and
+      # main already ran the suite on the same source. A fork can't claim that
+      # branch name.
+      RELEASE: >-
+        ${{ github.head_ref == 'changeset-release/main'
+        && github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # e2e:changed diffs against the merge base with the base branch.
           fetch-depth: 0
           persist-credentials: false
+      - if: env.RELEASE == 'true'
+        run: echo "A release pull request, so there is nothing to test."
       - id: setup
+        if: env.RELEASE != 'true'
         uses: ./.github/actions/setup
       - if: steps.setup.outputs.docs-only == 'true'
         run: echo "Only docs changed, so there is nothing to test."
-      - if: steps.setup.outputs.docs-only != 'true'
+      - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true'
         uses: ./.github/actions/playwright
         with:
           browser: ${{ matrix.browser }}
       # Pull requests run the frameworks their changes reach. Pushes to main,
       # the weekly run and manual runs do all of them.
-      - if: steps.setup.outputs.docs-only != 'true' && github.event_name == 'pull_request'
+      - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && github.event_name == 'pull_request'
         env:
           BASE: origin/${{ github.base_ref }}
         run: bun run e2e:changed --base "$BASE"
-      - if: steps.setup.outputs.docs-only != 'true' && github.event_name != 'pull_request'
+      - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && github.event_name != 'pull_request'
         run: bun run e2e
-      - if: failure() && steps.setup.outputs.docs-only != 'true'
+      - if: failure() && env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.browser }}
