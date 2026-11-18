@@ -45,7 +45,7 @@
   },
   "peerDependencies": {
     "@lunarhue/forms-core": "workspace:^",
-    "solid-js": "^2.0.0-rc.0",
+    "solid-js": "^2.0.0",
     "zustand": "^5.0.0"
   },
   "peerDependenciesMeta": {

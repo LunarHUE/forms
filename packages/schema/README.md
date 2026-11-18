@@ -37,6 +37,11 @@ Any other [Standard Schema](https://standardschema.dev) works as `schema`
 with the plain `validation()` plugin. You give `defaultValues` yourself in
 that case.
 
+A helper that is generic over the schema type, such as
+`function makeForm<S extends z.ZodObject>(schema: S)`, can't call `define`.
+[docs/plugins.md](https://github.com/LunarHUE/forms/blob/main/docs/plugins.md#ts2353-from-define-in-a-function-generic-over-the-schema)
+shows the form that works.
+
 The [main README](https://github.com/LunarHUE/forms#readme) has a full example.
 
 MIT licensed.

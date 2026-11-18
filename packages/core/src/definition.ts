@@ -133,7 +133,8 @@ export interface DefinitionOptions<V, O, E, I, R, P extends Plugins = []> {
   readonly readOnly?: Flags<V>;
   /**
    * Runs when a submit passes validation. `value` is the schema's output when
-   * the form has a schema, and the form value otherwise. What it returns or
+   * the form has a schema. Otherwise it is a copy of the form value, which
+   * `onSubmit` may change without touching the store. What it returns or
    * resolves to becomes `succeeded.result`. What it throws becomes
    * `failed.error`, untouched.
    */

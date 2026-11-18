@@ -170,7 +170,7 @@
       "name": "./plugins/validation",
       "path": "dist/esm/plugins/validation.js",
       "import": "{ validation }",
-      "limit": "2.95 kB"
+      "limit": "2.97 kB"
     },
     {
       "name": "./plugins/dirty",

@@ -3,8 +3,9 @@
 The Solid adapter for [forms](https://github.com/LunarHUE/forms). Field names are checked by the compiler,
 features are plugins, and a plugin you don't use costs no bytes.
 
-Solid 2 is the main entry. Solid 1.8 and later is at
-`@lunarhue/forms-solid/v1`.
+This adapter needs Solid 2. Solid 1 support is not there yet. The
+`@lunarhue/forms-solid/v1` entry only re-exports core for now, and
+[#124](https://github.com/LunarHUE/forms/issues/124) tracks the real adapter.
 
 ```sh
 npm install @lunarhue/forms-solid

@@ -789,7 +789,7 @@ describe("reset and submit", () => {
     expect(ended).toEqual(["invalid"]);
   });
 
-  it("gives onSubmitted the value onSubmit got, with edits made while validation ran", async () => {
+  it("gives onSubmitted the value onSubmit got as ctx.input, with edits made while validation ran", async () => {
     const ended: [string, unknown][] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission, input) => void ended.push([submission.status, input]) }) });
     let release!: () => void;
@@ -801,8 +801,8 @@ describe("reset and submit", () => {
         defaultValues: contact(),
         plugins: [end],
         validate: { fields: { code: () => gate.then(() => undefined) } },
-        onSubmit: (value) => {
-          sent = value;
+        onSubmit: (_value, ctx) => {
+          sent = ctx.input;
           if (fail) throw new Error("down");
         },
       })
@@ -1118,5 +1118,20 @@ describe("onActive", () => {
     expect(store.root.peek().value.code).toBe("on");
     stop();
     expect(errors).toEqual(["Error: start", "Error: cleanup"]);
+  });
+
+  it("runs writes its cleanup makes before the unsubscribe returns", () => {
+    const { plugin: watch, calls } = watcher("watch", "sync");
+    const writer = definePlugin({
+      name: "writer",
+      setup: (ctx) => ({
+        onActive: () => () => ctx.write(() => ctx.store.root.at("code").setValue("off")),
+      }),
+    });
+    const store = make(contact(), [watch, writer]);
+    const stop = store.subscribeForm(() => {});
+    stop();
+    expect(store.root.peek().value.code).toBe("off");
+    expect(calls).toEqual([[{ type: "value", path: ["code"], before: "", after: "off", cause: { plugin: "writer" } }]]);
   });
 });
