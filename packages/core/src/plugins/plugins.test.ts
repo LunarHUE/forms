@@ -1119,4 +1119,19 @@ describe("onActive", () => {
     stop();
     expect(errors).toEqual(["Error: start", "Error: cleanup"]);
   });
+
+  it("runs writes its cleanup makes before the unsubscribe returns", () => {
+    const { plugin: watch, calls } = watcher("watch", "sync");
+    const writer = definePlugin({
+      name: "writer",
+      setup: (ctx) => ({
+        onActive: () => () => ctx.write(() => ctx.store.root.at("code").setValue("off")),
+      }),
+    });
+    const store = make(contact(), [watch, writer]);
+    const stop = store.subscribeForm(() => {});
+    stop();
+    expect(store.root.peek().value.code).toBe("off");
+    expect(calls).toEqual([[{ type: "value", path: ["code"], before: "", after: "off", cause: { plugin: "writer" } }]]);
+  });
 });
