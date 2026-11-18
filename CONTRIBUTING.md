@@ -86,8 +86,10 @@ Maintainers do these, by hand for now.
 
 1. Each merge to `main` updates a "Version Packages" pull request. It collects
    the pending changesets, bumps the versions and writes the changelogs. Merge
-   it when you want a release.
-2. On an up-to-date `main`, log in to npm and publish:
+   it when you want a release. It runs the six checks and skips the browser
+   suite, which already ran on the same source on `main`.
+2. Wait for CI on `main`, which runs the browser suite in every browser. Then,
+   on an up-to-date `main`, log in to npm and publish:
 
    ```sh
    npm login
