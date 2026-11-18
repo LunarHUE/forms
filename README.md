@@ -12,7 +12,7 @@ submit. Validation, undo, masks and the rest are plugins you install.
 
 ```sh
 npm install @lunarhue/forms-react    # React 16.8 and later
-npm install @lunarhue/forms-solid    # Solid 2, and Solid 1 at ./v1
+npm install @lunarhue/forms-solid    # Solid 2
 ```
 
 The adapter brings the core and the plugins that need no other library. Add
@@ -181,7 +181,7 @@ Type `name="emial"` and the build fails. Same if you pass `schema` or
 | ------------------------ | ------------------------------------------------ |
 | `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
 | `@lunarhue/forms-react`  | React adapter, React 16.8 and later              |
-| `@lunarhue/forms-solid`  | Solid adapter: Solid 2 at `.`, Solid 1 at `./v1` |
+| `@lunarhue/forms-solid`  | Solid adapter, Solid 2                           |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
 | `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
 
