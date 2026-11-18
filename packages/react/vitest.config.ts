@@ -24,11 +24,25 @@ function reactCompilerPlugin(): Plugin {
         babelrc: false,
         configFile: false,
         sourceMaps: true,
-        parserOpts: { plugins: ["typescript", "jsx"] },
+        // Babel 8 reads `<T>(x) =>` as JSX whenever the jsx plugin is on. Like
+        // TypeScript, turn JSX on only for .tsx so generic arrows in .ts parse.
+        parserOpts: { plugins: file.endsWith(".tsx") ? ["typescript", "jsx"] : ["typescript"] },
         plugins: [[reactCompiler, { target: "19", panicThreshold: "all_errors" }]],
       });
       if (result?.code === null || result?.code === undefined) return null;
-      return { code: result.code, map: result.map ?? null };
+      if (result.map === null) return { code: result.code, map: null };
+      // Babel types the map's arrays as readonly and Rolldown wants mutable ones, so copy them.
+      const { names, sources, sourcesContent, ignoreList } = result.map;
+      return {
+        code: result.code,
+        map: {
+          ...result.map,
+          names: [...names],
+          sources: [...sources],
+          sourcesContent: sourcesContent && [...sourcesContent],
+          ignoreList: ignoreList && [...ignoreList],
+        },
+      };
     },
   };
 }
