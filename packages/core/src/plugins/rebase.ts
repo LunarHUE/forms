@@ -5,6 +5,7 @@ import { definePlugin } from "../plugins.js";
 import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
+import type { DeepReadonly } from "../value.js";
 
 export type { RebaseChoice, RebaseLeaf, Resolve } from "../store/rebase.js";
 
@@ -23,7 +24,8 @@ export interface RebaseResult {
 // Generic in the error type rather than taking `HandleBase<unknown, unknown>`:
 // whether a handle with a concrete error type is assignable to that depended
 // on the order the checker met the types in.
-export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V>, resolve: Resolve) => RebaseResult;
+// `incoming` may be readonly, as a snapshot's value is. Rebase never writes into it.
+export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V | DeepReadonly<V>>, resolve: Resolve) => RebaseResult;
 
 /**
  * The rebase plugin. Its API is `form.plugins.rebase`, a `Rebase`.

@@ -801,3 +801,49 @@ describe("recursive value types", () => {
     createForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
   });
 });
+
+function TagsField(props: { field: FieldApi<string[]> }) {
+  props.field.setValue(props.field.value);
+  return null;
+}
+
+describe("writing back a value read from a field", () => {
+  it("takes the readonly values the field object holds", () => {
+    const form = createForm(Signup);
+    const billing = createField(form.root.at("billing"));
+    billing.setValue(billing.value, { replace: true });
+    billing.setValue({ geo: billing.value.geo });
+    // @ts-expect-error: an address has no country
+    billing.setValue({ country: "FR" });
+    // @ts-expect-error: city is a string
+    billing.setValue({ city: 1 });
+
+    const rows = createField(form.root.at("rows"));
+    rows.setValue(rows.value);
+    const [first] = rows.value;
+    if (first) {
+      rows.push(first);
+      rows.insert(0, first);
+    }
+    // @ts-expect-error: a row has no note
+    rows.push({ title: "", qty: 1, address: first?.address ?? billing.value, note: "" });
+    // @ts-expect-error: title is a string
+    rows.push({ title: 1, qty: 1, address: billing.value });
+
+    const tags = createField(form.root.at("tags"));
+    tags.setValue(tags.value);
+    expectTypeOf(tags.value).toExtend<Parameters<typeof tags.setValue>[0]>();
+    void (
+      <form.Field name="channels">
+        {(field) => {
+          field.setValue(field.value);
+          return null;
+        }}
+      </form.Field>
+    );
+  });
+
+  it("works through a registered component's FieldApi", () => {
+    expectTypeOf(TagsField).toBeFunction();
+  });
+});
