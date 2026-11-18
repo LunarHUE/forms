@@ -1,0 +1,13 @@
+---
+import type { GetStaticPaths } from "astro";
+
+import { AVAILABLE_FRAMEWORKS, type Framework } from "@/lib/frameworks";
+import { frameworkHref } from "@/lib/routes";
+
+// `/react` and `/solid` have no page of their own.
+export const getStaticPaths = (() =>
+  AVAILABLE_FRAMEWORKS.map((framework) => ({ params: { framework } }))) satisfies GetStaticPaths;
+
+// A permanent status makes the static redirect page refresh at once instead of after 2s.
+return Astro.redirect(frameworkHref(Astro.params.framework as Framework), 301);
+---
