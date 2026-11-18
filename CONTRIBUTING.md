@@ -37,9 +37,12 @@ bun run e2e:changed   # the adapters your change can reach
 bun run e2e           # every adapter
 ```
 
-CI runs `e2e:changed` on a pull request and the full suite on `main`.
-Firefox and WebKit run once a week. [e2e/README.md](e2e/README.md) explains
-how the suite is laid out and how it picks.
+CI runs `e2e:changed` on a pull request and the full suite on `main`, in
+Chromium, Firefox and WebKit, one job per browser. Only `e2e (chromium)` must
+pass to merge. A red Firefox or WebKit job still deserves a look before you
+ask for review. The full suite also runs in all three once a week.
+[e2e/README.md](e2e/README.md) explains how the suite is laid out and how it
+picks.
 
 ## How work lands
 
@@ -52,7 +55,7 @@ how the suite is laid out and how it picks.
    "Keep the caret when a mask reformats", not "fixes" or "Updated mask.ts".
 4. **Add a changeset** if your change reaches a published package. See below.
 
-A pull request merges when the checks and the browser suite pass and a
+A pull request merges when the checks and the Chromium browser suite pass and a
 maintainer has read it.
 
 ## Changesets

@@ -31,7 +31,11 @@ to run them all in that browser instead, after installing it the same way:
 E2E_BROWSER=firefox bun run e2e
 ```
 
-CI runs Chromium on every pull request and all three browsers once a week.
+CI runs all three browsers, one job each: `e2e (chromium)`, `e2e (firefox)`
+and `e2e (webkit)`. A pull request runs the frameworks its changes reach, and
+only the Chromium job must pass to merge. A push to `main` and a weekly run
+do every framework. The weekly run catches a new browser build that breaks
+something when no code changed.
 
 Each run builds the apps it needs once, in production mode, and starts one
 server per app on its own port (4311 for React, 4312 for Solid). Playwright
@@ -119,3 +123,6 @@ Don't change a spec to hide it. Add it to that framework's `knownFailures` in
 `contract/frameworks.ts`, keyed `<spec file> > <describe> > <title>`, with a
 note on what differs. It then runs as an expected failure, and turns red once
 the adapter is fixed, so the entry can go.
+
+When it fails in one browser only, use `knownFailuresIn` instead, keyed by
+the browser first. The spec still has to pass in the other browsers.

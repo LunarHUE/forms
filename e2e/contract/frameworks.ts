@@ -16,7 +16,16 @@ export interface Framework {
    * so it turns red once the adapter is fixed and the entry should go.
    */
   readonly knownFailures?: Readonly<Record<string, string>>;
+  /**
+   * Specs expected to fail on this framework in one browser only, keyed by
+   * the browser and then as `knownFailures` is. They run as `test.fail` in
+   * that browser and as ordinary specs in the others.
+   */
+  readonly knownFailuresIn?: Readonly<Partial<Record<Browser, Readonly<Record<string, string>>>>>;
 }
+
+/** The browsers the suite runs in, by Playwright's names. */
+export type Browser = "chromium" | "firefox" | "webkit";
 
 /** Every framework with an app. Adding one is a new app in `apps/` and one line here. */
 export const frameworks: readonly Framework[] = [
@@ -29,6 +38,12 @@ export const frameworks: readonly Framework[] = [
     name: "solid",
     port: 4312,
     rerendersOnChange: false,
+    knownFailuresIn: {
+      webkit: {
+        "arrays.spec.ts > moving a row keeps its input, its focus and its key":
+          "The moved row's input loses focus in WebKit. https://github.com/LunarHUE/forms/issues/157",
+      },
+    },
   },
 ];
 

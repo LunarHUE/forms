@@ -35,6 +35,23 @@ test.describe("history", () => {
   });
 });
 
+/**
+ * Puts `text` on the clipboard by copying it out of a scratch textarea with
+ * the keyboard. Only Chromium grants the clipboard permissions that
+ * `navigator.clipboard.writeText` needs, and a keyboard copy needs none.
+ */
+async function copy(page: Page, text: string): Promise<void> {
+  const scratch = await page.evaluateHandle((value) => {
+    const area = document.createElement("textarea");
+    area.value = value;
+    document.body.append(area);
+    area.select();
+    return area;
+  }, text);
+  await page.keyboard.press("ControlOrMeta+C");
+  await scratch.evaluate((area) => area.remove());
+}
+
 /** Where an input's caret is. */
 const caret = (field: Locator) => field.evaluate((element: HTMLInputElement) => element.selectionStart);
 
@@ -119,10 +136,9 @@ test.describe("mask", () => {
     await expect.poll(async () => (await probe(page)).value).toEqual({ phone: "55574" });
   });
 
-  test("a paste puts the caret after the pasted digits", async ({ page, context }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  test("a paste puts the caret after the pasted digits", async ({ page }) => {
     const phone = await phoneWith7Digits(page);
-    await page.evaluate(() => navigator.clipboard.writeText("8-8"));
+    await copy(page, "8-8");
     await select(phone, 6);
     await page.keyboard.press("ControlOrMeta+V");
     await expect(phone).toHaveValue("(555) 881-234");
