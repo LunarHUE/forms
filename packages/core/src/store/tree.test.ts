@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedPaths, isContainer, merge, setAt, valueAt } from "./tree.js";
+import { changedPaths, copyTree, isContainer, merge, setAt, valueAt } from "./tree.js";
 
 describe("isContainer", () => {
   it("takes arrays and plain objects, and treats everything else as a leaf", () => {
@@ -100,6 +100,35 @@ describe("merge", () => {
     const plain = merge({}, patch);
     expect(Object.getPrototypeOf(plain)).toBe(Object.prototype);
     expect(Object.getOwnPropertyNames(plain)).toEqual(["__proto__"]);
+  });
+});
+
+describe("copyTree", () => {
+  it("makes every array and plain object new and unfrozen, and shares the leaves", () => {
+    class Point {
+      x = 1;
+    }
+    const leaves = { date: new Date(0), map: new Map([["a", 1]]), point: new Point() };
+    const bare: Record<string, unknown> = Object.assign(Object.create(null), { n: 1 });
+    const root = Object.freeze({ rows: Object.freeze([Object.freeze({ title: "a" })]), leaves, bare });
+    const copy = copyTree(root);
+    expect(copy).toEqual(root);
+    expect(copy).not.toBe(root);
+    const rows = valueAt(copy, ["rows"]);
+    expect(rows).not.toBe(root.rows);
+    expect(valueAt(copy, ["rows", 0])).not.toBe(root.rows[0]);
+    expect(Object.isFrozen(copy) || Object.isFrozen(rows) || Object.isFrozen(valueAt(copy, ["rows", 0]))).toBe(false);
+    expect(valueAt(copy, ["leaves", "date"])).toBe(leaves.date);
+    expect(valueAt(copy, ["leaves", "map"])).toBe(leaves.map);
+    expect(valueAt(copy, ["leaves", "point"])).toBe(leaves.point);
+    expect(Object.getPrototypeOf(valueAt(copy, ["bare"]))).toBe(null);
+  });
+
+  it("keeps an own __proto__ key as a key", () => {
+    const value = JSON.parse('{"__proto__": {"x": 1}}');
+    const copy = copyTree(value);
+    expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyNames(copy)).toEqual(["__proto__"]);
   });
 });
 

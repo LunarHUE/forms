@@ -236,9 +236,9 @@ const forms = createForms({ plugins: [dirty()] });
 const settings = forms.define({ defaultValues, plugins: [baselineOnSubmit()], onSubmit: saveSettings });
 ```
 
-When a submit ends `"succeeded"`, the value the definition's `onSubmit` got
-becomes the baseline. An invalid, refused or failed submit leaves the
-baseline alone, and so does a submit that a reset stops.
+When a submit ends `"succeeded"`, the form value the definition's `onSubmit`
+got as `ctx.input` becomes the baseline. An invalid, refused or failed
+submit leaves the baseline alone, and so does a submit that a reset stops.
 
 - A field the user edits while the save runs keeps the newer text and stays
   dirty. Typing the saved text back makes it clean.
@@ -444,9 +444,9 @@ so the error it sets must fit the form's `mapError`, if it has one.
 ### After a submit
 
 `onSubmitted(submission, input)` runs once a submit ends. `input` is the
-form value the definition's `onSubmit` got, read when validation finished,
-so it holds edits the user made while validation ran. It is undefined when
-the submit ended `"invalid"`. A submit that a reset stops never reaches
+form value the definition's `onSubmit` got as `ctx.input`, read when
+validation finished, so it holds edits the user made while validation ran.
+It is undefined when the submit ended `"invalid"`. A submit that a reset stops never reaches
 `onSubmitted`.
 
 To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
