@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import type { Draft } from "./index.js";
+import type { Draft, Widened } from "./index.js";
 
 class Point {
   x = 0;
@@ -133,5 +133,48 @@ describe("Draft", () => {
     expectTypeOf(tree.children).items.toEqualTypeOf<Draft<Tree>>();
     expectTypeOf(tree.children[0]!.children[0]!.weight).toEqualTypeOf<number | undefined>();
     expectTypeOf<Tree>().toExtend<Draft<Tree>>();
+  });
+});
+
+describe("Widened", () => {
+  it("keeps an object that holds itself", () => {
+    interface Node {
+      n: Node[];
+    }
+    interface Chain {
+      label: string;
+      next: Chain | null;
+    }
+    expectTypeOf<Widened<Node>>().toEqualTypeOf<Node>();
+    expectTypeOf<Widened<Chain>>().toEqualTypeOf<Chain>();
+    expectTypeOf<Widened<Tree>>().toEqualTypeOf<Tree>();
+  });
+
+  it("keeps an array whose items hold the array's owner", () => {
+    interface Menu {
+      items: { label: string; submenu?: Menu }[];
+    }
+    expectTypeOf<Widened<Menu>>().toEqualTypeOf<Menu>();
+    expectTypeOf<Widened<Menu["items"]>>().toEqualTypeOf<Menu["items"]>();
+  });
+
+  it("keeps two types that refer to each other", () => {
+    interface Folder {
+      name: string;
+      files: Entry[];
+    }
+    interface Entry {
+      name: string;
+      parent: Folder;
+    }
+    expectTypeOf<Widened<Folder>>().toEqualTypeOf<Folder>();
+    expectTypeOf<Widened<Entry>>().toEqualTypeOf<Entry>();
+  });
+
+  it("still widens literals around a recursive type", () => {
+    interface Node {
+      n: Node[];
+    }
+    expectTypeOf<Widened<{ readonly flag: false; readonly root: Node }>>().toEqualTypeOf<{ flag: boolean; root: Node }>();
   });
 });
