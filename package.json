@@ -65,7 +65,7 @@
   },
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './examples/*' --filter './parked/*' --filter './e2e' --filter './e2e/apps/*' --filter './scripts' typecheck",
+    "typecheck": "tsc -p tsconfig.json && bun run --filter './packages/*' --filter './apps/*' --filter './examples/*' --filter './parked/*' --filter './e2e' --filter './e2e/apps/*' --filter './scripts' typecheck",
     "lint": "oxlint",
     "test": "vitest run",
     "check:package": "bun run --filter './packages/*' check:package",
