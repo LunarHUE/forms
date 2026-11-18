@@ -1,4 +1,5 @@
 import { errorId, type FieldSnapshot, optionId, type Path } from "@lunarhue/forms-core";
+import { untrack } from "solid-js";
 import { displayOf } from "./display.js";
 import type { ControlProps } from "./input.js";
 import { elementsOf } from "./refs.js";
@@ -49,6 +50,28 @@ function inputOf(event: Event): HTMLInputElement | HTMLTextAreaElement | undefin
 }
 
 /**
+ * Writes the field's text or checked state to an element as it registers. A
+ * browser may put back what the user typed before a reload, after it parses
+ * the server markup. Hydration doesn't write a prop the markup already has,
+ * so without this the element would show text the form doesn't hold.
+ */
+function showState(element: HTMLElement, own: object): void {
+  untrack(() => {
+    if (element instanceof HTMLInputElement && (element.type === "checkbox" || element.type === "radio")) {
+      const checked: unknown = Reflect.get(own, "checked");
+      if (typeof checked === "boolean" && element.checked !== checked) element.checked = checked;
+    } else if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLSelectElement
+    ) {
+      const value: unknown = Reflect.get(own, "value");
+      if (typeof value === "string" && element.value !== value) element.value = value;
+    }
+  });
+}
+
+/**
  * Adds the props every input kind shares to `own` and returns it. The
  * getters read the field's signal, so each is a reactive read. `id` is the
  * element's id, the handle's unless the element is one option of the field.
@@ -61,7 +84,10 @@ function withControl(source: InputSource, options: AnyInputOptions | undefined, 
     get name() {
       return read().name;
     },
-    ref: register,
+    ref: (element) => {
+      register(element);
+      showState(element, own);
+    },
     onBlur: () => handle.handleBlur(),
     get disabled() {
       return read().disabled;
