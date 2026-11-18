@@ -3,7 +3,7 @@ import type { Path, PathSegment } from "./path.js";
 import type { FieldSnapshot } from "./snapshot.js";
 import type { AnyFormStore } from "./store.js";
 import type { ValidatorInput } from "./validator.js";
-import type { ChildValue, IsLiteralUnion, ItemOf, KeysOf, ShapeOf } from "./value.js";
+import type { ChildValue, DeepReadonly, IsLiteralUnion, ItemOf, KeysOf, ShapeOf } from "./value.js";
 
 /**
  * Options every write command takes. Every write counts as a user edit
@@ -116,7 +116,7 @@ export interface LeafHandle<V, E = FormError> extends HandleBase<V, E> {
    * value. For a function-typed value pass an updater that returns the function.
    */
   // A property, not a method, so strictFunctionTypes keeps leaf handles invariant in V.
-  readonly setValue: (value: V | ((previous: V) => V), options?: WriteOptions) => void;
+  readonly setValue: (value: NoInfer<V | DeepReadonly<V>> | ((previous: V) => V), options?: WriteOptions) => void;
 }
 
 /** The patch an object handle merges: any subset of one member's keys. */
@@ -124,13 +124,17 @@ export type Patch<V> = V extends object ? Partial<V> : never;
 
 /** The handle for a plain object value. */
 export interface ObjectHandle<V, E = FormError> extends HandleBase<V, E> {
+  // No write changes its argument, so every write on every handle kind
+  // also takes the readonly value a snapshot holds. The NoInfer keeps write
+  // parameters out of inference. Without it, a function that infers V from
+  // an item handle gets the value and its readonly copy as V.
   /** Replaces the whole value. */
-  setValue(value: V, options: ReplaceOptions): void;
+  setValue(value: NoInfer<V | DeepReadonly<V>>, options: ReplaceOptions): void;
   /**
    * Merges `patch` into the current value, one level deep. Merging into a
    * missing object starts from an empty one.
    */
-  setValue(patch: Patch<V>, options?: MergeOptions): void;
+  setValue(patch: NoInfer<Patch<V | DeepReadonly<V>>>, options?: MergeOptions): void;
   /**
    * Returns the handle of the child at `key`. It reads no state: it returns
    * the same handle object for the same key on every call, whether or not
@@ -163,19 +167,20 @@ export type ChildHandles<V, E = FormError> = {
  * type `I`. The item is required when `I` is a union of literals without
  * `null` or `undefined`, such as the options a checkbox group picks. No
  * option is the empty one, so the adapter's item value is `undefined`,
- * which `I` doesn't allow.
+ * which `I` doesn't allow. The item may be readonly, as a snapshot's
+ * values are.
  */
 export type ItemArgs<I> =
   IsLiteralUnion<I> extends true
     ? [Extract<I, null | undefined>] extends [never]
-      ? [item: I, options?: WriteOptions]
-      : [item?: I, options?: WriteOptions]
-    : [item?: I, options?: WriteOptions];
+      ? [item: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions]
+      : [item?: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions]
+    : [item?: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions];
 
 /** The handle for an array value. Items are addressed by stable key, not index. */
 export interface ArrayHandle<V, E = FormError> extends HandleBase<V, E> {
-  /** Replaces the whole array. */
-  setValue(value: V, options?: WriteOptions): void;
+  /** Replaces the whole array. A readonly array, such as a snapshot's value, works too. */
+  setValue(value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions): void;
   /**
    * Adds an item at the end. With no item it uses the schema adapter's item
    * value, or `undefined` when there is no adapter. An array of a union of

@@ -14,6 +14,8 @@ describe("rebase", () => {
     expectTypeOf(api(store.root, { name: "a", tags: [] }, () => "keep")).toEqualTypeOf<RebaseResult>();
     api(store.root.at("tags"), ["a"], () => "take");
     api(any, 1, () => "keep");
+    api(store.root, store.root.peek().value, () => "keep");
+    api(store.root.at("tags"), store.root.at("tags").peek().value, () => "take");
     // @ts-expect-error: name is a string
     api(store.root, { name: 1, tags: [] }, () => "keep");
     // @ts-expect-error: tags is a list

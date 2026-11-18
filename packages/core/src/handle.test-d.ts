@@ -15,6 +15,7 @@ import type {
   ValueOf,
   WriteOptions,
 } from "./index.js";
+import { createFormsCore } from "./index.js";
 
 interface Address {
   street: string;
@@ -266,5 +267,66 @@ describe("handle commands", () => {
     expectTypeOf(remove).toEqualTypeOf<() => void>();
     // @ts-expect-error: the field holds a string
     nameHandle.registerValidator((value: number) => (value > 0 ? undefined : { code: "neg" }));
+  });
+});
+
+declare const takesList: (list: string[]) => number;
+
+describe("writing back a value read from a snapshot", () => {
+  const store = createFormsCore()
+    .define({ defaultValues: { name: "", tags: ["a"], address: { street: "", city: "" }, rows: [{ title: "", done: false }] } })
+    .createStore();
+  const tags = store.root.at("tags");
+  const address = store.root.at("address");
+  const rows = store.root.at("rows");
+
+  it("takes the readonly values peek returns", () => {
+    tags.setValue(tags.peek().value);
+    store.root.setValue(store.root.peek().value, { replace: true });
+    store.root.setValue({ address: address.peek().value, tags: tags.peek().value });
+    address.setValue(address.peek().value, { replace: true });
+    rows.setValue(rows.peek().value);
+    const [first] = rows.peek().value;
+    if (first) {
+      rows.push(first);
+      rows.insert(0, first, { edited: false });
+    }
+    profile.at("rows").setValue(profile.peek().value.rows);
+    profile.at("address").setValue(profile.peek().value.address, { replace: true });
+    expectTypeOf(tags.peek().value).toEqualTypeOf<readonly string[]>();
+    expectTypeOf(tags.peek().value).toExtend<Parameters<typeof tags.setValue>[0]>();
+  });
+
+  it("leaves inference from defaultValues as it was", () => {
+    expectTypeOf(store.root).toEqualTypeOf<
+      ObjectHandle<{ name: string; tags: string[]; address: { street: string; city: string }; rows: { title: string; done: boolean }[] }>
+    >();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; done: boolean }>>();
+  });
+
+  it("still checks object literals", () => {
+    address.setValue({ city: "Paris" });
+    rows.push({ title: "a", done: false });
+    // @ts-expect-error: address has no zip
+    address.setValue({ city: "Paris", zip: "75001" });
+    // @ts-expect-error: city is a string
+    address.setValue({ city: 75001 });
+    // @ts-expect-error: address has no zip
+    address.setValue({ street: "", city: "", zip: "" }, { replace: true });
+    // @ts-expect-error: a row has no note
+    rows.push({ title: "a", done: false, note: "" });
+    // @ts-expect-error: done is a boolean
+    rows.insert(0, { title: "a", done: "no" });
+    // @ts-expect-error: tags holds strings
+    tags.setValue([1]);
+    expectTypeOf<{ readonly title: string; readonly done: boolean }>().toExtend<Parameters<typeof rows.push>[0]>();
+    expectTypeOf<{ readonly title: string }>().not.toExtend<Parameters<typeof rows.push>[0]>();
+    expectTypeOf<readonly number[]>().not.toExtend<Parameters<typeof tags.setValue>[0]>();
+  });
+
+  it("does not make a readonly value fit a mutable parameter", () => {
+    // @ts-expect-error: the snapshot's array is readonly, so the helper's signature has to say so
+    takesList(tags.peek().value);
+    expectTypeOf(tags.peek().value).not.toExtend<string[]>();
   });
 });
