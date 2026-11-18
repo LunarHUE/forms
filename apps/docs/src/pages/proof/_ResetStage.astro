@@ -1,0 +1,35 @@
+---
+// Renders the slot once and uses the HTML twice: live in the stage, and inert
+// in a <template>. Reset swaps the stage for a fresh copy of the template, so
+// the island mounts and hydrates again from its server HTML.
+const html = await Astro.slots.render("default");
+// The first island on a page carries Astro's island loader and the renderer's
+// hydration bootstrap. They have run by the time anyone clicks reset, so the
+// template keeps markup only.
+const initial = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+---
+
+<reset-stage>
+  <div data-stage><Fragment set:html={html} /></div>
+  <template data-initial><Fragment set:html={initial} /></template>
+  <button type="button" data-reset>Reset</button>
+</reset-stage>
+
+<script>
+  class ResetStage extends HTMLElement {
+    connectedCallback() {
+      const stage = this.querySelector<HTMLElement>("[data-stage]");
+      const initial = this.querySelector<HTMLTemplateElement>("template[data-initial]");
+      const button = this.querySelector<HTMLButtonElement>("[data-reset]");
+      if (!stage || !initial || !button) return;
+      button.addEventListener("click", () => {
+        const islands = [...stage.querySelectorAll("astro-island")];
+        stage.replaceChildren(initial.content.cloneNode(true));
+        // Astro only fires astro:unmount after a view transition swap, so
+        // tell the old renderers here. React unmounts its root, Solid disposes.
+        for (const island of islands) island.dispatchEvent(new CustomEvent("astro:unmount"));
+      });
+    }
+  }
+  customElements.define("reset-stage", ResetStage);
+</script>
