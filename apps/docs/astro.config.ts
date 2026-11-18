@@ -1,4 +1,6 @@
 import mdx from "@astrojs/mdx";
+import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
@@ -12,8 +14,19 @@ export default defineConfig({
   build: { format: "file" },
   // Internal links fetch their page on hover.
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
-  integrations: [mdx()],
+  integrations: [
+    mdx(),
+    react({
+      include: [
+        "**/src/components/**",
+        "**/src/devtools/**",
+        "**/src/demos/react/**",
+        "**/src/layouts/**",
+      ],
+    }),
+  ],
   vite: {
+    plugins: [tailwindcss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: {
       resolve: { conditions: [sourceCondition, ...defaultServerConditions] },
