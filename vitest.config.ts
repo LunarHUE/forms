@@ -7,7 +7,8 @@ export default defineConfig({
     // compatibility suite has one project per React version. Parked
     // packages keep their tests running here. The e2e project holds the
     // changed-files picker's unit tests, not the browser suite. The scripts
-    // project tests the CI scripts.
+    // project tests the CI scripts. The docs project tests the docs site's
+    // URL and navigation modules.
     projects: [
       "packages/*",
       "packages/react/vitest.react-*.config.ts",
@@ -16,6 +17,7 @@ export default defineConfig({
       "parked/*/vitest.config.ts",
       "e2e/vitest.config.ts",
       "scripts/vitest.config.ts",
+      "apps/docs/vitest.config.ts",
     ],
   },
 });
