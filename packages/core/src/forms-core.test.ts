@@ -300,3 +300,53 @@ describe("end to end", () => {
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({ name: "Ada", age: 36 });
   });
 });
+
+const makeOrder = () =>
+  createFormsCore()
+    .define({ defaultValues: { name: "", tags: ["a"], address: { city: "Paris" }, rows: [{ title: "x", tags: ["t"] }] } })
+    .createStore();
+
+describe("writing back a value read from a snapshot", () => {
+  it("writes frozen values back without changing them", () => {
+    const store = makeOrder();
+    const tags = store.root.at("tags");
+    const before = store.root.peek().value;
+    const tagsBefore = tags.peek().value;
+    expect(Object.isFrozen(tagsBefore)).toBe(true);
+
+    tags.push("b");
+    tags.setValue(tagsBefore);
+    expect(tags.peek().value).toEqual(["a"]);
+    tags.push("c");
+    expect(tags.peek().value).toEqual(["a", "c"]);
+
+    store.root.setValue({ name: "Ada", address: { city: "Rome" } });
+    store.root.setValue(before, { replace: true });
+    expect(store.root.peek().value).toEqual({ name: "", tags: ["a"], address: { city: "Paris" }, rows: [{ title: "x", tags: ["t"] }] });
+    store.root.at("address").at("city").setValue("Oslo");
+    expect(store.root.at("address").peek().value).toEqual({ city: "Oslo" });
+
+    expect(tagsBefore).toEqual(["a"]);
+    expect(before.address).toEqual({ city: "Paris" });
+  });
+
+  it("pushes and inserts a frozen item, and later edits leave it as it was", () => {
+    const store = makeOrder();
+    const rows = store.root.at("rows");
+    const [row] = rows.peek().value;
+    if (!row) throw new Error("no row");
+    rows.push(row);
+    rows.insert(0, row);
+    rows.setValue(rows.peek().value);
+    const keys = rows.peek().keys;
+    expect(keys).toHaveLength(3);
+    rows.item(keys[0] ?? "").at("tags").push("u");
+    rows.item(keys[2] ?? "").at("title").setValue("y");
+    expect(rows.peek().value).toEqual([
+      { title: "x", tags: ["t", "u"] },
+      { title: "x", tags: ["t"] },
+      { title: "y", tags: ["t"] },
+    ]);
+    expect(row).toEqual({ title: "x", tags: ["t"] });
+  });
+});
