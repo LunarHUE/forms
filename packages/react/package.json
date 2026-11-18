@@ -1,7 +1,7 @@
 {
   "name": "@lunarhue/forms-react",
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Type-safe forms for React, with features as plugins.",
   "keywords": ["form", "forms", "react", "react-hooks", "typescript", "validation"],
   "homepage": "https://github.com/LunarHUE/forms#readme",
