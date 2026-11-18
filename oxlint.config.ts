@@ -46,6 +46,8 @@ export default defineConfig({
     "import/namespace": "off",
     "import/default": "off",
     "import/no-named-as-default-member": "off",
+    // Stylesheets are imported for their side effect (the docs' global.css).
+    "import/no-unassigned-import": ["warn", { allow: ["**/*.css"] }],
   },
   overrides: [
     {
