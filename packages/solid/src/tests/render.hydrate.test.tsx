@@ -39,6 +39,23 @@ it("hydrates the server markup, keeps its nodes and ids, and then updates", asyn
   dispose();
 });
 
+it("shows the form's value in an input the browser filled back in before hydration", () => {
+  const host = document.createElement("div");
+  host.innerHTML = serverHtml;
+  document.body.append(host);
+  const [customer] = host.querySelectorAll("input");
+  if (!customer) throw new Error("No customer input.");
+  // Firefox restores typed text on a reload, so the input can differ from its markup.
+  customer.value = "typed before the reload";
+  installHydrationGlobal();
+
+  const dispose = hydrate(() => <App />, host);
+  flush();
+  expect(customer.value).toBe("Ada");
+  dispose();
+  host.remove();
+});
+
 it("hydrates what rules set without flipping it", () => {
   const host = document.createElement("div");
   host.innerHTML = shippingHtml;
