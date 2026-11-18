@@ -44,11 +44,11 @@ export function App() {
 
 /** The app's markup, as `renderToString` returns it without the hydration script. */
 export const serverHtml =
-  '<form _hk=100 id="0" novalidate tabindex="-1" data-submits="function">' +
-  '<!--$--><label _hk=101><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
-  '<!--$--><label _hk=10500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
-  '<label _hk=10510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
-  "<!--$--><output _hk=107>idle</output><!--/--></form>";
+  '<form _hk=10 id="0" novalidate tabindex="-1" data-submits="function">' +
+  '<!--$--><label _hk=11><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
+  '<!--$--><label _hk=1500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
+  '<label _hk=1510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
+  "<!--$--><output _hk=17>idle</output><!--/--></form>";
 
 interface Shipping {
   sameAsBilling: boolean;
