@@ -15,7 +15,7 @@ export interface Options {
 }
 
 interface Fixtures {
-  /** Marks the running spec as an expected failure when the framework lists it. */
+  /** Marks the running spec as an expected failure when the framework lists it, for every browser or for this one. */
   readonly knownFailure: undefined;
 }
 
@@ -26,9 +26,9 @@ if (firstFramework === undefined) throw new Error("contract/frameworks.ts lists 
 export const test = base.extend<Fixtures & Options>({
   framework: [firstFramework, { option: true }],
   knownFailure: [
-    async ({ framework }, use, testInfo) => {
+    async ({ framework, browserName }, use, testInfo) => {
       const key = testInfo.titlePath.join(" > ");
-      const note = framework.knownFailures?.[key];
+      const note = framework.knownFailures?.[key] ?? framework.knownFailuresIn?.[browserName]?.[key];
       testInfo.fail(note !== undefined, note);
       await use(undefined);
     },

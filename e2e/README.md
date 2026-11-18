@@ -123,3 +123,6 @@ Don't change a spec to hide it. Add it to that framework's `knownFailures` in
 `contract/frameworks.ts`, keyed `<spec file> > <describe> > <title>`, with a
 note on what differs. It then runs as an expected failure, and turns red once
 the adapter is fixed, so the entry can go.
+
+When it fails in one browser only, use `knownFailuresIn` instead, keyed by
+the browser first. The spec still has to pass in the other browsers.
