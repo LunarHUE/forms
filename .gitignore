@@ -3,6 +3,7 @@ result-*
 .direnv
 node_modules
 dist
+.astro
 coverage
 *.tsbuildinfo
 .worktrees

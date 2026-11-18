@@ -1,0 +1,24 @@
+{
+  "name": "@lunarhue/forms-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "8.1.6",
+    "@lunarhue/forms-bind": "workspace:*",
+    "@lunarhue/forms-react": "workspace:*",
+    "@lunarhue/forms-schema": "workspace:*",
+    "@lunarhue/forms-solid": "workspace:*",
+    "astro": "7.4.13"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "typescript": "6.0.3",
+    "vite": "catalog:"
+  }
+}
