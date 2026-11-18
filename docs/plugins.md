@@ -537,6 +537,55 @@ A plugin runs on the core copy it was made with, so the app must have one
 copy of core. In development, a store whose plugins come from two copies
 logs a warning.
 
+### TS2353 from `define` in a function generic over the schema
+
+A helper that takes any schema and returns a definition fails to compile
+when its type parameter is the schema type:
+
+```ts
+const forms = createFormsCore({ plugins: [zod()] });
+
+export function makeForm<S extends z.ZodObject>(schema: S) {
+  return forms.define({ schema });
+}
+```
+
+```
+error TS2353: Object literal may only specify known properties, and 'schema' does not exist in type
+'(options: void) => WithPlugins<Definition<never, S, readonly [SchemaPlugin<ZodSchema, string>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<never, S, readonly [...]>>>'.
+```
+
+`define` uses conditional types to ask two things about the schema. Is
+there one at all, and does an installed schema plugin accept it? While `S`
+is a type parameter, TypeScript can't answer either, so the config matches
+no case. A bound of
+`S extends StandardSchemaV1`, explicit type arguments such as
+`define<never, S>`, and the function form `define(() => ({ schema }))` fail
+the same way. The adapters' `define` takes the same config, so React and
+Solid show the same error.
+
+Make the helper generic over the schema's values instead. Then the schema
+type is concrete and TypeScript can tell the zod plugin accepts it. The
+form gets the same types an ordinary `define` gives it. These two compile:
+
+```ts
+import { createFormsCore, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import { zod } from "@lunarhue/forms-schema/zod";
+import { z } from "zod";
+
+const forms = createFormsCore({ plugins: [zod()] });
+
+// I is the schema's input and O its output.
+export function makeForm<I extends object, O>(schema: z.ZodType<O, I>, onSubmit: (value: O) => void) {
+  return forms.define({ schema, onSubmit });
+}
+
+// Any Standard Schema. No schema plugin accepts this type, so it needs defaultValues.
+export function makeStandard<V extends object>(schema: StandardSchemaV1<V>, defaultValues: V) {
+  return forms.define({ schema, defaultValues });
+}
+```
+
 ## Community
 
 Anyone can publish a plugin. Name the package `forms-plugin-<name>` and build
