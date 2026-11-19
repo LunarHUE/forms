@@ -42,7 +42,7 @@ interface Run {
   /** Runs on every touching write once set. */
   armed: boolean;
   /** Before it is armed, the subtrees blurred below it. A run writes errors only inside them. */
-  scopes?: Map<string, Path> | undefined;
+  scopes?: Path[] | undefined;
   /** True once it ran while armed. A reset at or below its field clears it. */
   ran?: boolean;
   thrown?: boolean;
@@ -56,7 +56,6 @@ interface Run {
   /** The fields this run put errors on, to clear on its next run. */
   readonly written: Map<string, Path>;
   waiters: (() => void)[];
-  removed?: boolean;
 }
 
 /** One call of a check. Its abort controller is made the first time the check reads `signal`. */
@@ -174,28 +173,21 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
 
   // Drops a run whose field is gone or whose registration was removed.
   const drop = (run: Run) => {
-    if (run.removed) return;
-    run.removed = true;
+    if (!all.delete(run)) return;
     stop(run);
     settle(run);
     run.reg.runs.delete(run.key);
-    all.delete(run);
   };
 
   const live = (run: Run): boolean => {
-    if (!run.removed && core.isLive(run.path)) return true;
+    if (all.has(run) && core.isLive(run.path)) return true;
     drop(run);
     return false;
   };
 
   // True when the run may write errors at `path` now.
-  const inScope = (run: Run, path: Path): boolean => {
-    if (run.armed) return true;
-    const scopes = run.scopes;
-    if (!scopes) return false;
-    for (let i = run.path.length; i <= path.length; i++) if (scopes.has(keyOf(path.slice(0, i)))) return true;
-    return false;
-  };
+  const inScope = (run: Run, path: Path): boolean =>
+    run.armed || !!run.scopes?.some((scope) => startsWith(path, scope));
 
   // Replaces the run's earlier errors with `placed`, inside its scope.
   const write = (run: Run, placed: Placed<E>) => {
@@ -384,7 +376,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     },
     written(path) {
       const runs = near(path, true, true, true);
-      // Only a pattern that arms on a write needs runs made for it. Runs that exist are in the trie.
+      // Only a pattern that arms on a write needs runs made for it. Runs that exist are in `all`.
       for (const reg of patterns) if (reg.armedAll || reg.timing === "input") patternRuns(reg, path, true, runs);
       for (const run of runs) touch(run);
     },
@@ -405,7 +397,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         } else if (run.reg.reaches && !inScope(run, path)) {
           // A form validator or schema above the field runs for the blurred subtree only,
           // so a blur on one field doesn't put errors on fields not yet visited.
-          (run.scopes ??= new Map()).set(key, path);
+          (run.scopes ??= []).push(path);
           start(run, false);
         }
       }
@@ -429,10 +421,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       // its errors there without running it, so the next submit runs it again.
       for (const run of near(path, true, false, false)) {
         run.ran = false;
-        if (run.scopes) {
-          for (const [key, scope] of run.scopes) if (startsWith(scope, path)) run.scopes.delete(key);
-          if (run.scopes.size === 0) run.scopes = undefined;
-        }
+        run.scopes = run.scopes?.filter((scope) => !startsWith(scope, path));
+        if (!run.scopes?.length) run.scopes = undefined;
       }
       if (path.length === 0) for (const reg of patterns) reg.armedAll = false;
     },
@@ -440,7 +430,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       const runs = new Set<Run>();
       for (const path of paths) {
         near(path, true, true, true, runs);
-        // Runs made for an armed pattern start armed. Other patterns only have the runs in the trie.
+        // Runs made for an armed pattern start armed. Other patterns only have the runs that exist.
         for (const reg of patterns) if (reg.armedAll) patternRuns(reg, path, true, runs);
       }
       for (const run of runs) if (live(run) && (run.armed || run.scopes)) start(run, false);
