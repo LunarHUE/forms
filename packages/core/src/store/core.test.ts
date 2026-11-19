@@ -700,9 +700,9 @@ describe("without arrays()", () => {
 
   it("throws on an array command", () => {
     const store = bare({ rows: [] });
-    expect(() => store.insert(["rows"], 0, "a")).toThrow("arrays()");
-    expect(() => store.remove(["rows"], 0)).toThrow("arrays()");
-    expect(() => store.move(["rows"], 0, 1)).toThrow("arrays()");
+    expect(() => store.insert(["rows"], 0, "a")).toThrow(/core:arrays:missing/);
+    expect(() => store.remove(["rows"], 0)).toThrow(/core:arrays:missing/);
+    expect(() => store.move(["rows"], 0, 1)).toThrow(/core:arrays:missing/);
   });
 
   it("blocks an item past the end after a shorter array is written, and lets it back when the array grows", () => {

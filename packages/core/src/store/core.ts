@@ -272,7 +272,7 @@ function inValueOrder<E>(node: Node<E>): Node<E>[] {
 
 // An array command on a store without `arrays()`. The types don't catch it, so production does nothing.
 const missing = (): undefined => {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", "arrays"));
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("arrays:missing"));
   return undefined;
 };
 

@@ -22,6 +22,7 @@ export type Code =
   | "schema:defaults"
   | "rebase:store"
   | "dirty:missing"
+  | "arrays:missing"
   | "submit:unseen";
 
 /**
@@ -49,6 +50,8 @@ export function problem(code: Code, value = ""): string {
       "rebase:store": () => "rebase: the handle belongs to another store.",
 "dirty:missing": () =>
         'This form called `changes()`, but it has no `dirty()`, so nothing tracks what changed. Add `dirty()` from "@lunarhue/forms-core/plugins" to `plugins`.',
+      "arrays:missing": () =>
+        'This form changed the length or order of an array, but it has no `arrays()`. Add `arrays()` from "@lunarhue/forms-core/plugins" to `plugins`.',
       "submit:unseen": (where) =>
         `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
     };
