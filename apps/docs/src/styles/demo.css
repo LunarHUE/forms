@@ -83,6 +83,30 @@
   font-weight: 500;
 }
 
+/* A row of buttons. */
+.demo-stage div:has(> button) {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Buttons that don't submit are secondary. */
+.demo-stage button[type="button"] {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.demo-stage button[type="button"]:hover {
+  background: var(--muted);
+}
+
+.demo-stage button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .demo-stage ul {
   margin: 0;
   padding: 0;
