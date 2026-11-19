@@ -1,0 +1,135 @@
+---
+title: Typed paths
+description: Field names the compiler checks, and handles you can pass around.
+section: concepts
+order: 2
+---
+
+Every `name` prop is checked against the form's value type. A typo, or a
+field the component can't edit, fails the build. For the parts of a form you
+pass around, use a handle: a typed object for one field.
+
+<Demo name="typed-paths/order" />
+
+## Names
+
+A name is a dotted path through the value, such as `"shipping.city"`. With
+the order form above, a typo gets this:
+
+```tsx framework=react
+<form.TextField name="shipping.cty" label="City" />
+```
+
+```tsx framework=solid
+<form.TextField name="shipping.cty" label="City" />
+```
+
+```text
+error TS2769: No overload matches this call.
+  ...
+    Type '"shipping.cty"' is not assignable to type '"name" | "billing.street"
+    | "billing.city" | "shipping.street" | "shipping.city"'.
+    Did you mean '"shipping.city"'?
+```
+
+The list holds only the names `TextField` can edit. `shipping` is a name too,
+but its value is an object and `TextField` takes a `FieldApi<string>`, so it
+isn't offered.
+
+Names go through objects and stop at arrays. `tasks` names the array, for
+`form.Items`, but there is no `tasks.0.title`. Rows are reached through
+handles, see [Arrays](./arrays). A name has at most 8 segments.
+
+## Handles
+
+`form.root` is the handle of the whole value. `at(key)` returns a child's
+handle, typed from the value, and also catches typos:
+
+```ts
+const shipping = form.root.at("shipping"); // handle to { street, city }
+const city = shipping.at("city"); // handle to a string
+
+form.root.at("shiping");
+// Argument of type '"shiping"' is not assignable to parameter of type
+// '"name" | "billing" | "shipping"'.
+```
+
+A handle holds no state. It is the same object on every call, it carries the
+field's commands (`setValue`, `reset`, `validate`, `push` on arrays and so
+on), and `peek()` reads the current snapshot in event handlers. Pass one as
+`handle` instead of `name`:
+
+```tsx framework=react
+<form.TextField handle={form.root.at("shipping").at("city")} label="City" />
+```
+
+```tsx framework=solid
+<form.TextField handle={form.root.at("shipping").at("city")} label="City" />
+```
+
+<Only framework="react">
+
+To render something from a handle's state, read it with `useField(handle)`,
+or `useField(handle, select)` to re-render only when the selected part
+changes.
+
+</Only>
+
+<Only framework="solid">
+
+To render something from a handle's state, read it with
+`createField(handle)`. Its members are reactive.
+
+</Only>
+
+## Fieldsets
+
+A component that renders part of a form takes a handle prop. To type it,
+make a fieldset from the part's schema and use `HandleOf`:
+
+```tsx framework=react
+import type { HandleOf } from "@lunarhue/forms-react";
+
+const AddressFieldset = forms.fieldset(Address);
+
+function AddressFields({ field }: { field: HandleOf<typeof AddressFieldset> }) {
+  const scope = AddressFieldset.scope(field);
+  return (
+    <fieldset>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField name="city" label="City" />
+    </fieldset>
+  );
+}
+
+<AddressFields field={form.root.at("shipping")} />;
+```
+
+```tsx framework=solid
+import type { HandleOf } from "@lunarhue/forms-solid";
+
+const AddressFieldset = forms.fieldset(Address);
+
+function AddressFields(props: { field: HandleOf<typeof AddressFieldset> }) {
+  const scope = AddressFieldset.scope(props.field);
+  return (
+    <fieldset>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField name="city" label="City" />
+    </fieldset>
+  );
+}
+
+<AddressFields field={form.root.at("shipping")} />;
+```
+
+`scope(handle)` returns the same members a form has, `Field`, `Items` and
+your registered components, with names relative to the handle. It is a cached
+lookup, not a hook, so call it anywhere.
+
+The fieldset's schema only types the shape. The form's own schema does the
+validating. Without a schema, write the type: `forms.fieldset<Address>()`.
+
+Any handle whose value has the shape fits: an object with more keys, an
+array row, or a field of another form from the same `createForms`. A handle
+whose `city` is a number doesn't.
