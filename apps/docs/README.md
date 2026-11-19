@@ -19,3 +19,13 @@ To switch to the official integration once 8.x ships:
 A demo resets by mounting again from its server HTML. The wrapper renders its slot once with `Astro.slots.render`, writes it into the stage, and writes a copy without `<script>` tags into a `<template>`. Reset clones the template into the stage and then dispatches `astro:unmount` on the old islands. Astro fires that event only after a view-transition swap, so the wrapper has to send it itself. The new `<astro-island>` connects and hydrates like the first one did.
 
 This works for both React and Solid 2, in `astro build` + `astro preview` and in `astro dev`. Solid hydrates the clone even though it reuses the old render id, also after a second reset. The `client:only` fallback wasn't needed. The prototype is `src/pages/proof/_ResetStage.astro` in commit 6cc2abe, deleted after it.
+
+## Adding a demo
+
+1. Write the demo for each framework the page lists in `frameworks`: `src/demos/react/<page>/<demo>/<demo>.tsx` and `src/demos/solid/<page>/<demo>/<demo>.tsx`, each with a default export. Other files in the folder (`PhoneField.tsx`) show up as tabs in the Code view; the entry file comes first.
+2. Use bare `<form>`, `<label>`, `<input>` and `<button>`. `src/styles/demo.css` styles them.
+3. In the MDX page, write `<Demo name="<page>/<demo>" />`. Add `form="..."` if the devtools tag should show a name other than the folder's.
+
+The `demos` MDX plugin (`src/lib/mdx/demos.ts`) turns that into imports and one `client:visible` slot per framework. If a framework the page lists has no demo folder, the build fails with the file and line of the `<Demo>`.
+
+Astro renders every slot of an Astro component up front, used or not, so the other framework's demo also renders on the server. If it is the first island on the page it takes Astro's island loader script with it. `Demo.astro` copies that script out of the unused slots. The same thing happens to islands inside an `<Only>` for another framework.

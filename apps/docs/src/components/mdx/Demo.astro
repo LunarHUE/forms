@@ -1,0 +1,86 @@
+---
+/*
+ * A live demo with its source. Authors write `<Demo name="masks/contact" />`;
+ * the demos MDX plugin (lib/mdx/demos.ts) fills in one hydrated slot per
+ * framework, named after it. Only the page's own framework renders, so a
+ * React page ships no Solid code.
+ *
+ * The Code tab shows every file in the demo folder, read with `?raw`, so it
+ * is the code that runs. The entry file (`contact.tsx`) comes first.
+ *
+ * Reset: the slot renders once. The live copy goes in the stage, and a copy
+ * without <script> tags goes in a <template>. DemoFrame swaps a clone of the
+ * template in and unmounts the old island, which then hydrates from scratch.
+ * See the README.
+ */
+import { AVAILABLE_FRAMEWORKS, isFramework } from "@/lib/frameworks";
+import { highlight } from "@/lib/highlight";
+
+import { DemoFrame, type DemoFile } from "./DemoFrame";
+import { demoId } from "./demo/ids";
+import "@/styles/demo.css";
+
+interface Props {
+  /** The demo's folder under `src/demos/<framework>/`, like `masks/contact`. */
+  name: string;
+  /** The form's name on the devtools tag. Default: the last part of `name`. */
+  form?: string;
+}
+
+const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
+
+const { name } = Astro.props;
+const leaf = name.split("/").at(-1)!;
+const form = Astro.props.form ?? leaf;
+const framework = Astro.params.framework;
+if (!framework || !isFramework(framework)) {
+  throw new Error(`<Demo name="${name}"> needs a framework page, got ${Astro.url.pathname}.`);
+}
+if (!Astro.slots.has(framework)) {
+  throw new Error(`<Demo name="${name}"> has no ${framework} slot. Is the demos MDX plugin registered?`);
+}
+
+const folder = `/src/demos/${framework}/${name}/`;
+const entry = `${leaf}.tsx`;
+const files: DemoFile[] = await Promise.all(
+  Object.entries(sources)
+    .filter(([path]) => path.startsWith(folder))
+    .map(([path, code]) => [path.slice(folder.length), code.replace(/\n$/, "")] as const)
+    .toSorted(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a.localeCompare(b)))
+    .map(async ([file, code]) => ({ name: file, code, html: await highlight(code, file.split(".").at(-1)) })),
+);
+
+const id = demoId(Astro.request, name);
+
+const html = await Astro.slots.render(framework);
+// The first island on a page carries Astro's loader and the renderer's
+// bootstrap. They have run by the time anyone resets, so the template keeps
+// markup only.
+const initial = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+
+// Astro renders every slot of a component up front, whether the component
+// uses it or not. So the other frameworks' demos render too, and if one of
+// them is the page's first island it takes Astro's island loader with it and
+// no island on the page hydrates. Keep the loader from their output and drop
+// the rest. Renderer bootstraps (Solid's `_$HY`) stay behind, so a React page
+// gets no Solid code.
+const others = await Promise.all(
+  AVAILABLE_FRAMEWORKS.filter((other) => other !== framework && Astro.slots.has(other)).map((other) =>
+    Astro.slots.render(other),
+  ),
+);
+const loader = others
+  .flatMap((other) => other.match(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g) ?? [])
+  .filter((tag) => tag.includes("astro-island") || tag.includes("self.Astro"))
+  .join("");
+---
+
+<Fragment set:html={loader} />
+<DemoFrame client:visible id={id} name={name} form={form} files={files}>
+  <div data-demo-live><Fragment set:html={html} /></div>
+  <template data-demo-initial><Fragment set:html={initial} /></template>
+</DemoFrame>

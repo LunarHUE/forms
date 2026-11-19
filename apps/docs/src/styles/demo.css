@@ -1,0 +1,134 @@
+/*
+ * Demos use bare <form>, <label>, <input> and <button>, so their source reads
+ * like plain code. This file gives those elements the look from the Paper
+ * mock, scoped to the stage so nothing else on the page picks it up.
+ *
+ * It also draws the devtools outline around each demo's form: dashed grey
+ * with a dark tag, dashed accent on hover, solid accent once the devtools
+ * select it (`data-selected`, set by DemoFrame from the registry).
+ */
+
+.demo-stage {
+  width: 100%;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--foreground);
+}
+
+.demo-stage form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.demo-stage label {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.demo-stage input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.demo-stage input:focus-visible {
+  border-color: var(--ring);
+  outline: 2px solid color-mix(in oklab, var(--ring) 30%, transparent);
+  outline-offset: 0;
+}
+
+.demo-stage button {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.demo-stage button:hover {
+  background: color-mix(in oklab, var(--primary) 85%, var(--background));
+}
+
+.demo-stage button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The devtools outline. */
+
+[data-form-demo] {
+  --demo-outline: #c4c4bf;
+  --demo-tag: var(--foreground);
+  --demo-tag-foreground: var(--background);
+
+  position: relative;
+  width: min(100%, 362px);
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px dashed var(--demo-outline);
+  border-radius: 0 4px 4px 4px;
+}
+
+.dark [data-form-demo] {
+  --demo-outline: #3c3d42;
+  --demo-tag: #26272b;
+  --demo-tag-foreground: #ececea;
+}
+
+[data-form-demo]:hover,
+[data-form-demo]:has(> [data-form-tag]:focus-visible) {
+  --demo-outline: var(--brand);
+  --demo-tag: var(--brand);
+  --demo-tag-foreground: var(--brand-foreground);
+}
+
+[data-form-demo][data-selected] {
+  --demo-outline: var(--brand);
+  --demo-tag: var(--brand);
+  --demo-tag-foreground: var(--brand-foreground);
+
+  border-style: solid;
+}
+
+[data-form-tag] {
+  position: absolute;
+  bottom: 100%;
+  left: -1px;
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 4px 4px 0 0;
+  background: var(--demo-tag);
+  color: var(--demo-tag-foreground);
+  font-family: "Geist Mono Variable", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+[data-form-tag]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Pick mode in the dock: every form outline is a target. */
+html[data-devtools-picking] [data-form-demo] {
+  cursor: crosshair;
+}

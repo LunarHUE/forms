@@ -22,8 +22,11 @@
  * and data-framework from localStorage before first paint. The server
  * markup carries the defaults (data-pm="bun", data-theme="system") so the
  * page also reads right without JavaScript.
+ *
+ * Every page carries the devtools dock (src/devtools), in production too.
  */
 import type { Framework } from "@/lib/frameworks";
+import { DevtoolsDock } from "@/devtools/DevtoolsDock";
 import { bootScript } from "@/lib/boot";
 import { DEFAULT_STATE } from "@/lib/store";
 import "@/styles/global.css";
@@ -65,5 +68,6 @@ const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
   </head>
   <body class={bodyClass}>
     <slot />
+    <DevtoolsDock client:idle />
   </body>
 </html>
