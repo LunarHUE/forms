@@ -3,14 +3,14 @@ import type { GetStaticPaths } from "astro";
 import { render } from "astro:content";
 
 import { mdxComponents } from "@/components/mdx";
-import Layout from "@/layouts/Layout.astro";
+import Shell from "@/components/shell/Shell.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
 import { alternates, pagination, sidebar } from "@/lib/nav";
 import { docHref } from "@/lib/routes";
 import { VERSIONS } from "@/lib/versions";
 
-// Bare markup until the shell and page frame replace it.
+// Bare markup inside the shell until the page frame replaces it.
 
 export const getStaticPaths = (async () => {
   const entries = await getDocs();
@@ -54,25 +54,15 @@ const { Content } = await render(entry);
 const { title, description } = entry.data;
 ---
 
-<Layout title={`${title} · ${frameworkLabel(framework)}`} description={description} framework={framework}>
-  <nav aria-label="Docs">
-    {
-      groups.map((group) => (
-        <section>
-          <h2>{group.label}</h2>
-          <ul>
-            {group.items.map((item) => (
-              <li>
-                <a href={item.href} aria-current={item.slug === entry.id ? "page" : undefined}>
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))
-    }
-  </nav>
+<Shell
+  title={`${title} · ${frameworkLabel(framework)}`}
+  description={description}
+  framework={framework}
+  version={version}
+  groups={groups}
+  currentSlug={entry.id}
+  alternates={others}
+>
   <main>
     <p>{frameworkLabel(framework)} {version}</p>
     <h1>{title}</h1>
@@ -100,4 +90,4 @@ const { title, description } = entry.data;
       </ul>
     </nav>
   </main>
-</Layout>
+</Shell>
