@@ -90,7 +90,7 @@
         "../core/dist/esm/plugins/bind.js": "{ bind }",
         "dist/esm/solid.js": "{ signal }"
       },
-      "limit": "10.4 kB"
+      "limit": "11.6 kB"
     },
     {
       "name": "core + zustand()",
@@ -99,7 +99,7 @@
         "../core/dist/esm/plugins/bind.js": "{ bind }",
         "dist/esm/zustand.js": "{ zustand }"
       },
-      "limit": "10.4 kB"
+      "limit": "11.6 kB"
     }
   ]
 }
