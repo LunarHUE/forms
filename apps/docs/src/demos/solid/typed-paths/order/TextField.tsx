@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 import { For } from "solid-js";
 
 interface TextFieldProps {
@@ -10,7 +10,7 @@ export function TextField(props: TextFieldProps) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <ul id={props.field.errorId}>
         <For each={props.field.shownErrors}>{(error) => <li>{error.message}</li>}</For>
       </ul>

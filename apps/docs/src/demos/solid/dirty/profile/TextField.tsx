@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
 interface TextFieldProps {
   readonly field: FieldApi<string>;
@@ -13,7 +13,7 @@ export function TextField(props: TextFieldProps) {
         {props.label}
         {props.field.dirty ? " (changed)" : null}
       </span>
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }

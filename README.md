@@ -41,6 +41,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import {
   createForms,
+  inputProps,
   useForm,
   useFormContext,
   useFormState,
@@ -61,7 +62,7 @@ function TextField({ field, label }: TextFieldProps) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} />
+      <input {...inputProps(field)} />
       <ul id={field.errorId}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>
