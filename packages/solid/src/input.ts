@@ -271,6 +271,8 @@ type FieldValue<F> = F extends { readonly "~field"?: FieldTypes<infer V, unknown
  * primitives usually own their ids and aria, so bind those with the pieces
  * instead.
  */
+// Every field object has the members `InputField` names, and the overloads pick the props type from `kind`.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 export const inputProps = inputPropsFor as unknown as {
   <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options?: TextInputOptions): TextInputProps;
   <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options: TextareaOptions): TextareaProps;
