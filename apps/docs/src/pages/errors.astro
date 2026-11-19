@@ -30,11 +30,9 @@ for (const anchor of errorAnchors(entry.body ?? "")) {
 ---
 
 <Shell title={title} description={description} currentSlug="errors">
-  <main
-    data-pagefind-body
-    data-pagefind-filter={AVAILABLE_FRAMEWORKS.map((framework) => `framework:${framework}`).join(", ")}
-    data-pagefind-meta="section:Reference"
-  >
+  <main data-pagefind-body data-pagefind-meta="section:Reference">
+    {/* Search lists the errors page for every framework. Pagefind takes one value per element. */}
+    {AVAILABLE_FRAMEWORKS.map((framework) => <span data-pagefind-filter="framework[data-value]" data-value={framework} />)}
     <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc}>
       <Content components={mdxComponents} />
     </Article>
