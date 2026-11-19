@@ -2,9 +2,6 @@ import type { MapError } from "../errors.js";
 import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorInput } from "../validator.js";
-import { problem } from "../problem.js";
-import type { FormContext } from "./context.js";
-import { copyTree } from "./tree.js";
 
 /** The store options validation reads. */
 export interface ValidationOptions<V, E> {
@@ -25,7 +22,7 @@ export interface ValidationOptions<V, E> {
   readonly mapError?: MapError<E> | undefined;
 }
 
-/** What the rest of the store asks of validation. The runner does the work. Without it, `noValidation` stands in. */
+/** What the rest of the store asks of validation. `createValidation` in `validation.ts` does the work. */
 export interface Validation<E> {
   /** Adds a validator at stable path `path`. The returned function removes it and the errors it set. */
   register(this: void, path: Path, validator: ValidatorInput<unknown, E>): () => void;
@@ -66,39 +63,3 @@ export interface SchemaOutput {
   readonly input: unknown;
   readonly output: unknown;
 }
-
-/**
- * Makes the validation of one store. The runner in
- * `@lunarhue/forms-core/plugins/validation` is one, and a plugin hands it to
- * the store. Internal.
- */
-export type CreateValidation = <V, E, I, R>(context: FormContext<V, E, I, R>, options: ValidationOptions<V, E>) => Validation<E>;
-
-const nothing = () => {};
-
-/**
- * Stands in for the runner when no plugin brings it. A form with no
- * validators needs nothing more: `validate()` resolves valid, submit goes
- * straight to the value, and errors from `setErrors` work as they always do.
- * A definition with `validate` or `schema` throws when its store is made,
- * and adding a validator throws.
- */
-export const noValidation: CreateValidation = (context, options) => {
-  if (options.validate || options.schema) throw new Error(problem("validation:definition"));
-  return {
-    register() {
-      throw new Error(problem("validation:validator"));
-    },
-    validate: async () => true,
-    written: nothing,
-    blurred: nothing,
-    reset: nothing,
-    changed: nothing,
-    settleForSubmit: async () => {},
-    async schemaOutput() {
-      const value = context.core.getSnapshot([]).value;
-      // The value is frozen in development, and onSubmit's type lets it write, so it gets a copy in every build.
-      return { input: value, output: copyTree(value) };
-    },
-  };
-};

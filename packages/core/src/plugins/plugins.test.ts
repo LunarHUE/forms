@@ -9,7 +9,6 @@ import {
   type WriteRecord,
 } from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
-import { validation } from "./validation.js";
 import { dirty } from "./dirty.js";
 import { history } from "./history.js";
 import { mask, upper } from "./mask.js";
@@ -778,7 +777,7 @@ describe("reset and submit", () => {
   it("tells onSubmitted about an invalid submit too", async () => {
     const ended: string[] = [];
     const plugin = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({
         defaultValues: contact(),
         plugins: [plugin],
@@ -796,7 +795,7 @@ describe("reset and submit", () => {
     const gate = new Promise<void>((resolve) => (release = resolve));
     let sent: unknown;
     let fail = false;
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({
         defaultValues: contact(),
         plugins: [end],
@@ -825,7 +824,7 @@ describe("reset and submit", () => {
   it("gives onSubmitted no value when the submit ends invalid", async () => {
     const inputs: unknown[] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (_submission, input) => void inputs.push(input) }) });
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ defaultValues: contact(), plugins: [end], validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } } })
       .createStore();
     await store.submit();
@@ -1022,7 +1021,7 @@ describe("revalidation", () => {
       },
     });
     const form = vi.fn<(value: Contact) => undefined>(() => undefined);
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ defaultValues: contact(), validate: { form }, plugins: [filler] })
       .createStore();
     await store.validate();

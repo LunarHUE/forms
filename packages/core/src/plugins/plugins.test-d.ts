@@ -1,7 +1,6 @@
 import type { FieldSnapshot, HookPlugin, PluginContext } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
 import { history, type HistoryMeta } from "@lunarhue/forms-core/plugins/history";
-import { validation } from "@lunarhue/forms-core/plugins/validation";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 
@@ -122,7 +121,7 @@ describe("plugin types", () => {
 
   it("puts each API on store.plugins, typed and not optional", () => {
     const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
-    const shared = createFormsCore({ plugins: [validation(), counter] });
+    const shared = createFormsCore({ plugins: [counter] });
     const store = shared.define({ defaultValues: { name: "" }, plugins: [upload] }).createStore();
     expectTypeOf(store.plugins).toEqualTypeOf<{ readonly counter: { count: number } }>();
     expectTypeOf(store.plugins.counter.count).toEqualTypeOf<number>();
@@ -140,10 +139,8 @@ describe("plugin types", () => {
     expectTypeOf(store.plugins.counter.count).toEqualTypeOf<number>();
   });
 
-  it("checks validate against the shared and the definition's plugins together", () => {
-    createFormsCore().define({ defaultValues: { name: "" }, plugins: [validation()], validate: { fields: { name: required } } });
-    createFormsCore({ plugins: [validation()] }).define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
-    // @ts-expect-error: neither list brings the runner
+  it("takes validate whatever plugins are installed", () => {
+    createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
     createFormsCore().define({ defaultValues: { name: "" }, plugins: [upload], validate: { fields: { name: required } } });
     expectTypeOf(required).toBeFunction();
   });

@@ -95,9 +95,7 @@ export interface HandleBase<V, E = FormError> {
   validate(): Promise<boolean>;
   /**
    * Adds a validator to this field. The returned function removes it and the
-   * errors it set. It needs the validation runner, from `validation()` or a
-   * schema plugin. A handle doesn't know the form's plugins, so the compiler
-   * can't check that, and without the runner this throws.
+   * errors it set.
    */
   // Typed through `this` so the parameter doesn't make handles invariant in V.
   registerValidator<H extends HandleBase<unknown, E>>(this: H, validator: ValidatorInput<ValueOf<H>, E>): () => void;

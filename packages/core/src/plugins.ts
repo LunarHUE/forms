@@ -1,4 +1,6 @@
-import type { HookPlugin, MetaSource, PluginDefinition } from "./plugin.js";
+import type { HookPlugin, MetaSource, PluginDefinition, SchemaPlugin } from "./plugin.js";
+import type { SchemaAdapter } from "./schema-adapter.js";
+import type { StandardSchemaV1 } from "./standard-schema.js";
 import { createPluginHost, hosts } from "./store/plugins.js";
 
 export { refuse } from "./store/plugins.js";
@@ -33,6 +35,15 @@ export function definePlugin<
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const reader = (start: unknown) => (source: MetaSource) => (source.meta?.[name] ?? start) as never;
   return { ...definition, "~host": createPluginHost, meta: reader(definition.initialMeta), formMeta: reader(definition.initialFormMeta) };
+}
+
+/**
+ * Makes a schema plugin from a schema adapter. Its name is the adapter's
+ * vendor. Validation needs no plugin, so the plugin only gives its
+ * library's schemas their default values.
+ */
+export function defineSchemaPlugin<S extends StandardSchemaV1>(adapter: SchemaAdapter<S>): SchemaPlugin<S> {
+  return { name: adapter.vendor, schema: adapter };
 }
 
 /**

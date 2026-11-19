@@ -6,7 +6,7 @@ import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { dirty } from "./plugins/dirty.js";
-import { defineSchemaPlugin, validation } from "./plugins/validation.js";
+import { defineSchemaPlugin } from "./plugins.js";
 
 /** A hand-written Standard Schema of vendor `vendor`. */
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -83,7 +83,7 @@ describe("defaults", () => {
   it("throw at createStore for a schema with no schema plugin and no defaultValues", () => {
     const schema = fakeSchema<User>(undefined, "other");
     // @ts-expect-error: no schema plugin accepts this schema, so defaultValues is required
-    const form = createFormsCore({ plugins: [validation()] }).define({ schema });
+    const form = createFormsCore().define({ schema });
     expect(() => form.createStore()).toThrow(/vendor "other".*defaultValues/);
     vi.stubEnv("NODE_ENV", "production");
     try {
@@ -151,7 +151,7 @@ const required = (value: string) => (value === "" ? err("Required") : undefined)
 describe("shared settings and per-definition overrides", () => {
 
   it("use the shared show unless the definition has its own", () => {
-    const core = createFormsCore({ plugins: [validation()], show: "always" });
+    const core = createFormsCore({ show: "always" });
     const shared = core.define({ defaultValues: { a: "" }, validate: { fields: { a: required } } }).createStore();
     const own = core.define({ defaultValues: { a: "" }, show: "submitted", validate: { fields: { a: required } } }).createStore();
     void shared.validate();
@@ -161,7 +161,7 @@ describe("shared settings and per-definition overrides", () => {
   });
 
   it("use the shared timing unless the definition has its own", () => {
-    const core = createFormsCore({ plugins: [validation()], validate: "input" });
+    const core = createFormsCore({ validate: "input" });
     const shared = core.define({ defaultValues: { a: "x" }, validate: { fields: { a: required } } }).createStore();
     const own = core.define({ defaultValues: { a: "x" }, validate: { on: "blur", fields: { a: required } } }).createStore();
     shared.root.at("a").setValue("");

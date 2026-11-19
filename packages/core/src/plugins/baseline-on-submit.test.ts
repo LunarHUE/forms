@@ -6,7 +6,6 @@ import { history } from "./history.js";
 import { persist } from "./persist.js";
 import { rebase } from "./rebase.js";
 import { testStore } from "./testing.js";
-import { validation } from "./validation.js";
 
 const profile = () => ({ name: "ada", email: "ada@example.com" });
 const list = () => ({ tags: ["a", "b"] });
@@ -66,7 +65,7 @@ describe("baselineOnSubmit", () => {
     let sent: unknown;
     const { store } = testStore({
       defaultValues: profile(),
-      plugins: [validation(), dirty(), baselineOnSubmit()],
+      plugins: [dirty(), baselineOnSubmit()],
       validate: { fields: { email: () => checking.promise.then(() => undefined) } },
       onSubmit: (value) => void (sent = value),
     });
@@ -84,7 +83,7 @@ describe("baselineOnSubmit", () => {
     const cases = [
       testStore({
         defaultValues: profile(),
-        plugins: [validation(), dirty(), baselineOnSubmit()],
+        plugins: [dirty(), baselineOnSubmit()],
         validate: { fields: { email: (value) => (value.includes("@") ? undefined : { message: "Email" }) } },
       }),
       testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit(), refusing] }),

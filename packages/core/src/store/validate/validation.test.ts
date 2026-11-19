@@ -3,7 +3,6 @@ import type { ErrorMap, FormError, RawError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { PlatformAbortSignal } from "../../value.js";
-import { validation as runner } from "../../plugins/validation.js";
 import { createFormInternals, type FormStoreOptions } from "../form-store.js";
 
 type Options<V> = Omit<FormStoreOptions<V>, "id" | "initial">;
@@ -15,7 +14,7 @@ declare function setTimeout(run: () => void, ms: number): unknown;
 type Check = (value: unknown) => FormError | undefined;
 
 const make = <V>(initial: V, options: Options<V> = {}) => {
-  const parts = createFormInternals<V>({ id: "f", initial, plugins: [runner()], ...options });
+  const parts = createFormInternals<V>({ id: "f", initial, ...options });
   const root = parts.store.fieldAt([]);
   if (!root) throw new Error("no root");
   const messages = (path: Path) => parts.store.getSnapshot(path).errors.map((error) => error.message);

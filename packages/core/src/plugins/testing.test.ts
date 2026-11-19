@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { definePlugin, refuse } from "../plugins.js";
 import { testStore } from "./testing.js";
-import { validation } from "./validation.js";
 
 const contact = () => ({ phone: "", code: "" });
 
@@ -115,7 +114,7 @@ describe("testStore", () => {
     });
     const { store, errors } = testStore({
       defaultValues: contact(),
-      plugins: [validation(), watch],
+      plugins: [watch],
       validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } },
       onSubmit: (value) => value.phone,
     });

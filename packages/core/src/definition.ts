@@ -1,16 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type {
-  HasSchemaPlugin,
-  HasValidation,
-  IfDirty,
-  IfValidation,
-  PluginApis,
-  PluginErrorHandler,
-  Plugins,
-  PluginsFor,
-  SchemaNeedsValidation,
-} from "./plugin.js";
+import type { HasSchemaPlugin, IfDirty, PluginApis, PluginErrorHandler, Plugins, PluginsFor } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
@@ -53,17 +43,14 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
   /**
    * The plugins every form gets, in one list:
    * - schema plugins such as `valibot()` from `@lunarhue/forms-schema/valibot`,
-   *   which give their library's schemas default values and bring the
-   *   validation runner;
-   * - `validation()` from `@lunarhue/forms-core/plugins/validation`, the
-   *   runner alone, for function validators and for any other Standard Schema;
+   *   which give their library's schemas default values;
    * - first-class plugins such as `history()`, each from its own
    *   `@lunarhue/forms-core/plugins/<name>` entry, and hook plugins from
    *   `definePlugin` in `@lunarhue/forms-core/plugins`.
    *
-   * The list's type decides what `define` accepts: `schema` and `validate`
-   * need the runner, a schema a schema plugin accepts makes `defaultValues`
-   * optional, and each hook plugin's API shows up on the store's `plugins`. Hook plugins run in this
+   * The list's type decides what `define` accepts: a schema a schema plugin
+   * accepts makes `defaultValues` optional, `equals` needs `dirty()`, and
+   * each hook plugin's API shows up on the store's `plugins`. Hook plugins run in this
    * order, except where a plugin's `after` says otherwise, and before a
    * definition's own plugins.
    */
@@ -115,14 +102,11 @@ export interface DefinitionValidate<V, E> {
 
 /**
  * Definition settings that don't depend on where the value type comes from.
- * `P` is the shared plugin list, which decides whether `validate` is allowed.
+ * `P` is the shared plugin list, which decides whether `equals` is allowed.
  */
 export interface DefinitionOptions<V, O, E, I, R, P extends Plugins = []> {
-  /**
-   * Validation for this form. It needs the validation runner: install
-   * `validation()` or a schema plugin. Without one it is a type error.
-   */
-  readonly validate?: IfValidation<P, DefinitionValidate<V, E>>;
+  /** Validation for this form. */
+  readonly validate?: DefinitionValidate<V, E>;
   /** When errors show. Defaults to the shared setting. */
   readonly show?: Show;
   /** The dirty comparison, asked before the shared one. It needs `dirty()`. Without it it is a type error. */
@@ -151,15 +135,26 @@ export type SchemaValue<S extends StandardSchemaV1, P extends Plugins> =
   HasSchemaPlugin<S, P> extends true ? Draft<StandardSchemaV1.InferInput<S>> : StandardSchemaV1.InferInput<S>;
 
 /**
+ * The schema part of a definition whose schema no installed schema plugin
+ * accepts. Nothing gives the schema's defaults, so `defaultValues` is
+ * required and complete. Leaving it out is a type error that names this
+ * type, which says what to do.
+ */
+export interface NoSchemaPlugin<S extends StandardSchemaV1> {
+  /** The schema. Fixed for the life of the definition. */
+  readonly schema: S;
+  /** The starting value. Required because no installed schema plugin accepts this schema's type. */
+  readonly defaultValues: StandardSchemaV1.InferInput<S>;
+}
+
+/**
  * A definition with a schema. The schema validates the whole value, as
  * `validate.form` would, and sets the value type (see `SchemaValue`). Any
- * Standard Schema works, and the validation runner runs it, so `schema`
- * needs the runner, from `validation()` or any schema plugin. Without it,
- * `schema` is a type error that names what to install.
+ * Standard Schema works.
  *
  * When a schema plugin in `P` accepts the schema's type, `defaultValues` is
  * optional and deep partial, and overrides the plugin's defaults. Otherwise
- * it is required and complete.
+ * it is required and complete (see `NoSchemaPlugin`).
  */
 export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I, R> = (HasSchemaPlugin<S, P> extends true
   ? {
@@ -168,12 +163,7 @@ export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I
       /** Values that override the schema plugin's defaults. Any subset, at any depth. */
       readonly defaultValues?: DeepPartial<StandardSchemaV1.InferInput<S>>;
     }
-  : {
-      /** The schema. Fixed for the life of the definition. */
-      readonly schema: HasValidation<P> extends true ? S : S & SchemaNeedsValidation;
-      /** The starting value. Required because no installed schema plugin accepts this schema's type. */
-      readonly defaultValues: StandardSchemaV1.InferInput<S>;
-    }) &
+  : NoSchemaPlugin<S>) &
   DefinitionOptions<SchemaValue<S, P>, StandardSchemaV1.InferOutput<S>, E, I, R, P>;
 
 /**
@@ -245,8 +235,7 @@ export type Combined<P extends Plugins, D extends Plugins> = readonly [...P, ...
  *    undefined are typed that way, and `defaultValues` is optional and deep
  *    partial. `onSubmit` still gets the schema's output type.
  * 2. Any other Standard Schema: the value type comes from the schema and
- *    `defaultValues` is required and complete. It needs the validation
- *    runner, from `validation()` or any schema plugin.
+ *    `defaultValues` is required and complete.
  * 3. No `schema`: `defaultValues` is required and sets the value type, or
  *    give it explicitly as `define<V>(...)`. Literals from `satisfies` or
  *    `as const` widen, so `false` becomes `boolean` (see `Widened`).

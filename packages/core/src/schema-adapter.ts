@@ -6,7 +6,7 @@ import type { StandardSchemaV1 } from "./standard-schema.js";
  * Validation and types go through Standard Schema, so this is all an
  * adapter does. `S` is the schema type the adapter supports. A schema
  * plugin carries one (see `defineSchemaPlugin` in
- * `@lunarhue/forms-core/plugins/validation`), and a schema of type `S` then
+ * `@lunarhue/forms-core/plugins`), and a schema of type `S` then
  * gets automatic defaults, so its form's `defaultValues` is optional.
  */
 export interface SchemaAdapter<S extends StandardSchemaV1 = StandardSchemaV1> {

@@ -5,7 +5,6 @@ import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { AnyFormStore } from "./store.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
-import type { CreateValidation } from "./store/runner.js";
 
 /**
  * What made a write. `"user"` is a write from outside any plugin, `"reset"`
@@ -287,14 +286,11 @@ export interface MetaSource {
  *   `definePlugin` in `@lunarhue/forms-core/plugins` (see `HookPlugin`);
  * - a schema adapter, which gives its library's schemas default values, so
  *   their forms need no `defaultValues` (see `SchemaPlugin`);
- * - the validation runner, which `validation()` from
- *   `@lunarhue/forms-core/plugins/validation` brings alone and every schema
- *   plugin brings too;
  * - dirty tracking, which `dirty()` from `@lunarhue/forms-core/plugins/dirty`
  *   brings.
  *
- * The host, the runner and dirty tracking come with the plugin, so a store
- * whose plugins bring none of them never loads their code.
+ * The host and dirty tracking come with the plugin, so a store whose
+ * plugins bring neither never loads their code.
  */
 export interface Plugin<A = undefined, N extends string = string, M = unknown, F = unknown> {
   /** The plugin's name. A hook plugin's must be unique among the store's hook plugins. */
@@ -320,8 +316,6 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
   formMeta?(source: MetaSource): F | undefined;
   /** A schema plugin's: the adapter that gives its schemas' default values. */
   readonly schema?: SchemaAdapter<never>;
-  /** The validation runner, from a schema plugin or `validation()`. Internal. */
-  readonly validation?: CreateValidation;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly dirty?: CreateDirty;
 }
@@ -343,15 +337,9 @@ export interface HookPlugin<A = undefined, N extends string = string, M = unknow
   formMeta(source: MetaSource): F | FU;
 }
 
-/** A plugin that brings a schema adapter for schemas of type `S`, and the validation runner. */
+/** A plugin that brings a schema adapter for schemas of type `S`. */
 export interface SchemaPlugin<S extends StandardSchemaV1 = StandardSchemaV1, N extends string = string> extends Plugin<undefined, N> {
   readonly schema: SchemaAdapter<S>;
-  readonly validation: CreateValidation;
-}
-
-/** The plugin `validation()` returns: the validation runner alone. */
-export interface ValidationPlugin extends Plugin<undefined, "validation"> {
-  readonly validation: CreateValidation;
 }
 
 /** The plugin `dirty()` returns: dirty tracking. */
@@ -378,11 +366,6 @@ export type AnyHookPlugin = HookPlugin<any, any, any, any, any, any>;
 
 /** A list of plugins, as `createFormsCore({ plugins })` takes it. */
 export type Plugins = readonly AnyPlugin[];
-
-/** True when a plugin in `P` brings the validation runner. */
-export type HasValidation<P extends Plugins> = [Extract<P[number], { readonly validation: CreateValidation }>] extends [never]
-  ? false
-  : true;
 
 /** True when a plugin in `P` brings dirty tracking. */
 export type HasDirty<P extends Plugins> = [Extract<P[number], { readonly dirty: CreateDirty }>] extends [never] ? false : true;
@@ -411,33 +394,6 @@ type ApiOf<T> = T extends HookPlugin<infer A, string, any, any, any, any> ? A : 
 export type PluginApis<P extends Plugins> = { readonly [T in P[number] as ApiName<T>]: ApiOf<T> };
 
 /**
- * What `validate` becomes when no plugin brings the validation runner. The
- * compiler names the missing property, which says what to install.
- */
-export interface ValidationNotInstalled {
-  readonly "Add validation() or a schema plugin such as valibot() to plugins to use validate": never;
-}
-
-/**
- * What `schema` becomes when no plugin brings the validation runner, which
- * runs the schema. The compiler names the missing property, which says what
- * to install.
- */
-export interface SchemaNeedsValidation {
-  readonly "Add validation() or a schema plugin such as valibot() to plugins to use schema": never;
-}
-
-/**
- * `T` when a plugin in `P` brings the validation runner. Otherwise `T`
- * marked as needing it, so a value is a type error whose message names what
- * to install, while `undefined`, `null` and `false` in `T` stay allowed. The
- * mark keeps `T` itself, so a validator inside still gets its parameter
- * types and only the missing runner is reported.
- */
-export type IfValidation<P extends Plugins, T> =
-  HasValidation<P> extends true ? T : (NonNullable<T> & ValidationNotInstalled) | Extract<T, undefined | null | false>;
-
-/**
  * What `equals` becomes when no plugin brings dirty tracking, which is the
  * only thing that runs it. The compiler names the missing property, which
  * says what to install.
@@ -446,5 +402,9 @@ export interface EqualsNeedsDirty {
   readonly "Add dirty() to plugins to use equals": never;
 }
 
-/** `T` when a plugin in `P` brings dirty tracking. Otherwise `T` marked as needing it, as `IfValidation` does. */
+/**
+ * `T` when a plugin in `P` brings dirty tracking. Otherwise `T` marked as
+ * needing it, so a value is a type error whose message names what to
+ * install, while `undefined` in `T` stays allowed.
+ */
 export type IfDirty<P extends Plugins, T> = HasDirty<P> extends true ? T : (NonNullable<T> & EqualsNeedsDirty) | Extract<T, undefined>;

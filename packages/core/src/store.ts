@@ -111,8 +111,7 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
   setErrors(errors: ErrorMap<E>): void;
   /**
    * Runs every validator now, skipping debounce and timing. Resolves true
-   * when the form has no validation error. With no validation runner
-   * installed it resolves true.
+   * when the form has no validation error.
    */
   validate(): Promise<boolean>;
   /**
@@ -123,8 +122,7 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
   reset(options?: ResetOptions): void;
   /**
    * Adds a validator at stable path `path`. The returned function removes it
-   * and the errors it set. It needs the validation runner, from
-   * `validation()` or a schema plugin. Without it this throws.
+   * and the errors it set.
    */
   registerValidator(path: Path, validator: ValidatorInput<unknown, E>): () => void;
 

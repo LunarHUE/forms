@@ -4,7 +4,7 @@ import { createFormsCore } from "../forms-core.js";
 import { dirty } from "../plugins/dirty.js";
 import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import { defineSchemaPlugin, validation } from "../plugins/validation.js";
+import { defineSchemaPlugin } from "../plugins.js";
 
 interface Contact {
   name: string;
@@ -15,7 +15,7 @@ const contact = (): Contact => ({ name: "", rows: [{ title: "a" }] });
 const err = (message: string): FormError => ({ message });
 const required = (value: string) => (value === "" ? err("Required") : undefined);
 
-/** A store with no plugins, so no validation runner. */
+/** A store with no plugins. */
 const bare = (onSubmit?: (value: Contact) => unknown) =>
   createFormsCore()
     .define({ defaultValues: contact(), ...(onSubmit && { onSubmit }) })
@@ -25,8 +25,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("a form with no validation runner", () => {
-  it("resolves validate() as valid, on the form and on a field", async () => {
+describe("a form with no plugins", () => {
+  it("resolves validate() as valid when nothing validates, on the form and on a field", async () => {
     const store = bare();
     expect(await store.validate()).toBe(true);
     expect(await store.root.at("name").validate()).toBe(true);
@@ -49,10 +49,10 @@ describe("a form with no validation runner", () => {
     expect(store.getSnapshot([]).errors).toEqual([err("Try again")]);
     expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Taken")], invalid: false });
     expect(store.getSnapshot(["rows", row ?? "", "title"]).errors).toEqual([err("Too short")]);
-    // A user edit clears the field's own, as with the runner.
+    // A user edit clears the field's own.
     store.root.at("name").setValue("Ada");
     expect(store.getSnapshot(["name"]).errors).toEqual([]);
-    // User errors never block a submit. The submit clears them, as with the runner.
+    // User errors never block a submit. The submit clears them.
     expect(await store.submit()).toMatchObject({ status: "succeeded" });
     expect(store.getSnapshot([]).errors).toEqual([]);
   });
@@ -71,7 +71,7 @@ describe("a form with no validation runner", () => {
     expect(store.getSnapshot(["name"]).errors).toEqual([err("Taken")]);
   });
 
-  it("writes, blurs, resets and rebases as with the runner", () => {
+  it("writes, blurs, resets and rebases", () => {
     const store = createFormsCore({ plugins: [rebase(), dirty()] }).define({ defaultValues: contact() }).createStore();
     const name = store.root.at("name");
     name.setValue("Ada");
@@ -82,46 +82,9 @@ describe("a form with no validation runner", () => {
     expect(name.peek()).toMatchObject({ value: "Bob", touched: false, dirty: false });
   });
 
-  it("throws a clear error in development when a validator is added", () => {
-    const store = bare();
-    expect(() => store.root.at("name").registerValidator(required)).toThrow(
-      "A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/plugins/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
-    );
-    expect(() => store.registerValidator(["name"], () => undefined)).toThrow(/no plugin brings the validation runner/);
-  });
-
-  it("throws a clear error in development when the definition has validate or schema", () => {
-    const withValidate = createFormsCore().define({
-      defaultValues: contact(),
-      // @ts-expect-error: no plugin brings the runner
-      validate: { fields: { name: required } },
-    });
-    expect(() => withValidate.createStore()).toThrow(
-      "This form's definition has `validate` or `schema`, but no plugin brings the validation runner. Add `validation()` from \"@lunarhue/forms-core/plugins/validation\", or a schema plugin such as `valibot()`, to `plugins`.",
-    );
-    const schema: StandardSchemaV1<Contact> = {
-      // The store passes the form value, which is a `Contact`.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      "~standard": { version: 1, vendor: "x", validate: (value) => ({ value: value as Contact }) },
-    };
-    // @ts-expect-error: no schema plugin accepts it
-    const withSchema = createFormsCore().define({ schema, defaultValues: contact() });
-    expect(() => withSchema.createStore()).toThrow(/no plugin brings the validation runner/);
-  });
-
-  it("throws a short code in production", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    expect(() => bare().root.at("name").registerValidator(required)).toThrow(/^@lunarhue\/forms-core: validation:validator$/);
-    // @ts-expect-error: no plugin brings the runner
-    const form = createFormsCore().define({ defaultValues: contact(), validate: { fields: { name: required } } });
-    expect(() => form.createStore()).toThrow(/^@lunarhue\/forms-core: validation:definition$/);
-  });
-});
-
-describe("a form with validation() alone", () => {
-  it("runs function validators, blocks the submit and lets a fixed value through", async () => {
+  it("runs a definition's validators, blocks the submit and lets a fixed value through", async () => {
     const onSubmit = vi.fn<(value: Contact) => void>();
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ defaultValues: contact(), validate: { fields: { name: required } }, onSubmit })
       .createStore();
     expect(await store.submit()).toEqual({ status: "invalid" });
@@ -132,23 +95,34 @@ describe("a form with validation() alone", () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it("takes validators added to a field", async () => {
-    const store = createFormsCore({ plugins: [validation()] }).define({ defaultValues: contact() }).createStore();
-    const stop = store.root.at("name").registerValidator(required);
+  it("takes validators added to a field, and field.validate() runs them", async () => {
+    const store = bare();
+    const name = store.root.at("name");
+    const stop = name.registerValidator(required);
+    expect(await name.validate()).toBe(false);
+    expect(name.peek()).toMatchObject({ errors: [err("Required")], invalid: true });
     expect(await store.validate()).toBe(false);
     stop();
+    expect(name.peek().errors).toEqual([]);
     expect(await store.validate()).toBe(true);
+    const off = store.registerValidator(["name"], (value) => (value === "" ? err("Required") : undefined));
+    expect(await store.validate()).toBe(false);
+    off();
+  });
+
+  it("validates in production too", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const store = createFormsCore()
+      .define({ defaultValues: contact(), validate: { fields: { name: required } } })
+      .createStore();
+    expect(await store.root.at("name").validate()).toBe(false);
+    expect(store.getSnapshot(["name"]).errors).toEqual([err("Required")]);
   });
 });
 
 describe("plugins on the definition", () => {
-  it("bring the runner and the schema defaults for that form alone", async () => {
+  it("bring the schema defaults for that form alone", () => {
     const forms = createFormsCore();
-    const checked = forms.define({ defaultValues: contact(), plugins: [validation()], validate: { fields: { name: required } } }).createStore();
-    expect(await checked.validate()).toBe(false);
-    const plain = forms.define({ defaultValues: contact() }).createStore();
-    expect(() => plain.root.at("name").registerValidator(required)).toThrow(/no plugin brings the validation runner/);
-
     const vendor = defineSchemaPlugin<StandardSchemaV1<{ city: string }>>({
       vendor: "city",
       defaultValue: () => ({ city: "Paris" }),
@@ -163,7 +137,7 @@ describe("plugins on the definition", () => {
   });
 });
 
-describe("a form with a Standard Schema no plugin accepts, and validation()", () => {
+describe("a form with a Standard Schema no plugin accepts", () => {
   interface Signup {
     name: string;
     age: string;
@@ -187,7 +161,7 @@ describe("a form with a Standard Schema no plugin accepts, and validation()", ()
 
   it("starts from defaultValues, validates on submit, places issues on fields and passes the output", async () => {
     const onSubmit = vi.fn<(value: { name: string; age: number }) => void>();
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ schema: signup, defaultValues: { name: "", age: "x" }, onSubmit })
       .createStore();
     expect(store.root.peek().value).toEqual({ name: "", age: "x" });
