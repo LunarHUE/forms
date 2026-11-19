@@ -73,7 +73,7 @@ describe("zod()", () => {
     store.root.at("channels").push();
   });
 
-  it("still requires defaultValues for a valibot schema, which its runner validates", () => {
+  it("still requires defaultValues for a valibot schema", () => {
     const core = createFormsCore({ plugins: [zod()] });
     // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: fromValibot });

@@ -1,4 +1,13 @@
-import { createFormsCore, type FormStore, type HasSchemaPlugin, type HasValidation, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import {
+  createFormsCore,
+  type FormError,
+  type FormStore,
+  type HasSchemaPlugin,
+  type LeafHandle,
+  type NoSchemaPlugin,
+  type SchemaDefinition,
+  type StandardSchemaV1,
+} from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
@@ -67,7 +76,7 @@ describe("valibot()", () => {
     store.root.at("channels").push();
   });
 
-  it("still requires defaultValues for a schema of another vendor, which its runner validates", () => {
+  it("still requires defaultValues for a schema of another vendor", () => {
     const core = createFormsCore({ plugins: [valibot()] });
     // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: other });
@@ -76,9 +85,18 @@ describe("valibot()", () => {
     expectTypeOf<HasSchemaPlugin<typeof other, Installed>>().toEqualTypeOf<false>();
   });
 
-  it("brings the validation runner", () => {
+  it("is what makes defaultValues optional for a valibot schema", () => {
+    // @ts-expect-error: valibot() isn't installed, so defaultValues is required
+    createFormsCore().define({ schema: user });
+    expectTypeOf<SchemaDefinition<typeof user, [], FormError, undefined, unknown>>().toExtend<NoSchemaPlugin<typeof user>>();
+    const store = createFormsCore().define({ schema: user, defaultValues: { name: "", age: "" } }).createStore();
+    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
+  });
+
+  it("leaves validate to core", () => {
     const core = createFormsCore({ plugins: [valibot()] });
     core.define({ schema: user, validate: { fields: { name: (value) => (value ? undefined : { message: "Required" }) } } });
-    expectTypeOf<HasValidation<Installed>>().toEqualTypeOf<true>();
+    const plain = createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: { name: (value) => (value ? undefined : { message: "Required" }) } } });
+    expectTypeOf(plain.createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
   });
 });
