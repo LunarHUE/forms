@@ -80,7 +80,7 @@ Type `name="emial"` and the build fails.
 
 The plugins that need no other library ship with this package, one entry
 each: `@lunarhue/forms-solid/plugins/history`, `/mask`, `/rules`,
-`/persist`, `/rebase`, `/bind`, `/dirty` and `/validation`.
+`/persist`, `/rebase`, `/bind` and `/dirty`. Validation is built in.
 
 ## More
 

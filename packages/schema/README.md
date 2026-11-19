@@ -1,7 +1,8 @@
 # @lunarhue/forms-schema
 
-Schema plugins for [forms](https://github.com/LunarHUE/forms). The schema validates the form and gives it
-its types, so you write the shape once.
+Schema plugins for [forms](https://github.com/LunarHUE/forms). Each one lets a form take `schema` from
+one library. The schema validates the form and gives it its types, so you
+write the shape once.
 
 ```sh
 npm install @lunarhue/forms-schema zod       # or valibot
@@ -30,12 +31,14 @@ const signUp = forms.define({
 });
 ```
 
-Each plugin brings validation with it, so you don't list `validation()` as
-well. Starting values come from the schema.
+Every form validates on its own, so the plugin only adapts the library. A
+Zod schema on a form without `zod()` is a type error that names `zod()`, and
+the same goes for Valibot. Starting values come from the schema.
 
-Any other [Standard Schema](https://standardschema.dev) works as `schema`
-with the plain `validation()` plugin. You give `defaultValues` yourself in
-that case.
+For another [Standard Schema](https://standardschema.dev) library, make a
+schema plugin with `defineSchemaPlugin` from `@lunarhue/forms-core/plugins`.
+[Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library)
+shows how.
 
 A helper that is generic over the schema type, such as
 `function makeForm<S extends z.ZodObject>(schema: S)`, can't call `define`.
