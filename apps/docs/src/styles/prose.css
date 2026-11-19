@@ -1,0 +1,212 @@
+/*
+ * Article text: what MDX renders inside `.prose` (components/page/Article.astro).
+ *
+ * Only Markdown output is styled. Markdown blocks (paragraphs, headings,
+ * lists, tables, quotes) are direct children of `.prose`, since `<Only>`
+ * renders its slot without a wrapper; inline code, links and emphasis are
+ * styled inside those blocks only. Components (install lines, code blocks,
+ * demos) bring their own styles and are left alone, apart from the spacing
+ * around them at the end of this file.
+ *
+ * Blocks space themselves with vertical margins, which collapse, so the gap
+ * between two blocks is the larger of the two.
+ */
+
+/* Keeps Tailwind's layer order if this file lands in the bundle before global.css. */
+@layer theme, base, components, utilities;
+
+@layer components {
+  :root {
+    --callout-warning: #9a6700;
+    --callout-warning-border: #ecd9a8;
+    --callout-warning-bg: #fdf8eb;
+  }
+  .dark {
+    --callout-warning: #e3a93f;
+    --callout-warning-border: #3d3218;
+    --callout-warning-bg: #1a160d;
+  }
+
+  /* Below 1280px the article's breadcrumb bar pins under the header too. */
+  @media (max-width: 1279.98px) {
+    :root {
+      --docs-bar-height: 2.75rem;
+    }
+  }
+
+  /* A jump to a heading or an error anchor lands below the pinned header and bar. */
+  .prose [id],
+  #top {
+    scroll-margin-top: calc(var(--docs-header-height, 0px) + var(--docs-bar-height, 0px) + 1.5rem);
+  }
+
+  .prose {
+    font-size: 1rem;
+    line-height: 1.6875rem;
+    overflow-wrap: break-word;
+  }
+
+  .prose > :where(p, ul, ol, table, blockquote, pre) {
+    margin-block: 1rem;
+  }
+  .prose > :first-child {
+    margin-top: 0;
+  }
+
+  /* Headings */
+  .prose > :where(h2) {
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    font-size: 1.375rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .prose > :where(h3) {
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.0625rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+  }
+  .prose > :where(h4) {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  /* Lists */
+  .prose > :where(ul, ol),
+  .prose > :where(ul, ol) :where(ul, ol) {
+    padding-inline-start: 1.25rem;
+  }
+  .prose :where(ul) {
+    list-style: disc;
+  }
+  .prose :where(ol) {
+    list-style: decimal;
+  }
+  .prose > :where(ul, ol) :where(li) {
+    padding-inline-start: 0.25rem;
+  }
+  .prose > :where(ul, ol) :where(li + li, li > :where(ul, ol)) {
+    margin-top: 0.375rem;
+  }
+  .prose > :where(ul, ol) :where(li)::marker {
+    color: var(--muted-foreground);
+  }
+
+  .prose > :where(blockquote) {
+    border-inline-start: 2px solid var(--border);
+    padding-inline-start: 1rem;
+    color: var(--muted-foreground);
+  }
+
+  .prose > :where(hr) {
+    margin-block: 2.5rem;
+    border-color: var(--border);
+  }
+
+  /*
+   * Tables: a hairline above and below every row, no fill, no outer frame.
+   * The first column holds names (packages, options, codes), so it is mono
+   * and stays on one line. In a two-column table it
+   * takes 40% so the descriptions line up from table to table. A header row
+   * with no text is left out.
+   */
+  .prose > :where(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    line-height: 1.5rem;
+  }
+  .prose > :where(table) :where(th, td) {
+    border-block: 1px solid var(--border);
+    padding: 0.625rem 1.5rem 0.625rem 0;
+    text-align: start;
+    vertical-align: top;
+  }
+  .prose > :where(table) :where(th) {
+    padding-block: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+  .prose > :where(table) :where(th, td):last-child {
+    padding-inline-end: 0;
+  }
+  .prose > :where(table) :where(td):first-child {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  .prose > :where(table) :where(td):first-child:nth-last-child(2) {
+    width: 40%;
+  }
+  @media (min-width: 640px) {
+    .prose > :where(table) :where(td):first-child {
+      font-size: 0.875rem;
+    }
+  }
+  .prose > :where(table) :where(thead):not(:has(th:not(:empty))) {
+    display: none;
+  }
+
+  /*
+   * Inline: inside Markdown blocks only, so components keep their own look.
+   * A component's one-line Markdown body (`<Callout>Text with `code`</Callout>`)
+   * has no paragraph, so inline elements directly in `.prose` count too.
+   */
+  :where(.prose > :is(p, ul, ol, table, blockquote, h2, h3, h4)) :where(code),
+  .prose > :where(code) {
+    border-radius: 0.25rem;
+    background: color-mix(in oklab, var(--foreground) 5%, transparent);
+    padding: 0.125rem 0.3125rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    color: var(--foreground);
+  }
+  :where(.prose > :is(table, h2, h3, h4)) :where(code) {
+    background: none;
+    padding: 0;
+    font-size: 0.9em;
+  }
+  :where(.prose > table) :where(td:first-child code) {
+    font-size: 1em;
+  }
+  :where(.prose > :is(p, ul, ol, table, blockquote, h2, h3, h4)) :where(a[href]),
+  .prose > :where(a[href]) {
+    border-radius: 0.125rem;
+    color: var(--brand);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--brand) 40%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    outline: none;
+    &:hover {
+      text-decoration-color: currentColor;
+    }
+    &:focus-visible {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 50%, transparent);
+    }
+    & :where(code) {
+      color: inherit;
+    }
+  }
+  .prose :where(strong) {
+    font-weight: 600;
+  }
+}
+
+/*
+ * Components, outside the layers so this beats their own `my-*` utilities:
+ * install lines and code blocks sit 1.25rem from their neighbours.
+ */
+.prose [data-install],
+.prose [data-slot="code-block"] {
+  margin-block: 1.25rem;
+}
+.prose > :first-child:is([data-install], [data-slot="code-block"]),
+.prose > astro-island:first-child > [data-install] {
+  margin-top: 0;
+}
