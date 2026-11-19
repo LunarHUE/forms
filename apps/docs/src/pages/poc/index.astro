@@ -1,0 +1,12 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+const pages = ["text-mask", "number", "checkbox", "select", "plain"];
+---
+
+<Layout title="POC: field pieces" noindex>
+  <main class="mx-auto max-w-xl p-6">
+    <h1 class="text-xl font-semibold">Field pieces POC</h1>
+    <ul>{pages.map((page) => <li><a href={`/poc/${page}`}>{page}</a></li>)}</ul>
+  </main>
+</Layout>
