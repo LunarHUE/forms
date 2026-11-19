@@ -1,4 +1,5 @@
 ---
+import Layout from "@/layouts/Layout.astro";
 import { AVAILABLE_FRAMEWORKS, DEFAULT_FRAMEWORK } from "@/lib/frameworks";
 import { frameworkHref } from "@/lib/routes";
 
@@ -7,11 +8,8 @@ const hrefs = Object.fromEntries(AVAILABLE_FRAMEWORKS.map((framework) => [framew
 const fallback = frameworkHref(DEFAULT_FRAMEWORK);
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LunarHUE Forms</title>
+<Layout title="LunarHUE Forms">
+  <Fragment slot="head">
     <script is:inline define:vars={{ hrefs, fallback }}>
       let last = null;
       try {
@@ -20,8 +18,6 @@ const fallback = frameworkHref(DEFAULT_FRAMEWORK);
       location.replace((last && hrefs[last]) || fallback);
     </script>
     <noscript><meta http-equiv="refresh" content={`0; url=${fallback}`} /></noscript>
-  </head>
-  <body>
-    <p><a href={fallback}>LunarHUE Forms docs</a></p>
-  </body>
-</html>
+  </Fragment>
+  <p><a href={fallback}>LunarHUE Forms docs</a></p>
+</Layout>

@@ -1,19 +1,13 @@
 ---
+import Layout from "@/layouts/Layout.astro";
 import { DEFAULT_FRAMEWORK } from "@/lib/frameworks";
 import { frameworkHref } from "@/lib/routes";
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Page not found · LunarHUE Forms</title>
-  </head>
-  <body>
-    <main>
-      <h1>Page not found</h1>
-      <p>No page lives at this address.</p>
-      <p><a href={frameworkHref(DEFAULT_FRAMEWORK)}>Go to the introduction</a></p>
-    </main>
-  </body>
-</html>
+<Layout title="Page not found" noindex>
+  <main>
+    <h1>Page not found</h1>
+    <p>No page lives at this address.</p>
+    <p><a href={frameworkHref(DEFAULT_FRAMEWORK)}>Go to the introduction</a></p>
+  </main>
+</Layout>

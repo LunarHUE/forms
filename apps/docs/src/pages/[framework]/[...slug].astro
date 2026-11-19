@@ -2,6 +2,7 @@
 import type { GetStaticPaths } from "astro";
 import { render } from "astro:content";
 
+import Layout from "@/layouts/Layout.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
 import { alternates, pagination, sidebar } from "@/lib/nav";
@@ -52,58 +53,50 @@ const { Content } = await render(entry);
 const { title, description } = entry.data;
 ---
 
-<html lang="en" data-framework={framework}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} · {frameworkLabel(framework)} · LunarHUE Forms</title>
-    <meta name="description" content={description} />
-  </head>
-  <body>
-    <nav aria-label="Docs">
-      {
-        groups.map((group) => (
-          <section>
-            <h2>{group.label}</h2>
-            <ul>
-              {group.items.map((item) => (
-                <li>
-                  <a href={item.href} aria-current={item.slug === entry.id ? "page" : undefined}>
-                    {item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
-      }
-    </nav>
-    <main>
-      <p>{frameworkLabel(framework)} {version}</p>
-      <h1>{title}</h1>
-      <p>{description}</p>
-      <Content />
-      <nav aria-label="Pagination">
-        {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
-        {next && <a href={next.href} rel="next">Next: {next.label}</a>}
-      </nav>
-      <nav aria-label="Frameworks">
-        <ul>
-          {
-            others.map((other) => (
+<Layout title={`${title} · ${frameworkLabel(framework)}`} description={description} framework={framework}>
+  <nav aria-label="Docs">
+    {
+      groups.map((group) => (
+        <section>
+          <h2>{group.label}</h2>
+          <ul>
+            {group.items.map((item) => (
               <li>
-                {other.href ? (
-                  <a href={other.href} aria-current={other.framework === framework ? "page" : undefined}>
-                    {other.label}
-                  </a>
-                ) : (
-                  <span>{other.label} (soon)</span>
-                )}
+                <a href={item.href} aria-current={item.slug === entry.id ? "page" : undefined}>
+                  {item.label}
+                </a>
               </li>
-            ))
-          }
-        </ul>
-      </nav>
-    </main>
-  </body>
-</html>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </nav>
+  <main>
+    <p>{frameworkLabel(framework)} {version}</p>
+    <h1>{title}</h1>
+    <p>{description}</p>
+    <Content />
+    <nav aria-label="Pagination">
+      {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
+      {next && <a href={next.href} rel="next">Next: {next.label}</a>}
+    </nav>
+    <nav aria-label="Frameworks">
+      <ul>
+        {
+          others.map((other) => (
+            <li>
+              {other.href ? (
+                <a href={other.href} aria-current={other.framework === framework ? "page" : undefined}>
+                  {other.label}
+                </a>
+              ) : (
+                <span>{other.label} (soon)</span>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </main>
+</Layout>
