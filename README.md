@@ -236,8 +236,9 @@ each plugin sees the records frozen. A plugin depends on core and never on an
 adapter, so it works under React and Solid alike. If you publish one, call it
 `forms-plugin-<name>`.
 
-The full rules are in [docs/plugins.md](docs/plugins.md), and every error code
-is listed on [the errors page](https://forms.lunarhue.dev/errors).
+The full rules are in
+[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin), and
+every error code is listed on [the errors page](https://forms.lunarhue.dev/errors).
 
 ## Contributing
 

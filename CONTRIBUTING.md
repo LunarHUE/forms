@@ -150,7 +150,8 @@ lives.
 - **Community**: yours, in your own package, named `forms-plugin-<name>`.
 
 A plugin depends on core and never on an adapter.
-[docs/plugins.md](docs/plugins.md) has the rules.
+[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin)
+has the rules.
 
 ## Adapters
 
