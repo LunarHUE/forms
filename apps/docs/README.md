@@ -29,3 +29,20 @@ This works for both React and Solid 2, in `astro build` + `astro preview` and in
 The `demos` MDX plugin (`src/lib/mdx/demos.ts`) turns that into imports and one `client:visible` slot per framework. If a framework the page lists has no demo folder, the build fails with the file and line of the `<Demo>`.
 
 Astro renders every slot of an Astro component up front, used or not, so the other framework's demo also renders on the server. If it is the first island on the page it takes Astro's island loader script with it. `Demo.astro` copies that script out of the unused slots. The same thing happens to islands inside an `<Only>` for another framework.
+
+## Tests
+
+`bun run test:e2e` builds the site, serves it with `astro preview` on port 4560 and runs the smoke tests in `tests/` in Chromium. `DOCS_PORT` picks another port; `DOCS_BUILT=1` skips the build and serves the `dist/` already there. The tests find things by role, data attribute and URL, not by copy, so rewording a page shouldn't break them. The `docs` job in `.github/workflows/ci.yml` runs the typecheck, the build and these tests.
+
+## Deploy
+
+`.github/workflows/docs-deploy.yml` uploads `dist/` to the Cloudflare Pages project `lunarhue-forms-docs` with `wrangler pages deploy`. A push to main that touches `apps/docs`, `packages` or `bun.lock` deploys to production (branch `main`), and so does running the workflow by hand. A pull request from a branch of this repo deploys a preview at `<branch>.lunarhue-forms-docs.pages.dev`. Pull requests from forks get no preview, since they can't read the secrets.
+
+It needs two repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`: an API token with the Account > Cloudflare Pages > Edit permission.
+- `CLOUDFLARE_ACCOUNT_ID`: the account that owns the project.
+
+Create the project once as a Direct Upload project, with `main` as its production branch: `bunx wrangler pages project create lunarhue-forms-docs --production-branch=main`. Then point `forms.lunarhue.dev` at it under the project's Custom domains.
+
+`build.format: "file"` writes `errors.html`, `react/install.html` and so on. Pages serves `errors.html` at `/errors` without a redirect and redirects `/errors.html` to `/errors`, so the extensionless URLs the site links to need no `_redirects` or `_headers` file. `404.html` at the root is Pages' not-found page.
