@@ -126,37 +126,9 @@ work, and `validate()` resolves valid.
 ## A helper generic over the schema
 
 A helper that takes any schema and returns a definition fails with TS2353
-when its type parameter is the schema type:
-
-```ts
-export function makeForm<S extends z.ZodObject>(schema: S) {
-  // error TS2353: 'schema' does not exist in type ...
-  return forms.define({ schema });
-}
-```
-
-`define` asks whether an installed schema plugin accepts the schema. While
-`S` is a type parameter, TypeScript can't answer. Make the helper generic over
-the schema's values instead:
-
-```ts
-// I is the schema's input and O its output.
-export function makeForm<I extends object, O>(
-  schema: z.ZodType<O, I>,
-  onSubmit: (value: O) => void,
-) {
-  return forms.define({ schema, onSubmit });
-}
-
-// Any Standard Schema. No schema plugin accepts this type,
-// so it needs defaultValues.
-export function makeStandard<V extends object>(
-  schema: StandardSchemaV1<V>,
-  defaultValues: V,
-) {
-  return forms.define({ schema, defaultValues });
-}
-```
+when its type parameter is the schema type. Make it generic over the schema's
+values instead. [Writing a plugin](writing-a-plugin#ts2353-from-define-in-a-function-generic-over-the-schema)
+explains why and has both fixes.
 
 ## Where plugins come from
 
