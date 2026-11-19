@@ -5,8 +5,10 @@
  *
  * - `generatedIds`: a form with no `id` gets one that matches between the
  *   server and the client, such as React's `useId`.
+ * - `focusedMoves`: moving a focused element within a list keeps its focus,
+ *   as when the renderer moves the DOM node with `moveBefore`.
  */
-export type Capability = "generatedIds";
+export type Capability = "generatedIds" | "focusedMoves";
 
 /** One major of a framework the suite runs against. Its app lives in `apps/<name>`. */
 export interface Framework {
@@ -59,7 +61,7 @@ export const frameworks: readonly Framework[] = [
     rerendersOnChange: false,
     knownFailuresIn: {
       webkit: {
-        "arrays.spec.ts > moving a row keeps its input, its focus and its key":
+        "arrays.spec.ts > moving a row keeps its focus":
           "The moved row's input loses focus in WebKit. https://github.com/LunarHUE/forms/issues/157",
       },
     },
