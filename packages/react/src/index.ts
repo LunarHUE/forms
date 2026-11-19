@@ -46,7 +46,6 @@ export type {
   FieldPropOf,
   Fieldset,
   HandleOf,
-  InputPropsMethod,
   ItemsByHandle,
   ItemsByName,
   NameFitting,

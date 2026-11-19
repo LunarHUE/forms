@@ -2,7 +2,7 @@ import { fireEvent } from "@testing-library/dom";
 import { useEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { FieldApi } from "../src/index.js";
+import { type FieldApi, inputProps } from "../src/index.js";
 import { act, hydrate, modern } from "./render.js";
 
 type Adapter = typeof import("../src/index.js") &
@@ -50,7 +50,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label htmlFor={props.field.id}>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }
@@ -188,7 +188,7 @@ function makeShipping(adapter: Adapter) {
   function RuledText({ field, label }: RuledTextProps) {
     useCommits(label);
     if (shippingRules.meta(field).hidden) return null;
-    return <input aria-label={label} {...field.inputProps()} />;
+    return <input aria-label={label} {...inputProps(field)} />;
   }
 
   const shipping = adapter.createForms({ fields: { RuledText } }).define({

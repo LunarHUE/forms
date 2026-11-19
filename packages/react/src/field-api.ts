@@ -1,6 +1,5 @@
 import type { FieldSnapshot } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
-import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
 import { errorId } from "./input.js";
 import { type NumberText, numberTextSource } from "./number-text.js";
 import { piecesFor, textOf } from "./pieces.js";
@@ -22,7 +21,6 @@ const notCommands = new Set(["peek", "registerValidator"]);
 
 const commandCache = new WeakMap<HandleLike, Readonly<Record<string, unknown>>>();
 const viewSources = new WeakMap<HandleLike, Source<FieldView>>();
-const views = new WeakMap<object, FieldView>();
 
 /** The handle's commands, copied once. Core's commands are closures, so they need no binding. */
 const commandsOf = (handle: HandleLike): Readonly<Record<string, unknown>> =>
@@ -40,15 +38,9 @@ function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>,
     errorId: errorId(handle),
     ...piecesFor(handle),
     text: textOf(snapshot, text),
-    inputProps: (options?: AnyInputOptions) => inputPropsFor(handle, snapshot, text, options),
   };
-  const view = { snapshot, text, api };
-  views.set(api, view);
-  return view;
+  return { snapshot, text, api };
 }
-
-/** The view a field object was built from, for `inputProps(field)`. */
-export const viewOf = (field: object): FieldView | undefined => views.get(field);
 
 /**
  * The source of a field's view: its snapshot, its number text and the field

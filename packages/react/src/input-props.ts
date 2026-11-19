@@ -1,10 +1,8 @@
 import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import { displayOf } from "./display.js";
-import { asText, textOf } from "./pieces.js";
-import { type BaseInputProps, errorId, type FieldRef } from "./input.js";
-import { type NumberText, setNumberText } from "./number-text.js";
-import { refFor } from "./refs.js";
+import { type BaseInputProps, errorId } from "./input.js";
+import { setNumberText } from "./number-text.js";
+import { asText, type FieldPieces } from "./pieces.js";
 import { cached } from "./select.js";
 
 /** A handle as the input props use it at runtime. Every core handle fits. */
@@ -32,22 +30,15 @@ export type AnyInputProps = BaseInputProps & Record<string, unknown>;
 
 type Kind = "text" | "textarea" | "number" | "range" | "checkbox" | "group" | "radio" | "select";
 
-/** The callbacks of one element kind on one field. */
-interface Callbacks {
-  readonly onChange: (event: ChangeEvent<HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement>) => void;
-  readonly onBlur: () => void;
-  readonly ref: FieldRef;
-}
+/** The `onChange` of one element kind on one field. */
+type OnChange = (event: ChangeEvent<HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement>) => void;
 
-/** Built props, with the number text they were built with. */
-interface BuiltProps {
-  readonly text: NumberText | undefined;
-  readonly props: AnyInputProps;
-}
+/** What the props are built from: a field object, which has every snapshot member, the pieces and `text`. */
+export type InputState = FieldSnapshot<unknown, unknown> & FieldPieces & { readonly text: string };
 
 // Both caches are keyed by kind, then by the option (or `empty`, or a text input's `type`) the element was given.
-const callbackCache = new WeakMap<object, Map<Kind, Map<unknown, Callbacks>>>();
-const propsCache = new WeakMap<object, Map<Kind, Map<unknown, BuiltProps>>>();
+const changeCache = new WeakMap<object, Map<Kind, Map<unknown, OnChange>>>();
+const propsCache = new WeakMap<object, Map<Kind, Map<unknown, AnyInputProps>>>();
 
 function kindOf(options: AnyInputOptions | undefined): Kind {
   const kind = options?.kind ?? "text";
@@ -57,29 +48,16 @@ function kindOf(options: AnyInputOptions | undefined): Kind {
   return kind as Kind;
 }
 
-/** The text of a number field, or the text the user typed while the field still holds what it wrote. */
-function numberShown(value: unknown, text: NumberText | undefined): string {
-  if (text !== undefined && Object.is(text.value, value)) return text.text;
-  return typeof value === "number" && !Number.isNaN(value) ? String(value) : "";
-}
-
-/** The `onChange` of one element kind on one field. */
-function changeHandler(handle: Commands, kind: Kind, option: unknown): Callbacks["onChange"] {
+/** The `onChange` of one element kind on one field. Text and number kinds go through the field's pieces. */
+function changeHandler(handle: Commands, pieces: FieldPieces, kind: Kind, option: unknown): OnChange {
   const writable = () => !handle.peek().readOnly;
   switch (kind) {
     case "number":
     case "range":
       return (event) => {
-        const text = event.target.value;
-        const number = text === "" ? Number.NaN : Number(text);
         // Text such as `-` isn't a number yet. The browser reports it as an empty value with `badInput`.
-        if (Number.isNaN(number) && (text !== "" || event.target.validity.badInput)) {
-          setNumberText(handle, { value: handle.peek().value, text });
-          return;
-        }
-        const value = Number.isNaN(number) ? option : number;
-        setNumberText(handle, { value, text });
-        handle.setValue(value);
+        if (event.target.validity.badInput) setNumberText(handle, { value: handle.peek().value, text: event.target.value });
+        else pieces.setNumberText(event.target.value, option);
       };
     case "checkbox":
       return (event) => {
@@ -104,34 +82,16 @@ function changeHandler(handle: Commands, kind: Kind, option: unknown): Callbacks
         if (writable()) handle.setValue(value === "" ? option : value);
       };
     default:
-      return (event) => {
-        handle.setValue(event.target.value);
-        const { value, meta } = handle.peek();
-        displayOf(meta)?.edit?.(event.target, value, event.nativeEvent);
-      };
+      return (event) => pieces.setText(event.target.value, event);
   }
-}
-
-function makeCallbacks(handle: Commands, kind: Kind, option: unknown): Callbacks {
-  const numeric = kind === "number" || kind === "range";
-  return {
-    onChange: changeHandler(handle, kind, option),
-    onBlur: () => {
-      // A number input shows the field's number again once it loses focus.
-      if (numeric) setNumberText(handle, undefined);
-      handle.handleBlur();
-    },
-    ref: refFor(handle),
-  };
 }
 
 function buildProps(
   handle: InputHandle,
-  snapshot: FieldSnapshot<unknown, unknown>,
-  text: NumberText | undefined,
+  snapshot: InputState,
   kind: Kind,
   option: unknown,
-  callbacks: Callbacks,
+  onChange: OnChange,
 ): AnyInputProps {
   // An ARIA state that is off is left out. React would write `false` as "false".
   const shown = snapshot.shownErrors.length > 0 || undefined;
@@ -139,19 +99,18 @@ function buildProps(
   const base: BaseInputProps = {
     name: snapshot.name,
     id: grouped ? optionId(handle.id, asText(option)) : handle.id,
-    onBlur: callbacks.onBlur,
-    ref: callbacks.ref,
+    onBlur: snapshot.handleBlur,
+    ref: snapshot.ref,
     disabled: snapshot.disabled,
     "aria-invalid": shown,
     "aria-describedby": shown ? errorId(handle) : undefined,
   };
-  const { value, readOnly } = snapshot;
+  const { value, readOnly, text } = snapshot;
   const ariaReadOnly = readOnly || undefined;
-  const { onChange } = callbacks;
   switch (kind) {
     case "number":
     case "range":
-      return { ...base, type: kind, value: numberShown(value, text), readOnly, onChange };
+      return { ...base, type: kind, value: text, readOnly, onChange };
     case "checkbox":
       return { ...base, type: "checkbox", checked: value === true, "aria-readonly": ariaReadOnly, onChange };
     case "group":
@@ -168,35 +127,30 @@ function buildProps(
     case "select":
       return { ...base, value: asText(value), "aria-readonly": ariaReadOnly, onChange };
     case "textarea":
-      return { ...base, value: textOf(snapshot, undefined), readOnly, onChange };
+      return { ...base, value: text, readOnly, onChange };
     default:
-      return { ...base, type: option ?? "text", value: textOf(snapshot, undefined), readOnly, onChange };
+      return { ...base, type: option ?? "text", value: text, readOnly, onChange };
   }
 }
 
 /**
- * The props for one element bound to `handle`. Callbacks are cached per
- * handle and props per snapshot, so both keep their identity until the
- * field changes. `text` is the field's recorded number text.
+ * The props for one element bound to `handle`, built on the pieces of
+ * `field`, its field object. Callbacks are cached per handle and props per
+ * field object, so both keep their identity until the field changes.
  */
-export function inputPropsFor(
-  handle: InputHandle,
-  snapshot: FieldSnapshot<unknown, unknown>,
-  text: NumberText | undefined,
-  options: AnyInputOptions | undefined,
-): AnyInputProps {
+export function inputPropsFor(handle: InputHandle, field: InputState, options: AnyInputOptions | undefined): AnyInputProps {
   const kind = kindOf(options);
   const option = kind === "group" || kind === "radio" ? options?.value : kind === "text" ? options?.type : options?.empty;
-  const numeric = kind === "number" || kind === "range";
-  const byOption = cached(cached(propsCache, snapshot, () => new Map()), kind, () => new Map());
-  const built = byOption.get(option);
-  if (built !== undefined && (!numeric || built.text === text)) return built.props;
+  const byOption = cached(cached(propsCache, field, () => new Map()), kind, () => new Map());
+  const cachedProps = byOption.get(option);
+  if (cachedProps !== undefined) return cachedProps;
 
-  const callbacksByOption = cached(cached(callbackCache, handle, () => new Map()), kind, () => new Map());
   // Every core handle has these commands. `InputHandle` only names what the contract's handle types share.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const callbacks = cached(callbacksByOption, option, () => makeCallbacks(handle as unknown as Commands, kind, option));
-  const props = buildProps(handle, snapshot, numeric ? text : undefined, kind, option, callbacks);
-  byOption.set(option, { text, props });
+  const commands = handle as unknown as Commands;
+  const changes = cached(cached(changeCache, handle, () => new Map()), kind, () => new Map());
+  const onChange = cached(changes, option, () => changeHandler(commands, field, kind, option));
+  const props = buildProps(handle, field, kind, option, onChange);
+  byOption.set(option, props);
   return props;
 }

@@ -1,13 +1,13 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, type HandleOf, useForm } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm } from "./index.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }
@@ -16,7 +16,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps({ kind: "number" })} />
+      <input {...inputProps(props.field, { kind: "number" })} />
     </label>
   );
 }
