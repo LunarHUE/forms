@@ -58,7 +58,9 @@ export function TextField(props: TextFieldProps) {
       <label for={props.field.id}>{props.label}</label>
       <input {...props.field.inputProps()} />
       <ul id={props.field.errorId}>
-        <For each={props.field.shownErrors}>{(error) => <li>{error.message}</li>}</For>
+        <For each={props.field.shownErrors}>
+          {(error) => <li>{error.message}</li>}
+        </For>
       </ul>
     </div>
   );
