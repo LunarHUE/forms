@@ -276,7 +276,7 @@ export interface TextControl {
 }
 
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
-interface MetaHolder {
+export interface MetaHolder {
   readonly meta?: Readonly<Record<string, unknown>> | undefined;
 }
 

@@ -271,12 +271,21 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
-    ...parts: readonly DefineParts<V, S, Combined<P, D>>[]
+    ...parts: readonly DefineParts<V, S, P, D>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>>;
 }
 
-/** What `define` takes after the config: parts of the form's plugins that fit its value. */
-export type DefineParts<V, S extends StandardSchemaV1, C extends Plugins> = Parts<PluginNames<C>, NoInfer<DefinedValue<V, S, C>>>;
+/**
+ * What `define` takes after the config: parts of the form's plugins, `P`
+ * shared and `D` the definition's own, that fit its value. The value comes
+ * from the shared plugins only: TypeScript types the parts before it has
+ * read `D`, and a schema plugin among `D` would make it the schema's input
+ * rather than its `Draft`.
+ */
+export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = Parts<
+  PluginNames<Combined<P, D>>,
+  NoInfer<DefinedValue<V, S, P>>
+>;
 
 /** What `define` takes: a config, or a function of per-store options that returns one. `C` is every plugin the form gets. */
 export type DefineConfig<V, S extends StandardSchemaV1, O, C extends Plugins, E, I, R, D extends Plugins> =

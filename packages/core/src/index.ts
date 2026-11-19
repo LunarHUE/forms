@@ -7,6 +7,7 @@ export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 export type {
   Attachment,
   BaselineAt,
+  MetaHolder,
   Needs,
   Nested,
   Part,
@@ -14,6 +15,7 @@ export type {
   Parts,
   Plugin,
   PluginApis,
+  PluginMembers,
   PluginBaseline,
   PluginContext,
   PluginErrorHandler,

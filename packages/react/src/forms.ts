@@ -312,7 +312,7 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
-    ...parts: readonly DefineParts<V, S, Combined<P, D>>[]
+    ...parts: readonly DefineParts<V, S, P, D>[]
   ): ReactFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**
    * Returns the scope rooted at an object handle of any form made here.

@@ -100,7 +100,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
     const D extends Plugins = [],
   >(
     definition: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
-    ...given: readonly DefineParts<V, S, Combined<P, D>>[]
+    ...given: readonly DefineParts<V, S, P, D>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>> => {
     // `.at` gives a list of parts, so the parts come flattened.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
