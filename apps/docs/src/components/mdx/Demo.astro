@@ -80,7 +80,10 @@ const loader = others
 ---
 
 <Fragment set:html={loader} />
-<DemoFrame client:visible id={id} name={name} form={form} files={files}>
-  <div data-demo-live><Fragment set:html={html} /></div>
-  <template data-demo-initial><Fragment set:html={initial} /></template>
-</DemoFrame>
+<!-- Search skips the demo: its labels and source would crowd the page's prose in results. -->
+<div data-pagefind-ignore>
+  <DemoFrame client:visible id={id} name={name} form={form} files={files}>
+    <div data-demo-live><Fragment set:html={html} /></div>
+    <template data-demo-initial><Fragment set:html={initial} /></template>
+  </DemoFrame>
+</div>

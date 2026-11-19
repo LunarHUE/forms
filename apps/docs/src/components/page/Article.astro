@@ -55,7 +55,7 @@ const gutter = "px-4 sm:px-6 lg:px-8";
 ---
 
 <div>
-  <div class="docs-bar sticky z-20 border-b bg-background xl:hidden">
+  <div data-pagefind-ignore class="docs-bar sticky z-20 border-b bg-background xl:hidden">
     <div class={gutter}>
       <div class="mx-auto max-w-[720px]">
         <MobileToc client:media="(max-width: 1279px)" items={toc}>
@@ -78,7 +78,7 @@ const gutter = "px-4 sm:px-6 lg:px-8";
       </div>
       <PrevNext previous={previous} next={next} />
     </article>
-    <aside class="hidden w-[220px] shrink-0 pt-10 xl:block">
+    <aside data-pagefind-ignore class="hidden w-[220px] shrink-0 pt-10 xl:block">
       <div class="docs-rail sticky overflow-y-auto overscroll-contain pb-6">
         <Toc client:media="(min-width: 1280px)" items={toc} />
       </div>
