@@ -2,11 +2,14 @@
 import { render } from "astro:content";
 
 import { getErrors } from "@/lib/content";
+import { errorAnchors } from "@/lib/errors";
+import { errorsHref } from "@/lib/routes";
 
 // Bare markup until the page frame replaces it.
 const entry = await getErrors();
 const { Content } = await render(entry);
 const { title, description } = entry.data;
+const anchors = errorAnchors(entry.body ?? "");
 ---
 
 <html lang="en">
@@ -20,6 +23,19 @@ const { title, description } = entry.data;
     <main>
       <h1>{title}</h1>
       <p>{description}</p>
+      <nav aria-label="Error codes">
+        <ul>
+          {
+            anchors.map((anchor) => (
+              <li>
+                <a href={errorsHref(anchor.id)}>
+                  {anchor.package} <code>{anchor.code}</code>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
       <Content />
     </main>
   </body>
