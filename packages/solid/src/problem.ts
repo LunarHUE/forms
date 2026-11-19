@@ -2,20 +2,18 @@
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /**
- * Where docs/errors.md lives, up to the anchor. Each code's entry has the
+ * The errors page, up to the anchor. Its source is
+ * apps/docs/src/content/errors.mdx. Each code's entry has the
  * anchor `solid:<code>`.
- *
- * PLACEHOLDER: there is no docs site yet. Change this one constant when
- * there is.
  */
 const docs = "https://forms.lunarhue.dev/errors#solid:";
 
-/** Every error the adapter raises, as docs/errors.md lists it. */
+/** Every error the adapter raises, as the errors page lists it. */
 export type Code = "field:target" | "context:form" | "context:forms" | "context:definition";
 
 /**
  * The message for `code`: the package, then what went wrong, then a link to
- * the code's entry in docs/errors.md. Development says what went wrong in a
+ * the code's entry on the errors page. Development says what went wrong in a
  * sentence. A bundler replaces the read of NODE_ENV with "production", folds
  * the check to false and drops the sentences, so production says the code.
  */
