@@ -110,7 +110,7 @@
   /*
    * Tables: a hairline above and below every row, no fill, no outer frame.
    * The first column holds names (packages, options, codes), so it is mono
-   * and stays on one line. In a two-column table it
+   * and, from 640px up, stays on one line. In a two-column table it
    * takes 40% so the descriptions line up from table to table. A header row
    * with no text is left out.
    */
@@ -138,7 +138,8 @@
   .prose > :where(table) :where(td):first-child {
     font-family: var(--font-mono);
     font-size: 0.8125rem;
-    white-space: nowrap;
+    /* A phone has no room for a long signature on one line. */
+    overflow-wrap: anywhere;
   }
   .prose > :where(table) :where(td):first-child:nth-last-child(2) {
     width: 40%;
@@ -146,6 +147,7 @@
   @media (min-width: 640px) {
     .prose > :where(table) :where(td):first-child {
       font-size: 0.875rem;
+      white-space: nowrap;
     }
   }
   .prose > :where(table) :where(thead):not(:has(th:not(:empty))) {
