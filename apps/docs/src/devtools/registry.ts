@@ -24,18 +24,18 @@ type Listener = (state: RegistryState) => void;
 
 export interface Registry {
   /** Add a form, or replace the entry with the same id (keeping its place and selection). */
-  register(entry: FormEntry): void;
+  register: (entry: FormEntry) => void;
   /** Remove a form. Clears the selection if it was selected. */
-  unregister(id: string): void;
+  unregister: (id: string) => void;
   /** Select a form by id, or clear the selection with null. Unknown ids are ignored. */
-  select(id: string | null): void;
+  select: (id: string | null) => void;
   /** The selected form, or undefined. */
-  selected(): FormEntry | undefined;
-  list(): readonly FormEntry[];
+  selected: () => FormEntry | undefined;
+  list: () => readonly FormEntry[];
   /** The current state. The same object until something changes. */
-  getState(): RegistryState;
+  getState: () => RegistryState;
   /** Call `listener` after every change. Returns the unsubscribe function. */
-  subscribe(listener: Listener): () => void;
+  subscribe: (listener: Listener) => () => void;
 }
 
 export function createRegistry(): Registry {
@@ -48,19 +48,19 @@ export function createRegistry(): Registry {
   };
 
   return {
-    register(entry) {
+    register: (entry) => {
       const index = state.forms.findIndex((form) => form.id === entry.id);
       const forms = index === -1 ? [...state.forms, entry] : state.forms.with(index, entry);
       set({ ...state, forms });
     },
-    unregister(id) {
+    unregister: (id) => {
       if (!state.forms.some((form) => form.id === id)) return;
       set({
         forms: state.forms.filter((form) => form.id !== id),
         selected: state.selected === id ? null : state.selected,
       });
     },
-    select(id) {
+    select: (id) => {
       if (id === state.selected) return;
       if (id !== null && !state.forms.some((form) => form.id === id)) return;
       set({ ...state, selected: id });
@@ -68,7 +68,7 @@ export function createRegistry(): Registry {
     selected: () => state.forms.find((form) => form.id === state.selected),
     list: () => state.forms,
     getState: () => state,
-    subscribe(listener) {
+    subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },

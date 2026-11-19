@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createRegistry } from "./registry";
+import { createRegistry, type RegistryState } from "./registry";
 
 const contact = { id: "demo-1", name: "contact", element: null };
 const signup = { id: "demo-2", name: "signup", element: null };
@@ -47,7 +47,7 @@ describe("registry", () => {
 
   it("notifies subscribers on changes only, until they unsubscribe", () => {
     const registry = createRegistry();
-    const listener = vi.fn();
+    const listener = vi.fn<(state: RegistryState) => void>();
     const unsubscribe = registry.subscribe(listener);
     registry.register(contact);
     registry.select("demo-1");

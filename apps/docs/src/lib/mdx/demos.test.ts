@@ -22,7 +22,7 @@ function compile(source: string, frontmatter: Record<string, unknown> = {}) {
   return mdxToMdast(source, {
     mdastPlugins: [createDemos(demosDir)],
     fileURL: page,
-    data: { astro: { frontmatter } },
+    data: { astro: { frontmatter, headings: [], localImagePaths: new Set(), remoteImagePaths: new Set() } },
   });
 }
 
@@ -48,7 +48,9 @@ const slots = (tree: Tree) =>
       ? [
           child.name,
           ...child.attributes.map((attribute) =>
-            "name" in attribute ? `${attribute.name}${attribute.value === null ? "" : `=${String(attribute.value)}`}` : "?",
+            "name" in attribute
+              ? `${attribute.name}${typeof attribute.value === "string" ? `=${attribute.value}` : ""}`
+              : "?",
           ),
         ].join(" ")
       : child.type,

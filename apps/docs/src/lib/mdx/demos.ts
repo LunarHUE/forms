@@ -17,6 +17,13 @@ const NAME = /^[a-z0-9-]+(\/[a-z0-9-]+)*$/;
 export const demoEntry = (framework: Framework, name: string): string =>
   `${framework}/${name}/${name.split("/").at(-1)}.tsx`;
 
+/** What the plugin keeps per page while it runs, keyed by the page's data bag. */
+interface PageState {
+  count: number;
+  imports: string[];
+}
+const pages = new WeakMap<object, PageState>();
+
 interface AstroData {
   frontmatter?: Record<string, unknown>;
 }
@@ -70,8 +77,9 @@ export function createDemos(dir: string = DEMOS_DIR) {
         return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
       };
 
-      const count = ((ctx.data.demoCount as number | undefined) ?? 0) + 1;
-      ctx.data.demoCount = count;
+      let state = pages.get(ctx.data);
+      if (!state) pages.set(ctx.data, (state = { count: 0, imports: [] }));
+      const count = ++state.count;
       const imports: string[] = [];
       const children: string[] = [];
       for (const framework of pageFrameworks(ctx.data.astro as AstroData | undefined)) {
@@ -84,13 +92,13 @@ export function createDemos(dir: string = DEMOS_DIR) {
             `<Demo name="${name}"> has no ${framework} demo. The page lists ${framework} in frameworks, so add src/demos/${entry}.`,
           );
         }
-        const component = `Demo${count}${framework[0]!.toUpperCase()}${framework.slice(1)}`;
+        const component = `Demo${count}${framework.charAt(0).toUpperCase()}${framework.slice(1)}`;
         imports.push(`import ${component} from ${JSON.stringify(specifier(file))};`);
         children.push(`<${component} slot="${framework}" client:visible />`);
       }
 
       // Imports have to sit at the top level of the module.
-      ctx.data.demoImports = [...((ctx.data.demoImports as string[] | undefined) ?? []), ...imports];
+      state.imports.push(...imports);
       const attributes = node.attributes
         .map((attribute) =>
           attribute.type === "mdxJsxAttribute" && typeof attribute.value === "string"
@@ -102,7 +110,7 @@ export function createDemos(dir: string = DEMOS_DIR) {
       ctx.replaceNode(node, { raw: `<Demo ${attributes}>\n${children.join("\n")}\n</Demo>` });
     },
     after(root, ctx) {
-      const imports = ctx.data.demoImports as string[] | undefined;
+      const imports = pages.get(ctx.data)?.imports;
       if (imports?.length) ctx.prependChild(root, { raw: imports.join("\n") });
     },
   });
