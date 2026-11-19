@@ -17,6 +17,9 @@ function connected(set: Set<HTMLElement>): Set<HTMLElement> {
 /** True when React calls the cleanup a ref callback returns. React 18.3 warns about one instead. */
 const refCleanups = Number(version.split(".")[0]) >= 19;
 
+/** Input types whose `value` property reads and writes the `value` attribute. */
+const attributeValued = new Set(["checkbox", "radio", "file", "hidden", "submit", "image", "reset", "button"]);
+
 /**
  * Puts back what React rendered in a form control the browser filled in
  * again. A browser can restore what the user typed before a reload once it
@@ -29,7 +32,9 @@ const refCleanups = Number(version.split(".")[0]) >= 19;
 function showRendered(element: HTMLElement): void {
   if (element instanceof HTMLInputElement) {
     if (element.checked !== element.defaultChecked) element.checked = element.defaultChecked;
-    if (element.value !== element.defaultValue && element.type !== "file") element.value = element.defaultValue;
+    // On these types `value` isn't what the user typed, and writing it sets the `value` attribute.
+    if (attributeValued.has(element.type)) return;
+    if (element.value !== element.defaultValue) element.value = element.defaultValue;
   } else if (element instanceof HTMLTextAreaElement) {
     if (element.value !== element.defaultValue) element.value = element.defaultValue;
   } else if (element instanceof HTMLSelectElement) {
