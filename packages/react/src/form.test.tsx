@@ -199,9 +199,9 @@ function Page() {
   );
 }
 
-// A reusable part for any form: it knows no definition.
+// A reusable part for any form of `forms`: it knows no definition.
 function GenericControls(props: { readonly label: string }) {
-  const form = useFormContext();
+  const form = useFormContext(forms);
   const count = useFormState(form, (snapshot) => snapshot.submitCount);
   const dirty = useFormState(form, (snapshot) => snapshot.dirty);
   return (

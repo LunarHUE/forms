@@ -51,7 +51,7 @@ describe("FieldSnapshot", () => {
     expectTypeOf(snapshot.errors).toEqualTypeOf<readonly FormError[]>();
     expectTypeOf(snapshot.shownErrors).toEqualTypeOf<readonly FormError[]>();
     expectTypeOf(snapshot.invalid).toEqualTypeOf<boolean>();
-    expectTypeOf(snapshot.dirty).toEqualTypeOf<boolean>();
+    expectTypeOf<FieldSnapshot<Value, FormError, "dirty">["dirty"]>().toEqualTypeOf<boolean>();
     expectTypeOf(snapshot.validating).toEqualTypeOf<boolean>();
     expectTypeOf(snapshot.disabled).toEqualTypeOf<boolean>();
     expectTypeOf(snapshot.readOnly).toEqualTypeOf<boolean>();

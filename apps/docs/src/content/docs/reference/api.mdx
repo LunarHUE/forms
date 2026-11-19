@@ -33,7 +33,7 @@ Call it once at module scope. Every form defined from it shares these settings.
 ```ts
 createForms(options?: {
   plugins?: Plugin[];        // every form gets these, in this order
-  fields?: { TextField, … }; // field components, bound on every form
+  fields?: { TextField, … }; // field components or field types, bound on every form
   mapError?: MapError;       // turns issues and thrown errors into your error type
   validate?: ValidateTiming; // when validators first run, "blur" by default
   show?: Show;               // when errors show, "touched-or-submitted" by default
@@ -43,12 +43,29 @@ createForms(options?: {
 }): Forms
 ```
 
+A plugin list can hold `false`, `null` or `undefined` in place of a plugin,
+so `plugins: [mask(), dev && devtools()]` works and a bundler can drop the
+plugin it never uses. The types count a plugin that may be missing as not
+installed: with `dev && dirty()` in the list, `equals` is still a type error.
+
 | | |
 | --- | --- |
-| `forms.define(config)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. |
+| `forms.define(config, ...parts)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. `parts` attach at the root when the store is made. |
 | `forms.scope(handle)` | The scope at an object handle: `root`, `Field`, `Items` and the field components. Cached per handle. |
-| `forms.fieldset(schema)` | A reusable shape for a group of fields, typed from a schema that never runs. |
-| `forms.fieldset<V>()` | The same shape from a type. |
+| `forms.fieldset(schema, ...parts)` | A reusable shape for a group of fields, typed from a schema that never runs. `parts` attach at each field the fieldset is used on. |
+| `forms.fieldset<V>(...parts)` | The same shape from a type. |
+| `fieldset.at(name)` | The fieldset's parts pinned at `name`, for `define`. |
+
+### defineField
+
+```ts
+defineField(component, ...parts): FieldType
+```
+
+A field type: `component` with `parts` that attach at each field it renders.
+Register it in `fields`. Each part must fit the component's value, and the
+form must have the plugins the parts need, or using it is a type error.
+`PhoneField.at(name)` pins the parts at one field, for `define`.
 
 ### define
 
@@ -300,9 +317,11 @@ tests.
 
 | | |
 | --- | --- |
-| `FieldApi<T>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. |
+| `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
 | `HandleOf<typeof fieldset>` | The handle prop a fieldset component takes. |
+| `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
+| `Part<N, V>` | A plugin's config for one place. `N` is the plugin and `V` the values it fits. |
 | `FormOf<typeof definition>` | The form a definition makes. |
 | `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. |
 | `FieldPath<V>`, `ValueAt<V, P>` | The dotted names of `V`, and the type at one. |
@@ -352,10 +371,9 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 | | |
 | --- | --- |
-| `definePlugin(definition)` | Makes a plugin from hooks and a `setup`. See [Writing a plugin](../plugins/writing-a-plugin). |
+| `definePlugin(definition)` | Makes a plugin from a `setup`, an `attach` for its parts, or a schema plugin from a `schema` adapter. See [Writing a plugin](../plugins/writing-a-plugin) and [Schemas](../plugins/schemas#another-library). |
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
-| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. See [Schemas](../plugins/schemas#another-library). |
 
 ### plugins/history
 
@@ -370,20 +388,23 @@ See [History](../plugins/history).
 
 | | |
 | --- | --- |
-| `mask(fields, options?)` | Cleans each named field's value before the store takes it. |
+| `mask()` | The mask plugin, for the form's plugins. |
+| `masked({ clean, display? })` | A part that cleans a string field's value before the store takes it. |
 | `digits`, `upper` | Cleaners: keep the digits, upper-case. |
 | `replaceText(input, text, clean, event)` | Writes masked text into an input and keeps the caret. |
 
-A field maps to a cleaner or to `{ clean, display }`. See [Masks](../plugins/masks).
+Put `masked(...)` on a field type. See [Masks](../plugins/masks).
 
 ### plugins/rules
 
 | | |
 | --- | --- |
-| `rules<V>(fields)` | Works out `disabled` and `hidden` per field from the form value. |
+| `rules()` | The rules plugin, for the form's plugins. |
+| `ruled(fields)` | A part that works out `disabled` and `hidden` per field from the value where it attaches. |
+| `rules.meta(field)` | Reads a field's `hidden` flag. |
 
-Each rule takes the form value and returns `{ disabled?, hidden? }`. Read
-`hidden` with `plugin.meta(field).hidden`. See [Rules](../plugins/rules).
+Each rule takes the value and returns `{ disabled?, hidden? }`. Put `ruled`
+after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
 
 ### plugins/persist
 

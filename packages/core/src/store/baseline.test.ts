@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Equals } from "../definition.js";
 import type { FormError } from "../errors.js";
-import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import { type Rebase, rebase as rebasePlugin } from "../plugins/rebase.js";
-import type { FormStore } from "../store.js";
 import { dirty as dirtyPlugin } from "../plugins/dirty.js";
-import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { createFormInternals, type FormStoreOptions, type MadeStore } from "./form-store.js";
+import type { Handle } from "./handles.js";
 import { isContainer } from "./tree.js";
 
+type Store = MadeStore<unknown, FormError, undefined, unknown>;
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
@@ -22,14 +22,14 @@ const make = (initial: unknown, options: Options = {}) => {
 const err = (message: string): FormError => ({ message });
 
 /** Looks a handle up by stable path and fails the test when there is none. */
-function field(store: FormStore<unknown>, path: Path): AnyFieldHandle {
+function field(store: Store, path: Path): Handle<FormError> {
   const handle = store.fieldAt(path);
   if (!handle) throw new Error(`no field at ${path.join(".")}`);
   return handle;
 }
 
 /** Counts listener calls per path. `"form"` counts form listener calls. */
-function count(store: FormStore<unknown>, paths: (Path | "form")[]) {
+function count(store: Store, paths: (Path | "form")[]) {
   const runs = paths.map(() => 0);
   for (const [i, path] of paths.entries()) {
     const listener = () => void (runs[i] = (runs[i] ?? 0) + 1);
@@ -49,7 +49,7 @@ function unfrozen(value: unknown, path: Path = []): Path[] {
   return [...own, ...children.flat()];
 }
 
-const dirty = (store: FormStore<unknown>, path: Path) => store.getSnapshot(path).dirty;
+const dirty = (store: Store, path: Path) => store.getSnapshot(path).dirty;
 
 describe("dirty", () => {
   it("is clean at the start and after a change back", () => {
@@ -393,7 +393,7 @@ describe("cost", () => {
 const bare = (initial: unknown, options: Options = {}) => make(initial, { plugins: [rebasePlugin()], ...options });
 
 describe("without dirty()", () => {
-  it("is never dirty, on the server or the client, and lists no changes", () => {
+  it("is never dirty, on the server or the client, and throws for changes()", () => {
     const equals = vi.fn<Equals>((a, b, _ctx, next) => next(a, b));
     const { store, root } = bare({ name: "a", rows: ["x"] }, { equals });
     root.at("name").setValue("b");
@@ -402,7 +402,7 @@ describe("without dirty()", () => {
     expect(dirty(store, ["rows"])).toBe(false);
     expect(store.getFormSnapshot().dirty).toBe(false);
     expect(store.getServerSnapshot(["name"]).dirty).toBe(false);
-    expect(store.changes()).toEqual([]);
+    expect(() => store.changes()).toThrow(/dirty:missing/);
     expect(equals).not.toHaveBeenCalled();
   });
 

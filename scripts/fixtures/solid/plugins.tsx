@@ -1,22 +1,16 @@
 // The bare form with a phone mask and a rule that hides a field.
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { digits, mask, rules } from "@lunarhue/forms-solid/plugins";
+import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
+import { digits, mask, masked, ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { Show } from "solid-js";
 import { TextInput } from "./input.js";
 
-interface Contact {
-  phone: string;
-  note: string;
-}
+const PhoneField = defineField(TextInput, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
-const contactRules = rules<Contact>({ note: (value) => ({ hidden: value.phone === "" }) });
-
-const forms = createForms();
-const contact = forms.define({
-  defaultValues: { phone: "", note: "" },
-  plugins: [mask({ phone: { clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") } }), contactRules],
-  onSubmit: (value) => value.phone,
-});
+const forms = createForms({ plugins: [mask(), rules()], fields: { PhoneField } });
+const contact = forms.define(
+  { defaultValues: { phone: "", note: "" }, onSubmit: (value) => value.phone },
+  ruled({ note: (value) => ({ hidden: value.phone === "" }) }),
+);
 
 export function App() {
   const form = createForm(contact);
@@ -24,11 +18,11 @@ export function App() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.Field name="phone">{(field) => <TextInput field={field} />}</form.Field>
+          <form.PhoneField name="phone" />
           <form.Field name="note">
-            {(field) => (
-              <Show when={!contactRules.meta(field).hidden}>
-                <TextInput field={field} />
+            {(note) => (
+              <Show when={!rules.meta(note).hidden}>
+                <TextInput field={note} />
               </Show>
             )}
           </form.Field>

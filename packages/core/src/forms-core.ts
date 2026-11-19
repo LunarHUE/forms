@@ -7,9 +7,11 @@ import type {
   StoreInstance,
   Combined,
   DefineConfig,
+  DefineParts,
+  Equals,
 } from "./definition.js";
 import type { FormError } from "./errors.js";
-import type { PluginApis, Plugins } from "./plugin.js";
+import type { AnyPlugin, Part, PluginApis, PluginNames, Plugins } from "./plugin.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { problem } from "./problem.js";
@@ -61,10 +63,11 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
 ): FormsCore<P, E> => {
   const shared: Plugins = config.plugins ?? [];
 
-  const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
+  const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined, parts: readonly Part[]): AnyStoreOptions => {
     const { schema } = definition;
     // The shared plugins run first, then the definition's own, then the instance's.
-    const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])];
+    // Each list can hold `false`, `null` or `undefined` in place of a plugin, as from `dev && devtools()`.
+    const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])].filter((plugin): plugin is AnyPlugin => !!plugin);
     // The first schema plugin with the schema's vendor wins, so a later one with the same vendor is never asked.
     // An adapter only ever gets schemas whose vendor it named, which are the schemas it supports.
     const adapter: SchemaAdapter | undefined =
@@ -80,9 +83,12 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
       // The error type is erased here. The contract ties `mapError`'s return type to the store's `E`.
       mapError: config.mapError,
       show: definition.show ?? config.show,
-      sharedEquals: config.equals,
+      // Without `dirty()` the types allow no `equals`, so it is an `Equals` or undefined.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      sharedEquals: config.equals as Equals | undefined,
       plugins,
       onPluginError: config.onPluginError,
+      parts,
     };
   };
 
@@ -95,7 +101,11 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
     const D extends Plugins = [],
   >(
     definition: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    ...given: readonly DefineParts<V, S, P, D>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>> => {
+    // `.at` gives a list of parts, so the parts come flattened.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const parts = given.flat() as readonly Part[];
     // `Definition` is a conditional type the runtime can't narrow. Every branch of it is an `AnyConfig`.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const source = definition as unknown as AnyConfig | ((options: O) => AnyConfig);
@@ -105,12 +115,13 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
         const resolved = typeof source === "function" ? source(options) : source;
         // The options were built from a config of these types, which the store keeps.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        return createFormStore(storeOptions(resolved, instance)) as unknown as FormStore<
+        return createFormStore(storeOptions(resolved, instance, parts)) as unknown as FormStore<
           DefinedValue<V, S, Combined<P, D>>,
           E,
           I,
           R,
-          PluginApis<Combined<P, D>>
+          PluginApis<Combined<P, D>>,
+          PluginNames<Combined<P, D>>
         >;
       },
     };

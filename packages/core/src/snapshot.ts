@@ -1,5 +1,15 @@
 import type { FormError } from "./errors.js";
+import type { Gate } from "./plugin.js";
 import type { DeepReadonly, ShapeOf } from "./value.js";
+
+/** The member dirty tracking adds to field and form snapshots. It is there when the form has `dirty()`. */
+export interface DirtyMember {
+  /**
+   * True when the value differs from its baseline, at or below this field
+   * on a field snapshot and anywhere in the form on the form snapshot.
+   */
+  readonly dirty: boolean;
+}
 
 /** The members every field snapshot has. See `FieldSnapshot`. */
 export interface FieldSnapshotBase<V, E = FormError> {
@@ -23,8 +33,6 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly touched: boolean;
   /** True once a write counted as a user edit at or below this field. Reset clears it. */
   readonly edited: boolean;
-  /** True when the value at or below this field differs from its baseline. Always false without `dirty()`. */
-  readonly dirty: boolean;
   /** True while a validator at this field is waiting or running. */
   readonly validating: boolean;
   /** True when this field or one above it is disabled. */
@@ -64,9 +72,12 @@ export interface UnknownSnapshotMembers {
  * still holds its handle can finish rendering.
  *
  * Array fields also have `keys`. A field whose value type is `unknown` may
- * have it.
+ * have it. `N` is the names of the form's plugins: with `dirty()` among
+ * them the snapshot has `dirty`, and without it reading `dirty` is a type
+ * error.
  */
-export type FieldSnapshot<V, E = FormError> = FieldSnapshotBase<V, E> &
+export type FieldSnapshot<V, E = FormError, N extends string = never> = FieldSnapshotBase<V, E> &
+  Gate<N, "dirty", DirtyMember> &
   (ShapeOf<V> extends "array" ? ArraySnapshotMembers : ShapeOf<V> extends "any" ? UnknownSnapshotMembers : unknown);
 
 /**
@@ -83,14 +94,17 @@ export type Submission<I = undefined, R = unknown> =
 /**
  * The form's own state at one moment. The same identity rule as
  * `FieldSnapshot` holds: the same object until one of these members changes.
+ * `N` is the names of the form's plugins: with `dirty()` among them the
+ * snapshot has `dirty`, and without it reading `dirty` is a type error.
  */
-export interface FormSnapshot<I = undefined, R = unknown> {
+export type FormSnapshot<I = undefined, R = unknown, N extends string = never> = FormSnapshotBase<I, R> & Gate<N, "dirty", DirtyMember>;
+
+/** The members every form snapshot has. See `FormSnapshot`. */
+export interface FormSnapshotBase<I = undefined, R = unknown> {
   /** True when no field has a validation error. User-set errors don't count. */
   readonly valid: boolean;
   /** True while any validator in the form is waiting or running. */
   readonly validating: boolean;
-  /** True when any value in the form differs from its baseline. Always false without `dirty()`. */
-  readonly dirty: boolean;
   /** True while a submit runs. The same as `submission.status === "submitting"`. */
   readonly submitting: boolean;
   /** Where the latest submit stands. */

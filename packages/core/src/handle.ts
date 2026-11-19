@@ -36,12 +36,17 @@ export interface ResetOptions {
   readonly to?: "baseline" | "initial";
 }
 
-/** The phantom that carries a handle's value and error types. It never exists at runtime. */
-export interface HandleTypes<V, E> {
+/** The phantom that carries a handle's value, error and plugin types. It never exists at runtime. */
+export interface HandleTypes<V, E, N extends string = never> {
   /** The handle's value type. */
   readonly value: V;
   /** The form's error type. */
   readonly error: E;
+  /**
+   * The names of the form's plugins, as a parameter so a handle of a form
+   * with more plugins fits where one with fewer is asked for.
+   */
+  readonly plugins: (name: N) => void;
 }
 
 /**
@@ -49,8 +54,12 @@ export interface HandleTypes<V, E> {
  * identity and its commands. It never returns state, except `peek()`.
  * Framework adapters read state through the store's `subscribe` and
  * `getSnapshot` with the handle's `path`.
+ *
+ * `N` is the names of the form's plugins, which decide what its snapshots
+ * have: `dirty` needs `dirty()`. It defaults to none, and a handle of a form
+ * with more plugins fits where one with fewer is asked for.
  */
-export interface HandleBase<V, E = FormError> {
+export interface HandleBase<V, E = FormError, N extends string = never> {
   /**
    * The form id and the encoded stable path. Stable for the life of the
    * field, so it works as a DOM id and a list key.
@@ -60,14 +69,14 @@ export interface HandleBase<V, E = FormError> {
   readonly path: Path;
   /** The store the handle belongs to, so an adapter can subscribe given only a handle. */
   readonly store: AnyFormStore<E>;
-  /** Type information only. Read it with `ValueOf` and `ErrorOf`. It is always undefined at runtime. */
-  readonly "~types"?: HandleTypes<V, E>;
+  /** Type information only. Read it with `ValueOf`, `ErrorOf` and `PluginsOf`. It is always undefined at runtime. */
+  readonly "~types"?: HandleTypes<V, E, N>;
   /**
    * Returns the field's current snapshot. This is the only member that
    * returns state. Call it in event handlers and effects, never during
    * render. Rendering reads go through the adapter.
    */
-  peek(): FieldSnapshot<V, E>;
+  peek(): FieldSnapshot<V, E, N>;
   /**
    * Marks the field touched and runs blur validation. Pass it to the input's
    * blur event. To set only the touched flag, without validation, use
@@ -98,7 +107,7 @@ export interface HandleBase<V, E = FormError> {
    * errors it set.
    */
   // Typed through `this` so the parameter doesn't make handles invariant in V.
-  registerValidator<H extends HandleBase<unknown, E>>(this: H, validator: ValidatorInput<ValueOf<H>, E>): () => void;
+  registerValidator<H extends HandleBase<unknown, E, N>>(this: H, validator: ValidatorInput<ValueOf<H>, E>): () => void;
   /** Puts this subtree's value back, and clears its touched, edited and error state. */
   reset(options?: ResetOptions): void;
   /** Disables or enables this field and everything below it. */
@@ -108,7 +117,7 @@ export interface HandleBase<V, E = FormError> {
 }
 
 /** The handle for a leaf value: a primitive, `Date`, `Blob`, `File`, `Map`, `Set` or function. */
-export interface LeafHandle<V, E = FormError> extends HandleBase<V, E> {
+export interface LeafHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
   /**
    * Writes a new value, or the result of calling an updater with the current
    * value. For a function-typed value pass an updater that returns the function.
@@ -121,7 +130,7 @@ export interface LeafHandle<V, E = FormError> extends HandleBase<V, E> {
 export type Patch<V> = V extends object ? Partial<V> : never;
 
 /** The handle for a plain object value. */
-export interface ObjectHandle<V, E = FormError> extends HandleBase<V, E> {
+export interface ObjectHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
   // No write changes its argument, so every write on every handle kind
   // also takes the readonly value a snapshot holds. The NoInfer keeps write
   // parameters out of inference. Without it, a function that infers V from
@@ -140,7 +149,7 @@ export interface ObjectHandle<V, E = FormError> extends HandleBase<V, E> {
    * accepted, and the child's value type includes `undefined` for members
    * that lack the key.
    */
-  at<K extends KeysOf<V>>(key: K): ChildHandles<V, E>[K];
+  at<K extends KeysOf<V>>(key: K): ChildHandles<V, E, N>[K];
   /**
    * Type information only, always undefined at runtime. It makes TypeScript
    * compare child handles when one object handle is assigned to another, so
@@ -151,13 +160,13 @@ export interface ObjectHandle<V, E = FormError> extends HandleBase<V, E> {
   // `{ a: string }` pass as `{ a: string | undefined }`. The `-?` in
   // ChildHandles makes V's variance unmeasurable, so TypeScript compares
   // object handles member by member, and this member brings the children in.
-  readonly "~children"?: ChildHandles<V, E>;
+  readonly "~children"?: ChildHandles<V, E, N>;
 }
 
 /** The child handles of an object value, by key. `ObjectHandle.at` returns one of them. */
 // Keep the `-?`. See the comment on ObjectHandle's "~children".
-export type ChildHandles<V, E = FormError> = {
-  readonly [K in KeysOf<V>]-?: FieldHandle<ChildValue<V, K>, E>;
+export type ChildHandles<V, E = FormError, N extends string = never> = {
+  readonly [K in KeysOf<V>]-?: FieldHandle<ChildValue<V, K>, E, N>;
 };
 
 /**
@@ -176,7 +185,7 @@ export type ItemArgs<I> =
     : [item?: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions];
 
 /** The handle for an array value. Items are addressed by stable key, not index. */
-export interface ArrayHandle<V, E = FormError> extends HandleBase<V, E> {
+export interface ArrayHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
   /** Replaces the whole array. A readonly array, such as a snapshot's value, works too. */
   setValue(value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions): void;
   /**
@@ -203,11 +212,11 @@ export interface ArrayHandle<V, E = FormError> extends HandleBase<V, E> {
    * returns its handle, which keeps its last snapshot and ignores commands,
    * for the life of the store.
    */
-  item(key: string): ItemHandle<ItemOf<V>, E>;
+  item(key: string): ItemHandle<ItemOf<V>, E, N>;
 }
 
 /** An array item's handle: the handle for its value plus its stable key. The handle follows the item when it moves. */
-export type ItemHandle<V, E = FormError> = FieldHandle<V, E> & {
+export type ItemHandle<V, E = FormError, N extends string = never> = FieldHandle<V, E, N> & {
   /** The item's stable key. It is also the last segment of `path`. */
   readonly key: string;
 };
@@ -217,15 +226,15 @@ export type ItemHandle<V, E = FormError> = FieldHandle<V, E> & {
  * without knowing their types. Structure members exist on every handle at
  * runtime but only do something on fields of that shape.
  */
-export interface AnyFieldHandle<E = FormError> extends HandleBase<unknown, E> {
+export interface AnyFieldHandle<E = FormError, N extends string = never> extends HandleBase<unknown, E, N> {
   /** The stable key, on array items. */
   readonly key?: string;
   /** Writes a value. On an object it merges unless `replace` is true. */
   setValue(value: unknown, options?: WriteOptions & { readonly replace?: boolean }): void;
   /** The child handle at `key`, as on `ObjectHandle`. */
-  at(key: PathSegment): AnyFieldHandle<E>;
+  at(key: PathSegment): AnyFieldHandle<E, N>;
   /** The item handle for stable key `key`, as on `ArrayHandle`. */
-  item(key: string): AnyFieldHandle<E> & { readonly key: string };
+  item(key: string): AnyFieldHandle<E, N> & { readonly key: string };
   /** As on `ArrayHandle`. */
   push(item?: unknown, options?: WriteOptions): void;
   /** As on `ArrayHandle`. */
@@ -243,20 +252,23 @@ export interface AnyFieldHandle<E = FormError> extends HandleBase<unknown, E> {
  * object handle whose children read `undefined` while it is missing.
  * `unknown` and `any` get `AnyFieldHandle`.
  */
-export type FieldHandle<V, E = FormError> =
+export type FieldHandle<V, E = FormError, N extends string = never> =
   ShapeOf<V> extends "any"
-    ? AnyFieldHandle<E>
+    ? AnyFieldHandle<E, N>
     : ShapeOf<V> extends "array"
-      ? ArrayHandle<V, E>
+      ? ArrayHandle<V, E, N>
       : ShapeOf<V> extends "object"
-        ? ObjectHandle<V, E>
-        : LeafHandle<V, E>;
+        ? ObjectHandle<V, E, N>
+        : LeafHandle<V, E, N>;
 
 /** The value type of a handle type. */
 export type ValueOf<H> = H extends { readonly "~types"?: HandleTypes<infer V, unknown> } ? V : never;
 
 /** The error type of a handle type. */
 export type ErrorOf<H> = H extends { readonly "~types"?: HandleTypes<unknown, infer E> } ? E : never;
+
+/** The names of the plugins of a handle type's form. */
+export type PluginsOf<H> = H extends { readonly "~types"?: HandleTypes<unknown, unknown, infer N extends string> } ? N : never;
 
 /** The value of the discriminant key `K` that selects one member of `V`. */
 type Discriminant<V, K extends PropertyKey> = Extract<ChildValue<V, K>, string | number | boolean>;
@@ -271,9 +283,9 @@ export type Narrow<V, K extends PropertyKey, L> = Extract<NonNullable<V>, { read
  * holds `value` at `key`, and `undefined` otherwise. It reads no state
  * itself, so pass the snapshot the adapter gave you.
  */
-export type Branch = <V, E, K extends KeysOf<V>, const L extends Discriminant<V, K>>(
-  handle: ObjectHandle<V, E>,
+export type Branch = <V, E, K extends KeysOf<V>, const L extends Discriminant<V, K>, N extends string = never>(
+  handle: ObjectHandle<V, E, N>,
   snapshot: FieldSnapshot<NoInfer<V>, NoInfer<E>>,
   key: K,
   value: L,
-) => FieldHandle<Narrow<V, K, L>, E> | undefined;
+) => FieldHandle<Narrow<V, K, L>, E, N> | undefined;

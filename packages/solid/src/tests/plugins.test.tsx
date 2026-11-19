@@ -1,13 +1,14 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { baselineOnSubmit, definePlugin, dirty, history, mask, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
+import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
 import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createField, createForm, createForms, type FormOf, inputProps } from "../index.js";
+import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 // Shared: stores each written string's length as the field's meta.
 const chars = definePlugin({
   name: "chars",
+  initialMeta: 0,
   setup: (ctx: PluginContext<number>) => ({
     onWrite(records) {
       for (const record of records) if (record.type === "value") ctx.setMeta(record.path, String(record.after).length);
@@ -18,6 +19,7 @@ const chars = definePlugin({
 // The definition's own: upper-cases every value and counts the writes on the form.
 const upper = definePlugin({
   name: "writes",
+  initialFormMeta: 0,
   setup(ctx: PluginContext<never, number>) {
     let writes = 0;
     return {
@@ -38,8 +40,8 @@ function Name() {
       {(field) => (
         <>
           <input {...inputProps(field)} />
-          <output>{chars.meta(field) ?? "none"}</output>
-          <p>{upper.formMeta(form.state) ?? 0}</p>
+          <output>{chars.meta(field)}</output>
+          <p>{upper.formMeta(form.state)}</p>
           <button type="button" onClick={() => form.plugins.writes.count()}>
             count
           </button>
@@ -56,8 +58,8 @@ describe("plugins", () => {
     const input = get(host, "input");
     const output = getAs(host, "output", HTMLOutputElement);
     const writes = getAs(host, "p", HTMLParagraphElement);
-    // The field object was made before any meta existed.
-    expect(output.textContent).toBe("none");
+    // The field object was made before any meta existed, so it shows the starting value.
+    expect(output.textContent).toBe("0");
     expect(writes.textContent).toBe("0");
 
     typeText(input, "ada");
@@ -132,17 +134,17 @@ describe("the history plugin", () => {
   });
 });
 
-const Lines = createForms({ plugins: [dirty()] }).define({
-  defaultValues: { lines: [{ sku: "ab-1" }] },
-  plugins: [mask({ "lines.*.sku": upperCase })],
-});
+/** A sku input whose field type upper-cases what it holds. */
+const SkuField = defineField((props: { readonly field: FieldApi<string> }) => <input {...inputProps(props.field)} />, masked({ clean: upperCase }));
+
+const Lines = createForms({ plugins: [dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
 
 function LinesPage() {
   const form = createForm(Lines);
   return (
     <>
       <form.Items name="lines">
-        {(row) => <form.Field handle={row.at("sku")}>{(field) => <input {...inputProps(field)} />}</form.Field>}
+        {(row) => <form.SkuField handle={row.at("sku")} />}
       </form.Items>
       <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
         add

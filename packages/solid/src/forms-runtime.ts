@@ -1,16 +1,17 @@
-import { createFormsCore, type FormsConfig, type Plugins } from "@lunarhue/forms-core";
+import { attach, createFormsCore, type FormsConfig, type Part, type Plugins } from "@lunarhue/forms-core";
 import { createUniqueId } from "solid-js";
 import { madeBy, madeFrom, useAnyForm, type RuntimeForm } from "./context.js";
 import type { RuntimeFocus } from "./focus.js";
 import { buildForm, type RuntimeStore } from "./form-runtime.js";
-import { scopeCache, type RuntimeComponent, type RuntimeHandle } from "./scope-runtime.js";
+import { pin } from "./field-type.js";
+import { scopeCache, type RuntimeEntry, type RuntimeHandle } from "./scope-runtime.js";
 
 export { useAnyForm };
 
 /** `createForms` options with their types erased. */
 interface RuntimeOptions extends FormsConfig<Plugins, unknown> {
   readonly focusOnInvalid?: RuntimeFocus;
-  readonly fields?: Readonly<Record<string, RuntimeComponent>>;
+  readonly fields?: Readonly<Record<string, RuntimeEntry>>;
 }
 
 /** Per-form settings with their types erased. */
@@ -39,10 +40,10 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
   const scopeOf = scopeCache(options.fields ?? {});
 
   // `config` is a definition config, or a function of per-form options that returns one.
-  const define = (config: object) => {
-    // `SolidForms.define` checks the config's types. Here it passes through to core with them erased.
+  const define = (config: object, ...parts: readonly Part[]) => {
+    // `SolidForms.define` checks the config's and the parts' types. Here they pass through to core with them erased.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const definition = core.define(config as never) as unknown as RuntimeDefinition;
+    const definition = core.define(config as never, ...(parts as never[])) as unknown as RuntimeDefinition;
     // A function config takes per-form options, so `createForm`'s argument after the definition is those options.
     const takesOptions = typeof config === "function";
 
@@ -64,8 +65,22 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
     return definition;
   };
 
-  /** A fieldset is a token whose `scope` is `forms.scope`, typed to the shape. */
-  const fieldset = () => ({ scope: scopeOf });
+  /**
+   * A fieldset is a token whose `scope` is `forms.scope`, typed to the shape,
+   * after attaching its parts. Its first argument is its schema, or its
+   * first part when it has no schema.
+   */
+  const fieldset = (first?: object, ...rest: readonly Part[]) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
+    return {
+      scope(handle: RuntimeHandle) {
+        attach(handle, parts, true);
+        return scopeOf(handle);
+      },
+      at: (name: string) => pin(parts, name),
+    };
+  };
 
   const forms = { define, scope: (handle: RuntimeHandle) => scopeOf(handle), fieldset };
   return forms;

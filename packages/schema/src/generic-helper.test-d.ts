@@ -31,13 +31,13 @@ describe("a helper that defines a form from a schema", () => {
       expectTypeOf(value).toEqualTypeOf<{ name: string; age: number; joined: number }>();
     }).createStore();
     // The zod plugin still applies, so the number starts undefined.
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: number | undefined; joined: string }, FormError, undefined, void>>();
+    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: number | undefined; joined: string }, FormError, undefined, void, {}, "zod">>();
   });
 
   it("types a Standard Schema form from its values", () => {
     const other: StandardSchemaV1<{ name: string }> = z.object({ name: z.string() });
     const store = makeStandard(other, { name: "Ada" }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }, FormError, undefined, unknown, {}, "zod">>();
   });
 
   it("fails when the helper is generic over the schema type", () => {

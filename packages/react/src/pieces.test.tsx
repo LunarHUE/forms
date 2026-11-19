@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createForms, inputProps, useForm } from "./index.js";
-import { digits, mask, persist } from "./plugins.js";
+import { createForms, type FieldApi, defineField, inputProps, useForm } from "./index.js";
+import { digits, mask, masked, persist } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
 function formatPhone(value: string): string {
@@ -14,11 +14,11 @@ function formatPhone(value: string): string {
   return value;
 }
 
+/** A phone field type, pinned on the definitions below since these tests bind their inputs by hand. */
+const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
+
 const forms = createForms();
-const order = forms.define({
-  defaultValues: { phone: "5551234", price: 3, name: "" },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
-});
+const order = forms.define({ defaultValues: { phone: "5551234", price: 3, name: "" }, plugins: [mask()] }, PhoneField.at("phone"));
 
 const holder: { root?: { peek(): { value: unknown } } } = {};
 
@@ -108,13 +108,13 @@ function savedDraft(value: unknown) {
   };
 }
 
-const settings = createForms().define({
-  defaultValues: { phone: "", price: 3, terms: false, size: "s" },
-  plugins: [
-    persist("draft", savedDraft({ phone: "5551234", price: 12, terms: true, size: "l" })),
-    mask({ phone: { clean: digits, display: formatPhone } }),
-  ],
-});
+const settings = createForms().define(
+  {
+    defaultValues: { phone: "", price: 3, terms: false, size: "s" },
+    plugins: [persist("draft", savedDraft({ phone: "5551234", price: 12, terms: true, size: "l" })), mask()],
+  },
+  PhoneField.at("phone"),
+);
 
 const resets: { reset?: () => void } = {};
 

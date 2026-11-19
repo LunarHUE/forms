@@ -1,13 +1,14 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createForms, type ExactFieldApi, useForm } from "./index.js";
+import { createForms, type ExactFieldApi, type FormError, useForm } from "./index.js";
 import { definePlugin } from "./plugins.js";
 
 // A snapshot has `meta` only once a plugin sets some, so this sets it on
 // every field the test renders. Without it a field object would lack `meta`.
 const marked = definePlugin({
   name: "marked",
+  initialMeta: false,
   setup(ctx: PluginContext<boolean>) {
     const keys = ctx.store.getSnapshot(["rows"]).keys ?? [];
     for (const path of [["name"], ["address"], ["rows"], ...keys.map((key) => ["rows", key])]) ctx.setMeta(path, true);
@@ -59,8 +60,10 @@ const commonMembers = {
   ref: true,
   "~types": false,
 } as const;
-const leafMembers = commonMembers satisfies Record<keyof ExactFieldApi<string>, boolean>;
-const objectMembers = { ...commonMembers, at: true } satisfies Record<keyof ExactFieldApi<{ title: string }>, boolean>;
+// `dirty` is always on the object at runtime. Its type has it with `dirty()` only.
+type Api<V> = ExactFieldApi<V, FormError, "dirty">;
+const leafMembers = commonMembers satisfies Record<keyof Api<string>, boolean>;
+const objectMembers = { ...commonMembers, at: true } satisfies Record<keyof Api<{ title: string }>, boolean>;
 const arrayMembers = {
   ...commonMembers,
   keys: true,
@@ -69,7 +72,7 @@ const arrayMembers = {
   remove: true,
   move: true,
   item: true,
-} satisfies Record<keyof ExactFieldApi<{ title: string }[]>, boolean>;
+} satisfies Record<keyof Api<{ title: string }[]>, boolean>;
 
 /**
  * Every core handle carries the structure commands of every kind, and the

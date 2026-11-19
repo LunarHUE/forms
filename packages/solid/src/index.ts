@@ -4,6 +4,7 @@ export * from "@lunarhue/forms-core";
 // through this package. Strict installs (pnpm, Bun isolated) hide core from it.
 export type * from "@lunarhue/forms-core/plugins";
 export { createDisabledErrors, createForm, createForms, useFormContext } from "./forms.js";
+export { defineField } from "./field-type.js";
 export type {
   AnyForm,
   BoundChoiceComponent,
@@ -12,6 +13,7 @@ export type {
   BoundItems,
   FieldComponents,
   Fieldset,
+  FieldType,
   FocusOnInvalid,
   FocusTarget,
   FormComponent,

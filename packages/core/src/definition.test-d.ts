@@ -3,7 +3,6 @@ import type {
   CreateFormsCore,
   DeepPartial,
   DefinedValue,
-  DirtyPlugin,
   Draft,
   Equals,
   FieldSnapshot,
@@ -11,8 +10,6 @@ import type {
   FormDefinition,
   FormError,
   FormStore,
-  HasDirty,
-  HasSchemaPlugin,
   ItemHandle,
   LeafHandle,
   NoSchemaPlugin,
@@ -20,10 +17,13 @@ import type {
   Path,
   PlainDefinition,
   SchemaDefinition,
-  SchemaPlugin,
+  Plugin,
+  PluginNames,
+  Needs,
   StandardSchemaV1,
   Submission,
 } from "./index.js";
+import type { HasSchemaPlugin } from "./plugin.js";
 
 // A schema type a plugin accepts, and one no plugin accepts.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -34,8 +34,9 @@ interface OtherSchema<I, O = I> extends StandardSchemaV1<I, O> {
 }
 
 declare const createFormsCore: CreateFormsCore;
-declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
-declare const dirty: () => DirtyPlugin;
+declare const fakePlugin: Plugin<undefined, "fake", never, never, FakeSchema<unknown>>;
+declare const dirty: () => Plugin<undefined, "dirty">;
+declare const history: () => Plugin<{ undo(): void }, "history">;
 
 interface User {
   name: string;
@@ -61,6 +62,9 @@ const core = createFormsCore({ plugins: [fakePlugin] });
 type Installed = readonly [typeof fakePlugin];
 type DefaultsOf<S extends StandardSchemaV1> = SchemaDefinition<S, Installed, FormError, undefined, unknown>["defaultValues"];
 
+/** A store made from `core`, so it has the plugin named "fake". */
+type CoreStore<V, I = undefined, R = unknown> = FormStore<V, FormError, I, R, {}, "fake">;
+
 type StoreOf<D> = D extends FormDefinition<infer V, infer E, infer I, infer R, infer _O, infer _P> ? FormStore<V, E, I, R> : never;
 
 describe("defaults case 1: schema with a schema plugin", () => {
@@ -68,23 +72,23 @@ describe("defaults case 1: schema with a schema plugin", () => {
     const form = core.define({ schema: userSchema });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<DraftUser>>();
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<Draft<User>>>();
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser>>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser, FormError, "fake">>();
     expectTypeOf<DefinedValue<never, FakeSchema<User>, Installed>>().toEqualTypeOf<Draft<User>>();
   });
 
   it("takes a deep partial of the input, not of the draft", () => {
     const form = core.define({ schema: userSchema, defaultValues: { address: { city: "Paris" } } });
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser>>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser, FormError, "fake">>();
     expectTypeOf<DefaultsOf<FakeSchema<User>>>().toEqualTypeOf<DeepPartial<User> | undefined>();
   });
 
   it("gives a draft leaf a handle that takes undefined", () => {
     const store = core.define({ schema: userSchema }).createStore();
     const age = store.root.at("age");
-    expectTypeOf(age).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(age).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake">>();
     age.setValue(undefined);
     age.setValue((previous) => (previous ?? 0) + 1);
-    expectTypeOf(store.root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    expectTypeOf(store.root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
     expectTypeOf(age.peek().value).toEqualTypeOf<number | undefined>();
   });
 
@@ -93,8 +97,8 @@ describe("defaults case 1: schema with a schema plugin", () => {
     const rows = store.root.at("rows");
     rows.push();
     rows.push({ title: "", qty: undefined });
-    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }>>();
-    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }, FormError, "fake">>();
+    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake">>();
   });
 
   it("types validators, flags and ctx.input with the draft, and onSubmit's value with the output", () => {
@@ -220,13 +224,34 @@ describe("dirty tracking", () => {
     createFormsCore().define({ defaultValues: { name: "" }, equals });
     createFormsCore({ plugins: [dirty()], equals }).define({ defaultValues: { name: "" }, equals });
     createFormsCore().define({ defaultValues: { name: "" }, plugins: [dirty()], equals });
-    expectTypeOf<HasDirty<[]>>().toEqualTypeOf<false>();
-    expectTypeOf<HasDirty<readonly [DirtyPlugin]>>().toEqualTypeOf<true>();
+    expectTypeOf<Needs<PluginNames<[]>, "dirty", Equals>>().not.toEqualTypeOf<Equals>();
+    expectTypeOf<Needs<PluginNames<[ReturnType<typeof dirty>]>, "dirty", Equals>>().toEqualTypeOf<Equals>();
   });
 
   it("names the plugin to install in the type of equals", () => {
     type Bare = NonNullable<PlainDefinition<{ name: string }, FormError, undefined, unknown>["equals"]>;
-    expectTypeOf<Bare>().toExtend<{ readonly "Add dirty() to plugins to use equals": never }>();
+    expectTypeOf<Bare>().toExtend<{ readonly "Add dirty() to this form's plugins": never }>();
+  });
+});
+
+describe("entries that aren't plugins", () => {
+  const dev = Math.random() > 0.5;
+
+  it("are allowed in every plugin list", () => {
+    const shared = createFormsCore({ plugins: [dirty(), false, null, undefined] });
+    const store = shared.define({ defaultValues: { name: "" }, plugins: [dev && history(), null] }).createStore();
+    expectTypeOf(store.plugins).toEqualTypeOf<{}>();
+  });
+
+  it("count a plugin that may be missing as not installed", () => {
+    type Maybe = [false | ReturnType<typeof dirty>];
+    expectTypeOf<PluginNames<Maybe>>().toEqualTypeOf<never>();
+    expectTypeOf<PluginNames<[ReturnType<typeof dirty>, null]>>().toEqualTypeOf<"dirty">();
+    // @ts-expect-error: dirty tracking may be missing
+    createFormsCore({ plugins: [dev && dirty()], equals });
+    const form = createFormsCore({ plugins: [dev && history(), dirty()] }).define({ defaultValues: { name: "" } }).createStore();
+    // @ts-expect-error: history may be missing, so its API isn't typed
+    void form.plugins.history;
   });
 });
 
@@ -331,12 +356,12 @@ describe("defaults case 3: no schema", () => {
 
   it("falls back to the default I and R with an explicit V unless they are given too", () => {
     const loose = core.define<{ name: string }>({ defaultValues: { name: "" }, onSubmit: () => "saved" });
-    expectTypeOf(loose.createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(loose.createStore()).toEqualTypeOf<CoreStore<{ name: string }>>();
     const typed = core.define<{ name: string }, never, void, "save", string>({
       defaultValues: { name: "" },
       onSubmit: (_value, ctx) => ctx.intent,
     });
-    expectTypeOf(typed.createStore()).toEqualTypeOf<FormStore<{ name: string }, FormError, "save", string>>();
+    expectTypeOf(typed.createStore()).toEqualTypeOf<CoreStore<{ name: string }, "save", string>>();
   });
 
   it("checks defaultValues against an explicit V", () => {
@@ -365,7 +390,7 @@ describe("defaults case 3: literals in defaultValues widen", () => {
   it("widens what satisfies keeps", () => {
     const form = core.define({ defaultValues: { pickup: false, note: "", qty: 1 } satisfies Order });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<{ pickup: boolean; note: string; qty: number }>>();
-    expectTypeOf(form.createStore().root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
+    expectTypeOf(form.createStore().root.at("pickup")).toEqualTypeOf<LeafHandle<boolean, FormError, "fake">>();
   });
 
   it("widens as const, at any depth, and turns tuples into arrays", () => {
@@ -474,19 +499,19 @@ describe("the function form", () => {
   it("takes per-store options", () => {
     const form = core.define((options: { name: string }) => ({ defaultValues: { name: options.name } }));
     const store = form.createStore({ name: "Ada" }, { id: "profile" });
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(store).toEqualTypeOf<CoreStore<{ name: string }>>();
     // @ts-expect-error: options are required
     form.createStore();
   });
 
   it("works with a schema", () => {
     const form = core.define((options: { id: string }) => ({ schema: userSchema, onSubmit: () => options.id }));
-    expectTypeOf(form.createStore({ id: "x" })).toEqualTypeOf<FormStore<DraftUser, FormError, undefined, string>>();
+    expectTypeOf(form.createStore({ id: "x" })).toEqualTypeOf<CoreStore<DraftUser, undefined, string>>();
   });
 
   it("a plain config takes no options", () => {
     const form = core.define({ defaultValues: { a: 1 } });
-    expectTypeOf(form.createStore()).toEqualTypeOf<FormStore<{ a: number }>>();
+    expectTypeOf(form.createStore()).toEqualTypeOf<CoreStore<{ a: number }>>();
     expectTypeOf(form.createStore(undefined, { id: "a" }).id).toEqualTypeOf<string>();
   });
 });
@@ -527,7 +552,7 @@ describe("intent and result", () => {
 
   it("defaults I to undefined and R to unknown with no onSubmit", () => {
     const store = core.define({ defaultValues: { a: 1 } }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ a: number }>>();
+    expectTypeOf(store).toEqualTypeOf<CoreStore<{ a: number }>>();
     void store.submit();
   });
 });

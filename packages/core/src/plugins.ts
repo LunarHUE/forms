@@ -1,44 +1,44 @@
-import type { HookPlugin, PluginDefinition, SchemaPlugin } from "./plugin.js";
-import type { SchemaAdapter } from "./schema-adapter.js";
+import type { Plugin, RequiredPlugins, Requirements } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
-import { defineHooks, type Unset } from "./store/define.js";
-import { hosts } from "./store/plugins.js";
+import { defineHooks, type PluginDefinition } from "./store/define.js";
+import { hosts } from "./store/hosts.js";
+import { createParts, listParts } from "./store/parts.js";
 import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
 
 /**
- * Makes a hook plugin from its definition. Install it with
+ * Makes a plugin from its definition. Install it with
  * `createFormsCore({ plugins })` or a definition's `plugins`. The plugin
- * carries the code that runs plugins and delivers `deferred` and `idle`
- * records, so a store without hook plugins never loads it.
+ * carries the code that runs plugin hooks and delivers `deferred` and
+ * `idle` records. `dirty()` and the schema plugins are built without it, so
+ * an app that installs only those doesn't bundle it. It carries the code
+ * that attaches parts too.
  *
- * Its meta types come from `setup`'s parameter. Annotate it as
- * `PluginContext<M, F>`, where `M` is its meta on a field and `F` its meta
- * on the form, and the plugin's `meta` and `formMeta` readers return them.
- * Give `initialMeta` and `meta` never returns undefined. Give
- * `initialFormMeta` and `formMeta` never does either.
+ * A plugin keeps meta when it gives a starting value: `initialMeta` for its
+ * meta on a field, `initialFormMeta` for its meta on the form. The meta
+ * types are the types of those values, or name them by annotating `setup`'s
+ * parameter as `PluginContext<M, F>`. The plugin then has a `meta` or
+ * `formMeta` reader, which returns the starting value until the plugin sets
+ * another. Without a starting value it has no reader and can't set meta.
+ *
+ * Give `attach` for hooks at the paths the plugin's parts attach at, as
+ * `mask` does for each masked field. Give `requires` for the plugins it
+ * needs. Give `schema` to make a schema plugin, which gives one library's
+ * schemas their default values. Validation needs no plugin.
  */
 export function definePlugin<
   A = undefined,
   N extends string = string,
-  M = unknown,
-  F = unknown,
-  MI extends M | undefined = undefined,
-  FI extends F | undefined = undefined,
+  M = never,
+  F = never,
+  S extends StandardSchemaV1 = never,
+  const R extends Requirements = [],
 >(
-  definition: PluginDefinition<A, N, M, F> & { readonly initialMeta?: MI; readonly initialFormMeta?: FI },
-): HookPlugin<A, N, M, F, Unset<MI>, Unset<FI>> {
-  return { ...defineHooks(definition), "~timing": createTiming };
-}
-
-/**
- * Makes a schema plugin from a schema adapter. Its name is the adapter's
- * vendor. Validation needs no plugin, so the plugin only gives its
- * library's schemas their default values.
- */
-export function defineSchemaPlugin<S extends StandardSchemaV1>(adapter: SchemaAdapter<S>): SchemaPlugin<S> {
-  return { name: adapter.vendor, schema: adapter };
+  definition: PluginDefinition<A, N, M, F, S, R>,
+  // NoInfer: a `plugins` list's element type must not pick the meta types, only the definition.
+): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
+  return defineHooks(definition, { "~timing": createTiming, "~parts": createParts, "~list": listParts });
 }
 
 /**

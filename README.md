@@ -202,8 +202,8 @@ them, so you import from the package you already have.
 | Plugin         | What it does                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------- |
 | `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
-| `mask()`       | Cleans a value on its way into the store: digits only, upper case, or your own function.       |
-| `rules()`      | Works out `disabled` and `hidden` for a field from the rest of the form's value.               |
+| `mask()`       | Cleans a value on its way into the store, for each field type that carries `masked(...)`.      |
+| `rules()`      | Works out `disabled` and `hidden` for a field from the form's value, with `ruled(...)` parts.  |
 | `persist()`    | Saves the draft to storage when the page is idle and restores it on load.                      |
 | `rebase()`     | Takes a fresh copy of the data and lets you decide, leaf by leaf, whether to keep the user's edit. |
 | `bind()`       | Copies the form's value to a store you own and back. The form keeps its own state; only the value is shared. |
@@ -221,7 +221,7 @@ the starting values.
 | `valibot()` | `@lunarhue/forms-schema/valibot` | The same for Valibot.                                  |
 
 For any other [Standard Schema](https://standardschema.dev) library, make a
-schema plugin with `defineSchemaPlugin`. See
+schema plugin with `definePlugin({ name, schema })`. See
 [Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library).
 
 Bindings for outside stores follow the same rule. `zustand()` comes from
@@ -234,6 +234,9 @@ can bind to two different stores.
 
 `definePlugin` gives you hooks for writes, resets and submit, your own slot for
 field and form state, and an API that shows up typed at `form.plugins.<name>`.
+A plugin can also take parts: config for one field type, fieldset or form,
+as in `defineField(PhoneInput, masked({ clean: digits }))`. A form that uses a field
+type without the plugin its parts need is a type error.
 Plugins can't step on each other: a write made inside a hook is queued, and
 each plugin sees the records frozen. A plugin depends on core and never on an
 adapter, so it works under React and Solid alike. If you publish one, call it

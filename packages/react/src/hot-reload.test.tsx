@@ -1,11 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import type { StandardSchemaV1 } from "@lunarhue/forms-core";
+import type { SchemaAdapter, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, inputProps, useForm, useFormContext, useFormState } from "./index.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
-import { defineSchemaPlugin } from "./plugins.js";
+import { definePlugin } from "./plugins.js";
 
 // Fast Refresh runs an edited module again and keeps the state of its mounted
 // components. These tests do the same: `load` stands for the module body, and
@@ -30,11 +30,12 @@ const minLength = (min: number): StandardSchemaV1<Value> => ({
 });
 
 /** The schema plugin for `minLength`'s schemas. Every form gives its defaultValues. */
-const testSchemas = defineSchemaPlugin<StandardSchemaV1<Value>>({
+const adapter: SchemaAdapter<StandardSchemaV1<Value>> = {
   vendor: "test",
   defaultValue: () => ({ name: "" }),
   itemValue: () => undefined,
-});
+};
+const testSchemas = definePlugin({ name: "test", schema: adapter });
 
 /** The module body: its own field component, `createForms` and `define`. */
 function load(version: string, min: number, onSubmit: (value: Value) => void) {

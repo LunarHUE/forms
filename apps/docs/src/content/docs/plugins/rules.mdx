@@ -7,44 +7,50 @@ order: 4
 
 <Demo name="rules/delivery" />
 
-`rules` takes a map from a field's dotted name, the same name a `name` prop
-takes, to a rule. Each rule gets the whole form value and returns the field's
-`disabled` and `hidden` flags. A flag the rule leaves out stays as it is.
+Put `rules()` in the form's plugins, and a `ruled(...)` part after the
+definition's config. `ruled` takes a map from a field's dotted name, the same
+name a `name` prop takes, to a rule. Each rule gets the form value and returns
+the field's `disabled` and `hidden` flags. A flag the rule leaves out stays as
+it is.
 
 ```ts
-interface Order {
-  pickup: boolean;
-  gift: boolean;
-  street: string;
-  message: string;
-}
+const forms = createForms({ plugins: [rules()], fields });
 
-const orderRules = rules<Order>({
-  street: (value) => ({ disabled: value.pickup }),
-  message: (value) => ({ hidden: !value.gift }),
-});
-
-const order = forms.define({ defaultValues, plugins: [orderRules] });
+const order = forms.define(
+  { defaultValues: { pickup: false, gift: false, street: "", message: "" } },
+  ruled({
+    street: (value) => ({ disabled: value.pickup }),
+    message: (value) => ({ hidden: !value.gift }),
+  }),
+);
 ```
 
-Rules run when the store is made and after every batch that writes a value,
+`ruled` takes its value type from the definition, so `value` is typed and a
+name that isn't a field, such as `"stret"`, is a type error. A form without
+`rules()` in its plugins is a type error too.
+
+Rules run when the part attaches and after every batch that writes a value,
 before listeners, so the flags change in the same render as the value.
 Disabling an object, such as `address`, disables every field below it.
 
-## Name the value type
+Names go through objects only, so a rule can't name an array item. Give the
+array a rule, or the object around it.
 
-The compiler checks both ends. A name that isn't a field of `Order`, such as
-`"stret"`, is a type error, and so is putting `orderRules` on a form whose
-value isn't an `Order`. Leaving out the type is an error too, since there
-would be nothing to check the names against.
+## Rules on a fieldset
 
-`rules` can't take the type from the definition it sits in. TypeScript works
-out a call such as `rules({ ... })` before it knows the form's value type, even
-when the call is written inside `plugins`.
+A fieldset can carry rules of its own. Its rules get the fieldset's value,
+not the form's, and name fields below it:
 
-A form may have fields `Order` doesn't name. Names go through objects only, so
-a rule can't name an array item. Give the array a rule, or the object around
-it.
+```ts
+const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
+```
+
+They attach at each field the fieldset is used on, the first time its scope
+is read. A rule that matters before that can be pinned on the definition, as
+`forms.define(config, Billing.at("billing"))`.
+
+To write rules apart from the definition, name the value type:
+`ruled<Order>({ ... })`.
 
 ## Disabled and hidden
 
@@ -54,7 +60,7 @@ means:
 
 ```tsx framework=react
 function TextField({ field, label }: TextFieldProps) {
-  if (orderRules.meta(field).hidden) return null;
+  if (rules.meta(field).hidden) return null;
   // ...
 }
 ```
@@ -62,7 +68,7 @@ function TextField({ field, label }: TextFieldProps) {
 ```tsx framework=solid
 function TextField(props: TextFieldProps) {
   return (
-    <Show when={!orderRules.meta(props.field).hidden}>
+    <Show when={!rules.meta(props.field).hidden}>
       {/* ... */}
     </Show>
   );
@@ -74,6 +80,6 @@ undefined.
 
 ## Server rendering
 
-What the rules set when the store is made is part of its starting state. A
-field a rule disables or hides renders that way on the server and hydrates
-with no second render.
+What the rules set before the store has listeners is part of its starting
+state. A field a rule disables or hides renders that way on the server and
+hydrates with no second render.

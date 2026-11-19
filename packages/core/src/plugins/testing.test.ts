@@ -83,6 +83,7 @@ describe("testStore", () => {
   it("reads the server snapshot of every field, setup's writes and meta included", () => {
     const fill = definePlugin({
       name: "fill",
+      initialFormMeta: "",
       setup: (ctx) => {
         ctx.write(() => ctx.store.root.at("rows").push({ t: "b" }, { edited: false }));
         ctx.setFormMeta("filled");

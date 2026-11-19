@@ -184,6 +184,7 @@ describe("a field object's members", () => {
 // Stores each written string's length as the field's meta.
 const chars = definePlugin({
   name: "chars",
+  initialMeta: 0,
   setup: (ctx: PluginContext<number>) => ({
     onWrite(records) {
       for (const record of records) if (record.type === "value") ctx.setMeta(record.path, String(record.after).length);
@@ -199,7 +200,7 @@ describe("a field object's meta", () => {
       return { field: name, length: createMemo(() => chars.meta(name)), dispose: stop };
     });
     expect(Object.keys(field)).toContain("meta");
-    expect(length()).toBeUndefined();
+    expect(length()).toBe(0);
 
     field.setValue("ada");
     flush();

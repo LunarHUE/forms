@@ -1,33 +1,27 @@
+export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 
 export type {
-  AnyHookPlugin,
-  AnyPlugin,
   BaselineAt,
-  DirtyPlugin,
-  EqualsNeedsDirty,
-  FieldDisplay,
-  HasDirty,
-  HasSchemaPlugin,
-  HookPlugin,
-  IfDirty,
-  MetaSource,
+  MetaHolder,
+  Needs,
+  Nested,
+  Part,
+  Parts,
   Plugin,
   PluginApis,
+  PluginMembers,
   PluginBaseline,
   PluginContext,
-  PluginDefinition,
   PluginErrorHandler,
   PluginHooks,
+  PluginNames,
   Plugins,
-  PluginSchemas,
   PluginsFor,
-  SchemaPlugin,
   TextControl,
-  When,
   Write,
   WriteCause,
   WriteRecord,
@@ -101,6 +95,7 @@ export type {
   Narrow,
   ObjectHandle,
   Patch,
+  PluginsOf,
   ReplaceOptions,
   ResetOptions,
   ValueOf,
@@ -128,5 +123,6 @@ export type {
   SubmitContext,
   Combined,
   DefineConfig,
+  DefineParts,
   WithPlugins,
 } from "./definition.js";

@@ -1,8 +1,10 @@
-import type { FieldDisplay } from "@lunarhue/forms-core";
+import type { PluginHooks } from "@lunarhue/forms-core";
 
-const isDisplay = (meta: unknown): meta is FieldDisplay =>
-  typeof meta === "object" && meta !== null && "display" in meta && typeof meta.display === "function";
+/** What changes the text a text input shows: the `display` and `edit` hooks of the first plugin attached at the field. */
+export type FieldDisplay = Required<Pick<PluginHooks, "display">> & Pick<PluginHooks, "edit">;
 
-/** The first slot of a field's meta that is a `FieldDisplay`, which changes what a text input shows. */
+/** The field's display, from the meta slot the plugin host keeps it in. */
 export const displayOf = (meta: Readonly<Record<string, unknown>> | undefined): FieldDisplay | undefined =>
-  meta && Object.values(meta).find(isDisplay);
+  // Only the host writes this slot, with these hooks.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  meta?.["~display"] as FieldDisplay | undefined;

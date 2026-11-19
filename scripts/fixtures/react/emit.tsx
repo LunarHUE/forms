@@ -3,6 +3,7 @@
 // something the adapter doesn't export.
 import {
   createForms,
+  defineField,
   type Choice,
   type ExactFieldApi,
   type FieldApi,
@@ -15,7 +16,7 @@ import {
   useInputProps,
   useItems,
 } from "@lunarhue/forms-react";
-import { digits, history, mask, rules } from "@lunarhue/forms-react/plugins";
+import { digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-react/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { TextField } from "./input.js";
@@ -50,17 +51,21 @@ export function NoteField({ field }: { readonly field: ExactFieldApi<string> }) 
   return <textarea value={field.value} onChange={(event) => field.setValue(event.target.value)} />;
 }
 
-export const forms = createForms({ plugins: [valibot(), history()], fields: { TextField, NumberField, SelectField, NoteField } });
+export const PhoneField = defineField(TextField, masked({ clean: digits }));
+
+export const forms = createForms({
+  plugins: [valibot(), history(), mask(), rules()],
+  fields: { TextField, NumberField, SelectField, NoteField, PhoneField },
+});
 
 export const AddressSchema = v.object({ street: v.string(), city: v.pipe(v.string(), v.minLength(1)) });
 export const Address = forms.fieldset(AddressSchema);
-export const Contact = forms.fieldset<{ email: string; phone: string }>();
+export const Contact = forms.fieldset<{ email: string; phone: string }, "rules">(
+  ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),
+);
 
-export const orderRules = rules<{ pickup: boolean; address: { street: string; city: string } }>({
-  address: (value) => ({ disabled: value.pickup }),
-});
-
-export const order = forms.define({
+export const order = forms.define(
+  {
   schema: v.object({
     pickup: v.boolean(),
     qty: v.number(),
@@ -68,9 +73,13 @@ export const order = forms.define({
     contact: v.object({ email: v.string(), phone: v.string() }),
     lines: v.array(v.object({ item: v.string() })),
   }),
-  plugins: [mask({ "contact.phone": digits }), orderRules],
   onSubmit: (value) => ({ id: value.address.city }),
-});
+  },
+  ruled({ address: (value) => ({ disabled: value.pickup }) }),
+  PhoneField.at("contact.phone"),
+);
+
+export const isHidden = rules.meta;
 
 export const note = forms.define({ defaultValues: { text: "" }, readOnly: { text: true } });
 
@@ -113,6 +122,7 @@ export function orderParts(form: OrderForm) {
     NumberField: form.NumberField,
     SelectField: form.SelectField,
     NoteField: form.NoteField,
+    PhoneField: form.PhoneField,
   };
 }
 

@@ -94,7 +94,7 @@ it("hydrates a field disabled through its parent when the store changed before t
   host.remove();
 });
 
-it("hydrates a mask's display text and keeps showing it", () => {
+it("hydrates what field types and fieldsets attached, and keeps showing it", () => {
   const host = document.createElement("div");
   host.innerHTML = phoneHtml;
   document.body.append(host);
@@ -108,5 +108,7 @@ it("hydrates a mask's display text and keeps showing it", () => {
   expect([...warn.mock.calls, ...error.mock.calls]).toEqual([]);
   expect(host.querySelector("input")).toBe(input);
   expect(input?.value).toBe("(555) 123-4");
+  expect(host.querySelector<HTMLInputElement>("[aria-label=fax]")?.value).toBe("(555) 9");
+  expect(host.querySelector("[aria-label=street]")).toBeNull();
   dispose();
 });

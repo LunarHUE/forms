@@ -36,7 +36,7 @@ Zod schema on a form without `zod()` is a type error that names `zod()`, and
 the same goes for Valibot. Starting values come from the schema.
 
 For another [Standard Schema](https://standardschema.dev) library, make a
-schema plugin with `defineSchemaPlugin` from `@lunarhue/forms-core/plugins`.
+schema plugin with `definePlugin({ name, schema })` from `@lunarhue/forms-core/plugins`.
 [Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library)
 shows how.
 

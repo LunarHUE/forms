@@ -26,23 +26,26 @@ interface Consumer {
 }
 
 const source = (adapter: string) => `
-import { createForms, type refuse as fromMain } from "@lunarhue/forms-${adapter}";
-import { digits, history, mask, refuse, rules } from "@lunarhue/forms-${adapter}/plugins";
+import { createForms, defineField, type FieldApi, type refuse as fromMain } from "@lunarhue/forms-${adapter}";
+import { digits, history, mask, masked, refuse, ruled, rules } from "@lunarhue/forms-${adapter}/plugins";
 
 // refuse is a unique symbol, so a second copy of core's types would be a second type.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 export const oneCopy: Same<typeof fromMain, typeof refuse> = true;
 
-export const forms = createForms({ plugins: [history()] });
+export const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits }));
 
-export const orderRules = rules<{ pickup: boolean; city: string }>({
-  city: (value) => ({ disabled: value.pickup }),
-});
+export const forms = createForms({ plugins: [history(), mask(), rules()], fields: { PhoneField } });
 
-export const order = forms.define({
-  defaultValues: { pickup: false, city: "", phone: "" },
-  plugins: [mask({ phone: digits }), orderRules],
-});
+export const Contact = forms.fieldset<{ email: string; phone: string }, "rules">(
+  ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),
+);
+
+export const order = forms.define(
+  { defaultValues: { pickup: false, city: "", phone: "" } },
+  ruled({ city: (value) => ({ disabled: value.pickup }) }),
+  PhoneField.at("phone"),
+);
 
 export const undoLimit = history(10);
 `;

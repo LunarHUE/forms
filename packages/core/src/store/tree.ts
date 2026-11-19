@@ -26,6 +26,13 @@ export function childOf(container: object, key: PathSegment): unknown {
   return hasOwn(container, key) ? Reflect.get(container, key) : undefined;
 }
 
+/** True when one path starts with the other. */
+export const related = (a: Path, b: Path): boolean => {
+  const length = Math.min(a.length, b.length);
+  for (let i = 0; i < length; i++) if (String(a[i]) !== String(b[i])) return false;
+  return true;
+};
+
 /** The value at value path `path` in `root`, or undefined when a step is missing or is a leaf. */
 export function valueAt(root: unknown, path: Path): unknown {
   let node = root;

@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FormOf, useForm, useInputProps } from "./index.js";
-import { digits, mask, upper } from "./plugins.js";
+import { createForms, type FieldApi, defineField, type FormOf, useForm, useInputProps } from "./index.js";
+import { digits, mask, type MaskConfig, masked, upper } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
 function formatPhone(value: string): string {
@@ -20,18 +20,19 @@ interface Contact {
   notes: string;
   code: string;
 }
-const forms = createForms();
-const contact = forms.define({
-  defaultValues: { phone: "5551234", zip: "ab1", notes: "12", code: "1" } satisfies Contact,
-  plugins: [
-    mask({
-      phone: { clean: digits, display: formatPhone },
-      zip: upper,
-      notes: { clean: digits, display: (value) => `#${value}` },
-      code: { clean: digits, display: (value) => `code ${value}` },
-    }),
-  ],
-});
+/** A string field component, only for its field type. */
+const Text = (_props: { readonly field: FieldApi<string> }) => null;
+/** A mask pinned at `name`, as a field type that may not render pins it on the definition. */
+const masking = <K extends string>(name: K, config: MaskConfig) => defineField(Text, masked(config)).at(name);
+
+const forms = createForms({ plugins: [mask()] });
+const contact = forms.define(
+  { defaultValues: { phone: "5551234", zip: "ab1", notes: "12", code: "1" } satisfies Contact },
+  masking("phone", { clean: digits, display: formatPhone }),
+  masking("zip", { clean: upper }),
+  masking("notes", { clean: digits, display: (value) => `#${value}` }),
+  masking("code", { clean: digits, display: (value) => `code ${value}` }),
+);
 
 const holder: { form?: FormOf<typeof contact> } = {};
 const value = (name: keyof Contact) => holder.form?.root.at(name).peek().value;
@@ -179,20 +180,18 @@ describe("display", () => {
 });
 
 describe("two masks on one field", () => {
-  const twice = forms.define({
-    defaultValues: { phone: "5551234" },
-    plugins: [
-      mask({ phone: { clean: digits, display: formatPhone } }),
-      mask({ phone: { clean: digits, display: (text) => `other ${text}` } }, { name: "other" }),
-    ],
-  });
+  const twice = forms.define(
+    { defaultValues: { phone: "5551234" } },
+    masking("phone", { clean: digits, display: formatPhone }),
+    masking("phone", { clean: digits, display: (text) => `other ${text}` }),
+  );
 
   function Twice() {
     const form = useForm(twice);
     return <input aria-label="phone" {...useInputProps(form.root.at("phone"))} />;
   }
 
-  it("shows the display of the mask that runs first", async () => {
+  it("shows the display of the part that attaches first", async () => {
     render(<Twice />);
     const phone = field("phone");
     expect(phone.value).toBe("(555) 123-4");

@@ -78,6 +78,11 @@ The plugins that need no other library ship with this package, all from
 `rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
 Validation is built in.
 
+`mask` and `rules` work per field. Install them in the form's plugins and
+put their parts where they apply: `defineField(PhoneInput, masked({ clean: digits }))`
+registers a field type whose every field is masked, and
+`forms.define(config, ruled({ ... }))` adds rules to one form.
+
 ## More
 
 The [main README](https://github.com/LunarHUE/forms#readme) has a longer example and the plugin guide, and

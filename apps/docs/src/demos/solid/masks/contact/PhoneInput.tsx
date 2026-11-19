@@ -1,13 +1,14 @@
 import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
-interface PhoneFieldProps {
+interface PhoneInputProps {
   readonly field: FieldApi<string>;
   readonly label: string;
 }
 
-// The mask gives the field its display text, so `inputProps` shows the
-// formatted number and keeps the caret where the user is typing.
-export function PhoneField(props: PhoneFieldProps) {
+// A plain input. The mask part on `PhoneField` gives the field its display
+// text, so `inputProps` shows the formatted number and keeps the caret where
+// the user is typing.
+export function PhoneInput(props: PhoneInputProps) {
   return (
     <label>
       {props.label}

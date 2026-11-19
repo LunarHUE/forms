@@ -240,10 +240,10 @@ describe("StrictMode lifecycle", () => {
     function Status() {
       const form = useForm(status);
       const [counts] = useState(() => countListeners(form.store));
-      const dirty = useFormState(form, (snapshot) => snapshot.dirty);
+      const submitting = useFormState(form, (snapshot) => snapshot.submitting);
       return (
         <button type="button" onClick={() => (live = counts)}>
-          {String(dirty)}
+          {String(submitting)}
         </button>
       );
     }

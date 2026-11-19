@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  type AnyHookPlugin,
+  type Part,
+  type Plugins,
   createFormsCore,
   type Equals,
   type PluginBaseline,
@@ -11,9 +12,9 @@ import {
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
 import { history } from "./history.js";
-import { mask, upper } from "./mask.js";
+import { mask, masked, upper } from "./mask.js";
 import { persist } from "./persist.js";
-import { rules } from "./rules.js";
+import { ruled, rules } from "./rules.js";
 import { rebase } from "./rebase.js";
 
 interface Contact {
@@ -28,8 +29,19 @@ const rethrow: PluginErrorHandler = (error) => {
 };
 
 /** A store with `plugins` on its definition. Plugin errors throw unless `onPluginError` says otherwise. */
-const make = <V, const D extends readonly AnyHookPlugin[]>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
+const make = <V, const D extends Plugins>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
   createFormsCore({ onPluginError, plugins: [dirty()] }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
+
+/** A store as `make` makes it, with `parts` attached at the root. */
+// The parts are untyped here, so they go in as any form's.
+const makeWith = <V, const D extends Plugins>(defaultValues: V, plugins: D, parts: readonly Part[]) =>
+  createFormsCore({ onPluginError: rethrow, plugins: [dirty()] })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    .define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }, ...(parts as never[]))
+    .createStore();
+
+/** `code` upper-cased by a mask part. */
+const upperCode = { ...masked({ clean: upper }), path: "code" };
 
 /** A plugin that records every `onWrite` delivery it gets. */
 const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
@@ -42,6 +54,7 @@ const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
 const metaAtSetup = (name: string, value: number) =>
   definePlugin({
     name,
+    initialMeta: 0,
     setup: (ctx) => {
       ctx.setMeta(["phone"], value);
       return {};
@@ -140,7 +153,9 @@ describe("install", () => {
     make(contact(), [one, two]);
     expect(warn).not.toHaveBeenCalled();
     // Another copy's plugin carries that copy's host.
-    const copy = { ...two, "~host": (...args: Parameters<(typeof two)["~host"]>) => two["~host"](...args) };
+    const host = two["~host"];
+    if (!host) throw new Error("definePlugin gives every plugin a host");
+    const copy = { ...two, "~host": (...args: Parameters<typeof host>) => host(...args) };
     make(contact(), [one, copy]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringMatching(
@@ -174,13 +189,13 @@ describe("beforeWrite", () => {
       }),
     });
     // Installed first, but runs after `tag`.
-    const late = make(contact(), [mask({ code: upper }, { after: ["tag"] }), tag]);
+    const late = makeWith(contact(), [{ ...mask(), after: ["tag"] }, tag], [upperCode]);
     late.root.at("code").setValue("ab");
     expect(late.root.at("code").peek().value).toBe("X-AB");
     expect(seen).toEqual([{ input: "ab", value: "ab" }]);
 
     seen.length = 0;
-    const early = make(contact(), [mask({ code: upper }), tag]);
+    const early = makeWith(contact(), [mask(), tag], [upperCode]);
     early.root.at("code").setValue("ab");
     expect(early.root.at("code").peek().value).toBe("x-AB");
     expect(seen).toEqual([{ input: "ab", value: "AB" }]);
@@ -453,6 +468,8 @@ describe("isolation", () => {
     const seenByB: unknown[] = [];
     const a = definePlugin({
       name: "a",
+      initialMeta: "",
+      initialFormMeta: "",
       setup: (ctx) => ({
         onWrite() {
           ctx.setMeta(["phone"], "seen");
@@ -596,7 +613,7 @@ describe("isolation", () => {
   });
 
   it("fires the path's listeners when meta changes, and not when it is set to the same value", () => {
-    const meta = definePlugin({ name: "m", setup: (ctx) => ({ api: { set: (value: number) => ctx.setMeta(["phone"], value) } }) });
+    const meta = definePlugin({ name: "m", initialMeta: 0, setup: (ctx) => ({ api: { set: (value: number) => ctx.setMeta(["phone"], value) } }) });
     const store = make(contact(), [meta]);
     const runs = vi.fn<() => void>();
     store.subscribe(["phone"], runs);
@@ -686,14 +703,14 @@ describe("timing", () => {
   it("flushes without history or persist, when no installed plugin brings the timings", async () => {
     vi.useFakeTimers();
     const flusher = definePlugin({ name: "flusher", setup: (ctx) => ({ api: { flush: () => ctx.flush() } }) });
-    const store = make(contact(), [mask({ code: upper })]);
+    const store = makeWith(contact(), [mask()], [upperCode]);
     store.root.at("code").setValue("ab");
     expect(() => flushPlugins(store)).not.toThrow();
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
     expect(store.root.at("code").peek().value).toBe("AB");
     // The public `definePlugin` brings the timings, so its `ctx.flush` works next to them.
-    const withFlusher = make(contact(), [mask({ code: upper }), flusher]);
+    const withFlusher = makeWith(contact(), [mask(), flusher], [upperCode]);
     withFlusher.root.at("code").setValue("ab");
     expect(() => withFlusher.plugins.flusher.flush()).not.toThrow();
   });
@@ -701,7 +718,7 @@ describe("timing", () => {
   it("flushes history and persist when a plugin before them brings no timings", () => {
     vi.useFakeTimers();
     const storage = memory();
-    const store = make(contact(), [mask({ code: upper }), history(), persist("contact", storage)]);
+    const store = makeWith(contact(), [mask(), history(), persist("contact", storage)], [upperCode]);
     store.root.at("code").setValue("ab");
     flushPlugins(store);
     expect(JSON.parse(storage.saved.get("contact") ?? "null")).toEqual({ phone: "", code: "AB" });
@@ -758,6 +775,7 @@ describe("reset and submit", () => {
     const seen: unknown[] = [];
     const watch = definePlugin({
       name: "watch",
+      initialFormMeta: "",
       setup: (ctx) => ({
         onReset(path) {
           seen.push({ path, value: ctx.store.getSnapshot([]).value });
@@ -915,12 +933,13 @@ interface Shipment {
 
 const shipment = (): Shipment => ({ sameAsBilling: true, shipping: { street: "" } });
 
-const shippingRules = () => rules<Shipment>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) });
+const shippingRules = ruled<Shipment>({ shipping: (value) => ({ disabled: value.sameAsBilling, hidden: value.sameAsBilling }) });
 
 describe("setup and server rendering", () => {
   /** A plugin that writes the street and sets form meta in its setup. */
   const writesAtSetup = definePlugin({
     name: "form",
+    initialFormMeta: false,
     setup: (ctx) => {
       ctx.write(() => ctx.store.root.at("shipping").at("street").setValue("1 Main St", { edited: false }));
       ctx.setFormMeta(true);
@@ -929,7 +948,7 @@ describe("setup and server rendering", () => {
   });
 
   it("puts what setup wrote in the server snapshots, the same objects the store reads now", () => {
-    const store = make(shipment(), [shippingRules(), writesAtSetup]);
+    const store = makeWith(shipment(), [rules(), writesAtSetup], [shippingRules]);
     const shipping = store.getSnapshot(["shipping"]);
     expect(shipping).toMatchObject({ disabled: true, meta: { rules: { hidden: true } }, value: { street: "1 Main St" } });
     expect(store.getServerSnapshot(["shipping"])).toBe(shipping);
@@ -947,7 +966,7 @@ describe("setup and server rendering", () => {
   });
 
   it("keeps the server snapshots once the store is written to", () => {
-    const store = make(shipment(), [shippingRules()]);
+    const store = makeWith(shipment(), [rules()], [shippingRules]);
     const server = store.getServerSnapshot(["shipping"]);
     store.root.at("sameAsBilling").setValue(false);
     expect(store.getSnapshot(["shipping"]).disabled).toBe(false);
@@ -961,7 +980,7 @@ describe("setup and server rendering", () => {
     const deferred = watcher("deferred", "deferred");
     const idle = watcher("idle", "idle");
     const sync = watcher("sync");
-    const store = make(shipment(), [shippingRules(), writesAtSetup, history(), persist("order"), deferred.plugin, idle.plugin, sync.plugin]);
+    const store = makeWith(shipment(), [rules(), writesAtSetup, history(), persist("order"), deferred.plugin, idle.plugin, sync.plugin], [shippingRules]);
     expect(store.getSnapshot(["shipping"]).disabled).toBe(true);
     await Promise.resolve();
     await Promise.resolve();
@@ -1061,6 +1080,16 @@ describe("revalidation", () => {
 /** A plugin that starts the form from `value`, and pushes the value it was given to `seen`. */
 const starts = (name: string, value: Contact | undefined, seen?: unknown[]) =>
   definePlugin({ name, initial: (given) => (seen?.push(given), value), setup: () => ({}) });
+
+describe("a plugin list", () => {
+  it("skips false, null and undefined", () => {
+    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
+    const store = createFormsCore({ plugins: [false, counter, null] })
+      .define({ defaultValues: contact(), plugins: [undefined] })
+      .createStore();
+    expect(store.plugins).toEqual({ counter: { count: 1 } });
+  });
+});
 
 describe("initial", () => {
   it("starts the store, its baseline and its server snapshot from the value, with no record", () => {

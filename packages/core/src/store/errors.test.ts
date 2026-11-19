@@ -29,8 +29,8 @@ const failing = (...issues: StandardSchemaV1.Issue[]): StandardSchemaV1<Value> =
   "~standard": { version: 1, vendor: "fake", validate: () => ({ issues }) },
 });
 
-const keys = (store: FormStore<Value, unknown>) => store.getSnapshot(["rows"]).keys ?? [];
-const title = (store: FormStore<Value, unknown>, i: number): Path => ["rows", keys(store)[i] ?? "", "title"];
+const keys = <E>(store: FormStore<Value, E>) => store.getSnapshot(["rows"]).keys ?? [];
+const title = <E>(store: FormStore<Value, E>, i: number): Path => ["rows", keys(store)[i] ?? "", "title"];
 const messages = (store: FormStore<Value>, path: Path) => store.getSnapshot(path).errors.map((error) => error.message);
 
 describe("error type", () => {

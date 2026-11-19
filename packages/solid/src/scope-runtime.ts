@@ -1,4 +1,4 @@
-import type { AnyFieldHandle, Validator, ValidatorInput } from "@lunarhue/forms-core";
+import { type AnyFieldHandle, attach, type Part, type Validator, type ValidatorInput } from "@lunarhue/forms-core";
 import { createComponent, For, merge, omit, untrack, type Accessor, type Element as SolidElement } from "solid-js";
 import { createFieldApi } from "./field-api.js";
 import { createItemList } from "./items.js";
@@ -12,6 +12,9 @@ export type RuntimeHandle = AnyFieldHandle<unknown>;
 // `any` lets the app's components, whose props the types checked, be called here.
 // oxlint-disable-next-line typescript/no-explicit-any
 export type RuntimeComponent = (props: any) => SolidElement;
+
+/** A `fields` entry with its types erased: a component, or a field type from `defineField`. */
+export type RuntimeEntry = RuntimeComponent | { readonly component: RuntimeComponent; readonly parts: readonly Part[] };
 
 /** A scope with its types erased: `root`, `Field`, `Items`, and the registered components. */
 export type RuntimeScope = Record<string, unknown> & { readonly root: RuntimeHandle };
@@ -88,16 +91,19 @@ function addPropValidator(handle: RuntimeHandle, props: OneField): void {
 }
 
 /** A registered component bound to a scope: it renders the app's component with `field` filled in. */
-function RegisteredField(props: OneField & { readonly root: RuntimeHandle; readonly component: RuntimeComponent }): SolidElement {
+function RegisteredField(props: OneField & { readonly root: RuntimeHandle; readonly entry: RuntimeEntry }): SolidElement {
   const handle = resolveField(props.root, props);
+  const entry = untrack(() => props.entry);
+  const { component, parts } = typeof entry === "function" ? { component: entry, parts: [] } : entry;
+  // The parts attach before the field is read, so it renders what they did, on the server too.
+  attach(handle, parts, true);
   addPropValidator(handle, props);
   const field = createFieldApi(handle);
-  const component = untrack(() => props.component);
-  return createComponent(component, merge(omit(props, "root", "component", "name", "handle", "validate"), { field }));
+  return createComponent(component, merge(omit(props, "root", "entry", "name", "handle", "validate"), { field }));
 }
 
 /** Builds the scope rooted at `root`, with the registered components in `fields`. */
-function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, RuntimeComponent>>): RuntimeScope {
+function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, RuntimeEntry>>): RuntimeScope {
   const scope: RuntimeScope = {
     root,
     // `scope.Field`: the field object for one field, passed to the children once.
@@ -121,8 +127,8 @@ function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, Runtime
       });
     },
   };
-  for (const [name, component] of Object.entries(fields)) {
-    scope[name] = (props: OneField) => createComponent(RegisteredField, merge(props, { root, component }));
+  for (const [name, entry] of Object.entries(fields)) {
+    scope[name] = (props: OneField) => createComponent(RegisteredField, merge(props, { root, entry }));
   }
   return scope;
 }
@@ -131,7 +137,7 @@ function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, Runtime
  * Returns the function that gives the scope of a handle. It makes each
  * scope once and returns the same object for the same handle after that.
  */
-export function scopeCache(fields: Readonly<Record<string, RuntimeComponent>>): (root: RuntimeHandle) => RuntimeScope {
+export function scopeCache(fields: Readonly<Record<string, RuntimeEntry>>): (root: RuntimeHandle) => RuntimeScope {
   const scopes = new WeakMap<RuntimeHandle, RuntimeScope>();
   return (root) => {
     const cached = scopes.get(root);

@@ -92,20 +92,20 @@
       "import": {
         "dist/esm/index.js": "{ createForms, createForm }"
       },
-      "limit": "11.25 kB"
+      "limit": "11.4 kB"
     },
     {
       "name": "solid + inputProps",
       "import": {
         "dist/esm/index.js": "{ createForms, createForm, inputProps }"
       },
-      "limit": "12.05 kB"
+      "limit": "12.2 kB"
     },
     {
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.55 kB"
+      "limit": "12.75 kB"
     },
     {
       "name": "./v1",
@@ -119,7 +119,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.05 kB"
+      "limit": "13.2 kB"
     },
     {
       "name": "solid + dirty()",
@@ -127,7 +127,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.15 kB"
+      "limit": "13.35 kB"
     },
     {
       "name": "solid, everything on",

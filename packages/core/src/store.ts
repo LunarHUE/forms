@@ -1,6 +1,7 @@
 import type { ErrorMap, FormError } from "./errors.js";
 import type { AnyFieldHandle, FieldHandle, ResetOptions } from "./handle.js";
 import type { Path } from "./path.js";
+import type { Gate } from "./plugin.js";
 import type { FieldSnapshot, FormSnapshot, Submission } from "./snapshot.js";
 import type { ValidatorInput } from "./validator.js";
 
@@ -44,14 +45,32 @@ export type IntentArgs<I> = undefined extends I ? [intent?: I] : [intent: I];
  * - A write updates every affected snapshot first, then calls listeners
  *   synchronously before it returns. One write wakes each listener once.
  * - The server snapshot is the initial snapshot.
+ *
+ * `A` is the plugins' APIs, by plugin name, and `N` the names of the
+ * plugins. With `dirty()` among them the store has `changes` and its
+ * snapshots have `dirty`. Without it reading either is a type error.
  */
 // The default is an object type with no keys: a store with no plugin APIs has nothing on `plugins`.
 // oxlint-disable-next-line typescript/no-empty-object-type
-export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}> {
+export type FormStore<V, E = FormError, I = undefined, R = unknown, A = {}, N extends string = never> = FormStoreBase<V, E, I, R, A, N> &
+  Gate<N, "dirty", DirtyStoreMembers>;
+
+/** What dirty tracking adds to a store. It is there when the form has `dirty()`. */
+export interface DirtyStoreMembers {
+  /**
+   * Returns every dirty leaf at and below `path` (the whole form by default),
+   * in value order. A read for event handlers and effects, not render.
+   */
+  changes(path?: Path): readonly Change[];
+}
+
+/** The members every store has. See `FormStore`. */
+// oxlint-disable-next-line typescript/no-empty-object-type
+export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A = {}, N extends string = never> {
   /** The form instance's id. Every handle id starts with it. */
   readonly id: string;
   /** The handle for the whole value. */
-  readonly root: FieldHandle<V, E>;
+  readonly root: FieldHandle<V, E, N>;
 
   /**
    * Calls `listener` after any write that changes the snapshot of the field
@@ -66,21 +85,21 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
    * unmounting can read it. The store keeps those snapshots until the store
    * itself is freed.
    */
-  getSnapshot(path: Path): FieldSnapshot<unknown, E>;
+  getSnapshot(path: Path): FieldSnapshot<unknown, E, N>;
   /** Returns the snapshot the field had when the store was created, for server rendering and hydration. */
-  getServerSnapshot(path: Path): FieldSnapshot<unknown, E>;
+  getServerSnapshot(path: Path): FieldSnapshot<unknown, E, N>;
 
   /** Calls `listener` after any write that changes the form snapshot. Returns the function that unsubscribes. */
   subscribeForm(listener: () => void): () => void;
   /** Returns the form snapshot. It returns the identical object until a member changes. */
-  getFormSnapshot(): FormSnapshot<I, R>;
+  getFormSnapshot(): FormSnapshot<I, R, N>;
   /** Returns the form snapshot the store started with. */
-  getServerFormSnapshot(): FormSnapshot<I, R>;
+  getServerFormSnapshot(): FormSnapshot<I, R, N>;
   /**
    * Returns the current form snapshot. The same as `getFormSnapshot`, named
    * for reads in event handlers and effects. Never call it during render.
    */
-  peek(): FormSnapshot<I, R>;
+  peek(): FormSnapshot<I, R, N>;
 
   /**
    * Runs `fn` and returns what it returns. Writes inside it update
@@ -131,13 +150,7 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
    * `item` return. Returns `undefined` when the path can't name a field: a
    * segment goes into a leaf, or names an item key the array never had.
    */
-  fieldAt(path: Path): AnyFieldHandle<E> | undefined;
-  /**
-   * Returns every dirty leaf at and below `path` (the whole form by default),
-   * in value order. A read for event handlers and effects, not render. Empty
-   * without `dirty()`.
-   */
-  changes(path?: Path): readonly Change[];
+  fieldAt(path: Path): AnyFieldHandle<E, N> | undefined;
   /**
    * Returns the first enabled field, in value order, that has a validation
    * error, for the adapter to focus after an invalid submit. Read-only fields
@@ -145,7 +158,7 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
    * `undefined` when there is none. A read for event handlers and effects,
    * not render.
    */
-  firstInvalid(): AnyFieldHandle<E> | undefined;
+  firstInvalid(): AnyFieldHandle<E, N> | undefined;
   /**
    * Returns every disabled field, in value order, that has a validation
    * error. Their errors still block submit, but `firstInvalid` skips them, so
@@ -163,9 +176,13 @@ export interface FormStore<V, E = FormError, I = undefined, R = unknown, A = {}>
 }
 
 /**
- * A store of any value, intent and result type. Handles and validators use
- * it so a store of any form fits.
+ * A store of any value, intent and result type, and any plugins. Handles
+ * and validators use it so a store of any form fits. It has no `changes`,
+ * since a store without `dirty()` fits too. `N` names plugins the store
+ * must have, for its snapshots' members: `AnyFormStore<E, "dirty">` has
+ * `dirty` on them.
  */
 // `any` here lets FormStore<V, E, I, R, A> of every V, I, R and A fit, whatever their variance.
+// It is the interface, not the `FormStore` alias, so TypeScript compares by variance. A store of any plugins fits one of none.
 // oxlint-disable-next-line typescript/no-explicit-any
-export type AnyFormStore<E = FormError> = FormStore<any, E, any, any, any>;
+export type AnyFormStore<E = FormError, N extends string = never> = FormStoreBase<any, E, any, any, any, N>;

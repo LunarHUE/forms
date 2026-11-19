@@ -1,6 +1,6 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { baselineOnSubmit, bind, digits, dirty, history, mask, persist, rebase, rules } from "@lunarhue/forms-solid/plugins";
+import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
+import { baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { Show } from "solid-js";
@@ -17,15 +17,16 @@ type Order = v.InferOutput<typeof Order>;
 let saved: Order = { phone: "", note: "", address: { street: "", city: "" }, lines: [{ item: "" }] };
 const listeners = new Set<() => void>();
 
-const orderRules = rules<Order>({ note: (value) => ({ hidden: value.phone === "" }) });
+const PhoneField = defineField(TextField, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
 const forms = createForms({
-  plugins: [valibot(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase()],
-  fields: { TextField },
+  plugins: [valibot(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), mask(), rules()],
+  fields: { TextField, PhoneField },
 });
 const Address = forms.fieldset(Order.entries.address);
 
-const order = forms.define({
+const order = forms.define(
+  {
   schema: Order,
   plugins: [
     bind<Order>({
@@ -39,12 +40,12 @@ const order = forms.define({
         return () => listeners.delete(listener);
       },
     }),
-    mask({ phone: { clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") } }),
-    orderRules,
   ],
   validate: { fields: { phone: (value) => (value.length < 10 ? { message: "Enter ten digits." } : undefined) } },
   onSubmit: (value) => value.phone,
-});
+  },
+  ruled({ note: (value) => ({ hidden: value.phone === "" }) }),
+);
 
 export function App() {
   const form = createForm(order);
@@ -53,11 +54,11 @@ export function App() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="phone" label="Phone" />
+          <form.PhoneField name="phone" label="Phone" />
           <form.Field name="note">
-            {(field) => (
-              <Show when={!orderRules.meta(field).hidden}>
-                <TextInput field={field} />
+            {(note) => (
+              <Show when={!rules.meta(note).hidden}>
+                <TextInput field={note} />
               </Show>
             )}
           </form.Field>

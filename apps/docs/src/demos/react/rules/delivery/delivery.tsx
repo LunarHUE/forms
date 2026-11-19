@@ -1,14 +1,20 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
+import { ruled, rules } from "@lunarhue/forms-react/plugins";
 import { Checkbox, TextField } from "./fields";
-import { orderRules } from "./rules";
 
-const forms = createForms({ fields: { TextField, Checkbox } });
+const forms = createForms({ plugins: [rules()], fields: { TextField, Checkbox } });
 
-const order = forms.define({
-  defaultValues: { pickup: false, gift: false, street: "", message: "" },
-  plugins: [orderRules],
-  onSubmit: (value) => value,
-});
+const order = forms.define(
+  {
+    defaultValues: { pickup: false, gift: false, street: "", message: "" },
+    onSubmit: (value) => value,
+  },
+  // Each rule gets the whole value and returns flags for its field.
+  ruled({
+    street: (value) => ({ disabled: value.pickup }),
+    message: (value) => ({ hidden: !value.gift }),
+  }),
+);
 
 export default function DeliveryForm() {
   const form = useForm(order);

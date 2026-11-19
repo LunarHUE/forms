@@ -1,5 +1,5 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { digits, mask } from "@lunarhue/forms-solid/plugins";
+import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
+import { digits, mask, masked } from "@lunarhue/forms-solid/plugins";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
 import { CheckboxField, NumberField, TextField } from "./fields";
@@ -11,9 +11,11 @@ function formatPhone(value: string) {
   return value;
 }
 
+const PhoneField = defineField(TextField, masked({ clean: digits, display: formatPhone }));
+
 const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField, NumberField, CheckboxField },
+  plugins: [zod(), mask()],
+  fields: { TextField, NumberField, CheckboxField, PhoneField },
 });
 
 const Order = z.object({
@@ -25,7 +27,6 @@ const Order = z.object({
 const order = forms.define({
   schema: Order,
   defaultValues: { terms: false },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
   onSubmit: (value) => value,
 });
 
@@ -35,7 +36,7 @@ export default function OrderForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="phone" label="Phone" />
+          <form.PhoneField name="phone" label="Phone" />
           <form.NumberField name="quantity" label="Boxes" />
           <form.CheckboxField name="terms" label="I accept the terms" />
           <div>

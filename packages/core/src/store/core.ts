@@ -72,9 +72,9 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /** Calls `listener` after a write that changes the form snapshot. Returns the function that unsubscribes. */
   subscribeForm(this: void, listener: () => void): () => void;
   /** The form snapshot, the identical object until one of its members changes. Built on first read. */
-  getFormSnapshot(this: void): FormSnapshot<I, R>;
+  getFormSnapshot(this: void): FormSnapshot<I, R, "dirty">;
   /** The form snapshot the store started with, the identical object on every call. */
-  getServerFormSnapshot(this: void): FormSnapshot<I, R>;
+  getServerFormSnapshot(this: void): FormSnapshot<I, R, "dirty">;
   /** Runs `fn`, holding listeners until the outermost batch returns. */
   batch<T>(this: void, fn: () => T): T;
   /**
@@ -300,8 +300,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
 
   let submission: Submission<I, R> = idleSubmission;
   let submitCount = 0;
-  let formCell: Cell<FormSnapshot<I, R>> | undefined;
-  let serverForm: FormSnapshot<I, R> | undefined;
+  let formCell: Cell<FormSnapshot<I, R, "dirty">> | undefined;
+  let serverForm: FormSnapshot<I, R, "dirty"> | undefined;
   let formDirty = false;
   let formDirtyFor: unknown = stale;
   // The form's plugin meta.
@@ -398,7 +398,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
 
   const rebuild = (node: Node<E>) => replace(node, settle(build(node), node.snapshot, node.before));
 
-  const buildForm = (): FormSnapshot<I, R> => {
+  const buildForm = (): FormSnapshot<I, R, "dirty"> => {
     if (dirtyHook && !Object.is(formDirtyFor, current)) {
       formDirty = dirtyHook([], current);
       formDirtyFor = current;
@@ -414,7 +414,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     };
   };
 
-  const serverFormSnapshot = (): FormSnapshot<I, R> =>
+  const serverFormSnapshot = (): FormSnapshot<I, R, "dirty"> =>
     (serverForm ??= freeze({
       valid: true,
       validating: false,
@@ -798,7 +798,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     };
   };
 
-  const form = (): Cell<FormSnapshot<I, R>> =>
+  const form = (): Cell<FormSnapshot<I, R, "dirty">> =>
     (formCell ??= {
       snapshot: settle(buildForm(), serverFormSnapshot()),
       before: undefined,

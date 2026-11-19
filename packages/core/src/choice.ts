@@ -105,6 +105,6 @@ type WithChoiceIn<T, X> = T extends AnyChoice
  * with the field's options in place of `Choice` (see `ChoiceValue`). A field
  * fits when its own handle is assignable to one of them.
  */
-export type ChoiceHandle<T, W, E> =
-  | FieldHandle<Draft<WithChoice<T, ChoiceValue<T, W>>>, E>
-  | FieldHandle<WithChoice<T, ChoiceValue<T, W>>, E>;
+export type ChoiceHandle<T, W, E, N extends string = never> =
+  | FieldHandle<Draft<WithChoice<T, ChoiceValue<T, W>>>, E, N>
+  | FieldHandle<WithChoice<T, ChoiceValue<T, W>>, E, N>;

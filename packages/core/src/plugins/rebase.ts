@@ -1,6 +1,6 @@
 import type { HandleBase } from "../handle.js";
 import type { Path } from "../path.js";
-import type { HookPlugin } from "../plugin.js";
+import type { Plugin } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
@@ -42,7 +42,7 @@ export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V | Deep
  * everywhere else, so a leaf that was taken or already equal isn't dirty.
  * Writes are not user edits, and their records have `cause: "rebase"`.
  */
-export function rebase(): HookPlugin<Rebase, "rebase"> {
+export function rebase(): Plugin<Rebase, "rebase"> {
   return defineHooks({
     name: "rebase",
     setup(ctx) {

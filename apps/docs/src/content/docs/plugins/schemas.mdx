@@ -48,10 +48,11 @@ overrides any part of what the schema gives.
 
 ## Another library
 
-`defineSchemaPlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin
-for any [Standard Schema](https://standardschema.dev) library. Validation and
-types already go through Standard Schema, so the plugin only says which
-schemas it accepts and what values they start from. It takes:
+`definePlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin for
+any [Standard Schema](https://standardschema.dev) library when you give it a
+`name` and a `schema` adapter. Validation and types already go through
+Standard Schema, so the adapter only says which schemas it accepts and what
+values they start from. It has:
 
 - `vendor`: the library's name, matched against `schema["~standard"].vendor`.
 - `defaultValue(schema)`: the value a form starts from when `defaultValues`
@@ -59,7 +60,23 @@ schemas it accepts and what values they start from. It takes:
 - `itemValue(schema, path)`: the value `push` or `insert` gives a new item of
   the array at `path` when it gets none.
 
-`zod()` and `valibot()` are built with it.
+```ts
+import type { SchemaAdapter } from "@lunarhue/forms-core";
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { defaultOf, itemDefaultOf, type ArkSchema } from "./ark-defaults";
+
+const adapter: SchemaAdapter<ArkSchema> = {
+  vendor: "arktype",
+  defaultValue: (schema) => defaultOf(schema),
+  itemValue: (schema, path) => itemDefaultOf(schema, path),
+};
+
+export const ark = () => definePlugin({ name: "ark", schema: adapter });
+```
+
+With `ark()` in a form's plugins, `defaultValues` becomes optional for an
+`ArkSchema`. Without it, `defaultValues` is required and complete. `zod()` and
+`valibot()` are schema plugins of the same shape.
 
 ## A helper generic over the schema
 

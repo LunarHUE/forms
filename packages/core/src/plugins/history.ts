@@ -1,5 +1,6 @@
-import type { HookPlugin, PluginContext, WriteRecord } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import type { Plugin, PluginContext, WriteRecord } from "../plugin.js";
+import { defineHooks } from "../store/define.js";
+import { createTiming } from "../store/timing.js";
 
 /** The API of `history`, as `form.plugins.history`. */
 export interface HistoryApi {
@@ -42,8 +43,8 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * The meta changes in the same notification as an undo, a redo or a reset.
  * After an edit it changes a microtask later, when the step is recorded.
  */
-export function history(limit = 100): HookPlugin<HistoryApi, "history", never, HistoryMeta, undefined, never> {
-  return definePlugin({
+export function history(limit = 100): Plugin<HistoryApi, "history", never, HistoryMeta> {
+  return defineHooks({
     name: "history",
     initialFormMeta: start,
     setup(ctx: PluginContext<never, HistoryMeta>) {
@@ -108,5 +109,5 @@ export function history(limit = 100): HookPlugin<HistoryApi, "history", never, H
         },
       };
     },
-  });
+  }, { "~timing": createTiming });
 }

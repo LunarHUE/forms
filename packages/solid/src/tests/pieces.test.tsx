@@ -1,7 +1,7 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { createField, createForm, createForms, type FormOf, inputProps } from "../index.js";
-import { digits, mask, persist } from "../plugins.js";
+import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
+import { digits, mask, masked, persist } from "../plugins.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
 
@@ -15,14 +15,17 @@ function savedDraft(value: unknown) {
   };
 }
 
+/** A phone field type, pinned on the definition since these tests bind their inputs by hand. */
+const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
+
 const forms = createForms();
-const Order = forms.define({
-  defaultValues: { phone: "", price: 3, name: "", terms: false, size: "s" },
-  plugins: [
-    persist("draft", savedDraft({ phone: "5551234", price: 12, name: "Ada", terms: true, size: "l" })),
-    mask({ phone: { clean: digits, display: formatPhone } }),
-  ],
-});
+const Order = forms.define(
+  {
+    defaultValues: { phone: "", price: 3, name: "", terms: false, size: "s" },
+    plugins: [persist("draft", savedDraft({ phone: "5551234", price: 12, name: "Ada", terms: true, size: "l" })), mask()],
+  },
+  PhoneField.at("phone"),
+);
 type OrderForm = FormOf<typeof Order>;
 
 /** Binds each field the way a primitive library takes it: a value or text, and a setter. */

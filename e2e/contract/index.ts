@@ -24,7 +24,7 @@ export { basicScenario } from "./scenarios/basic.js";
 export { bindScenario, type Profile } from "./scenarios/bind.js";
 export { dirtyScenario } from "./scenarios/dirty.js";
 export { historyScenario } from "./scenarios/history.js";
-export { maskScenario } from "./scenarios/mask.js";
+export { maskScenario, phoneMask } from "./scenarios/mask.js";
 export { persistScenario } from "./scenarios/persist.js";
 export { type Line, type Order, rendersScenario } from "./scenarios/renders.js";
 export { type Delivery, rulesScenario } from "./scenarios/rules.js";

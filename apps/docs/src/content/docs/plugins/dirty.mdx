@@ -29,10 +29,15 @@ the same time.
 
 ## Without it
 
-`dirty` is always false, `changes()` is empty, and `equals` is a type error.
-In development the first call to `changes()` logs
-[`dirty:untracked`](/errors#core:dirty:untracked). Reading `dirty` doesn't
-warn.
+Reading `dirty` on a form or field snapshot, calling `changes()` and giving
+`equals` are type errors. The snapshots still carry `dirty: false` at runtime.
+In development `changes()` throws
+[`dirty:missing`](/errors#core:dirty:missing). In production it returns an
+empty list.
+
+A component that reads `dirty` from a field it is given says so in its type,
+as `FieldApi<string, FormError, "dirty">`. It then fits only forms with
+`dirty()`.
 
 Core keeps the baseline either way, so a reset still goes back to it, and
 `rebase` and `bind` still move it. [`rebase`](./rebase) then compares values

@@ -1,5 +1,5 @@
 import { type FieldApi, inputProps } from "@lunarhue/forms-react";
-import { orderRules } from "./rules";
+import { rules } from "@lunarhue/forms-react/plugins";
 
 interface FieldProps<V> {
   readonly field: FieldApi<V>;
@@ -9,7 +9,7 @@ interface FieldProps<V> {
 // `inputProps` sets `disabled` from the field. `hidden` is the
 // plugin's own meta, so the component reads it.
 export function TextField({ field, label }: FieldProps<string>) {
-  if (orderRules.meta(field).hidden) return null;
+  if (rules.meta(field).hidden) return null;
   return (
     <label>
       {label}

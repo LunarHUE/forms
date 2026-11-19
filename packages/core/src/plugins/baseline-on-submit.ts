@@ -1,5 +1,5 @@
 import type { Path } from "../path.js";
-import type { HookPlugin } from "../plugin.js";
+import type { Plugin } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { isPlainObject } from "../store/tree.js";
 
@@ -23,7 +23,7 @@ const children = (value: unknown, keys: Keys): [string, unknown][] =>
  * Without `dirty()` nothing is dirty, but the baseline still moves, so a
  * later reset goes back to the saved value.
  */
-export function baselineOnSubmit(): HookPlugin<undefined, "baselineOnSubmit"> {
+export function baselineOnSubmit(): Plugin<undefined, "baselineOnSubmit"> {
   return defineHooks({
     name: "baselineOnSubmit",
     setup({ store, baseline }) {

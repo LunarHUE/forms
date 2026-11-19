@@ -1,4 +1,4 @@
-import { type AnyHookPlugin, createFormsCore } from "../index.js";
+import { createFormsCore, type Part, type Plugins } from "../index.js";
 import { benchSchemas, schema } from "./rows.js";
 
 // The rows form from rows.ts, with plugins on its definition. Without
@@ -7,9 +7,14 @@ import { benchSchemas, schema } from "./rows.js";
 const forms = createFormsCore({ plugins: [benchSchemas], validate: "input" });
 
 /** The rows form with `count` rows and `plugins`, with or without its schema. */
-export function pluginRowsForm(count: number, plugins: readonly AnyHookPlugin[], withSchema = true) {
+export function pluginRowsForm(count: number, plugins: Plugins, withSchema = true, parts: readonly Part[] = []) {
   const defaultValues = { rows: Array.from({ length: count }, (_, i) => ({ name: `row-${i}`, value: "" })) };
-  const definition = withSchema ? forms.define({ schema, defaultValues, plugins }) : forms.define({ defaultValues, plugins });
+  // The parts are typed for any form, which the bench rows are.
+  /* oxlint-disable typescript/no-unsafe-type-assertion */
+  const definition = withSchema
+    ? forms.define({ schema, defaultValues, plugins }, ...(parts as never[]))
+    : forms.define({ defaultValues, plugins }, ...(parts as never[]));
+  /* oxlint-enable typescript/no-unsafe-type-assertion */
   const store = definition.createStore(undefined, { id: "bench" });
   const list = store.root.at("rows");
   const stops: (() => void)[] = [];

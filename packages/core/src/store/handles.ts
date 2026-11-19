@@ -1,5 +1,5 @@
 import type { Many } from "../errors.js";
-import type { AnyFieldHandle, HandleBase, ResetOptions, ValueOf, WriteOptions } from "../handle.js";
+import type { AnyFieldHandle as Loose, HandleBase, ResetOptions, ValueOf, WriteOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
 import type { AnyFormStore } from "../store.js";
 import type { ValidatorInput } from "../validator.js";
@@ -9,8 +9,11 @@ import { fieldId } from "./ids.js";
 import { isPlainObject, merge } from "./tree.js";
 import type { Validation } from "./runner.js";
 
+/** A handle as core makes it. Its snapshots have `dirty` with or without `dirty()`. */
+export type Handle<E> = Loose<E, "dirty">;
+
 /** An item's handle at runtime. */
-export type AnyItemHandle<E> = AnyFieldHandle<E> & { readonly key: string };
+export type AnyItemHandle<E> = Handle<E> & { readonly key: string };
 
 /** What handles need from the form store. */
 export interface HandleDeps<E, I, R> {
@@ -27,9 +30,9 @@ export interface HandleDeps<E, I, R> {
 /** The handle tree of one store. */
 export interface Handles<E> {
   /** The root handle, made on first call. */
-  root(): AnyFieldHandle<E>;
+  root(): Handle<E>;
   /** The handle at `path`, or undefined when the path can't name a field. */
-  fieldAt(this: void, path: Path): AnyFieldHandle<E> | undefined;
+  fieldAt(this: void, path: Path): Handle<E> | undefined;
 }
 
 const isList = <E>(errors: Many<E>): errors is readonly E[] => Array.isArray(errors);
@@ -75,15 +78,15 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
     write(path, options, () => core.insert(path, index, item === undefined ? deps.itemValue(path) : item) !== undefined);
 
   function make(path: Path, key: string): AnyItemHandle<E>;
-  function make(path: Path, key: undefined): AnyFieldHandle<E>;
-  function make(path: Path, key: string | undefined): AnyFieldHandle<E> {
+  function make(path: Path, key: undefined): Handle<E>;
+  function make(path: Path, key: string | undefined): Handle<E> {
     // The child caches. Object children and array items are cached apart,
     // since only an item handle has `key`.
-    let children: Map<string, AnyFieldHandle<E>> | undefined;
+    let children: Map<string, Handle<E>> | undefined;
     let items: Map<string, AnyItemHandle<E>> | undefined;
     const below = (seg: string): Path => Object.freeze([...path, seg]);
 
-    const handle: AnyFieldHandle<E> = {
+    const handle: Handle<E> = {
       id: fieldId(core.id, path),
       path,
       store: deps.store(),
@@ -155,7 +158,7 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
     return freeze(handle);
   }
 
-  let root: AnyFieldHandle<E> | undefined;
+  let root: Handle<E> | undefined;
   const rootHandle = () => (root ??= make(Object.freeze([]), undefined));
 
   return {
