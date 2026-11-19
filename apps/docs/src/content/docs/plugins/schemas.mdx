@@ -50,8 +50,8 @@ overrides any part of what the schema gives.
 
 `defineSchemaPlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin
 for any [Standard Schema](https://standardschema.dev) library. Validation and
-types already go through Standard Schema, so the plugin only answers two
-questions about values. It takes:
+types already go through Standard Schema, so the plugin only says which
+schemas it accepts and what values they start from. It takes:
 
 - `vendor`: the library's name, matched against `schema["~standard"].vendor`.
 - `defaultValue(schema)`: the value a form starts from when `defaultValues`
