@@ -1,11 +1,13 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { frameworks } from "../contract/frameworks.js";
 import { type FrameworkApp, isDocs, pickFrameworks, type WorkspacePackage } from "./pick.js";
 import { readWorkspace } from "./workspace.js";
 
-// A workspace shaped like the real one, with a pretend Vue app as a third
-// framework, so "React and Solid changed" can be shown to skip Vue.
+// A workspace shaped like the real one, with two React majors sharing one
+// app, and a pretend Vue app as a third framework, so "React and Solid
+// changed" can be shown to skip Vue.
 const packages: WorkspacePackage[] = [
   { name: "core", dir: "packages/core", dependsOn: [] },
   { name: "schema", dir: "packages/schema", dependsOn: ["core"] },
@@ -15,14 +17,18 @@ const packages: WorkspacePackage[] = [
   { name: "vue", dir: "packages/vue", dependsOn: ["core"] },
   { name: "docs", dir: "apps/docs", dependsOn: ["react", "solid", "schema", "bind"] },
   { name: "e2e", dir: "e2e", dependsOn: ["core", "schema", "bind"] },
-  { name: "e2e-react", dir: "e2e/apps/react", dependsOn: ["e2e", "react"] },
-  { name: "e2e-solid", dir: "e2e/apps/solid", dependsOn: ["e2e", "solid"] },
+  { name: "e2e-react-shared", dir: "e2e/apps/react-shared", dependsOn: ["e2e", "react"] },
+  { name: "e2e-react18", dir: "e2e/apps/react18", dependsOn: ["e2e", "e2e-react-shared"] },
+  { name: "e2e-react19", dir: "e2e/apps/react19", dependsOn: ["e2e", "e2e-react-shared"] },
+  { name: "e2e-solid-shared", dir: "e2e/apps/solid-shared", dependsOn: ["e2e", "solid"] },
+  { name: "e2e-solid2", dir: "e2e/apps/solid2", dependsOn: ["e2e", "e2e-solid-shared"] },
   { name: "e2e-vue", dir: "e2e/apps/vue", dependsOn: ["e2e", "vue"] },
 ];
 
 const apps: FrameworkApp[] = [
-  { framework: "react", packageName: "e2e-react" },
-  { framework: "solid", packageName: "e2e-solid" },
+  { framework: "react18", packageName: "e2e-react18" },
+  { framework: "react19", packageName: "e2e-react19" },
+  { framework: "solid2", packageName: "e2e-solid2" },
   { framework: "vue", packageName: "e2e-vue" },
 ];
 
@@ -41,23 +47,28 @@ describe("pickFrameworks", () => {
     ["the lockfile", "bun.lock"],
     ["a file in a directory that isn't a package", ".github/workflows/ci.yml"],
   ])("runs every framework when %s changes", (_, file) => {
-    expect(pick(file)).toEqual(["react", "solid", "vue"]);
+    expect(pick(file)).toEqual(["react18", "react19", "solid2", "vue"]);
   });
 
-  it("runs React alone when only the React adapter changes", () => {
-    expect(pick("packages/react/src/forms.ts", "packages/react/src/field.ts")).toEqual(["react"]);
+  it("runs every React major, and nothing else, when only the React adapter changes", () => {
+    expect(pick("packages/react/src/forms.ts", "packages/react/src/field.ts")).toEqual(["react18", "react19"]);
   });
 
   it("runs Solid alone when only the Solid adapter changes", () => {
-    expect(pick("packages/solid/src/forms.ts")).toEqual(["solid"]);
+    expect(pick("packages/solid/src/forms.ts")).toEqual(["solid2"]);
   });
 
   it("runs React and Solid, and skips Vue, when both of those adapters change", () => {
-    expect(pick("packages/react/src/forms.ts", "packages/solid/src/forms.ts")).toEqual(["react", "solid"]);
+    expect(pick("packages/react/src/forms.ts", "packages/solid/src/forms.ts")).toEqual(["react18", "react19", "solid2"]);
   });
 
-  it("runs only a framework whose own app changed", () => {
-    expect(pick("e2e/apps/solid/src/pages/basic.tsx")).toEqual(["solid"]);
+  it("runs every major of a framework whose shared app changed", () => {
+    expect(pick("e2e/apps/react-shared/src/pages/basic.tsx")).toEqual(["react18", "react19"]);
+    expect(pick("e2e/apps/solid-shared/src/pages/basic.tsx")).toEqual(["solid2"]);
+  });
+
+  it("runs one major alone when only its own package changed", () => {
+    expect(pick("e2e/apps/react18/src/entry-client.tsx")).toEqual(["react18"]);
   });
 
   it("runs a third framework on its own", () => {
@@ -69,7 +80,7 @@ describe("pickFrameworks", () => {
   });
 
   it("ignores docs next to code", () => {
-    expect(pick("packages/solid/README.md", "packages/solid/src/forms.ts")).toEqual(["solid"]);
+    expect(pick("packages/solid/README.md", "packages/solid/src/forms.ts")).toEqual(["solid2"]);
   });
 
   it("runs nothing for a package no app depends on", () => {
@@ -82,13 +93,15 @@ describe("pickFrameworks", () => {
 
   it("says why it ran each framework and skipped the others", () => {
     expect(pickFrameworks(["packages/schema/src/zod.ts"], packages, apps).reasons).toEqual([
-      "react: schema changed (packages/schema/src/zod.ts), and e2e-react depends on it through e2e.",
-      "solid: schema changed (packages/schema/src/zod.ts), and e2e-solid depends on it through e2e.",
+      "react18: schema changed (packages/schema/src/zod.ts), and e2e-react18 depends on it through e2e.",
+      "react19: schema changed (packages/schema/src/zod.ts), and e2e-react19 depends on it through e2e.",
+      "solid2: schema changed (packages/schema/src/zod.ts), and e2e-solid2 depends on it through e2e.",
       "vue: schema changed (packages/schema/src/zod.ts), and e2e-vue depends on it through e2e.",
     ]);
     expect(pickFrameworks(["packages/react/src/forms.ts"], packages, apps).reasons).toEqual([
-      "react: react changed (packages/react/src/forms.ts), and e2e-react depends on it.",
-      "solid: skipped, nothing e2e-solid depends on changed.",
+      "react18: react changed (packages/react/src/forms.ts), and e2e-react18 depends on it through e2e-react-shared.",
+      "react19: react changed (packages/react/src/forms.ts), and e2e-react19 depends on it through e2e-react-shared.",
+      "solid2: skipped, nothing e2e-solid2 depends on changed.",
       "vue: skipped, nothing e2e-vue depends on changed.",
     ]);
     expect(pickFrameworks(["bun.lock"], packages, apps).reasons).toEqual([
@@ -98,8 +111,8 @@ describe("pickFrameworks", () => {
   });
 
   it("puts a file in the innermost of two nested packages", () => {
-    expect(pick("e2e/apps/react/vite.config.ts")).toEqual(["react"]);
-    expect(pick("e2e/vite.base.ts")).toEqual(["react", "solid", "vue"]);
+    expect(pick("e2e/apps/react19/vite.config.ts")).toEqual(["react19"]);
+    expect(pick("e2e/vite.base.ts")).toEqual(["react18", "react19", "solid2", "vue"]);
   });
 });
 
@@ -128,25 +141,32 @@ describe("readWorkspace", () => {
   const named = (name: string) => workspace.find((entry) => entry.name === name);
 
   it("reads every app's dependencies from its package.json", () => {
-    expect(named("@lunarhue/forms-e2e-react")?.dependsOn).toEqual(
+    expect(named("@lunarhue/forms-e2e-react-shared")?.dependsOn).toEqual(
       expect.arrayContaining(["@lunarhue/forms-e2e", "@lunarhue/forms-react"]),
     );
-    expect(named("@lunarhue/forms-e2e-solid")?.dependsOn).toEqual(
+    expect(named("@lunarhue/forms-e2e-solid-shared")?.dependsOn).toEqual(
       expect.arrayContaining(["@lunarhue/forms-e2e", "@lunarhue/forms-solid"]),
     );
   });
 
   it("maps the real workspace the way the table in issue 69 says", () => {
-    const realApps: FrameworkApp[] = [
-      { framework: "react", packageName: "@lunarhue/forms-e2e-react" },
-      { framework: "solid", packageName: "@lunarhue/forms-e2e-solid" },
-    ];
+    // Every major's package is named after it and depends on its framework's shared app.
+    const realApps: FrameworkApp[] = frameworks.map((framework) => ({
+      framework: framework.name,
+      packageName: `@lunarhue/forms-e2e-${framework.name}`,
+    }));
+    const all = frameworks.map((framework) => framework.name);
+    const react = all.filter((name) => name.startsWith("react"));
+    const solid = all.filter((name) => name.startsWith("solid"));
     const real = (...changed: string[]) => pickFrameworks(changed, workspace, realApps).frameworks;
-    expect(real("packages/core/src/store.ts")).toEqual(["react", "solid"]);
-    expect(real("packages/schema/src/valibot.ts")).toEqual(["react", "solid"]);
-    expect(real("packages/bind/src/zustand.ts")).toEqual(["react", "solid"]);
-    expect(real("packages/react/src/forms.ts")).toEqual(["react"]);
-    expect(real("packages/solid/src/forms.ts")).toEqual(["solid"]);
+    expect(react).toEqual(["react16", "react17", "react18", "react19"]);
+    expect(real("packages/core/src/store.ts")).toEqual(all);
+    expect(real("packages/schema/src/valibot.ts")).toEqual(all);
+    expect(real("packages/bind/src/zustand.ts")).toEqual(all);
+    expect(real("packages/react/src/forms.ts")).toEqual(react);
+    expect(real("packages/solid/src/forms.ts")).toEqual(solid);
+    expect(real("e2e/apps/react-shared/src/parts.tsx")).toEqual(react);
+    expect(real("e2e/apps/react17/src/entry-client.tsx")).toEqual(["react17"]);
     expect(real("packages/core/README.md")).toEqual([]);
   });
 });

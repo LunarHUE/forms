@@ -264,7 +264,7 @@ Run these from the repo root with `bun run <name>`. Each one covers every packag
   with `tsc`. Packages build in dependency order.
 - `check:package`: publint and arethetypeswrong on the packed package. Needs a build.
 - `size`: size-limit on each entry point. Needs a build.
-- `e2e`: the browser suite in [`e2e`](e2e/README.md), every adapter. Not part
-  of the checks above.
-- `e2e:changed`: the same suite for the adapters the changes since
+- `e2e`: the browser suite in [`e2e`](e2e/README.md), every adapter on every
+  supported major (React 16 to 19, Solid 2). Not part of the checks above.
+- `e2e:changed`: the same suite for the majors the changes since
   `origin/main` can reach. `--base <ref>` picks another base.

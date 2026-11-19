@@ -4,7 +4,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 
 export { delays, fakeServer, takenNames, type ServerCall } from "./fake-server.js";
-export { type Framework, frameworkNamed, frameworks } from "./frameworks.js";
+export { type Capability, type Framework, frameworkNamed, frameworks } from "./frameworks.js";
 export {
   appElementId,
   clientEntry,

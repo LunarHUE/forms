@@ -1,5 +1,6 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import {
+  type Capability,
   type Framework,
   frameworks,
   type ProbeState,
@@ -37,6 +38,12 @@ export const test = base.extend<Fixtures & Options>({
 });
 
 export { expect };
+
+/** Skips the running spec, with the framework's reason, when the framework lacks `capability`. */
+export function requires(framework: Framework, capability: Capability): void {
+  const reason = framework.lacks?.[capability];
+  test.skip(reason !== undefined, `${framework.name} lacks ${capability}. ${reason}`);
+}
 
 /** Opens a scenario's page and waits until it has hydrated, which is when the probe fills. */
 export async function open(page: Page, id: ScenarioId): Promise<void> {

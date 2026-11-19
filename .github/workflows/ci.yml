@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
   schedule:
-    # Mondays at 05:00 UTC, when e2e runs every framework in every browser.
+    # Mondays at 05:00 UTC, when e2e runs every framework major in every browser.
     - cron: "0 5 * * 1"
   workflow_dispatch:
 
@@ -97,17 +97,26 @@ jobs:
 
   # One job per browser, so a failure in one shows on its own. Only Chromium
   # is required to merge. Firefox and WebKit report beside it.
+  #
+  # Chromium runs every framework major. Firefox and WebKit run only the
+  # newest major of each framework (react19, solid2), except in the weekly
+  # and manual runs, which do the full grid.
   e2e:
     name: e2e (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    # WebKit runs slower than Chromium, so this has room for it.
-    timeout-minutes: 20
+    # Chromium builds and runs every major, and WebKit runs slower, so this has room for both.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit]
     env:
       E2E_BROWSER: ${{ matrix.browser }}
+      MAJORS: >-
+        ${{ matrix.browser != 'chromium'
+        && github.event_name != 'schedule'
+        && github.event_name != 'workflow_dispatch'
+        && '--newest' || '' }}
       # The Version Packages pull request changes versions and changelogs, and
       # main already ran the suite on the same source. A fork can't claim that
       # branch name.
@@ -131,14 +140,15 @@ jobs:
         uses: ./.github/actions/playwright
         with:
           browser: ${{ matrix.browser }}
-      # Pull requests run the frameworks their changes reach. Pushes to main,
-      # the weekly run and manual runs do all of them.
+      # Pull requests run the majors their changes reach. Pushes to main, the
+      # weekly run and manual runs do all of them. MAJORS is unquoted so that
+      # when it is empty it adds no argument.
       - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && github.event_name == 'pull_request'
         env:
           BASE: origin/${{ github.base_ref }}
-        run: bun run e2e:changed --base "$BASE"
+        run: bun run e2e:changed --base "$BASE" $MAJORS
       - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && github.event_name != 'pull_request'
-        run: bun run e2e
+        run: bun run e2e $MAJORS
       - if: failure() && env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

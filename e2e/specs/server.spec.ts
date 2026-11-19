@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
-import { scenarios, testIds } from "../contract/index.js";
-import { consoleProblems, expect, input, open, test } from "./fixtures.js";
+import { basicScenario, scenarios, testIds } from "../contract/index.js";
+import { consoleProblems, describedBy, expect, input, open, requires, test } from "./fixtures.js";
 
 /** True when an input says it is read-only: `readonly` on a text input, `aria-readonly` on a checkbox. */
 const readOnlyMark = (locator: Locator): Promise<boolean> =>
@@ -40,6 +40,22 @@ for (const scenario of scenarios) {
     }
   });
 }
+
+test("a generated form id matches between server and client, however many pages the server rendered", async ({
+  page,
+  request,
+  framework,
+}) => {
+  requires(framework, "generatedIds");
+  // Each render on the server first, so an id that counts renders would have moved on from the client's.
+  for (const scenario of scenarios) await request.get(scenario.route);
+  await open(page, "basic");
+  const name = input(page, basicScenario.labels.name);
+  await name.fill("");
+  await name.blur();
+  // The input's aria-describedby is the client's id, and the error list's id stayed the server's.
+  await expect(await describedBy(page, name)).toHaveText(basicScenario.errors.name);
+});
 
 test("the index links every scenario", async ({ page }) => {
   await page.goto("/");
