@@ -1,0 +1,34 @@
+---
+import type { Framework } from "@/lib/frameworks";
+import { highlight } from "@/lib/highlight";
+
+import CodeBlock from "./CodeBlock";
+import CopyButton from "./CopyButton";
+
+/**
+ * A fenced code block. MDX authors don't write `<Code>`: the code-fences
+ * plugin turns every fence into one. Highlighting is async, so it happens
+ * here and `CodeBlock` gets finished markup. Only the copy button hydrates.
+ */
+interface Props {
+  code: string;
+  lang?: string;
+  title?: string;
+  /** Render on this framework's pages only. */
+  framework?: Framework;
+  lineNumbers?: boolean;
+}
+
+const { lang = "text", title, framework, lineNumbers } = Astro.props;
+const code = Astro.props.code.replace(/\n$/, "");
+const shown = framework === undefined || framework === Astro.params.framework;
+const html = shown ? await highlight(code, lang) : "";
+---
+
+{
+  shown && (
+    <CodeBlock html={html} lang={lang} title={title} lineNumbers={lineNumbers}>
+      <CopyButton slot="actions" text={code} client:visible />
+    </CodeBlock>
+  )
+}
