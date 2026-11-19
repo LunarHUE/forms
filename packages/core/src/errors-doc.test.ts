@@ -13,12 +13,12 @@ const sources = import.meta.glob(
   ["../../*/src/**/*.{ts,tsx}", "!../../*/src/**/*.test.{ts,tsx}", "!../../*/src/**/*.test-d.{ts,tsx}", "!../../*/src/tests/**", "!../../*/src/bench/**"],
   { query: "?raw", import: "default", eager: true },
 );
-const pages = import.meta.glob("../../../docs/errors.md", { query: "?raw", import: "default", eager: true });
+const pages = import.meta.glob("../../../apps/docs/src/content/errors.mdx", { query: "?raw", import: "default", eager: true });
 
 /** The package a source file is in. Vite writes core's own files from here, as `./store/x.ts`. */
 const packageOf = (file: string): string => /^\.\.\/\.\.\/([^/]+)\//.exec(file)?.[1] ?? "core";
 
-/** Every code written in a package's source, as `<package>:<code>`, the anchor docs/errors.md gives it. */
+/** Every code written in a package's source, as `<package>:<code>`, the anchor errors.mdx gives it. */
 function codesInSource(): Set<string> {
   const codes = new Set<string>();
   for (const [file, text] of Object.entries(sources)) {
@@ -28,7 +28,7 @@ function codesInSource(): Set<string> {
   return codes;
 }
 
-/** Every anchor on docs/errors.md. */
+/** Every anchor in apps/docs/src/content/errors.mdx. */
 function anchorsInDocs(): Set<string> {
   const page = Object.values(pages)[0] ?? "";
   return new Set([...page.matchAll(/<a id="([^"]+)"><\/a>/g)].map((match) => match[1] ?? ""));
@@ -39,7 +39,7 @@ it("finds the source of every package and the errors page", () => {
   expect(anchorsInDocs().size).toBeGreaterThan(0);
 });
 
-it("gives every code in source an anchor on docs/errors.md, and every anchor a code", () => {
+it("gives every code in source an anchor in errors.mdx, and every anchor a code", () => {
   // Sets compare without order.
   expect(codesInSource()).toEqual(anchorsInDocs());
 });
