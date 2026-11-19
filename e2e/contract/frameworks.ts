@@ -5,10 +5,8 @@
  *
  * - `generatedIds`: a form with no `id` gets one that matches between the
  *   server and the client, such as React's `useId`.
- * - `focusedMoves`: moving a focused element within a list keeps its focus,
- *   as when the renderer moves the DOM node with `moveBefore`.
  */
-export type Capability = "generatedIds" | "focusedMoves";
+export type Capability = "generatedIds";
 
 /** One major of a framework the suite runs against. Its app lives in `apps/<name>`. */
 export interface Framework {
@@ -47,8 +45,6 @@ export interface Framework {
 export type Browser = "chromium" | "firefox" | "webkit";
 
 const noUseId = "React before 18 has no useId, so its pages pass an id to useForm.";
-const blursOnMove =
-  "Solid 1 moves a list's DOM nodes with insertBefore, and a node taken out of the document loses focus. Solid 2 uses moveBefore where the browser has it.";
 
 /** Every framework major with an app. Adding one is a new app in `apps/` and one entry here. */
 export const frameworks: readonly Framework[] = [
@@ -56,19 +52,8 @@ export const frameworks: readonly Framework[] = [
   { name: "react17", port: 4317, newest: false, rerendersOnChange: true, lacks: { generatedIds: noUseId } },
   { name: "react18", port: 4318, newest: false, rerendersOnChange: true },
   { name: "react19", port: 4319, newest: true, rerendersOnChange: true },
-  { name: "solid1", port: 4331, newest: false, rerendersOnChange: false, lacks: { focusedMoves: blursOnMove } },
-  {
-    name: "solid2",
-    port: 4332,
-    newest: true,
-    rerendersOnChange: false,
-    knownFailuresIn: {
-      webkit: {
-        "arrays.spec.ts > moving a row keeps its focus":
-          "The moved row's input loses focus in WebKit. https://github.com/LunarHUE/forms/issues/157",
-      },
-    },
-  },
+  { name: "solid1", port: 4331, newest: false, rerendersOnChange: false },
+  { name: "solid2", port: 4332, newest: true, rerendersOnChange: false },
 ];
 
 /** The framework of a Playwright project. */

@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { arraysScenario as scenario } from "../contract/index.js";
-import { describedBy, expect, input, open, probe, requires, test } from "./fixtures.js";
+import { describedBy, expect, input, open, probe, test } from "./fixtures.js";
 
 const { labels, errors } = scenario;
 
@@ -59,8 +59,7 @@ test("moving a row keeps its input and its key", async ({ page }) => {
   await expect.poll(async () => (await probe(page)).keys["members"]).toEqual(keys);
 });
 
-test("moving a row keeps its focus", async ({ page, framework }) => {
-  requires(framework, "focusedMoves");
+test("moving a row keeps its focus", async ({ page }) => {
   const second = member(page, 1);
   await tag(second, "somerville");
   await second.focus();

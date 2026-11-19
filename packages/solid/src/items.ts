@@ -1,5 +1,5 @@
 import type { Needs, PluginsOf } from "@lunarhue/forms-core";
-import { createMemo } from "#solid";
+import { createMemo, isServer } from "#solid";
 import { createComponent, For, getOwner, untrack, type Accessor } from "solid-js";
 import type { SolidElement } from "./element.js";
 import type { ArrayHandleLike } from "./field.js";
@@ -66,6 +66,20 @@ const ForEach: (props: {
 }) => SolidElement = For;
 
 /**
+ * Focuses the focused element again after the current reconcile if the
+ * reconcile blurred it. `For` moves a row with insertBefore on Solid 1, and on
+ * Solid 2 in a browser without moveBefore. The row leaves the document for a
+ * moment, and a focused element in it loses focus.
+ */
+function keepFocus(): void {
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && focused !== document.body)
+    queueMicrotask(() => {
+      if (focused.isConnected && document.activeElement === document.body) focused.focus({ preventScroll: true });
+    });
+}
+
+/**
  * Renders an array field's items with `For`, keyed by core's stable item
  * keys. `item` is the item handle: render its fields with
  * `<form.Field handle={item.at("qty")}>`. The form needs `arrays()`.
@@ -75,6 +89,7 @@ export function Items<H extends ArrayHandleLike>(props: ItemsProps<H>): SolidEle
   const items = createItemList(untrack(() => props.handle));
   return createComponent(ForEach, {
     get each() {
+      if (!isServer) keepFocus();
       return items();
     },
     get fallback() {
