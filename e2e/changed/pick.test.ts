@@ -65,11 +65,11 @@ describe("pickFrameworks", () => {
   });
 
   it("runs nothing for docs alone, wherever they are", () => {
-    expect(pick("docs/plugins.md", "README.md", "packages/react/README.md", ".changeset/brave-cats.md")).toEqual([]);
+    expect(pick("CONTRIBUTING.md", "README.md", "packages/react/README.md", ".changeset/brave-cats.md")).toEqual([]);
   });
 
   it("ignores docs next to code", () => {
-    expect(pick("docs/plugins.md", "packages/solid/src/forms.ts")).toEqual(["solid"]);
+    expect(pick("packages/solid/README.md", "packages/solid/src/forms.ts")).toEqual(["solid"]);
   });
 
   it("runs nothing for a package no app depends on", () => {
@@ -94,7 +94,7 @@ describe("pickFrameworks", () => {
     expect(pickFrameworks(["bun.lock"], packages, apps).reasons).toEqual([
       "Everything: bun.lock is outside every workspace package.",
     ]);
-    expect(pickFrameworks(["docs/errors.md"], packages, apps).reasons).toEqual(["Only docs changed (1 files)."]);
+    expect(pickFrameworks(["CONTRIBUTING.md"], packages, apps).reasons).toEqual(["Only docs changed (1 files)."]);
   });
 
   it("puts a file in the innermost of two nested packages", () => {
@@ -105,7 +105,6 @@ describe("pickFrameworks", () => {
 
 describe("isDocs", () => {
   it.each([
-    "docs/errors.md",
     "README.md",
     "packages/core/CHANGELOG.md",
     ".changeset/x.md",
@@ -117,6 +116,7 @@ describe("isDocs", () => {
     "package.json",
     "packages/core/src/index.ts",
     "docs-site/index.ts",
+    "apps/docs/src/content/docs/install.mdx",
     "e2e/contract/styles.css",
     ".github/workflows/ci.yml",
   ])("counts %s as code", (file) => expect(isDocs(file)).toBe(false));
@@ -147,6 +147,6 @@ describe("readWorkspace", () => {
     expect(real("packages/bind/src/zustand.ts")).toEqual(["react", "solid"]);
     expect(real("packages/react/src/forms.ts")).toEqual(["react"]);
     expect(real("packages/solid/src/forms.ts")).toEqual(["solid"]);
-    expect(real("docs/plugins.md")).toEqual([]);
+    expect(real("packages/core/README.md")).toEqual([]);
   });
 });
