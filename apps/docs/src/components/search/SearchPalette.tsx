@@ -66,11 +66,13 @@ export function SearchPalette() {
   const latest = useRef(0);
   const isOpen = useRef(false);
   useEffect(() => {
+    const closed = isOpen.current && !open;
     isOpen.current = open;
     const state = window.formsSearch;
     if (!state) return;
     state.open = open;
-    if (!open) state.typed = null;
+    // Only on closing: on mount, keys typed before hydration are waiting.
+    if (closed) state.typed = null;
   }, [open]);
 
   useEffect(() => {
