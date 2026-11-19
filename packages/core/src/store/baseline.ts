@@ -160,7 +160,9 @@ export function createBaseline<V, E, I, R>(
         core.set(p, target);
         core.clearState(p, { validation: true });
         // Writing kept the items' keys by index, so the baseline pairs with them from now on.
-        move(p, target);
+        // The baseline is what the field holds now, so a value a plugin cleaned, as a
+        // mask does the initial value, is not dirty.
+        move(p, core.getSnapshot(p).value);
       });
     },
     changes: tracking?.changes ?? (() => none),
