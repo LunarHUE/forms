@@ -16,7 +16,7 @@ interface Props {
 const { items, class: className } = Astro.props;
 ---
 
-<nav aria-label="Breadcrumb" class={className}>
+<nav data-pagefind-ignore aria-label="Breadcrumb" class={className}>
   <ol class="flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground">
     {
       items.map((item, index) => {

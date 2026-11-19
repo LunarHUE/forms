@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
+import { pagefindIndex } from "./integrations/pagefind";
 // Swap for `@astrojs/solid-js` once 8.x (Solid 2) is on npm.
 import solid from "./integrations/solid";
 import { codeFences } from "./src/lib/mdx/code-fences";
@@ -39,6 +40,8 @@ export default defineConfig({
       ],
     }),
     solid({ include: ["**/src/demos/solid/**/*.{jsx,tsx}"] }),
+    // Search index, written to dist/pagefind after the build.
+    pagefindIndex(),
   ],
   vite: {
     plugins: [tailwindcss()],

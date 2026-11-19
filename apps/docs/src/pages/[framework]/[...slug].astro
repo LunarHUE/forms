@@ -10,7 +10,7 @@ import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/fram
 import { headingsFor } from "@/lib/mdx/framework-blocks";
 import { alternates, pagination, SECTION_LABELS, sidebar } from "@/lib/nav";
 import { docHref } from "@/lib/routes";
-import { VERSIONS } from "@/lib/versions";
+import { LATEST_VERSION, VERSIONS } from "@/lib/versions";
 
 export const getStaticPaths = (async () => {
   const entries = await getDocs();
@@ -52,6 +52,9 @@ interface Props {
 const { entry, framework, version, sidebar: groups, previous, next, alternates: others } = Astro.props;
 const { Content, headings, remarkPluginFrontmatter } = await render(entry);
 const { title, description, section } = entry.data;
+// Search (integrations/pagefind.ts) indexes the latest version only. The
+// framework filter keeps a React search to React pages; the section names the
+// result's path, as in "Plugins / Masks".
 ---
 
 <Shell
@@ -63,7 +66,11 @@ const { title, description, section } = entry.data;
   currentSlug={entry.id}
   alternates={others}
 >
-  <main>
+  <main
+    data-pagefind-body={version === LATEST_VERSION ? "" : undefined}
+    data-pagefind-filter={`framework:${framework}`}
+    data-pagefind-meta={`section:${SECTION_LABELS[section]}`}
+  >
     <Article
       title={title}
       description={description}

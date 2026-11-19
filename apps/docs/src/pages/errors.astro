@@ -6,6 +6,7 @@ import Article from "@/components/page/Article.astro";
 import type { TocItem } from "@/components/page/toc-list";
 import Shell from "@/components/shell/Shell.astro";
 import { getErrors } from "@/lib/content";
+import { AVAILABLE_FRAMEWORKS } from "@/lib/frameworks";
 import { errorAnchors } from "@/lib/errors";
 
 const entry = await getErrors();
@@ -29,7 +30,9 @@ for (const anchor of errorAnchors(entry.body ?? "")) {
 ---
 
 <Shell title={title} description={description} currentSlug="errors">
-  <main>
+  <main data-pagefind-body data-pagefind-meta="section:Reference">
+    {/* Search lists the errors page for every framework. Pagefind takes one value per element. */}
+    {AVAILABLE_FRAMEWORKS.map((framework) => <span data-pagefind-filter="framework[data-value]" data-value={framework} />)}
     <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc}>
       <Content components={mdxComponents} />
     </Article>

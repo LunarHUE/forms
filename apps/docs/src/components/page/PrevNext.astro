@@ -18,7 +18,7 @@ const arrow = "size-4 shrink-0 transition-transform motion-reduce:transition-non
 
 {
   (previous || next) && (
-    <nav aria-label="Previous and next page" class="mt-8 grid grid-cols-2 gap-3 border-t pt-8 sm:gap-4">
+    <nav data-pagefind-ignore aria-label="Previous and next page" class="mt-8 grid grid-cols-2 gap-3 border-t pt-8 sm:gap-4">
       {previous && (
         <a href={previous.href} rel="prev" class={card}>
           <span class="text-[13px] leading-5 text-muted-foreground">Previous</span>
