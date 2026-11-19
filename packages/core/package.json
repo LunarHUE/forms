@@ -88,13 +88,13 @@
       "name": "./plugins bind()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ bind }",
-      "limit": "3.25 kB"
+      "limit": "3.15 kB"
     },
     {
       "name": "./plugins history()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history }",
-      "limit": "3 kB"
+      "limit": "2.85 kB"
     },
     {
       "name": "./plugins mask()",
@@ -106,13 +106,13 @@
       "name": "./plugins persist()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ persist }",
-      "limit": "2.85 kB"
+      "limit": "2.7 kB"
     },
     {
       "name": "./plugins rebase()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rebase }",
-      "limit": "3.1 kB"
+      "limit": "2.95 kB"
     },
     {
       "name": "./plugins rules()",
