@@ -18,7 +18,27 @@ import {
   inputProps,
   useFormContext,
 } from "@lunarhue/forms-solid";
-import { For, onSettled } from "solid-js";
+import * as solid from "solid-js";
+import { For, onCleanup } from "solid-js";
+
+type Stop = (() => void) | undefined;
+
+/**
+ * Runs `start` once the page has hydrated, and its result when the owner is
+ * disposed. Solid 2 calls that `onSettled`. Solid 1 has no `onSettled`, and
+ * its `onMount` runs at the same point but ignores what it returns.
+ */
+const { onSettled, onMount } = solid as {
+  readonly onSettled?: (start: () => Stop) => void;
+  readonly onMount?: (fn: () => void) => void;
+};
+const afterHydration: (start: () => Stop) => void =
+  onSettled ??
+  ((start) =>
+    onMount?.(() => {
+      const stop = start();
+      if (stop !== undefined) onCleanup(stop);
+    }));
 
 interface RendersProps {
   readonly id: string;
@@ -49,7 +69,7 @@ interface ProbeProps {
 /** The state probe, started once the page has hydrated. */
 export function Probe(props: ProbeProps) {
   let element: HTMLPreElement | undefined;
-  onSettled(() => (element ? startProbe(element, props.store, props.sources) : undefined));
+  afterHydration(() => (element ? startProbe(element, props.store, props.sources) : undefined));
   return (
     <pre
       ref={(pre) => {
