@@ -76,8 +76,9 @@ untracked), then:
 - A file inside a package runs every major whose app depends on that
   package, directly or through others. The graph comes from the workspace
   `package.json` files. Each major's package depends on its framework's
-  shared app, so a change to the React adapter or to `apps/react` runs every
-  React major, and a change to `apps/react17` runs only `react17`. Every app
+  shared app, so a change to the React adapter or to `apps/react-shared`
+  runs every React major, and a change to `apps/react17` runs only
+  `react17`. Every app
   depends on this package, so a change to the specs, the contract or the
   server runs everything, and so does a change to core, schema or bind,
   which the contract uses.
@@ -94,9 +95,9 @@ which run in the root `test`.
   expected server HTML (`contract/scenarios/*.ts`), the fake server, the
   state probe, the render counter and the list of framework majors with what
   each one is expected to do.
-- `apps/react`, `apps/solid`: each framework's shared app, built by no one
-  directly. `src/parts.tsx` has the field components, the probe and the
-  render counter. `src/pages/*.tsx` has one page per scenario. `src/app.tsx`
+- `apps/react-shared`, `apps/solid-shared`: each framework's shared app,
+  never built or run on its own. `src/parts.tsx` has the field components,
+  the probe and the render counter. `src/pages/*.tsx` has one page per scenario. `src/app.tsx`
   exports `App`, the page for a path.
 - `apps/react16` to `apps/react19`, `apps/solid2`: one thin package per
   major. Its `package.json` installs that major (React 16 to 18 come from the
@@ -132,8 +133,8 @@ components run once, so its counters stay at 1, and the contract's
    serverView)`, then its labels, its `definition` (what `forms.define`
    takes) and anything its pages share. Add it to the list in
    `contract/scenarios.ts` and export it from `contract/index.ts`.
-2. Add `src/pages/<id>.tsx` to each shared app (`apps/react`, `apps/solid`)
-   and put it in that app's `pages` in `src/app.tsx`. Until every app has
+2. Add `src/pages/<id>.tsx` to each shared app (`apps/react-shared`,
+   `apps/solid-shared`) and put it in that app's `pages` in `src/app.tsx`. Until every app has
    it, `typecheck` fails. In the React app, pass `serverId(scenario.id)` to
    `useForm`, as the other pages do.
 3. Add `specs/<id>.spec.ts`. The server spec already checks the new page's
@@ -148,8 +149,8 @@ Say Solid 1, as `solid1`:
    "1.9.x" }`, the way `react16` to `react18` are.
 2. Add `apps/solid1`, a copy of `apps/solid2`: a `package.json` named
    `@lunarhue/forms-e2e-solid1` that depends on `@lunarhue/forms-e2e`,
-   `@lunarhue/forms-e2e-solid` (the shared app) and the framework from that
-   catalog, a `tsconfig.json`, a `vite.config.ts` that passes
+   `@lunarhue/forms-e2e-solid-shared` (the shared app) and the framework
+   from that catalog, a `tsconfig.json`, a `vite.config.ts` that passes
    `pinFramework` the framework's module names, and the two entries. Where
    the major's API differs, the entries and the Vite config absorb it.
    `pinFramework`'s second argument sends an import to another module, such
@@ -168,8 +169,8 @@ No spec changes. `e2e:changed` finds the new package through its
 
 ## Adding a framework
 
-Write its shared app in `apps/<framework>`: a workspace package that depends
-on `@lunarhue/forms-e2e` and the adapter and exports `App` from `./app`. It
+Write its shared app in `apps/<framework>-shared`: a workspace package that
+depends on `@lunarhue/forms-e2e` and the adapter and exports `App` from `./app`. It
 needs one page per scenario, and `typecheck` says which are missing. Then add
 each major as above. Each major's package has a `build` script that writes
 `dist/client/assets/client.js` and `dist/server/entry-server.js` (see

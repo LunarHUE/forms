@@ -1,5 +1,5 @@
 {
-  "name": "@lunarhue/forms-e2e-react",
+  "name": "@lunarhue/forms-e2e-react-shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",

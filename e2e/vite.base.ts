@@ -11,7 +11,7 @@ const importsOf = (name: string) => (source: string) => source === name || sourc
 /**
  * Resolves the framework's own modules, subpaths included, from the app
  * being built instead of from the importing file. The pages live in the
- * shared package (`apps/react` or `apps/solid`) and the adapter in
+ * shared package (`apps/react-shared` or `apps/solid-shared`) and the adapter in
  * `packages/`, and both would find the workspace's newest version. Each
  * major's package installs its own, so this makes the pages, the adapter
  * and the framework's renderer all use that one copy, on the client and in

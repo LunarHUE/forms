@@ -82,8 +82,8 @@
         "vitest": "catalog:",
       },
     },
-    "e2e/apps/react": {
-      "name": "@lunarhue/forms-e2e-react",
+    "e2e/apps/react-shared": {
+      "name": "@lunarhue/forms-e2e-react-shared",
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
@@ -99,7 +99,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
-        "@lunarhue/forms-e2e-react": "workspace:*",
+        "@lunarhue/forms-e2e-react-shared": "workspace:*",
         "react": "catalog:react16",
         "react-dom": "catalog:react16",
       },
@@ -114,7 +114,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
-        "@lunarhue/forms-e2e-react": "workspace:*",
+        "@lunarhue/forms-e2e-react-shared": "workspace:*",
         "react": "catalog:react17",
         "react-dom": "catalog:react17",
       },
@@ -129,7 +129,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
-        "@lunarhue/forms-e2e-react": "workspace:*",
+        "@lunarhue/forms-e2e-react-shared": "workspace:*",
         "react": "catalog:react18",
         "react-dom": "catalog:react18",
       },
@@ -144,7 +144,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
-        "@lunarhue/forms-e2e-react": "workspace:*",
+        "@lunarhue/forms-e2e-react-shared": "workspace:*",
         "react": "catalog:",
         "react-dom": "catalog:",
       },
@@ -154,8 +154,8 @@
         "vite": "catalog:",
       },
     },
-    "e2e/apps/solid": {
-      "name": "@lunarhue/forms-e2e-solid",
+    "e2e/apps/solid-shared": {
+      "name": "@lunarhue/forms-e2e-solid-shared",
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
@@ -169,7 +169,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lunarhue/forms-e2e": "workspace:*",
-        "@lunarhue/forms-e2e-solid": "workspace:*",
+        "@lunarhue/forms-e2e-solid-shared": "workspace:*",
         "@solidjs/web": "catalog:",
         "solid-js": "catalog:",
       },
@@ -711,7 +711,7 @@
 
     "@lunarhue/forms-e2e": ["@lunarhue/forms-e2e@workspace:e2e"],
 
-    "@lunarhue/forms-e2e-react": ["@lunarhue/forms-e2e-react@workspace:e2e/apps/react"],
+    "@lunarhue/forms-e2e-react-shared": ["@lunarhue/forms-e2e-react-shared@workspace:e2e/apps/react-shared"],
 
     "@lunarhue/forms-e2e-react16": ["@lunarhue/forms-e2e-react16@workspace:e2e/apps/react16"],
 
@@ -721,7 +721,7 @@
 
     "@lunarhue/forms-e2e-react19": ["@lunarhue/forms-e2e-react19@workspace:e2e/apps/react19"],
 
-    "@lunarhue/forms-e2e-solid": ["@lunarhue/forms-e2e-solid@workspace:e2e/apps/solid"],
+    "@lunarhue/forms-e2e-solid-shared": ["@lunarhue/forms-e2e-solid-shared@workspace:e2e/apps/solid-shared"],
 
     "@lunarhue/forms-e2e-solid2": ["@lunarhue/forms-e2e-solid2@workspace:e2e/apps/solid2"],
 

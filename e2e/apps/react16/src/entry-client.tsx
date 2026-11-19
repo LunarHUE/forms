@@ -1,4 +1,4 @@
-import { App } from "@lunarhue/forms-e2e-react/app";
+import { App } from "@lunarhue/forms-e2e-react-shared/app";
 import { appElementId } from "@lunarhue/forms-e2e/contract";
 import type { ReactElement } from "react";
 import * as ReactDOM from "react-dom";

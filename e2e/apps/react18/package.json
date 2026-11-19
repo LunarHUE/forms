@@ -6,7 +6,7 @@
   "description": "The React app built against React 18. It has a package of its own so its React, not the workspace's, is the one installed beside it.",
   "dependencies": {
     "@lunarhue/forms-e2e": "workspace:*",
-    "@lunarhue/forms-e2e-react": "workspace:*",
+    "@lunarhue/forms-e2e-react-shared": "workspace:*",
     "react": "catalog:react18",
     "react-dom": "catalog:react18"
   },
