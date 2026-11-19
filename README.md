@@ -5,10 +5,9 @@ nothing about either. A Vue adapter is planned.
 
 We wrote it because we wanted three things at once: field names the compiler
 checks, a bundle well under what the big form libraries ship, and a way to add
-features without everyone paying for them. So the core does values, arrays,
+features without everyone paying for them. So the core does values,
 validation and submit, since checking input is what a form library is for.
-Undo, masks, adding and moving array rows, schema libraries and the rest are
-plugins you install.
+Lists, undo, masks, schema libraries and the rest are plugins you install.
 
 ## Install
 

@@ -51,7 +51,7 @@ installed: with `dev && dirty()` in the list, `equals` is still a type error.
 | | |
 | --- | --- |
 | `forms.define(config, ...parts)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. `parts` attach at the root when the store is made. |
-| `forms.scope(handle)` | The scope at an object handle: `root`, `Field`, `Items` and the field components. Cached per handle. |
+| `forms.scope(handle)` | The scope at an object handle: `root`, `Field` and the field components. Cached per handle. |
 | `forms.fieldset(schema, ...parts)` | A reusable shape for a group of fields, typed from a schema that never runs. `parts` attach at each field the fieldset is used on. |
 | `forms.fieldset<V>(...parts)` | The same shape from a type. |
 | `fieldset.at(name)` | The fieldset's parts pinned at `name`, for `define`. |
@@ -126,7 +126,6 @@ The form it returns:
 | `form.State` | Renders a selection of the form snapshot: `select`, `isEqual`, and children `(selected, form)`. |
 | `form.root` | The handle for the whole value. |
 | `form.Field` | Renders one field by `name` or `handle`. Children get the field object, or `select`'s result. |
-| `form.Items` | Renders the items of an array field. |
 | `form.TextField` | Each registered field component, bound by `name`. |
 | `form.submit(intent?)` | Submits and resolves to the `Submission`. Focuses per `focusOnInvalid`. |
 | `form.handleSubmit(event?)` | Calls `preventDefault`, then submits. |
@@ -145,7 +144,6 @@ The form it returns:
 | `form.state` | The form snapshot as reactive getters: `form.state.submitting`. |
 | `form.root` | The handle for the whole value. |
 | `form.Field` | Renders one field by `name` or `handle`. Children get the field object. |
-| `form.Items` | Renders the items of an array field. |
 | `form.TextField` | Each registered field component, bound by `name`. |
 | `form.submit(intent?)` | Submits and resolves to the `Submission`. Focuses per `focusOnInvalid`. |
 | `form.handleSubmit(event?)` | Calls `preventDefault`, then submits. |
@@ -174,7 +172,8 @@ Each throws when no matching `form.Form` is above.
 | --- | --- |
 | `useField(handle, select?, isEqual?)` | The field snapshot, or a selection of it. Re-renders when it changes by `isEqual`. |
 | `useFormState(form, select?, isEqual?)` | The form snapshot, or a selection of it. |
-| `useItems(handle)` | An array's item handles. Re-renders only when an item is added, removed or moved. |
+| `useItems(handle)` | An array's item handles. Re-renders only when an item is added, removed or moved. Needs `arrays()`. |
+| `<Items handle>` | Renders one child per item, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `useValidator(handle, validator)` | Adds a validator while the component is mounted. |
 | `useDisabledErrors(form)` | The disabled fields whose errors blocked the last submit. |
 
@@ -185,7 +184,8 @@ Each throws when no matching `form.Form` is above.
 | | |
 | --- | --- |
 | `createField(handle)` | The field object, with reactive getters. Unsubscribes with its owner. |
-| `createItems(handle)` | An accessor of the item handles. Changes only when an item is added, removed or moved. |
+| `createItems(handle)` | An accessor of the item handles. Changes only when an item is added, removed or moved. Needs `arrays()`. |
+| `<Items handle fallback?>` | Renders the items with `For`, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `createValidator(handle, validator)` | Adds a validator for the life of the owner. |
 | `createDisabledErrors(form)` | An accessor of the disabled fields whose errors blocked the last submit. |
 
@@ -379,7 +379,7 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 | | |
 | --- | --- |
-| `arrays()` | Turns on `push`, `insert`, `remove` and `move`, with keys that follow the items. See [Arrays](../concepts/arrays#without-arrays) for a form without it. |
+| `arrays()` | Turns on `Items`, `useItems`, `createItems` and `push`, `insert`, `remove` and `move`, with keys that follow the items. See [Arrays](../concepts/arrays). |
 
 ### plugins/history
 
