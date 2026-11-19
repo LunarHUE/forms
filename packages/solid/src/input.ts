@@ -232,7 +232,7 @@ type Allow<Ok extends boolean> = Ok extends true ? unknown : never;
  * To run your own handler as well, spread these props, set your own handler
  * after them, and call ours from it.
  */
-export interface CreateInputProps {
+export const createInputProps: {
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options?: TextInputOptions): TextInputProps;
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options: TextareaOptions): TextareaProps;
   <H extends HandleLike>(handle: H & Allow<IsNumber<ValueOf<H>>>, options: NumberInputOptions<ValueOf<H>>): NumberInputProps;
@@ -243,18 +243,10 @@ export interface CreateInputProps {
   ): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsOption<ValueOf<H>>>, options: RadioOptions<NonNullable<ValueOf<H>>>): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
-}
-
-function inputPropsOfHandle(handle: HandleLike, options?: AnyInputOptions): unknown {
-  // The field object has the members `InputField` names.
+} = (handle: HandleLike, options?: AnyInputOptions) =>
+  // The field object has the members `InputField` names, and the overloads pick the props type from `kind`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return inputPropsFor(createFieldApi(handle) as InputField, options);
-}
-
-/** See `CreateInputProps`. */
-// The overloads pick the props type from `kind`, which is what `inputPropsFor` builds.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createInputProps = inputPropsOfHandle as CreateInputProps;
+  inputPropsFor(createFieldApi(handle) as InputField, options) as never;
 
 /** What `inputProps` needs from a field object. Every field object fits. */
 export interface FieldObjectLike {
@@ -279,7 +271,7 @@ type FieldValue<F> = F extends { readonly "~field"?: FieldTypes<infer V, unknown
  * primitives usually own their ids and aria, so bind those with the pieces
  * instead.
  */
-export interface InputProps {
+export const inputProps = inputPropsFor as unknown as {
   <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options?: TextInputOptions): TextInputProps;
   <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options: TextareaOptions): TextareaProps;
   <F extends FieldObjectLike>(field: F & Allow<IsNumber<FieldValue<F>>>, options: NumberInputOptions<FieldValue<F>>): NumberInputProps;
@@ -290,12 +282,7 @@ export interface InputProps {
   ): CheckableProps;
   <F extends FieldObjectLike>(field: F & Allow<IsOption<FieldValue<F>>>, options: RadioOptions<NonNullable<FieldValue<F>>>): CheckableProps;
   <F extends FieldObjectLike>(field: F & Allow<IsChoice<FieldValue<F>>>, options: SelectOptions): SelectProps;
-}
-
-/** See `InputProps`. */
-// Every field object has the members `InputField` names, and the overloads pick the props type from `kind`.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const inputProps = inputPropsFor as unknown as InputProps;
+};
 
 /**
  * Returns a ref callback that registers an element as the focus target of a
@@ -303,10 +290,7 @@ export const inputProps = inputPropsFor as unknown as InputProps;
  * `ref={fieldRef(handle)}`, and call it in a component body: the element is
  * forgotten when that owner is disposed.
  */
-export type FieldRef = (handle: HandleLike) => (element: HTMLElement) => void;
-
-/** See `FieldRef`. */
-export const fieldRef: FieldRef = (handle) => elementRegistrar(handle);
+export const fieldRef = (handle: HandleLike): ((element: HTMLElement) => void) => elementRegistrar(handle);
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field

@@ -227,13 +227,10 @@ export interface InputHandleLike extends HandleLike {
  * `shownErrors`. The callbacks keep their identity for the life of the
  * handle. The props object changes only when the field's snapshot does.
  */
-export interface UseInputProps {
+export const useInputProps: {
   <H extends InputHandleLike, const O extends InputOptionsFor<ValueOf<H>>>(handle: H, options: O): InputPropsFor<O>;
   <H extends InputHandleLike>(handle: H, ...options: NoOptionsArgs<ValueOf<H>>): TextInputProps;
-}
-
-/** See `UseInputProps`. */
-export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: AnyInputOptions) => {
+} = (handle: InputHandleLike, options?: AnyInputOptions) => {
   // The field object changes when the snapshot or the typed number text does.
   const { api } = useSelected(fieldViewSource(handle), whole);
   // The field object has the pieces, and the props match the options by kind,
@@ -267,13 +264,10 @@ export interface FieldObjectLike extends FieldSnapshot<unknown, unknown>, Omit<F
  * library's primitives usually own their ids and aria, so bind those with the
  * pieces instead.
  */
-export interface InputProps {
+export const inputProps: {
   <F extends FieldObjectLike, const O extends InputOptionsFor<ValueOf<F>>>(field: F, options: O): InputPropsFor<O>;
   <F extends FieldObjectLike>(field: F, ...options: NoOptionsArgs<ValueOf<F>>): TextInputProps;
-}
-
-/** See `InputProps`. */
-export const inputProps: InputProps = (field: FieldObjectLike, options?: AnyInputOptions) =>
+} = (field: FieldObjectLike, options?: AnyInputOptions) =>
   // `setNumberText` takes the field's own value type, and the props match the
   // options by kind, which the overloads check against the value type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -284,17 +278,12 @@ export const inputProps: InputProps = (field: FieldObjectLike, options?: AnyInpu
  * inputs that don't use `useInputProps`. The callback keeps its identity for
  * the life of the handle.
  */
-export type UseFieldRef = (handle: HandleLike) => FieldRef;
-
-/** See `UseFieldRef`. It reads no state, so it is a plain lookup. */
-export const useFieldRef: UseFieldRef = (handle) => refFor(handle);
+// It reads no state, so it is a plain lookup.
+export const useFieldRef = (handle: HandleLike): FieldRef => refFor(handle);
 
 /**
  * The id of the element that shows a field's errors, core's
  * `errorId(handle.id)`: the handle id with `---error` after it. It never
  * names a field or an option. Input props point `aria-describedby` at it.
  */
-export type ErrorId = (handle: { readonly id: string }) => string;
-
-/** See `ErrorId`. */
-export const errorId: ErrorId = (handle) => coreErrorId(handle.id);
+export const errorId = (handle: { readonly id: string }): string => coreErrorId(handle.id);

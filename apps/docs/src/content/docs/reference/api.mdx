@@ -315,6 +315,9 @@ tests.
 | `Draft<T>` | `T` as a schema form holds it, with leaves that may be `undefined`. |
 | `StandardSchemaV1` | The Standard Schema interface any schema library implements. |
 
+A function has no type of its own name. Write `typeof createForms` for its
+signature, or `ReturnType<typeof createForms>` for what it returns.
+
 ### Core helpers
 
 | | |

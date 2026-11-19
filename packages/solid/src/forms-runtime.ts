@@ -28,12 +28,12 @@ interface RuntimeDefinition {
 /** How each definition makes a form, from `createForm`'s arguments after the definition. */
 const makers = new WeakMap<object, (args: readonly unknown[]) => RuntimeForm>();
 
-/** See `CreateForm`. */
+/** See `createForm`. */
 export function createFormRuntime(definition: object, ...args: unknown[]): RuntimeForm | undefined {
   return makers.get(definition)?.(args);
 }
 
-/** See `CreateForms`. */
+/** See `createForms`. */
 export function createFormsRuntime(options: RuntimeOptions = {}) {
   const core = createFormsCore(options);
   const scopeOf = scopeCache(options.fields ?? {});

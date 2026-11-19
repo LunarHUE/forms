@@ -17,9 +17,8 @@ import type { Validation } from "./runner.js";
 import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 
-// Core has no DOM types, so this declares the platform globals the host uses.
+// Core has no DOM types, so this declares the platform global the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
-declare const scheduler: { postTask?(fn: () => void, options: { readonly priority: string }): unknown } | undefined;
 
 /** How many rounds of plugin writes one batch may set off before the host stops them. */
 const maxRounds = 10;
@@ -78,15 +77,6 @@ interface Entry {
   off?: (() => void) | undefined;
 }
 
-/** Records waiting for one timing's observers. */
-interface Bucket {
-  /** The plugins with `onWrite` at this timing, in run order. */
-  readonly observers: Entry[];
-  records: WriteRecord[];
-  /** True while a task to deliver them is scheduled. */
-  due: boolean;
-}
-
 /** The plugins in run order: install order, except that each one comes after the names in its `after`. */
 function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
   const byName = new Map<string, AnyHookPlugin>();
@@ -141,11 +131,9 @@ export function createPluginHost(
   // validation's own `changed`, which reruns their validators once the writes end.
   const paths: Path[] = [];
   let changed: ((list: readonly Path[]) => void) | undefined;
-  // The plugins with a `sync` `onWrite`, in run order, and the buckets of the other two timings.
+  // The plugins with a `sync` `onWrite`, in run order.
   const sync: Entry[] = [];
-  const deferred: Bucket = { observers: [], records: [], due: false };
   const apis: Record<string, unknown> = {};
-  const idle: Bucket = { observers: [], records: [], due: false };
 
   // Runs one of `entry`'s hooks. A throw goes to `report`, and `fallback` is returned.
   const call = <T>(entry: Entry, fn: () => T, fallback: T): T => {
@@ -175,27 +163,14 @@ export function createPluginHost(
     for (const entry of observers) call(entry, () => entry.hooks.onWrite?.(frozen), undefined);
   };
 
-  // Delivers a bucket's records. Writes its observers queued run in a batch of their own.
-  const drain = (bucket: Bucket) => {
-    bucket.due = false;
-    const list = bucket.records;
-    if (list.length === 0) return;
-    bucket.records = [];
-    deliver(bucket.observers, list);
-    if (queue.length > 0) batch(() => {});
-  };
-
-  const runDeferred = () => drain(deferred);
-  const runIdle = () => drain(idle);
-
-  // Adds a round's records to a bucket and schedules its delivery.
-  const collect = (bucket: Bucket, round: readonly WriteRecord[], schedule: () => void) => {
-    if (bucket.observers.length === 0) return;
-    for (const record of round) bucket.records.push(record);
-    if (bucket.due) return;
-    bucket.due = true;
-    schedule();
-  };
+  // The `deferred` and `idle` timings, from the first plugin that brings
+  // them. Writes their observers queued run in a batch of their own.
+  const timing = plugins
+    .find((plugin) => plugin["~timing"])
+    ?.["~timing"]?.<Entry>((observers, list) => {
+      deliver(observers, list);
+      if (queue.length > 0) batch(() => {});
+    });
 
   // Ends the outermost batch, before listeners run: the `sync` observers get
   // its records, the plugin writes they queued run, and the records of those
@@ -221,11 +196,7 @@ export function createPluginHost(
         records = [];
         if (round.length > 0) {
           deliver(sync, round);
-          collect(deferred, round, () => void Promise.resolve().then(runDeferred));
-          collect(idle, round, () => {
-            if (typeof scheduler !== "undefined" && scheduler.postTask) scheduler.postTask(runIdle, { priority: "background" });
-            else setTimeout(runIdle);
-          });
+          timing?.collect(round);
         }
         const writes = queue;
         queue = [];
@@ -362,10 +333,7 @@ export function createPluginHost(
     setReadOnly: flag("readOnly", (path, on) => raw.setReadOnly(path, on)),
   };
 
-  const flush = () => {
-    runDeferred();
-    runIdle();
-  };
+  const flush = () => timing?.flush();
 
   const contextFor = (entry: Entry, store: AnyFormStore<unknown>, baseline: PluginBaseline): PluginContext => {
     const { name } = entry.plugin;
@@ -417,7 +385,7 @@ export function createPluginHost(
         listening = true;
         const when: When = entry.hooks.when ?? "sync";
         if (when === "sync") sync.push(entry);
-        else (when === "deferred" ? deferred : idle).observers.push(entry);
+        else timing?.add(when, entry);
       }
     },
     reset(path, run) {

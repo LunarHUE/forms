@@ -5,7 +5,7 @@ interface RegistersValidators {
   registerValidator(validator: unknown): () => void;
 }
 
-/** See `CreateValidator`. With no owner the validator stays for the life of the store. */
+/** See `createValidator`. With no owner the validator stays for the life of the store. */
 export function addValidator(handle: RegistersValidators, validator: unknown): void {
   if (validator === undefined || validator === null || validator === false) return;
   const remove = handle.registerValidator(validator);

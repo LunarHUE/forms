@@ -20,7 +20,7 @@ export const madeFrom = new WeakMap<RuntimeForm, object>();
 export const madeBy = new WeakMap<RuntimeForm, object>();
 
 /**
- * See `UseFormContext`. With a definition, or a `createForms` result, it
+ * See `useFormContext`. With a definition, or a `createForms` result, it
  * walks up from the nearest `form.Form` to the first form made from it.
  * Throws a clear error when there is none.
  */

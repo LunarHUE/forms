@@ -285,55 +285,6 @@ export interface FormStateProps<I, R, S, T> {
  */
 export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>) => ReactElement;
 
-/**
- * Makes the form on the first render and returns the same object on every
- * render after. The store and the bound components are made in a `useState`
- * initialiser, so they survive re-renders and are dropped with the
- * component. StrictMode may run the initialiser twice and keep one result.
- * Making a store has no side effects, so the other is garbage. `options` is
- * required when the definition was made with the function form of `define`,
- * and absent otherwise. `options` and `instance` are read on the first render
- * only. When a later render passes a different definition, as a hot reload
- * does, `useForm` makes a new form from it with the current arguments and
- * returns that one from then on. The old form's values are dropped.
- */
-export type UseForm = <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins, const X extends Plugins = []>(
-  definition: ReactFormDefinition<V, E, I, R, O, F, P>,
-  ...args: UseFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
-) => FormInstance<V, E, I, R, F, Combined<P, X>>;
-
-/**
- * Reads a form from the nearest `form.Form` above. Every `form.Form`
- * provides the same context, and each remembers the `form.Form` above it.
- */
-export interface UseFormContext {
-  /**
-   * Returns the form from the nearest `form.Form`, whatever its definition,
-   * with its types unknown. Enough for reusable parts such as a submit
-   * button: `submit`, `handleSubmit`, `formProps`, `store`, `useFormState`
-   * and `useDisabledErrors`. Throws when no `form.Form` is above.
-   */
-  (): UnknownForm;
-  /**
-   * Returns the form made from `definition`, fully typed, from the nearest
-   * `form.Form` of that definition. Forms of other definitions nearer to it,
-   * such as a dialog's form inside a page's form, are skipped. Throws when no
-   * form of that definition is above.
-   */
-  <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
-    definition: ReactFormDefinition<V, E, I, R, O, F, P>,
-  ): FormInstance<V, E, I, R, F, P>;
-  /**
-   * Returns the nearest form defined by `forms`, the object `createForms`
-   * returned, for a part shared by its forms such as an undo button. Its
-   * value type is unknown. Its plugins are the shared ones, its error type
-   * and field components those of `forms`. Plugins a definition or a form
-   * adds are not in its type. Forms from other `createForms` calls are
-   * skipped. Throws when no form of `forms` is above.
-   */
-  <P extends Plugins, E, F extends FieldComponentMap>(forms: Forms<P, E, F>): UnknownForm<P, E, F>;
-}
-
 /** What `forms.scope` needs: an object handle. */
 export interface ObjectHandleLike extends HandleLike {
   /** Returns a child handle. */
@@ -374,15 +325,6 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
   /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
   fieldset<V>(): Fieldset<V, E, F>;
 }
-
-/**
- * The adapter's entry point. It wraps `createFormsCore`. Call it once at
- * module scope. `P` is inferred from `plugins` as a tuple, `E` from
- * `mapError` and `F` from `fields`.
- */
-export type CreateForms = <const P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>(
-  options?: FormsOptions<P, E, F>,
-) => Forms<P, E, F>;
 
 /** A form as the runtime builds it. */
 type AnyForm = AnyScope & { readonly store: AnyFormStore<unknown> };
@@ -448,8 +390,14 @@ interface LooseCore {
   };
 }
 
-/** See `CreateForms`. */
-export const createForms: CreateForms = (options = {}) => {
+/**
+ * The adapter's entry point. It wraps `createFormsCore`. Call it once at
+ * module scope. `P` is inferred from `plugins` as a tuple, `E` from
+ * `mapError` and `F` from `fields`.
+ */
+export const createForms: <const P extends Plugins = [], E = FormError, F extends FieldComponentMap = NoFields>(
+  options?: FormsOptions<P, E, F>,
+) => Forms<P, E, F> = (options = {}) => {
   // The runtime is untyped inside. The contract's types are checked by the type tests.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = createFormsCore(options) as unknown as LooseCore;
@@ -484,8 +432,22 @@ export const createForms: CreateForms = (options = {}) => {
   return forms as never;
 };
 
-/** See `UseForm`. */
-export const useForm: UseForm = (definition, ...args) => {
+/**
+ * Makes the form on the first render and returns the same object on every
+ * render after. The store and the bound components are made in a `useState`
+ * initialiser, so they survive re-renders and are dropped with the
+ * component. StrictMode may run the initialiser twice and keep one result.
+ * Making a store has no side effects, so the other is garbage. `options` is
+ * required when the definition was made with the function form of `define`,
+ * and absent otherwise. `options` and `instance` are read on the first render
+ * only. When a later render passes a different definition, as a hot reload
+ * does, `useForm` makes a new form from it with the current arguments and
+ * returns that one from then on. The old form's values are dropped.
+ */
+export const useForm: <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins, const X extends Plugins = []>(
+  definition: ReactFormDefinition<V, E, I, R, O, F, P>,
+  ...args: UseFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
+) => FormInstance<V, E, I, R, F, Combined<P, X>> = (definition, ...args) => {
   const generatedId = useId();
   const make = () => {
     const maker = makers.get(definition);
@@ -501,8 +463,37 @@ export const useForm: UseForm = (definition, ...args) => {
   return form as never;
 };
 
-/** See `UseFormContext`. */
-export const useFormContext: UseFormContext = (definition?: object) => {
+/**
+ * Reads a form from the nearest `form.Form` above. Every `form.Form`
+ * provides the same context, and each remembers the `form.Form` above it.
+ */
+export const useFormContext: {
+  /**
+   * Returns the form from the nearest `form.Form`, whatever its definition,
+   * with its types unknown. Enough for reusable parts such as a submit
+   * button: `submit`, `handleSubmit`, `formProps`, `store`, `useFormState`
+   * and `useDisabledErrors`. Throws when no `form.Form` is above.
+   */
+  (): UnknownForm;
+  /**
+   * Returns the form made from `definition`, fully typed, from the nearest
+   * `form.Form` of that definition. Forms of other definitions nearer to it,
+   * such as a dialog's form inside a page's form, are skipped. Throws when no
+   * form of that definition is above.
+   */
+  <V, E, I, R, O, F extends FieldComponentMap, P extends Plugins>(
+    definition: ReactFormDefinition<V, E, I, R, O, F, P>,
+  ): FormInstance<V, E, I, R, F, P>;
+  /**
+   * Returns the nearest form defined by `forms`, the object `createForms`
+   * returned, for a part shared by its forms such as an undo button. Its
+   * value type is unknown. Its plugins are the shared ones, its error type
+   * and field components those of `forms`. Plugins a definition or a form
+   * adds are not in its type. Forms from other `createForms` calls are
+   * skipped. Throws when no form of `forms` is above.
+   */
+  <P extends Plugins, E, F extends FieldComponentMap>(forms: Forms<P, E, F>): UnknownForm<P, E, F>;
+} = (definition?: object) => {
   let node = useContext(FormContext);
   if (definition !== undefined) {
     while (node !== null && madeFrom.get(node.form) !== definition && madeBy.get(node.form) !== definition) node = node.parent;
@@ -514,19 +505,6 @@ export const useFormContext: UseFormContext = (definition?: object) => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return node.form as never;
 };
-
-/**
- * Returns the disabled fields whose errors blocked the last submit that
- * ended invalid, for showing at form level. The adapter takes the list from
- * core's `disabledInvalid()` when the form snapshot's submission becomes
- * `invalid`, whoever started the submit, and empties it when the submission
- * leaves `invalid` (the next submit starts, or the form resets). The list
- * keeps its identity in between. Takes the form or any store, such as
- * `handle.store`.
- */
-export type UseDisabledErrors = <E>(
-  form: AnyFormStore<E> | { readonly store: AnyFormStore<E> },
-) => readonly DisabledInvalid<E>[];
 
 /** The disabled fields that blocked one submit, by the submit count they belong to. */
 interface DisabledList {
@@ -548,8 +526,18 @@ function disabledFor(store: AnyFormStore<unknown>, snapshot: FormSnapshot<unknow
   return entry.list;
 }
 
-/** See `UseDisabledErrors`. */
-export const useDisabledErrors: UseDisabledErrors = <E>(form: AnyFormStore<E> | { readonly store: AnyFormStore<E> }) => {
+/**
+ * Returns the disabled fields whose errors blocked the last submit that
+ * ended invalid, for showing at form level. The adapter takes the list from
+ * core's `disabledInvalid()` when the form snapshot's submission becomes
+ * `invalid`, whoever started the submit, and empties it when the submission
+ * leaves `invalid` (the next submit starts, or the form resets). The list
+ * keeps its identity in between. Takes the form or any store, such as
+ * `handle.store`.
+ */
+export const useDisabledErrors = <E>(
+  form: AnyFormStore<E> | { readonly store: AnyFormStore<E> },
+): readonly DisabledInvalid<E>[] => {
   // The error type only types the list, which comes from this store.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const store = storeOf(form) as AnyFormStore<unknown>;

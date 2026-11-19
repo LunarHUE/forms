@@ -122,12 +122,10 @@ export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
  * current snapshot without tracking. On the server, and in the browser while
  * hydrating, it reads the store's server snapshot, so the markup matches.
  */
-export type CreateField = <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
-
-/** See `CreateField`. */
-// The runtime object has the members `ExactFieldApi` names for the handle's kind.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createField: CreateField = createFieldApi as unknown as CreateField;
+export const createField: <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>> =
+  // The runtime object has the members `ExactFieldApi` names for the handle's kind.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createFieldApi as never;
 
 /**
  * The form snapshot as reactive reads: every member of `FormSnapshot`, each
@@ -148,12 +146,10 @@ export interface ArrayHandleLike extends HandleLike {
  * maps to the same handle object every time, so `<For each={items()}>`
  * keeps a row's DOM through inserts, removes and moves.
  */
-export type CreateItems = <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]>;
-
-/** See `CreateItems`. */
-// Each entry is what `handle.item` returns, which the type names.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createItems: CreateItems = createItemList as unknown as CreateItems;
+export const createItems: <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]> =
+  // Each entry is what `handle.item` returns, which the type names.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createItemList as never;
 
 /** What `createValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {
@@ -167,10 +163,7 @@ export interface ValidatorHandleLike extends HandleLike {
  * validator it was given. To make a validator conditional, create it under
  * `<Show>`, or pass `undefined`, `null` or `false` to add none.
  */
-export type CreateValidator = <H extends ValidatorHandleLike>(
+export const createValidator: <H extends ValidatorHandleLike>(
   handle: H,
   validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
-) => void;
-
-/** See `CreateValidator`. */
-export const createValidator: CreateValidator = addValidator;
+) => void = addValidator;
