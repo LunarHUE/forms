@@ -19,8 +19,8 @@ You also need an adapter, `@lunarhue/forms-react` or `@lunarhue/forms-solid`.
 | `signal()` | `@lunarhue/forms-bind/solid` | a Solid 2 signal |
 
 Working examples:
-[examples/react/bind.tsx](https://github.com/LunarHUE/forms/blob/main/examples/react/bind.tsx) and
-[examples/solid/bind.tsx](https://github.com/LunarHUE/forms/blob/main/examples/solid/bind.tsx).
+[Zustand](https://forms.lunarhue.dev/react/integrations/zustand) and
+[Solid signals](https://forms.lunarhue.dev/solid/integrations/solid-signals) on the docs site.
 
 To bind to anything else, use `bind()` from your adapter's `plugins/bind`
 entry. The [main README](https://github.com/LunarHUE/forms#readme) has the plugin guide.

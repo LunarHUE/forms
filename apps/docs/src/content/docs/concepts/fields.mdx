@@ -1,8 +1,168 @@
 ---
 title: Fields
-description: Read and write a field's value, errors and touched state.
+description: Write an input component once, register it, and use it on every form.
 section: concepts
 order: 1
 ---
 
-Placeholder. The real page arrives with the concepts pages.
+A field component is your own component with a `field` prop. Register it on
+`createForms` and every form gets it as a member, `form.TextField`, that
+takes a field name instead of the `field` prop.
+
+<Demo name="fields/profile" />
+
+## Registering a component
+
+Type the prop as `FieldApi<T>`, where `T` is the value type the component
+edits. List the component under `fields`:
+
+```tsx framework=react
+import { createForms, type FieldApi } from "@lunarhue/forms-react";
+
+function TextField({ field, label }: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {label}
+      <input {...field.inputProps()} />
+    </label>
+  );
+}
+
+const forms = createForms({ fields: { TextField } });
+```
+
+```tsx framework=solid
+import { createForms, type FieldApi } from "@lunarhue/forms-solid";
+
+function TextField(props: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...props.field.inputProps()} />
+    </label>
+  );
+}
+
+const forms = createForms({ fields: { TextField } });
+```
+
+<Only framework="solid">
+
+Read the field through `props.field`. Destructuring it reads each member
+once and the component stops updating.
+
+</Only>
+
+`form.TextField` takes the component's own props, minus `field`, plus one of:
+
+- `name`, a field name such as `"address.city"`. The compiler checks it, and
+  only names whose value fits the component are accepted: a `FieldApi<string>`
+  component won't take a number field. See [Typed paths](./typed-paths).
+- `handle`, a field handle from `form.root.at(...)` or an array row.
+
+For a one-off input, `form.Field` passes the same object to a function
+child, with no registration:
+
+```tsx framework=react
+<form.Field name="name">{(field) => <input {...field.inputProps()} />}</form.Field>
+```
+
+```tsx framework=solid
+<form.Field name="name">{(field) => <input {...field.inputProps()} />}</form.Field>
+```
+
+## The field object
+
+`FieldApi<T>` holds the field's current state, its commands, and a few
+helpers for the DOM. A new object arrives with each change.
+
+| Member | What it is |
+| --- | --- |
+| `value` | The value the store holds. |
+| `name` | The dotted name with array indexes, such as `tasks.0.title`. |
+| `errors`, `shownErrors` | Every error, and the ones the `show` setting lets through now. |
+| `touched`, `edited`, `dirty` | Blurred once, changed by the user, different from the baseline. `dirty` needs the `dirty()` plugin. |
+| `invalid`, `validating` | Has a validation error, has a validator running. |
+| `disabled`, `readOnly` | Set on this field or one above it. |
+| `setValue`, `setTouched`, `setErrors`, `handleBlur`, `reset`, `validate` | The handle's commands. Arrays add `push`, `insert`, `remove` and `move`. |
+| `handle` | The field's handle, to pass to another component or keep for later. |
+| `id`, `errorId` | Ids for the input and its error list. |
+| `inputProps(options?)` | Props to spread on the input. |
+
+`FieldApi<number>` has `value: number | undefined`, since a schema form starts
+a number field empty. `FieldApi<string>` is a plain string.
+
+## inputProps
+
+`inputProps()` returns everything an `<input>` needs: `name`, `id`, `value`,
+`onChange`, `onBlur`, `ref`, `disabled`, `readOnly`, and `aria-invalid` and
+`aria-describedby` while errors show. Pass options for other kinds of input.
+The compiler checks them against the field's value type.
+
+| Call | Element | Field type |
+| --- | --- | --- |
+| `inputProps()` or `inputProps({ type: "email" })` | `<input>` | string |
+| `inputProps({ kind: "textarea" })` | `<textarea>` | string |
+| `inputProps({ kind: "select" })` | `<select>` | string |
+| `inputProps({ kind: "number" })` or `{ kind: "range" }` | `<input type="number">` or `"range"` | number |
+| `inputProps({ kind: "checkbox" })` | `<input type="checkbox">` | boolean |
+| `inputProps({ kind: "checkbox", value })` | one box of a group | array of strings or numbers |
+| `inputProps({ kind: "radio", value })` | one radio | string, number or boolean |
+
+Number and select inputs take `empty`, the value an empty input writes. It
+defaults to `undefined` and is required when the field's type has no
+`undefined`.
+
+The `ref` records the element, so the form can focus the first invalid field
+after a failed submit.
+
+<Only framework="react">
+
+A custom input that doesn't spread `inputProps` gets the same ref from
+`useFieldRef(field.handle)`.
+
+</Only>
+
+<Only framework="solid">
+
+A custom input that doesn't spread `inputProps` gets the same ref from
+`fieldRef(field.handle)`.
+
+</Only>
+
+## Ids
+
+`field.id` is the form's id followed by the field's path. It stays the same
+for the life of the field, including when an array row moves, so it works as
+a DOM id and as a list key. The input gets it as `id`, so a
+`<label htmlFor={field.id}>` points at the input.
+
+<Only framework="react">
+
+The form's id comes from `useId`, so it matches between the server and the
+browser. React 16 and 17 have no `useId`: if you render on the server with
+them, pass `id` to `useForm`. See [`id:server`](/errors#react:id:server).
+
+</Only>
+
+`field.errorId` is the id for the element that lists the field's errors.
+`inputProps()` points `aria-describedby` at it while errors show, so screen
+readers read them with the input.
+
+## Shown errors
+
+`errors` has every error on the field. `shownErrors` has the ones the user
+should see now, and `aria-invalid` follows it. Render `shownErrors`.
+
+The `show` setting decides. Set it on `createForms` for every form or on
+`define` for one:
+
+| `show` | Errors show |
+| --- | --- |
+| `"touched-or-submitted"` | after the field is blurred or the form submitted (the default) |
+| `"touched"` | after the field is blurred |
+| `"submitted"` | after the first submit |
+| `"always"` | at once |
+
+A function works too. It gets `touched`, `edited`, `dirty` and `submitCount`
+and returns true to show.

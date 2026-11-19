@@ -111,34 +111,6 @@
         "vite": "catalog:",
       },
     },
-    "examples/react": {
-      "name": "@lunarhue/forms-example-react",
-      "version": "0.0.0",
-      "dependencies": {
-        "@lunarhue/forms-bind": "workspace:*",
-        "@lunarhue/forms-react": "workspace:*",
-        "@lunarhue/forms-schema": "workspace:*",
-        "react": "catalog:",
-        "valibot": "catalog:",
-        "zod": "catalog:",
-        "zustand": "catalog:",
-      },
-      "devDependencies": {
-        "@types/react": "catalog:",
-      },
-    },
-    "examples/solid": {
-      "name": "@lunarhue/forms-example-solid",
-      "version": "0.0.0",
-      "dependencies": {
-        "@lunarhue/forms-bind": "workspace:*",
-        "@lunarhue/forms-schema": "workspace:*",
-        "@lunarhue/forms-solid": "workspace:*",
-        "@solidjs/web": "catalog:",
-        "solid-js": "catalog:",
-        "valibot": "catalog:",
-      },
-    },
     "packages/bind": {
       "name": "@lunarhue/forms-bind",
       "version": "0.1.1",
@@ -665,10 +637,6 @@
     "@lunarhue/forms-e2e-react": ["@lunarhue/forms-e2e-react@workspace:e2e/apps/react"],
 
     "@lunarhue/forms-e2e-solid": ["@lunarhue/forms-e2e-solid@workspace:e2e/apps/solid"],
-
-    "@lunarhue/forms-example-react": ["@lunarhue/forms-example-react@workspace:examples/react"],
-
-    "@lunarhue/forms-example-solid": ["@lunarhue/forms-example-solid@workspace:examples/solid"],
 
     "@lunarhue/forms-inspector": ["@lunarhue/forms-inspector@workspace:parked/inspector"],
 

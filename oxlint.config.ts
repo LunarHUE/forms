@@ -51,18 +51,18 @@ export default defineConfig({
   },
   overrides: [
     {
-      // The adapter, the React examples, the e2e React app, the parked
-      // inspector's React wrapper and the docs site's React code follow the
-      // same rules. The docs' Solid demos live in src/demos/solid and stay out.
+      // The adapter, the e2e React app, the parked inspector's React wrapper
+      // and the docs site's React code, the README's example included, follow
+      // the same rules. The docs' Solid demos live in src/demos/solid and stay out.
       files: [
         "packages/react/**",
-        "examples/react/**",
         "e2e/apps/react/**",
         "parked/inspector/src/react.tsx",
         "apps/docs/src/components/**",
         "apps/docs/src/devtools/**",
         "apps/docs/src/demos/react/**",
         "apps/docs/src/layouts/**",
+        "apps/docs/src/readme/**",
       ],
       // An override's `plugins` replaces the base list.
       plugins: [...basePlugins, "react"],

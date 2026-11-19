@@ -85,6 +85,6 @@ each: `@lunarhue/forms-solid/plugins/history`, `/mask`, `/rules`,
 ## More
 
 The [main README](https://github.com/LunarHUE/forms#readme) has the plugin guide, and
-[examples/solid](https://github.com/LunarHUE/forms/tree/main/examples/solid) has one file per feature.
+[the docs](https://forms.lunarhue.dev/solid/introduction) have a page and a demo per feature.
 
 MIT licensed.
