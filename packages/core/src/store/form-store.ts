@@ -7,7 +7,8 @@ import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
-import { createStoreCore, type StoreCore } from "./core.js";
+import type { BuildKeys } from "./baseline/keys.js";
+import { createStoreCore, type CreateArrays, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
@@ -75,7 +76,9 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
   // Item keys that follow inserts, removes and moves come with `arrays()`.
-  const arrays = plugins.find((plugin) => plugin["~arrays"])?.["~arrays"];
+  // The slot is opaque in the public types. `arrays()` puts this tuple in it.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const arrays = plugins.find((plugin) => plugin["~arrays"])?.["~arrays"] as readonly [CreateArrays, BuildKeys] | undefined;
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
