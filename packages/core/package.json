@@ -33,14 +33,14 @@
       }
     },
     "./plugins": {
-      "@lunarhue/source": "./src/plugins.ts",
+      "@lunarhue/source": "./src/plugins/index.ts",
       "import": {
-        "types": "./dist/esm/plugins.d.ts",
-        "default": "./dist/esm/plugins.js"
+        "types": "./dist/esm/plugins/index.d.ts",
+        "default": "./dist/esm/plugins/index.js"
       },
       "require": {
-        "types": "./dist/cjs/plugins.d.ts",
-        "default": "./dist/cjs/plugins.js"
+        "types": "./dist/cjs/plugins/index.d.ts",
+        "default": "./dist/cjs/plugins/index.js"
       }
     },
     "./plugins/bind": {
@@ -150,50 +150,50 @@
       "limit": "9.45 kB"
     },
     {
-      "name": "./plugins",
-      "path": "dist/esm/plugins.js",
-      "import": "*",
+      "name": "./plugins, plugin authoring",
+      "path": "dist/esm/plugins/index.js",
+      "import": "{ definePlugin, defineSchemaPlugin, flushPlugins, refuse }",
       "limit": "2.05 kB"
     },
     {
-      "name": "./plugins/dirty",
-      "path": "dist/esm/plugins/dirty.js",
+      "name": "./plugins dirty()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ dirty }",
       "limit": "1.2 kB"
     },
     {
-      "name": "./plugins/bind",
-      "path": "dist/esm/plugins/bind.js",
+      "name": "./plugins bind()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ bind }",
       "limit": "2.7 kB"
     },
     {
-      "name": "./plugins/history",
-      "path": "dist/esm/plugins/history.js",
+      "name": "./plugins history()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ history }",
       "limit": "2.25 kB"
     },
     {
-      "name": "./plugins/mask",
-      "path": "dist/esm/plugins/mask.js",
+      "name": "./plugins mask()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ mask }",
       "limit": "2.5 kB"
     },
     {
-      "name": "./plugins/persist",
-      "path": "dist/esm/plugins/persist.js",
+      "name": "./plugins persist()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ persist }",
       "limit": "2.1 kB"
     },
     {
-      "name": "./plugins/rebase",
-      "path": "dist/esm/plugins/rebase.js",
+      "name": "./plugins rebase()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ rebase }",
       "limit": "2.55 kB"
     },
     {
-      "name": "./plugins/rules",
-      "path": "dist/esm/plugins/rules.js",
+      "name": "./plugins rules()",
+      "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
       "limit": "2.1 kB"
     },
@@ -205,25 +205,22 @@
     },
     {
       "name": "history() + mask()",
-      "import": {
-        "dist/esm/plugins/history.js": "{ history }",
-        "dist/esm/plugins/mask.js": "{ mask }"
-      },
+      "path": "dist/esm/plugins/index.js",
+      "import": "{ history, mask }",
       "limit": "2.85 kB"
     },
     {
       "name": "core + dirty()",
       "import": {
         "dist/esm/index.js": "*",
-        "dist/esm/plugins/dirty.js": "{ dirty }"
+        "dist/esm/plugins/index.js": "{ dirty }"
       },
       "limit": "10 kB"
     },
     {
       "name": "dirty() + baselineOnSubmit()",
-      "import": {
-        "dist/esm/plugins/dirty.js": "{ dirty, baselineOnSubmit }"
-      },
+      "path": "dist/esm/plugins/index.js",
+      "import": "{ dirty, baselineOnSubmit }",
       "limit": "3.1 kB"
     }
   ]

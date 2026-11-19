@@ -1,5 +1,5 @@
 {
-  "main": "../dist/cjs/plugins.js",
-  "module": "../dist/esm/plugins.js",
-  "types": "../dist/cjs/plugins.d.ts"
+  "main": "../dist/cjs/plugins/index.js",
+  "module": "../dist/esm/plugins/index.js",
+  "types": "../dist/cjs/plugins/index.d.ts"
 }
