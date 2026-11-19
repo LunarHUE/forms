@@ -1,21 +1,15 @@
 // The bare form with a phone mask and a rule that hides a field.
-import { createForms, useForm } from "@lunarhue/forms-react";
-import { digits, mask, rules } from "@lunarhue/forms-react/plugins";
+import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { digits, mask, masked, ruled, rules } from "@lunarhue/forms-react/plugins";
 import { TextInput } from "./input.js";
 
-interface Contact {
-  phone: string;
-  note: string;
-}
+const PhoneField = field(TextInput, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
-const contactRules = rules<Contact>({ note: (value) => ({ hidden: value.phone === "" }) });
-
-const forms = createForms();
-const contact = forms.define({
-  defaultValues: { phone: "", note: "" },
-  plugins: [mask({ phone: { clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") } }), contactRules],
-  onSubmit: (value) => value.phone,
-});
+const forms = createForms({ plugins: [mask(), rules()], fields: { PhoneField } });
+const contact = forms.define(
+  { defaultValues: { phone: "", note: "" }, onSubmit: (value) => value.phone },
+  ruled({ note: (value) => ({ hidden: value.phone === "" }) }),
+);
 
 export function App() {
   const form = useForm(contact);
@@ -23,10 +17,8 @@ export function App() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.Field name="phone">{(field) => <TextInput field={field} />}</form.Field>
-          <form.Field name="note">
-            {(field) => (contactRules.meta(field).hidden ? null : <TextInput field={field} />)}
-          </form.Field>
+          <form.PhoneField name="phone" />
+          <form.Field name="note">{(note) => (rules.meta(note).hidden ? null : <TextInput field={note} />)}</form.Field>
           <button type="submit">Save</button>
         </form>
       )}
