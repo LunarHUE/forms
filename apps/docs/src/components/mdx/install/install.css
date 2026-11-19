@@ -1,0 +1,24 @@
+/*
+ * Every install line ships all four commands. <html data-pm>, set by the boot
+ * script before first paint, picks the command shown and the selected tab, so
+ * the line is right before its island hydrates.
+ */
+[data-pm-command] {
+  display: none;
+}
+
+html[data-pm="bun"] [data-pm-command="bun"],
+html[data-pm="npm"] [data-pm-command="npm"],
+html[data-pm="pnpm"] [data-pm-command="pnpm"],
+html[data-pm="yarn"] [data-pm-command="yarn"] {
+  display: inline;
+}
+
+html[data-pm="bun"] [data-pm-tab="bun"],
+html[data-pm="npm"] [data-pm-tab="npm"],
+html[data-pm="pnpm"] [data-pm-tab="pnpm"],
+html[data-pm="yarn"] [data-pm-tab="yarn"] {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}

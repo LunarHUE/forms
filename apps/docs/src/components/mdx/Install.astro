@@ -1,0 +1,37 @@
+---
+/*
+ * The install line for MDX pages.
+ *
+ *   <Install adapter />                                  bun add @lunarhue/forms-react (on a React page)
+ *   <Install packages="@lunarhue/forms-schema zod" />
+ *   <Install adapter packages="zod" />                   adapter first, then the rest
+ *
+ * `adapter` takes the framework from the page's URL, so one MDX file serves
+ * every framework. The island hydrates when it scrolls into view.
+ */
+import { isFramework } from "@/lib/frameworks";
+
+import Install from "./Install.tsx";
+
+interface Props {
+  /** Install the adapter for the page's framework. */
+  adapter?: boolean;
+  /** Space-separated package names. */
+  packages?: string;
+}
+
+const { adapter = false, packages = "" } = Astro.props;
+const framework = Astro.params.framework;
+
+const list: string[] = [];
+if (adapter) {
+  if (!framework || !isFramework(framework)) {
+    throw new Error(`<Install adapter /> needs a framework page, got ${Astro.url.pathname}.`);
+  }
+  list.push(`@lunarhue/forms-${framework}`);
+}
+list.push(...packages.split(/\s+/).filter(Boolean));
+if (list.length === 0) throw new Error("<Install> needs `adapter` or `packages`.");
+---
+
+<Install client:visible packages={list} />
