@@ -127,15 +127,25 @@ empty, and clear it.
 <Demo name="fields/primitives" />
 
 ```tsx framework=react
+const { ref } = field;
+
 <Input
-  ref={field.ref}
+  ref={ref}
   value={field.text}
   onValueChange={(text, details) => field.setText(text, details.event)}
   onBlur={field.handleBlur}
 />
 
-<Checkbox.Root ref={field.ref} checked={field.value} onCheckedChange={(checked) => field.setValue(checked)} />
+<Checkbox.Root ref={ref} checked={field.value} onCheckedChange={(checked) => field.setValue(checked)} />
 ```
+
+<Only framework="react">
+
+Take `ref` out of the field before passing it. React Compiler's lint treats
+an object whose member is passed as `ref` as a ref, and flags every other
+read of `field` during render.
+
+</Only>
 
 ```tsx framework=solid
 <input

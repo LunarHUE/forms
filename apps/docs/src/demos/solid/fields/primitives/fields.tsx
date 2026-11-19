@@ -41,7 +41,7 @@ export function NumberField(props: FieldProps<number>) {
       <label for={props.field.id}>{props.label}</label>
       <input
         id={props.field.id}
-        inputMode="decimal"
+        inputmode="decimal"
         ref={props.field.ref}
         // Keeps "1." and "-" as typed while the field holds 1 and the value before.
         value={props.field.text}
@@ -61,7 +61,7 @@ export function CheckboxField(props: FieldProps<boolean>) {
         <input
           type="checkbox"
           ref={props.field.ref}
-          checked={props.field.value === true}
+          checked={props.field.value}
           onChange={(event) => props.field.setValue(event.currentTarget.checked)}
           onBlur={props.field.handleBlur}
           aria-describedby={props.field.errorId}

@@ -18,7 +18,7 @@ function savedDraft(value: unknown) {
 
 const forms = createForms();
 const Order = forms.define({
-  defaultValues: { phone: "", price: 3 as number | undefined, name: "", terms: false, size: "s" },
+  defaultValues: { phone: "", price: 3, name: "", terms: false, size: "s" },
   plugins: [
     persist("draft", savedDraft({ phone: "5551234", price: 12, name: "Ada", terms: true, size: "l" })),
     mask({ phone: { clean: digits, display: formatPhone } }),
@@ -168,25 +168,21 @@ describe("restored and reset values", () => {
   });
 });
 
+/** An input of `type` with `value`. */
+const inputWith = (type: string, value = "") => Object.assign(document.createElement("input"), { type, value });
+
 const Survey = forms.define({ defaultValues: { name: "Ada", tags: ["b"], plan: "pro", size: "l", agree: true } });
 
 describe("ref", () => {
   it("puts the field's state back in a native control that differs, as after a browser restore", () => {
     createRoot((dispose) => {
       const form = createForm(Survey);
-      const element = <T extends HTMLElement>(tag: string, attributes: Record<string, string>): T => {
-        const created = document.createElement(tag);
-        for (const [name, value] of Object.entries(attributes)) created.setAttribute(name, value);
-        // The created element is the tag's element type.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        return created as T;
-      };
-      const name = element<HTMLInputElement>("input", { value: "Grace" });
+      const name = inputWith("text", "Grace");
       createField(form.root.at("name")).ref(name);
       expect(name.value).toBe("Ada");
 
       const tags = createField(form.root.at("tags"));
-      const [a, b] = ["a", "b"].map((value) => element<HTMLInputElement>("input", { type: "checkbox", value }));
+      const [a, b] = ["a", "b"].map((value) => inputWith("checkbox", value));
       if (!a || !b) throw new Error("No boxes.");
       a.checked = true;
       tags.ref(a);
@@ -194,18 +190,18 @@ describe("ref", () => {
       expect([a.checked, b.checked]).toEqual([false, true]);
 
       const plan = createField(form.root.at("plan"));
-      const [free, pro] = ["free", "pro"].map((value) => element<HTMLInputElement>("input", { type: "radio", value }));
+      const [free, pro] = ["free", "pro"].map((value) => inputWith("radio", value));
       if (!free || !pro) throw new Error("No radios.");
       free.checked = true;
       plan.ref(free);
       plan.ref(pro);
       expect([free.checked, pro.checked]).toEqual([false, true]);
 
-      const agree = element<HTMLInputElement>("input", { type: "checkbox" });
+      const agree = inputWith("checkbox");
       createField(form.root.at("agree")).ref(agree);
       expect(agree.checked).toBe(true);
 
-      const select = element<HTMLSelectElement>("select", {});
+      const select = document.createElement("select");
       select.append(new Option("Small", "s"), new Option("Large", "l"));
       createField(form.root.at("size")).ref(select);
       expect(select.value).toBe("l");

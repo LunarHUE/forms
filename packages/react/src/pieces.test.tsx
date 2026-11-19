@@ -110,7 +110,7 @@ function savedDraft(value: unknown) {
 }
 
 const settings = createForms().define({
-  defaultValues: { phone: "", price: 3 as number | undefined, terms: false, size: "s" },
+  defaultValues: { phone: "", price: 3, terms: false, size: "s" },
   plugins: [
     persist("draft", savedDraft({ phone: "5551234", price: 12, terms: true, size: "l" })),
     mask({ phone: { clean: digits, display: formatPhone } }),
@@ -162,7 +162,7 @@ function Settings() {
       </form.Field>
       <form.Field name="size">
         {(field) => (
-          <select aria-label="size" {...inputProps(field, { kind: "select" })}>
+          <select aria-label="size" {...inputProps(field, { kind: "select", empty: "" })}>
             <option value="s">Small</option>
             <option value="l">Large</option>
           </select>
@@ -214,7 +214,7 @@ function Plain() {
       <form.Field name="terms">{(field) => <input aria-label="terms" {...inputProps(field, { kind: "checkbox" })} />}</form.Field>
       <form.Field name="size">
         {(field) => (
-          <select aria-label="size" {...inputProps(field, { kind: "select" })}>
+          <select aria-label="size" {...inputProps(field, { kind: "select", empty: "" })}>
             <option value="s">Small</option>
             <option value="l">Large</option>
           </select>
