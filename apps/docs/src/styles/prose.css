@@ -202,10 +202,11 @@
 
 /*
  * Components, outside the layers so this beats their own `my-*` utilities:
- * install lines and code blocks sit 1.25rem from their neighbours.
+ * install lines and code blocks sit 1.25rem from their neighbours. The code
+ * block in a demo's Code view fills its frame instead.
  */
 .prose [data-install],
-.prose [data-slot="code-block"] {
+.prose [data-slot="code-block"]:not([data-slot="demo"] *) {
   margin-block: 1.25rem;
 }
 .prose > :first-child:is([data-install], [data-slot="code-block"]),
