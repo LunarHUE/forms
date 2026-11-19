@@ -1,0 +1,97 @@
+---
+/**
+ * The page frame inside the shell: breadcrumb, title, lead, the MDX content
+ * in `.prose`, prev/next cards and "On this page".
+ *
+ *   <Article title description breadcrumb={[{ label: "Plugins" }, { label: "Masks" }]}
+ *            headings={headings} previous={previous} next={next}>
+ *     <Content components={mdxComponents} />
+ *   </Article>
+ *
+ * From 1280px: a content column up to 720px with the breadcrumb above the
+ * title, and a 220px "On this page" rail beside it. The two are centred as a
+ * group in the space right of the sidebar.
+ *
+ * Below 1280px there is no rail. A bar across the top holds the breadcrumb
+ * and an "On this page" toggle that opens the list inside the bar, pushing
+ * the page down. Its inner row lines up with the content column. The bar
+ * pins under the header: it reads `--docs-header-height` (0 unless the shell
+ * sets it) and sets `--docs-bar-height`, which headings add to their
+ * scroll-margin.
+ *
+ * `headings` are the page's own (depth 2 and 3 are kept); the title comes
+ * first in the list and links to the H1 (`#top`).
+ */
+import type { NavItem } from "@/lib/nav";
+
+import Breadcrumb, { type Crumb } from "./Breadcrumb.astro";
+import MobileToc from "./MobileToc";
+import PrevNext from "./PrevNext.astro";
+import Toc from "./Toc";
+import { TOP_ID, type TocItem } from "./toc-list";
+import "@/styles/prose.css";
+
+interface Props {
+  /** The H1. */
+  title: string;
+  /** The lead under the H1. */
+  description: string;
+  /** Section, then page. The last item is this page. */
+  breadcrumb: Crumb[];
+  headings: readonly TocItem[];
+  previous?: NavItem;
+  next?: NavItem;
+}
+
+const { title, description, breadcrumb, headings, previous, next } = Astro.props;
+const toc: TocItem[] = [
+  { depth: 1, slug: TOP_ID, text: title },
+  ...headings
+    .filter((heading) => heading.depth === 2 || heading.depth === 3)
+    .map(({ depth, slug, text }) => ({ depth, slug, text })),
+];
+// Side padding, shared by the bar's inner row and the column so they line up.
+const gutter = "px-4 sm:px-6 lg:px-8";
+---
+
+<div>
+  <div class="docs-bar sticky z-20 border-b bg-background xl:hidden">
+    <div class={gutter}>
+      <div class="mx-auto max-w-[720px]">
+        <MobileToc client:media="(max-width: 1279px)" items={toc}>
+          <Breadcrumb items={breadcrumb} />
+        </MobileToc>
+      </div>
+    </div>
+  </div>
+  <div class:list={["flex justify-center gap-12 2xl:gap-20", gutter]}>
+    <article class="w-full max-w-[720px] min-w-0 pt-7 pb-16 xl:pt-10">
+      <Breadcrumb items={breadcrumb} class="mb-4 hidden xl:block" />
+      <header>
+        <h1 id={TOP_ID} class="text-[2rem] leading-10 font-bold tracking-[-0.025em] sm:text-[2.375rem] sm:leading-[46px]">
+          {title}
+        </h1>
+        <p class="mt-2 text-lg leading-7 text-muted-foreground sm:text-[1.1875rem] sm:leading-8">{description}</p>
+      </header>
+      <div class="prose mt-8">
+        <slot />
+      </div>
+      <PrevNext previous={previous} next={next} />
+    </article>
+    <aside class="hidden w-[220px] shrink-0 pt-10 xl:block">
+      <div class="docs-rail sticky overflow-y-auto overscroll-contain pb-6">
+        <Toc client:media="(min-width: 1280px)" items={toc} />
+      </div>
+    </aside>
+  </div>
+</div>
+
+<style>
+  .docs-bar {
+    top: var(--docs-header-height, 0px);
+  }
+  .docs-rail {
+    top: calc(var(--docs-header-height, 0px) + 2.5rem);
+    max-height: calc(100dvh - var(--docs-header-height, 0px) - 2.5rem);
+  }
+</style>

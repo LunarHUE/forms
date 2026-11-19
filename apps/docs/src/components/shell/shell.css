@@ -16,3 +16,9 @@ html[data-framework="solid"] [data-sidebar-for="react"] {
     display: block !important;
   }
 }
+
+/* The header is sticky and 56px (h-14) tall. Article's phone bar, its TOC
+   rail and heading scroll margins sit under it. */
+:root {
+  --docs-header-height: 3.5rem;
+}

@@ -3,14 +3,14 @@ import type { GetStaticPaths } from "astro";
 import { render } from "astro:content";
 
 import { mdxComponents } from "@/components/mdx";
+import Article from "@/components/page/Article.astro";
 import Shell from "@/components/shell/Shell.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
-import { alternates, pagination, sidebar } from "@/lib/nav";
+import { headingsFor } from "@/lib/mdx/framework-blocks";
+import { alternates, pagination, SECTION_LABELS, sidebar } from "@/lib/nav";
 import { docHref } from "@/lib/routes";
 import { VERSIONS } from "@/lib/versions";
-
-// Bare markup inside the shell until the page frame replaces it.
 
 export const getStaticPaths = (async () => {
   const entries = await getDocs();
@@ -50,8 +50,8 @@ interface Props {
 }
 
 const { entry, framework, version, sidebar: groups, previous, next, alternates: others } = Astro.props;
-const { Content } = await render(entry);
-const { title, description } = entry.data;
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+const { title, description, section } = entry.data;
 ---
 
 <Shell
@@ -64,30 +64,15 @@ const { title, description } = entry.data;
   alternates={others}
 >
   <main>
-    <p>{frameworkLabel(framework)} {version}</p>
-    <h1>{title}</h1>
-    <p>{description}</p>
-    <Content components={mdxComponents} />
-    <nav aria-label="Pagination">
-      {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
-      {next && <a href={next.href} rel="next">Next: {next.label}</a>}
-    </nav>
-    <nav aria-label="Frameworks">
-      <ul>
-        {
-          others.map((other) => (
-            <li>
-              {other.href ? (
-                <a href={other.href} aria-current={other.framework === framework ? "page" : undefined}>
-                  {other.label}
-                </a>
-              ) : (
-                <span>{other.label} (soon)</span>
-              )}
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
+    <Article
+      title={title}
+      description={description}
+      breadcrumb={[{ label: SECTION_LABELS[section] }, { label: title }]}
+      headings={headingsFor(framework, headings, remarkPluginFrontmatter)}
+      previous={previous}
+      next={next}
+    >
+      <Content components={mdxComponents} />
+    </Article>
   </main>
 </Shell>
