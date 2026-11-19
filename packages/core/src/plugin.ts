@@ -395,21 +395,31 @@ export type Requirements = readonly (AnyPlugin | (() => AnyPlugin))[];
 /** The plugins a `requires` list names: each factory's result, or the plugin. Internal. */
 export type RequiredPlugins<R extends Requirements> = { readonly [K in keyof R]: R[K] extends () => infer T ? T : R[K] };
 
-/** A list of plugins, as `createFormsCore({ plugins })` takes it. */
-export type Plugins = readonly AnyPlugin[];
+/** What a plugin list may hold in place of a plugin, as in `dev && devtools()`. The store skips it. */
+type NoPlugin = false | null | undefined;
+
+/**
+ * A list of plugins, as `createFormsCore({ plugins })` takes it. An entry
+ * can be `false`, `null` or `undefined`, so `dev && devtools()` works. The
+ * types count a plugin that may be one of those as not installed.
+ */
+export type Plugins = readonly (AnyPlugin | NoPlugin)[];
+
+/** The entries of `P` that are always a plugin, as a union. Internal. */
+type Installed<P extends Plugins> = { readonly [K in keyof P]: [Extract<P[K], NoPlugin>] extends [never] ? P[K] : never }[number];
 
 /**
  * Plugins that fit a form of value type `V`. A plugin that names the value
  * type it works on says through `"~value"` how it must match `V`: `bind`
  * must name `V` itself. Every other plugin fits.
  */
-export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: V) => V })[];
+export type PluginsFor<V> = readonly ((AnyPlugin & { readonly "~value"?: (value: V) => V }) | NoPlugin)[];
 
 /**
  * The names of the plugins in `P`, as a union. A plugin whose name is a
  * plain `string`, not a literal, adds nothing.
  */
-export type PluginNames<P extends Plugins> = P[number] extends infer T
+export type PluginNames<P extends Plugins> = Installed<P> extends infer T
   ? T extends { readonly name: infer N extends string }
     ? string extends N
       ? never
@@ -419,7 +429,7 @@ export type PluginNames<P extends Plugins> = P[number] extends infer T
 
 /** The schema types the schema plugins in `P` accept. Internal. */
 export type PluginSchemas<P extends Plugins> =
-  P[number] extends infer T ? (T extends { readonly schema?: SchemaAdapter<infer S> } ? S : never) : never;
+  Installed<P> extends infer T ? (T extends { readonly schema?: SchemaAdapter<infer S> } ? S : never) : never;
 
 /** True when a schema plugin in `P` accepts schema type `S`. Internal. */
 export type HasSchemaPlugin<S, P extends Plugins> = [S] extends [never]
@@ -438,7 +448,7 @@ type ApiName<T> =
 type ApiOf<T> = T extends PluginMembers<infer A, string, any, any, any, any> ? A : never;
 
 /** The APIs of the plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
-export type PluginApis<P extends Plugins> = { readonly [T in P[number] as ApiName<T>]: ApiOf<T> };
+export type PluginApis<P extends Plugins> = { readonly [T in Installed<P> as ApiName<T>]: ApiOf<T> };
 
 /** What `Needs` gives when plugins are missing. Each key names one to add, and `By` what uses it. */
 type AddPlugins<N extends string, By extends string> = {
@@ -458,7 +468,7 @@ export type Needs<Installed extends string, N extends string, T, By extends stri
   : AddPlugins<Exclude<N, Installed>, By>;
 
 /** The names of the plugins the plugins in `P` require. Internal. */
-export type RequiredNames<P extends Plugins> = P[number] extends infer T
+export type RequiredNames<P extends Plugins> = Exclude<P[number], NoPlugin> extends infer T
   ? T extends { readonly "~requires"?: infer Q extends Plugins }
     ? PluginNames<Q>
     : never
@@ -473,7 +483,7 @@ export type RequiredNames<P extends Plugins> = P[number] extends infer T
 export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<RequiredNames<P>, Installed>] extends [never]
   ? unknown
   : {
-      readonly [T in P[number] as T extends { readonly "~requires"?: infer Q extends Plugins }
+      readonly [T in Exclude<P[number], NoPlugin> as T extends { readonly "~requires"?: infer Q extends Plugins }
         ? Exclude<PluginNames<Q>, Installed> extends infer K extends string
           ? [K] extends [never]
             ? never

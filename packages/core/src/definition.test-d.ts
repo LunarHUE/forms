@@ -36,6 +36,7 @@ interface OtherSchema<I, O = I> extends StandardSchemaV1<I, O> {
 declare const createFormsCore: CreateFormsCore;
 declare const fakePlugin: Plugin<undefined, "fake", never, never, FakeSchema<unknown>>;
 declare const dirty: () => Plugin<undefined, "dirty">;
+declare const history: () => Plugin<{ undo(): void }, "history">;
 
 interface User {
   name: string;
@@ -230,6 +231,26 @@ describe("dirty tracking", () => {
   it("names the plugin to install in the type of equals", () => {
     type Bare = NonNullable<PlainDefinition<{ name: string }, FormError, undefined, unknown>["equals"]>;
     expectTypeOf<Bare>().toExtend<{ readonly "Add dirty() to this form's plugins": never }>();
+  });
+});
+
+describe("entries that aren't plugins", () => {
+  const dev = Math.random() > 0.5;
+
+  it("are allowed in every plugin list", () => {
+    const core = createFormsCore({ plugins: [dirty(), false, null, undefined] });
+    core.define({ defaultValues: { name: "" }, plugins: [dev && history(), null] });
+  });
+
+  it("count a plugin that may be missing as not installed", () => {
+    type Maybe = [false | ReturnType<typeof dirty>];
+    expectTypeOf<PluginNames<Maybe>>().toEqualTypeOf<never>();
+    expectTypeOf<PluginNames<[ReturnType<typeof dirty>, null]>>().toEqualTypeOf<"dirty">();
+    // @ts-expect-error: dirty tracking may be missing
+    createFormsCore({ plugins: [dev && dirty()], equals });
+    const form = createFormsCore({ plugins: [dev && history(), dirty()] }).define({ defaultValues: { name: "" } }).createStore();
+    // @ts-expect-error: history may be missing, so its API isn't typed
+    void form.plugins.history;
   });
 });
 

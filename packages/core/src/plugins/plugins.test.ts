@@ -1081,6 +1081,16 @@ describe("revalidation", () => {
 const starts = (name: string, value: Contact | undefined, seen?: unknown[]) =>
   definePlugin({ name, initial: (given) => (seen?.push(given), value), setup: () => ({}) });
 
+describe("a plugin list", () => {
+  it("skips false, null and undefined", () => {
+    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
+    const store = createFormsCore({ plugins: [false, counter, null] })
+      .define({ defaultValues: contact(), plugins: [undefined] })
+      .createStore();
+    expect(store.plugins).toEqual({ counter: { count: 1 } });
+  });
+});
+
 describe("initial", () => {
   it("starts the store, its baseline and its server snapshot from the value, with no record", () => {
     const { plugin, calls } = watcher("watch");

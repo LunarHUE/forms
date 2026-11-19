@@ -39,6 +39,8 @@ rules.meta(field).hidden;
 
 Rules on a fieldset get the fieldset's value: `forms.fieldset(Billing, ruled({ ... }))`. To write rules apart from a definition, name the type, as `ruled<Order>({ ... })`.
 
+A plugin list can hold `false`, `null` or `undefined`, as in `plugins: [mask(), dev && devtools()]`. The form skips them, and the types count a plugin that may be missing as not installed.
+
 For plugin authors:
 
 - `definePlugin` takes `attach(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. Write a typed constructor for the parts, as `(config): Part<"mask", string> => ({ plugin: "mask", config })`.

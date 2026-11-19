@@ -11,7 +11,7 @@ import type {
   Equals,
 } from "./definition.js";
 import type { FormError } from "./errors.js";
-import type { Part, PluginApis, PluginNames, Plugins } from "./plugin.js";
+import type { AnyPlugin, Part, PluginApis, PluginNames, Plugins } from "./plugin.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { problem } from "./problem.js";
@@ -66,7 +66,8 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
   const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined, parts: readonly Part[]): AnyStoreOptions => {
     const { schema } = definition;
     // The shared plugins run first, then the definition's own, then the instance's.
-    const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])];
+    // Each list can hold `false`, `null` or `undefined` in place of a plugin, as from `dev && devtools()`.
+    const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])].filter((plugin): plugin is AnyPlugin => !!plugin);
     // The first schema plugin with the schema's vendor wins, so a later one with the same vendor is never asked.
     // An adapter only ever gets schemas whose vendor it named, which are the schemas it supports.
     const adapter: SchemaAdapter | undefined =

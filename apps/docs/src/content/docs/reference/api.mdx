@@ -43,6 +43,11 @@ createForms(options?: {
 }): Forms
 ```
 
+A plugin list can hold `false`, `null` or `undefined` in place of a plugin,
+so `plugins: [mask(), dev && devtools()]` works and a bundler can drop the
+plugin it never uses. The types count a plugin that may be missing as not
+installed: with `dev && dirty()` in the list, `equals` is still a type error.
+
 | | |
 | --- | --- |
 | `forms.define(config, ...parts)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. `parts` attach at the root when the store is made. |
