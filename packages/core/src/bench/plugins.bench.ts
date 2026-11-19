@@ -1,10 +1,10 @@
 import { test } from "vitest";
-import { createFormsCore, type Plugins } from "../index.js";
+import { createFormsCore, type Part, type Plugins } from "../index.js";
 import type { When } from "../plugin.js";
 import { history } from "../plugins/history.js";
-import { mask, upper } from "../plugins/mask.js";
+import { mask, masked, upper } from "../plugins/mask.js";
 import { persist } from "../plugins/persist.js";
-import { rules } from "../plugins/rules.js";
+import { ruled, rules } from "../plugins/rules.js";
 import { definePlugin } from "../plugins.js";
 import { pluginRowsForm } from "./plugin-rows.js";
 
@@ -25,7 +25,7 @@ const storage = {
 // Item keys are made by the store, so this reads the first one from a store of the same shape.
 const firstKey = createFormsCore().define({ defaultValues: { rows: [{ name: "" }] } }).createStore().root.at("rows").peek().keys[0];
 
-const cases: readonly (readonly [label: string, plugins: Plugins])[] = [
+const cases: readonly (readonly [label: string, plugins: Plugins, parts?: readonly Part[]])[] = [
   ["zero plugins", []],
   ["one no-op beforeWrite", [noopBefore("before")]],
   ["one deferred no-op observer", [noopObserver("watch", "deferred")]],
@@ -35,19 +35,18 @@ const cases: readonly (readonly [label: string, plugins: Plugins])[] = [
   ],
   [
     "four shipped plugins",
+    [mask(), rules(), history(), persist("bench", storage)],
     [
-      mask({ [`rows.${String(firstKey)}.name`]: upper }),
-      rules<{ rows: { name: string }[] }>({ rows: (value) => ({ hidden: value.rows[0]?.name === "HIDE" }) }),
-      history(),
-      persist("bench", storage),
+      { ...masked({ clean: upper }), path: `rows.${String(firstKey)}.name` },
+      ruled<{ rows: { name: string }[] }>({ rows: (value) => ({ hidden: value.rows[0]?.name === "HIDE" }) }),
     ],
   ],
 ];
 
 for (const count of [200, 1000]) {
   test(`${count} rows`, async ({ bench }) => {
-    for (const [label, plugins] of cases) {
-      const form = pluginRowsForm(count, plugins);
+    for (const [label, plugins, parts] of cases) {
+      const form = pluginRowsForm(count, plugins, true, parts);
       let flip = false;
       await bench(`${label} (${count} rows)`, async () => {
         flip = !flip;
