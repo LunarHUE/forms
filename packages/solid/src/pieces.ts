@@ -93,7 +93,12 @@ function showState(element: HTMLElement, value: unknown, text: string): void {
  * the element registrations belong to it.
  */
 export function addPieces(field: object, handle: PiecesHandle, read: () => FieldSnapshot<unknown, unknown>): void {
-  const [typed, setTyped] = createSignal<NumberText | undefined>(undefined, { ownedWrite: true });
+  // Equal typed text doesn't notify. Chrome reports `2.` as `2`, and writing
+  // `2` back into a number input drops the dot and moves the caret to the start.
+  const [typed, setTyped] = createSignal<NumberText | undefined>(undefined, {
+    ownedWrite: true,
+    equals: (before, after) => before?.text === after?.text && Object.is(before?.value, after?.value),
+  });
   const register = elementRegistrar(handle);
   const current = () => handle.store.getSnapshot(handle.path);
   const textOf = (typedText: NumberText | undefined, { value, meta }: FieldSnapshot<unknown, unknown>): string => {
