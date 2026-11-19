@@ -1,0 +1,32 @@
+---
+/*
+ * The desktop sidebar: the picker island and the static nav. Hidden under
+ * 1024px, where MobileNav takes over.
+ *
+ * `switchable` marks one of several sidebars on a framework-free page;
+ * shell.css shows the one matching html[data-framework] (React by default).
+ */
+import { FrameworkPicker } from "./FrameworkPicker";
+import { NavTree } from "./NavTree";
+import type { SidebarData } from "./sidebar";
+
+interface Props extends SidebarData {
+  currentSlug?: string;
+  switchable?: boolean;
+}
+
+const { framework, version, items, groups, currentSlug, switchable = false } = Astro.props;
+---
+
+<aside
+  class="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-70 shrink-0 overflow-y-auto border-r bg-sidebar text-sidebar-foreground lg:block"
+  data-sidebar
+  data-sidebar-for={switchable ? framework : undefined}
+>
+  <div class="px-4 pt-5">
+    <FrameworkPicker client:idle items={items} framework={framework} version={version} />
+  </div>
+  <div class="px-4 pt-7 pb-8">
+    <NavTree groups={groups} currentSlug={currentSlug} />
+  </div>
+</aside>

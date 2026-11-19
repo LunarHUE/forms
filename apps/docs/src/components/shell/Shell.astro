@@ -1,0 +1,133 @@
+---
+/*
+ * The site frame around every docs page: header, sidebar and the main area.
+ * It renders Layout itself, so a page uses Shell instead of Layout.
+ *
+ *   <Shell
+ *     title="Masks · React" description="..."
+ *     framework="react" version="0.1.1" groups={sidebar} currentSlug="plugins/masks"
+ *     alternates={alternates(pages, "plugins/masks", "0.1.1")}
+ *   >
+ *     ...page content...
+ *   </Shell>
+ *
+ * Props:
+ *   title, description, noindex   passed to Layout.
+ *   framework     the page's framework. Leave it out on framework-free pages
+ *                 (errors, 404): Shell then builds a sidebar per framework
+ *                 itself and shows the last-used one (React by default).
+ *   version       the docs version; defaults to the latest.
+ *   groups        the sidebar from `sidebar()`. Needed with `framework`,
+ *                 ignored without it.
+ *   currentSlug   marks the active nav item (`errors` on the errors page).
+ *   alternates    the page in each framework, from `alternates()`. The
+ *                 picker's framework items link there. Shell works it out
+ *                 from `currentSlug` when it is left out.
+ *
+ * Slots: default fills everything right of the sidebar on desktop (the full
+ * width under the header on phones), inside `<div id="content">`. The page
+ * lays out its own column and right rail there. `head` goes to Layout.
+ */
+import { getDocs, toNavPage } from "@/lib/content";
+import { AVAILABLE_FRAMEWORKS, type Framework } from "@/lib/frameworks";
+import { alternates as alternatesFor, sidebar, type NavGroup } from "@/lib/nav";
+import { INTRODUCTION_SLUG } from "@/lib/routes";
+import { LATEST_VERSION } from "@/lib/versions";
+import Layout from "@/layouts/Layout.astro";
+
+import Header from "./Header.astro";
+import { pickerItems } from "./picker";
+import Sidebar from "./Sidebar.astro";
+import type { SidebarData } from "./sidebar";
+import "./shell.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  noindex?: boolean;
+  framework?: Framework;
+  version?: string;
+  groups?: readonly NavGroup[];
+  currentSlug?: string;
+  alternates?: ReturnType<typeof alternatesFor>;
+}
+
+const {
+  title,
+  description,
+  noindex,
+  framework,
+  version = LATEST_VERSION,
+  groups = [],
+  currentSlug,
+  alternates: others,
+} = Astro.props;
+
+let sidebars: SidebarData[];
+if (framework) {
+  const pageAlternates =
+    others ?? alternatesFor((await getDocs()).map(toNavPage), currentSlug ?? INTRODUCTION_SLUG, version);
+  const items = pickerItems({ framework, slug: currentSlug, alternates: pageAlternates });
+  sidebars = [{ framework, version, items, groups }];
+} else {
+  const pages = (await getDocs()).map(toNavPage);
+  sidebars = AVAILABLE_FRAMEWORKS.map((id) => ({
+    framework: id,
+    version: LATEST_VERSION,
+    // Without alternates the framework items have no href, so picking one
+    // swaps the sidebar and the page stays.
+    items: pickerItems({ framework: id }),
+    groups: sidebar(pages, id),
+  }));
+}
+---
+
+<Layout title={title} description={description} framework={framework} noindex={noindex}>
+  <slot name="head" slot="head" />
+  <a
+    href="#content"
+    class="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:ring-3 focus:ring-ring/30"
+  >
+    Skip to content
+  </a>
+  <Header framework={framework} sidebars={sidebars} currentSlug={currentSlug} />
+  <div class="flex">
+    {
+      sidebars.map((data) => (
+        <Sidebar {...data} currentSlug={currentSlug} switchable={sidebars.length > 1} />
+      ))
+    }
+    <script is:inline>
+      // Keep the sidebar's scroll position across page loads, and make sure the
+      // current item is in view. Runs before paint, right after the sidebar.
+      (() => {
+        const key = "forms:sidebar-scroll";
+        const asides = [...document.querySelectorAll("[data-sidebar]")];
+        let saved = null;
+        try {
+          saved = sessionStorage.getItem(key);
+        } catch {}
+        for (const aside of asides) {
+          if (saved !== null) aside.scrollTop = Number(saved);
+          const current = aside.querySelector('[aria-current="page"]');
+          if (!current) continue;
+          const top = current.offsetTop;
+          const bottom = top + current.offsetHeight;
+          if (top < aside.scrollTop || bottom > aside.scrollTop + aside.clientHeight) {
+            aside.scrollTop = top - aside.clientHeight / 2;
+          }
+        }
+        addEventListener("pagehide", () => {
+          const visible = asides.find((aside) => aside.getClientRects().length > 0);
+          if (!visible) return;
+          try {
+            sessionStorage.setItem(key, String(visible.scrollTop));
+          } catch {}
+        });
+      })();
+    </script>
+    <div id="content" class="min-w-0 flex-1">
+      <slot />
+    </div>
+  </div>
+</Layout>

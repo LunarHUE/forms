@@ -1,0 +1,18 @@
+/*
+ * Framework-free pages (errors, 404) render one sidebar per framework and show
+ * the last-used one. The boot script sets html[data-framework] before paint.
+ * React shows when nothing is set.
+ */
+[data-sidebar-for]:not([data-sidebar-for="react"]) {
+  display: none !important;
+}
+
+html[data-framework="solid"] [data-sidebar-for="react"] {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  html[data-framework="solid"] [data-sidebar-for="solid"] {
+    display: block !important;
+  }
+}
