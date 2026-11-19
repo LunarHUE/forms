@@ -146,7 +146,8 @@ export function createPluginHost(
   }
   // Every set of hooks, in hook order: by plugin, then by when it attached.
   const attached: Attached[] = [];
-  // The paths each part is attached at, so attaching twice does nothing.
+  // The paths each part is attached at, so attaching twice does nothing. A
+  // pinned copy counts as the part it copies.
   const done = new Map<Part, Set<string>>();
   // True when some hooks have `onWrite`. Records are only made then.
   let listening = false;
@@ -197,7 +198,7 @@ export function createPluginHost(
     const { part, path } = at;
     if (!part || raw.isLive(path)) return true;
     attached.splice(attached.indexOf(at), 1);
-    done.get(part)?.delete(JSON.stringify(path));
+    done.get(part["~of"] ?? part)?.delete(JSON.stringify(path));
     return false;
   };
 
@@ -495,8 +496,9 @@ export function createPluginHost(
       const name = raw.getSnapshot(base).name;
       const path = part.path === undefined ? base : raw.pathOf(name ? `${name}.${part.path}` : part.path);
       if (!path) continue;
-      let seen = done.get(part);
-      if (!seen) done.set(part, (seen = new Set()));
+      const origin = part["~of"] ?? part;
+      let seen = done.get(origin);
+      if (!seen) done.set(origin, (seen = new Set()));
       const key = JSON.stringify(path);
       if (seen.has(key)) continue;
       seen.add(key);

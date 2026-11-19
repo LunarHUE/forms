@@ -27,6 +27,15 @@ describe("attach", () => {
     expect(errors).toEqual([]);
   });
 
+  it("attaches a pinned copy of a part once with the part", () => {
+    const seen: { path: Path; config: unknown }[] = [];
+    const part = tag("!");
+    const pinned: Part<"tag", unknown> = { ...part, path: "a", "~of": part };
+    const { store } = testStore({ defaultValues: { a: "" }, plugins: [tagger(seen)] }, pinned);
+    attach(store.root.at("a"), [part]);
+    expect(seen).toEqual([{ path: ["a"], config: "!" }]);
+  });
+
   it("walks a write above the path down to it, and leaves the rest of the write alone", () => {
     const { store, errors } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [tagger()] }, tag("!", "a.b"));
     store.root.setValue({ a: { b: "x", c: "y" } });

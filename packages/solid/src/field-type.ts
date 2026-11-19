@@ -1,9 +1,9 @@
 import type { Part } from "@lunarhue/forms-core";
 import type { AnyComponent, FieldType, PartValueOf } from "./forms.js";
 
-/** `parts` pinned at the dotted name `name`, below any name they had. */
+/** `parts` pinned at the dotted name `name`, below any name they had. A copy attaches once with the part it copies. */
 export const pin = (parts: readonly Part[], name: string): readonly Part[] =>
-  parts.map((part) => ({ ...part, path: part.path === undefined ? name : `${name}.${part.path}` }));
+  parts.map((part) => ({ ...part, path: part.path === undefined ? name : `${name}.${part.path}`, "~of": part["~of"] ?? part }));
 
 /**
  * Makes a field type: `component` with `parts` that attach at each field it

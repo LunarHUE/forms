@@ -493,6 +493,8 @@ export interface Part<N extends string = string, V = never> {
   readonly path?: string;
   /** Type information only: the values the part fits. */
   readonly "~fits"?: (value: V) => void;
+  /** The part this one is a pinned copy of, so the two attach once at a path. Internal. */
+  readonly "~of"?: Part;
 }
 
 /** One part or a list of them, as `define` takes them after the config. */
