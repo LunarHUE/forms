@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { attach } from "../attach.js";
 import { createFormsCore } from "../index.js";
-import type { Attachment, Part, Path, PluginContext } from "../index.js";
+import type { Part, Path, PluginContext } from "../index.js";
+import type { Attachment } from "../plugin.js";
 import { definePlugin, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
 import { testStore } from "./testing.js";

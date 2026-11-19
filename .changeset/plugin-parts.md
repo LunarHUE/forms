@@ -4,7 +4,7 @@
 "@lunarhue/forms-solid": minor
 ---
 
-Plugins that work per field now take parts. A part is a plugin's config for one place: a field type, a fieldset or a form. The plugin goes in the form's plugins once, with no config, and its parts go where they apply. Using a field type or fieldset whose parts need a plugin the form lacks is a type error, such as `Add mask() to this form's plugins: PhoneField uses it`. Without types the store throws `plugins:missing`.
+Plugins that work per field now take parts. A part is a plugin's config for one place: a field type, a fieldset or a form. The plugin goes in the form's plugins once, with no config, and its parts go where they apply. Using a field type or fieldset whose parts need a plugin the form lacks is a type error, such as `Add mask() to this form's plugins: PhoneField uses it`. Without types the store throws `plugins:missing` in development.
 
 `defineField(component, ...parts)` from the adapters makes a field type. Register it in `fields` like a component. Its parts attach at each field it renders, the first time it renders it. `forms.fieldset(schema, ...parts)` and `forms.fieldset<V>(...parts)` take parts for each field the fieldset is used on, and `forms.define(config, ...parts)` takes parts for the whole form. `PhoneField.at(name)` and `Billing.at(name)` pin a field type's or fieldset's parts at one field, for `define`, so they attach when the store is made.
 
@@ -50,4 +50,4 @@ For plugin authors:
 - `FieldDisplay` meta is gone. Return `display` and `edit` hooks from `attach` instead.
 - What `attach` writes makes no write records. A value `initial` cleans moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
 
-New exports: `attach`, `Part`, `Parts`, `PartNames`, `Attachment`, `Requirements`, `RequiresMet`, `Nested`, `DefineParts`, `MetaHolder` and `PluginMembers` from core, `field` and `FieldType` from the adapters, and `FieldValueOf` from React.
+New exports: `Part` and `Parts` from core, and `defineField` and `FieldType` from the adapters. Core also exports `attach` for the adapters, and `MetaHolder`, `PluginMembers`, `Nested` and `DefineParts` because declarations name them. Those are internal.

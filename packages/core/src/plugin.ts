@@ -523,10 +523,10 @@ export interface Part<N extends string = string, V = never> {
 /** One part or a list of them, as `define` takes them after the config. */
 export type Parts<N extends string = string, V = never> = Part<N, V> | readonly Part<N, V>[];
 
-/** The plugin names the parts in `P` need. */
+/** The plugin names the parts in `P` need. Internal. */
 export type PartNames<P> = P extends readonly (infer T)[] ? PartNames<T> : P extends Part<infer N> ? N : never;
 
-/** The value type `{ a: { b: V } }` for dotted name `"a.b"`, what a part pinned at that name fits. */
+/** The value type `{ a: { b: V } }` for dotted name `"a.b"`, what a part pinned at that name fits. Internal. */
 export type Nested<K extends string, V> = K extends `${infer H}.${infer T}` ? { readonly [P in H]: Nested<T, V> } : { readonly [P in K]: V };
 
 /**

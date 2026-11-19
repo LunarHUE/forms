@@ -5,13 +5,11 @@ export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 
 export type {
-  Attachment,
   BaselineAt,
   MetaHolder,
   Needs,
   Nested,
   Part,
-  PartNames,
   Parts,
   Plugin,
   PluginApis,
@@ -23,8 +21,6 @@ export type {
   PluginNames,
   Plugins,
   PluginsFor,
-  Requirements,
-  RequiresMet,
   TextControl,
   Write,
   WriteCause,

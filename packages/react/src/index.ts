@@ -31,7 +31,6 @@ export type {
   FieldApiOf,
   FieldComponentMap,
   FieldType,
-  FieldValueOf,
   ExactFieldApi,
   Fieldset,
   HandleOf,

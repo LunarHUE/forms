@@ -280,7 +280,7 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
  * shared and `D` the definition's own, that fit its value. The value comes
  * from the shared plugins only: TypeScript types the parts before it has
  * read `D`, and a schema plugin among `D` would make it the schema's input
- * rather than its `Draft`.
+ * rather than its `Draft`. Internal.
  */
 export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = Parts<
   PluginNames<Combined<P, D>>,
