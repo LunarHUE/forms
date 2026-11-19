@@ -11,4 +11,4 @@ Validation is built into core again. A form with no plugins can take `validate` 
 
 Removed types: `IfValidation`, `HasValidation`, `ValidationNotInstalled`, `SchemaNeedsValidation`, `ValidationPlugin`, and `ValidatePropFor` in the adapters. `Scope` and `Fieldset` in the adapters lose their plugin type parameter, and so do the bound component types under them. The `validation:definition` and `validation:validator` errors are gone.
 
-The main entry of core grows by about 2.2 kB brotli, since it now carries the runner.
+The main entry of core grows by about 1.9 kB brotli, since it now carries the runner.

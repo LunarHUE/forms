@@ -89,7 +89,7 @@
         "../core/dist/esm/index.js": "{ createFormsCore }",
         "dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "10.5 kB"
+      "limit": "9.7 kB"
     },
     {
       "name": "core + zod()",
@@ -97,7 +97,7 @@
         "../core/dist/esm/index.js": "{ createFormsCore }",
         "dist/esm/zod.js": "{ zod }"
       },
-      "limit": "10.5 kB"
+      "limit": "9.65 kB"
     }
   ]
 }

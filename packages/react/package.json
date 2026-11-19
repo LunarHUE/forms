@@ -153,7 +153,7 @@
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.7 kB"
+      "limit": "12.45 kB"
     },
     {
       "name": "react + valibot()",
@@ -161,7 +161,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.55 kB"
+      "limit": "12.9 kB"
     },
     {
       "name": "react + dirty()",
@@ -169,7 +169,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
-      "limit": "13.3 kB"
+      "limit": "13 kB"
     },
     {
       "name": "react, everything on",

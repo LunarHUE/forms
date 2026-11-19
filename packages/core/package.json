@@ -147,7 +147,7 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "9.7 kB"
+      "limit": "9.45 kB"
     },
     {
       "name": "./plugins",
@@ -201,7 +201,7 @@
       "name": "./plugins/testing",
       "path": "dist/esm/plugins/testing.js",
       "import": "{ testStore }",
-      "limit": "11.2 kB"
+      "limit": "10.95 kB"
     },
     {
       "name": "history() + mask()",
@@ -217,7 +217,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
-      "limit": "10.3 kB"
+      "limit": "10 kB"
     },
     {
       "name": "dirty() + baselineOnSubmit()",
