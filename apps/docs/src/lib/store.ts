@@ -50,9 +50,9 @@ export const BOOT_CONFIG = {
   darkQuery: "(prefers-color-scheme: dark)",
 } as const;
 
-const isTheme = (value: unknown): value is Theme => THEMES.includes(value as Theme);
-const isPackageManager = (value: unknown): value is PackageManager =>
-  PACKAGE_MANAGERS.includes(value as PackageManager);
+const isTheme = (value: string | null): value is Theme => (THEMES as readonly (string | null)[]).includes(value);
+const isPackageManager = (value: string | null): value is PackageManager =>
+  (PACKAGE_MANAGERS as readonly (string | null)[]).includes(value);
 
 // Storage can throw (blocked cookies, some private modes). Settings then live
 // for the page only.

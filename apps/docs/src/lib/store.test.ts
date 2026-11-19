@@ -62,7 +62,7 @@ describe("store", () => {
   });
 
   it("persists a change, updates <html> and notifies subscribers", () => {
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     subscribe(listener);
     setPackageManager("pnpm");
     expect(getState().pm).toBe("pnpm");
@@ -75,7 +75,7 @@ describe("store", () => {
   });
 
   it("stops notifying after unsubscribe", () => {
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     const unsubscribe = subscribe(listener);
     unsubscribe();
     setTheme("dark");
@@ -100,7 +100,7 @@ describe("store", () => {
   });
 
   it("picks up changes from other tabs", () => {
-    const listener = vi.fn();
+    const listener = vi.fn<() => void>();
     subscribe(listener);
     localStorage.setItem("forms:pm", "yarn");
     globalThis.dispatchEvent(new StorageEvent("storage", { key: "forms:pm", newValue: "yarn" }));

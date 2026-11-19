@@ -11,6 +11,8 @@ type BootConfig = typeof BOOT_CONFIG;
  * `applyToDocument` in store.ts does, and keeps html.dark in step with the OS
  * while the theme is `system`, also on pages without islands.
  */
+// The helpers stay inside `boot` because only its own body is serialized.
+/* oxlint-disable unicorn/consistent-function-scoping */
 export function boot(config: BootConfig, pageFramework: string | null): void {
   const root = document.documentElement;
   const read = (key: string): string | null => {
@@ -49,6 +51,7 @@ export function boot(config: BootConfig, pageFramework: string | null): void {
   apply();
   media.addEventListener("change", apply);
 }
+/* oxlint-enable unicorn/consistent-function-scoping */
 
 /** The inline script text for Layout.astro. */
 export const bootScript = (pageFramework: string | null): string =>
