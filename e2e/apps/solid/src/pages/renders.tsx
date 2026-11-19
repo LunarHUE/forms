@@ -1,8 +1,9 @@
 import { type Line, rendersScenario as scenario } from "@lunarhue/forms-e2e/contract";
-import { createField, createForm, type FieldHandle, useFormContext } from "@lunarhue/forms-solid";
+import { Items, createField, createForm, type FieldHandle, useFormContext } from "@lunarhue/forms-solid";
+import { arrays } from "@lunarhue/forms-solid/plugins";
 import { forms, Probe, Renders, Status, SubmitButton } from "../parts.js";
 
-const order = forms.define(scenario.definition);
+const order = forms.define({ ...scenario.definition, plugins: [arrays()] });
 const { labels, counters, totals } = scenario;
 
 interface LineProps {
@@ -56,7 +57,7 @@ export function RendersPage() {
             <form.TextField name="customer.name" label={labels.name} />
             <form.TextField name="customer.email" label={labels.email} />
             <ol>
-              <form.Items name="lines">{(line, index) => <LineRow line={line} index={index()} />}</form.Items>
+              <Items handle={form.root.at("lines")}>{(line, index) => <LineRow line={line} index={index()} />}</Items>
             </ol>
             <OrderTotal />
             <SubmitButton {...scenario.submit} />

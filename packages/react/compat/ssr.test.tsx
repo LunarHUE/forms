@@ -54,7 +54,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 
 /** Two order forms, built on one copy of the adapter. `ids` gives each form an `id`. */
 function makeApp(adapter: Adapter, ids: boolean) {
-  const order = adapter.createForms({ plugins: [adapter.dirty()], fields: { TextField } }).define({ defaultValues: initial });
+  const order = adapter.createForms({ plugins: [adapter.dirty(), adapter.arrays()], fields: { TextField } }).define({ defaultValues: initial });
 
   function Plan() {
     const plan = adapter.useFormContext(order).root.at("plan");
@@ -81,7 +81,7 @@ function makeApp(adapter: Adapter, ids: boolean) {
           <form {...formProps}>
             <form.TextField name="customer" label="Customer" />
             <Plan />
-            <form.Items name="lines">{(line) => <form.TextField handle={line.at("item")} label="Item" />}</form.Items>
+            <adapter.Items handle={form.root.at("lines")}>{(line) => <form.TextField handle={line.at("item")} label="Item" />}</adapter.Items>
             <Status />
           </form>
         )}

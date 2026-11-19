@@ -15,7 +15,7 @@ import {
   type HandleOf,
   useFormContext,
 } from "@lunarhue/forms-solid";
-import { digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-solid/plugins";
+import { arrays, digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { TextField } from "./input.js";
@@ -53,7 +53,7 @@ export function NoteField(props: { readonly field: ExactFieldApi<string> }) {
 export const PhoneField = defineField(TextField, masked({ clean: digits }));
 
 export const forms = createForms({
-  plugins: [valibot(), history(), mask(), rules()],
+  plugins: [valibot(), arrays(), history(), mask(), rules()],
   fields: { TextField, NumberField, SelectField, NoteField, PhoneField },
 });
 
@@ -115,7 +115,6 @@ export function anyOrderForm() {
 export function orderParts(form: OrderForm) {
   return {
     Field: form.Field,
-    Items: form.Items,
     TextField: form.TextField,
     NumberField: form.NumberField,
     SelectField: form.SelectField,

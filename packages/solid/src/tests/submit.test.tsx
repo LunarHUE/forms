@@ -182,7 +182,7 @@ describe("the form object with no form.Form", () => {
     let second: unknown[] = [];
     mount(() => {
       const form = createForm(Post);
-      const members = () => [form.Field, form.Items, form.TextField, form.Form, form.submit, form.formProps, form.state, form.root];
+      const members = () => [form.Field, form.TextField, form.Form, form.submit, form.formProps, form.state, form.root];
       first = members();
       second = members();
       expect(forms.scope(form.root).TextField).toBe(form.TextField);

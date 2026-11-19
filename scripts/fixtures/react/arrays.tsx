@@ -1,5 +1,5 @@
-// The bare form with an array of fields: items rendered by `form.Items`, added, removed and moved.
-import { createForms, useForm } from "@lunarhue/forms-react";
+// The bare form with an array of fields: items rendered by `Items`, added, removed and moved.
+import { Items, createForms, useForm } from "@lunarhue/forms-react";
 import { arrays } from "@lunarhue/forms-react/plugins";
 import { TextInput } from "./input.js";
 
@@ -13,7 +13,7 @@ export function App() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.Items name="emails">
+          <Items handle={form.root.at("emails")}>
             {(email, index) => (
               <div>
                 <form.Field handle={email.at("address")}>{(field) => <TextInput field={field} />}</form.Field>
@@ -25,7 +25,7 @@ export function App() {
                 </button>
               </div>
             )}
-          </form.Items>
+          </Items>
           <button type="button" onClick={() => emails.push({ address: "" })}>
             Add
           </button>

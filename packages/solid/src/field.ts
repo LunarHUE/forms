@@ -12,10 +12,8 @@ import type {
   ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
-import type { Accessor } from "solid-js";
 import { createFieldApi } from "./field-api.js";
 import type { FieldPieces } from "./pieces.js";
-import { createItemList } from "./items.js";
 import { addValidator } from "./validator.js";
 
 /**
@@ -155,18 +153,6 @@ export interface ArrayHandleLike extends HandleLike {
   /** Returns the item handle for a stable key. */
   item(key: string): unknown;
 }
-
-/**
- * Returns the item handles of an array field, in their current order, as an
- * accessor. It is a memo over the field's `keys`, so it changes only when an
- * item is added, removed or moved, never on an edit inside an item. Each key
- * maps to the same handle object every time, so `<For each={items()}>`
- * keeps a row's DOM through inserts, removes and moves.
- */
-export const createItems: <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]> =
-  // Each entry is what `handle.item` returns, which the type names.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  createItemList as never;
 
 /** What `createValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {

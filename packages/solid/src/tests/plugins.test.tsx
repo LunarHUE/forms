@@ -2,7 +2,7 @@ import type { PluginContext } from "@lunarhue/forms-core";
 import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
 import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
+import { Items, createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 import { arrays } from "../plugins.js";
 
@@ -144,9 +144,9 @@ function LinesPage() {
   const form = createForm(Lines);
   return (
     <>
-      <form.Items name="lines">
+      <Items handle={form.root.at("lines")}>
         {(row) => <form.SkuField handle={row.at("sku")} />}
-      </form.Items>
+      </Items>
       <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
         add
       </button>

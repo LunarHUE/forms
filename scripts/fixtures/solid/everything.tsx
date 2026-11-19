@@ -1,5 +1,5 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
-import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
+import { Items, createForm, createForms, defineField } from "@lunarhue/forms-solid";
 import { arrays, baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
@@ -64,9 +64,9 @@ export function App() {
           </form.Field>
           <address.TextField name="street" label="Street" />
           <address.TextField name="city" label="City" />
-          <form.Items name="lines">
+          <Items handle={form.root.at("lines")}>
             {(line) => <form.TextField handle={line.at("item")} label="Item" />}
-          </form.Items>
+          </Items>
           <button type="button" onClick={() => form.plugins.history.undo()}>
             Undo
           </button>

@@ -1,7 +1,7 @@
 import { type AnyFieldHandle, attach, type FieldSnapshot, type ValidatorInput } from "@lunarhue/forms-core";
 import { type ComponentType, createElement, Fragment, type ReactElement, type ReactNode } from "react";
 import { type FieldView, fieldViewSource } from "./field-api.js";
-import { type IsEqual, useItems, useValidator } from "./field.js";
+import { type IsEqual, useValidator } from "./field.js";
 import type { FieldComponentMap } from "./scope.js";
 import { useSelected } from "./select.js";
 
@@ -26,10 +26,6 @@ interface FieldProps extends OneField {
   readonly select?: (snapshot: FieldSnapshot<unknown, unknown>) => unknown;
   readonly isEqual?: IsEqual<unknown>;
   readonly children: (field: unknown, handle: AnyHandle) => ReactNode;
-}
-
-interface ItemsProps extends Target {
-  readonly children: (item: AnyHandle & { readonly key: string }, index: number) => ReactNode;
 }
 
 /** The field a bound component names: its `handle`, or its dotted `name` below `root`. */
@@ -59,16 +55,6 @@ export function makeScope(root: AnyHandle, fields: FieldComponentMap): AnyScope 
     );
     return createElement(Fragment, null, props.children(value, handle));
   }
-  /** The bound `Items`: one keyed fragment per item. */
-  function Items(props: ItemsProps): ReactElement {
-    const items = useItems(targetOf(root, props));
-    const { children } = props;
-    return createElement(
-      Fragment,
-      null,
-      items.map((item, index) => createElement(Fragment, { key: item.key }, children(item, index))),
-    );
-  }
   const registered: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(fields)) {
     const { component, parts } = "parts" in entry ? entry : { component: entry, parts: [] };
@@ -87,5 +73,5 @@ export function makeScope(root: AnyHandle, fields: FieldComponentMap): AnyScope 
     BoundComponent.displayName = `Bound(${key})`;
     registered[key] = BoundComponent;
   }
-  return { ...registered, root, Field, Items };
+  return { ...registered, root, Field };
 }

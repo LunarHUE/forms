@@ -24,7 +24,7 @@ function TrackedPage() {
   return (
     <>
       <form.Field name="name">{(field) => <span>{String(field.dirty)}</span>}</form.Field>
-      <form.Items name="tags">{(item) => <span>{String(item.peek().dirty)}</span>}</form.Items>
+      <span>{String(form.root.at("tags").item("k0").peek().dirty)}</span>
       <form.ChangedMark name="name" />
       <form.Plain name="name" />
     </>

@@ -15,6 +15,7 @@ import { For, Match, Show, Switch, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
+  Items,
   createDisabledErrors,
   createField,
   createForm,
@@ -193,7 +194,7 @@ function SignupPage() {
           <form.TextField name="name" label="Name" placeholder="Ada" />
           <form.NumberField name="age" label="Age" />
           <form.Field name="billing.city">{(field) => <input {...inputProps(field, { type: "text" })} />}</form.Field>
-          <form.Items name="rows" fallback={<p>No rows</p>}>
+          <Items handle={form.root.at("rows")} fallback={<p>No rows</p>}>
             {(row, index) => (
               <fieldset>
                 <legend>Row {index() + 1}</legend>
@@ -205,7 +206,7 @@ function SignupPage() {
                 </button>
               </fieldset>
             )}
-          </form.Items>
+          </Items>
           <AddressFields field={form.root.at("billing")} title="Billing" />
           <AddressFields field={form.root.at("shipping")} title="Shipping" />
           <SignupSummary />
@@ -434,31 +435,38 @@ describe("Items", () => {
   it("renders item handles keyed by stable keys", () => {
     const form = createForm(Signup);
     void (
-      <form.Items name="rows">
+      <Items handle={form.root.at("rows")}>
         {(row, index) => {
           expectTypeOf(row).toEqualTypeOf<ItemHandle<Row, FormError, "valibot" | "arrays">>();
           expectTypeOf(index).toEqualTypeOf<Accessor<number>>();
           return <form.Field handle={row.at("qty")}>{(field) => <span>{field.value}</span>}</form.Field>;
         }}
-      </form.Items>
+      </Items>
     );
     void (
-      <form.Items handle={form.root.at("tags")}>
+      <Items handle={form.root.at("tags")}>
         {(tag) => {
           expectTypeOf(tag).toEqualTypeOf<ItemHandle<string, FormError, "valibot" | "arrays">>();
           return <form.TextField handle={tag} label="Tag" />;
         }}
-      </form.Items>
+      </Items>
     );
   });
 
-  it("rejects a name that is not an array", () => {
+  it("rejects a handle that is not an array", () => {
     const form = createForm(Signup);
-    expectTypeOf(form.Items).toBeFunction();
-    // @ts-expect-error: name is not an array field
-    void (<form.Items name="name">{() => null}</form.Items>);
+    expectTypeOf(form.root.at("name")).not.toHaveProperty("item");
     // @ts-expect-error: a leaf handle has no items
-    void (<form.Items handle={form.root.at("name")}>{() => null}</form.Items>);
+    void (<Items handle={form.root.at("name")}>{() => null}</Items>);
+  });
+
+  it("needs arrays()", () => {
+    const form = createForm(exactForms.define({ defaultValues: { tags: ["a"] } }));
+    expectTypeOf(form.root.at("tags")).toEqualTypeOf<ArrayHandle<string[]>>();
+    // @ts-expect-error: Add arrays() to this form's plugins
+    void (<Items handle={form.root.at("tags")}>{() => null}</Items>);
+    // @ts-expect-error: Add arrays() to this form's plugins
+    createItems(form.root.at("tags"));
   });
 });
 

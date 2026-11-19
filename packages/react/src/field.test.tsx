@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  Items,
   createForms,
   type FieldApi,
   type FormOf,
@@ -44,7 +45,7 @@ function Line(props: { readonly item: LeafHandle<string>; readonly name: string 
 function Lines(props: { readonly form: FormOf<typeof order> }) {
   const { form } = props;
   return (
-    <form.Items name="lines">
+    <Items handle={form.root.at("lines")}>
       {(line, index) => {
         return (
           <>
@@ -53,11 +54,11 @@ function Lines(props: { readonly form: FormOf<typeof order> }) {
           </>
         );
       }}
-    </form.Items>
+    </Items>
   );
 }
 
-// Commits once per render of form.Items' children, since Items renders it fresh each time.
+// Commits once per render of Items' children, since Items renders it fresh each time.
 function ItemsProbe() {
   useCommits(commits, "items");
   return null;

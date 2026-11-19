@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 import { Component, type ReactNode, useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
+  Items,
   createForms,
   type FieldApi,
   type FieldRef,
@@ -16,7 +17,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
-import { dirty as dirtyPlugin } from "./plugins.js";
+import { arrays, dirty as dirtyPlugin } from "./plugins.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -27,7 +28,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ plugins: [dirtyPlugin()], fields: { TextField } });
+const forms = createForms({ plugins: [dirtyPlugin(), arrays()], fields: { TextField } });
 const required = (value: string) => (value === "" ? { message: "required" } : undefined);
 
 const saved: { value: unknown; intent: unknown }[] = [];
@@ -451,7 +452,7 @@ describe("the form object without form.Form", () => {
         <>
           <div aria-label="title box" ref={ref} tabIndex={-1} />
           <form.Field name="title">{(field) => <p data-testid="title">{field.value || "empty"}</p>}</form.Field>
-          <form.Items name="rows">{(row) => <form.TextField handle={row.at("label")} label="Row" />}</form.Items>
+          <Items handle={form.root.at("rows")}>{(row) => <form.TextField handle={row.at("label")} label="Row" />}</Items>
           <button type="button" onClick={() => void form.handleSubmit()}>
             submit
           </button>

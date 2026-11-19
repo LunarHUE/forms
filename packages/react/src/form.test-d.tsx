@@ -1,6 +1,8 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { ComponentProps } from "react";
 import {
+  Items,
+  useItems,
   createForms,
   type FieldApi,
   type FieldHandle,
@@ -139,12 +141,12 @@ function OrderPage() {
               return <input {...inputProps(field, { kind: "checkbox", value: "sms" })} />;
             }}
           </form.Field>
-          <form.Items name="lines">
+          <Items handle={form.root.at("lines")}>
             {(line) => {
               expectTypeOf(line).toEqualTypeOf<ItemHandle<DraftLine, FormError, "fake" | "arrays">>();
               return <Line line={line} />;
             }}
-          </form.Items>
+          </Items>
           <SubmitButton />
           <button type="button" onClick={() => void owner.submit("send")}>
             Send
@@ -201,7 +203,7 @@ function WrongUsage() {
       {/* @ts-expect-error: neither name nor handle */}
       <form.Field>{() => null}</form.Field>
       {/* @ts-expect-error: billing is not an array */}
-      <form.Items name="billing">{() => null}</form.Items>
+      <Items handle={form.root.at("billing")}>{() => null}</Items>
       {/* @ts-expect-error: the component's own label prop is required */}
       <form.TextField name="customer" />
       {/* @ts-expect-error: customer is a string, NumberField edits numbers */}
@@ -395,7 +397,7 @@ function OrderWithFieldsets() {
           <AddressFields field={form.root.at("billing")} title="Billing" />
           <AddressFields field={form.root.at("shipping")} title="Shipping" />
           <billing.TextField name="zip" label="Billing zip" />
-          <form.Items name="stops">{(stop) => <AddressFields field={stop} title="Stop" />}</form.Items>
+          <Items handle={form.root.at("stops")}>{(stop) => <AddressFields field={stop} title="Stop" />}</Items>
           {/* @ts-expect-error: lines is an array, not an address */}
           <AddressFields field={form.root.at("lines")} title="Lines" />
           {/* @ts-expect-error: geo has numbers where an address has strings */}
@@ -687,5 +689,21 @@ describe("writing back a value read from a field object", () => {
   it("compiles for objects, arrays and array items", () => {
     expectTypeOf(WriteBack).toBeFunction();
     expectTypeOf(TagsField).toBeFunction();
+  });
+});
+
+const bareList = createForms().define({ defaultValues: { tags: ["a"] } });
+
+function BareList() {
+  const form = useForm(bareList);
+  // @ts-expect-error: Add arrays() to this form's plugins
+  useItems(form.root.at("tags"));
+  // @ts-expect-error: Add arrays() to this form's plugins
+  return <Items handle={form.root.at("tags")}>{() => null}</Items>;
+}
+
+describe("Items and useItems", () => {
+  it("need arrays()", () => {
+    expectTypeOf(BareList).toBeFunction();
   });
 });

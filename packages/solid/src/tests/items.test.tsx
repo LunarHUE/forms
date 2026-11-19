@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createItems, type FormOf, inputProps } from "../index.js";
+import { Items, createForm, createForms, createItems, type FormOf, inputProps } from "../index.js";
 import { getAs, mount, settle, typeText } from "./dom.js";
 import { arrays } from "../plugins.js";
 
@@ -18,7 +18,7 @@ function rowInputs(host: HTMLElement): HTMLInputElement[] {
   return [...host.querySelectorAll<HTMLInputElement>("input")];
 }
 
-/** Mounts the list with `form.Items`, counting row bodies. */
+/** Mounts the list with `Items`, counting row bodies. */
 function mountList() {
   let form: ListForm | undefined;
   const rowBodies: string[] = [];
@@ -26,7 +26,7 @@ function mountList() {
     form = createForm(List);
     const f = form;
     return (
-      <f.Items name="rows" fallback={<p>Empty</p>}>
+      <Items handle={f.root.at("rows")} fallback={<p>Empty</p>}>
         {(row, index) => {
           rowBodies.push(row.key);
           return (
@@ -35,7 +35,7 @@ function mountList() {
             </f.Field>
           );
         }}
-      </f.Items>
+      </Items>
     );
   });
   if (!form) throw new Error("The form was not created.");

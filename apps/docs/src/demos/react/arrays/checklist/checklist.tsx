@@ -1,8 +1,8 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { Items, createForms, useForm } from "@lunarhue/forms-react";
 import { arrays } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
 
-// arrays() gives the array handle its commands: push, insert, remove, move.
+// arrays() brings Items and the array commands: push, insert, remove, move.
 const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 
 // With no schema, `defaultValues` types the form.
@@ -23,7 +23,7 @@ export default function ChecklistForm() {
         <form {...formProps}>
           {/* Each row has a key that stays with it through moves and
               removes, so its input keeps its state. */}
-          <form.Items name="tasks">
+          <Items handle={tasks}>
             {(task, index) => (
               <div>
                 <form.TextField handle={task.at("title")} label={`Task ${index + 1}`} />
@@ -37,7 +37,7 @@ export default function ChecklistForm() {
                 </div>
               </div>
             )}
-          </form.Items>
+          </Items>
           <div>
             <button type="button" onClick={() => tasks.push({ title: "" })}>
               Add task

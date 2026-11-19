@@ -16,8 +16,6 @@ import type {
   FormStore,
   HasChoice,
   IntentArgs,
-  ItemHandle,
-  ItemOf,
   Needs,
   Nested,
   ObjectHandle,
@@ -36,9 +34,9 @@ import type {
 } from "@lunarhue/forms-core";
 import type { Accessor, Element as SolidElement } from "solid-js";
 import { createDisabledErrorList } from "./disabled-errors.js";
-import type { ArrayHandleLike, ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
+import type { ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
 import { createFormRuntime, createFormsRuntime, useAnyForm } from "./forms-runtime.js";
-import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
+import type { FieldPath, ValueAt } from "./path.js";
 
 /**
  * What a failed submit leaves to focus. The adapter builds it from core's
@@ -153,30 +151,6 @@ export interface BoundField<V, E = FormError, Installed extends string = never> 
   ): SolidElement;
 }
 
-/** Props `Items` takes besides `name` or `handle`. */
-interface ItemsPropsBase<Item> {
-  /** Shown while the array has no items. */
-  readonly fallback?: SolidElement;
-  /**
-   * Renders one item. Runs once per item key, so the row keeps its DOM when
-   * items are added, removed or moved. `index` follows the item's position.
-   */
-  readonly children: (item: Item, index: Accessor<number>) => SolidElement;
-}
-
-/**
- * Renders an array field's items with `For`, keyed by core's stable item
- * keys. Give exactly one of `name`, which must name an array field, or
- * `handle`. `item` is the item handle: render its fields with
- * `<scope.Field handle={item.at("qty")}>`.
- */
-export interface BoundItems<V, E = FormError, Installed extends string = never> {
-  <P extends ArrayPath<V>>(
-    props: { readonly name: P; readonly handle?: never } & ItemsPropsBase<ItemHandle<ItemOf<ValueAt<V, P>>, E, Installed>>,
-  ): SolidElement;
-  <H extends ArrayHandleLike>(props: { readonly handle: H; readonly name?: never } & ItemsPropsBase<ReturnType<H["item"]>>): SolidElement;
-}
-
 /** Any Solid component. The constraint for registered field components. */
 // `any` lets a component of any props fit. Each one is checked by `CheckedFields`.
 // oxlint-disable-next-line typescript/no-explicit-any
@@ -218,7 +192,6 @@ export type NoFieldComponents = Readonly<Record<never, never>>;
 /** The names a scope or form uses itself, which a registered component can't take. */
 export type ReservedName =
   | "Field"
-  | "Items"
   | "Form"
   | "store"
   | "root"
@@ -408,12 +381,10 @@ export interface ScopeMembers<V, E, Installed extends string = never> {
   readonly root: FieldHandle<V, E, Installed>;
   /** Renders one field of the scope. */
   readonly Field: BoundField<V, E, Installed>;
-  /** Renders the items of an array field of the scope. */
-  readonly Items: BoundItems<V, E, Installed>;
 }
 
 /**
- * The bound components rooted at an object handle: `Field`, `Items` and
+ * The bound components rooted at an object handle: `Field` and
  * every registered field component, with names relative to `root`.
  * `Installed` is the names of the form's plugins, see `ExactFieldApi`.
  */
