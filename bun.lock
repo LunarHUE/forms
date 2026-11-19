@@ -293,26 +293,6 @@
         "vue": "^3.0.0",
       },
     },
-    "parked/inspector": {
-      "name": "@lunarhue/forms-inspector",
-      "version": "0.0.0",
-      "dependencies": {
-        "@lunarhue/forms-core": "workspace:*",
-      },
-      "devDependencies": {
-        "@lunarhue/forms-schema": "workspace:*",
-        "@types/react": "catalog:",
-        "jsdom": "catalog:",
-        "react": "catalog:",
-        "valibot": "catalog:",
-      },
-      "peerDependencies": {
-        "react": ">=19",
-      },
-      "optionalPeers": [
-        "react",
-      ],
-    },
     "scripts": {
       "name": "@lunarhue/forms-scripts",
       "version": "0.0.0",
@@ -724,8 +704,6 @@
     "@lunarhue/forms-e2e-solid-shared": ["@lunarhue/forms-e2e-solid-shared@workspace:e2e/apps/solid-shared"],
 
     "@lunarhue/forms-e2e-solid2": ["@lunarhue/forms-e2e-solid2@workspace:e2e/apps/solid2"],
-
-    "@lunarhue/forms-inspector": ["@lunarhue/forms-inspector@workspace:parked/inspector"],
 
     "@lunarhue/forms-react": ["@lunarhue/forms-react@workspace:packages/react"],
 

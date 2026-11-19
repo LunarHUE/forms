@@ -32,7 +32,7 @@ for (const framework of frameworks) {
 
     await demo.getByRole("tab", { name: "Code" }).click();
     const files = demo.getByRole("tablist", { name: "Files" }).getByRole("tab");
-    await expect(files).toHaveText(["contact.tsx", "PhoneField.tsx"]);
+    await expect(files).toHaveText(["contact.tsx", "PhoneInput.tsx"]);
     await files.nth(1).click();
     await expect(files.nth(1)).toHaveAttribute("aria-selected", "true");
     await demo.getByRole("tab", { name: "Preview" }).click();
