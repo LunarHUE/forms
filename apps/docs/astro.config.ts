@@ -29,14 +29,16 @@ export default defineConfig({
     // Each renderer only takes its own folders. Both compile .tsx, so an
     // overlap would hand a component to the wrong JSX transform.
     react({
+      // Only JSX files: a bare folder glob also matches CSS imported from
+      // these folders, and the dev JSX transform then fails to parse it.
       include: [
-        "**/src/components/**",
-        "**/src/devtools/**",
-        "**/src/demos/react/**",
-        "**/src/layouts/**",
+        "**/src/components/**/*.{jsx,tsx}",
+        "**/src/devtools/**/*.{jsx,tsx}",
+        "**/src/demos/react/**/*.{jsx,tsx}",
+        "**/src/layouts/**/*.{jsx,tsx}",
       ],
     }),
-    solid({ include: ["**/src/demos/solid/**"] }),
+    solid({ include: ["**/src/demos/solid/**/*.{jsx,tsx}"] }),
   ],
   vite: {
     plugins: [tailwindcss()],
