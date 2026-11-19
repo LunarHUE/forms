@@ -1,8 +1,10 @@
 // Drives the field-pieces POC pages against `astro preview`. Not part of the docs test suite.
+import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
 const base = process.env.BASE ?? "http://127.0.0.1:4631";
-const shots = new URL("../.poc-shots/", import.meta.url).pathname;
+const shots = process.env.SHOTS ?? new URL("../.poc-shots/", import.meta.url).pathname;
+mkdirSync(shots, { recursive: true });
 const results = [];
 const check = (name, actual, expected) => {
   const ok = JSON.stringify(actual) === JSON.stringify(expected);
