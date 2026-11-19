@@ -13,7 +13,7 @@ import type {
 } from "@lunarhue/forms-core";
 import type { Accessor } from "solid-js";
 import { createFieldApi } from "./field-api.js";
-import type { InputPropsOf } from "./input.js";
+import type { FieldPieces } from "./pieces.js";
 import { createItemList } from "./items.js";
 import { addValidator } from "./validator.js";
 
@@ -62,11 +62,14 @@ export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHand
  *   `handleBlur`, `setTouched`, `setErrors`, `validate`, `reset`,
  *   `setDisabled`, `setReadOnly`, and `at` on objects or `push`, `insert`,
  *   `remove`, `move` and `item` on arrays;
- * - `handle` itself, `errorId`, and `inputProps`.
+ * - `handle` itself and `errorId`;
+ * - the pieces that bind an element by hand: `text`, `setText`,
+ *   `setNumberText`, `ref`, and `handleBlur`, which also drops typed number
+ *   text. `inputProps(field)` builds a DOM prop spread from them.
  *
- * Don't destructure the snapshot members: a destructured member is read once.
- * The commands, `handle`, `errorId` and `inputProps` never change, so
- * destructuring those is fine.
+ * Don't destructure the snapshot members or `text`: a destructured member is
+ * read once. The commands, `handle`, `errorId` and the other pieces never
+ * change, so destructuring those is fine.
  */
 export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
   FieldCommands<V, E> & {
@@ -74,8 +77,14 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     readonly handle: FieldHandle<V, E>;
     /** The id for the element that renders this field's errors. See `errorId`. */
     readonly errorId: string;
-    /** The props for an input bound to this field, with the same kinds and checks as `createInputProps`. */
-    readonly inputProps: InputPropsOf<V>;
+    /** See `FieldPieces.text`. Reactive. */
+    readonly text: string;
+    /** See `FieldPieces.setText`. */
+    readonly setText: FieldPieces["setText"];
+    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
+    readonly setNumberText: (text: string, empty?: V) => void;
+    /** See `FieldPieces.ref`. */
+    readonly ref: FieldPieces["ref"];
     /** Type information only, always undefined at runtime. */
     readonly "~field"?: FieldTypes<V, E>;
   };

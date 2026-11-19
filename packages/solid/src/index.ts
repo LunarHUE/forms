@@ -62,16 +62,18 @@ export type {
   ValidatorHandleLike,
 } from "./field.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
-export { createInputProps, errorId, fieldRef } from "./input.js";
+export { createInputProps, errorId, fieldRef, inputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   CheckableProps,
   CheckboxGroupOptions,
   CheckboxOptions,
   ControlProps,
   CreateInputProps,
+  FieldObjectLike,
   FieldRef,
   InputOptions,
-  InputPropsOf,
+  InputProps,
   IsBoolean,
   IsChoice,
   IsNumber,
