@@ -78,11 +78,10 @@ interface Call {
   aborted: boolean;
 }
 
+// A primitive's `then` comes from its prototype, which nothing sets.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-  (typeof value === "object" || typeof value === "function") &&
-  value !== null &&
-  "then" in value &&
-  typeof value.then === "function";
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  typeof (value as { then?: unknown } | null | undefined)?.then === "function";
 
 // A result with no issues passed. An empty issue list counts as none, as `place` reads it.
 const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unknown> => {
