@@ -61,5 +61,3 @@ export function CopyButton({ text, label = "Copy", className }: CopyButtonProps)
     </Tooltip>
   );
 }
-
-export default CopyButton;

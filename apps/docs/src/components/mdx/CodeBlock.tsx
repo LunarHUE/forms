@@ -77,5 +77,3 @@ export function CodeBlock({ html, lang, title, lineNumbers = false, actions, cla
     </figure>
   );
 }
-
-export default CodeBlock;

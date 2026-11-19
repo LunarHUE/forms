@@ -67,6 +67,8 @@ export const darkTheme = theme("forms-dark", "dark", {
   comment: "#6b6c68",
 });
 
+const isBundled = (lang: string): lang is BundledLanguage => lang in bundledLanguages;
+
 /** Loaded up front; anything else Shiki bundles loads on first use. */
 const PRELOADED: BundledLanguage[] = ["tsx", "ts", "jsx", "js", "json", "sh", "css", "html"];
 
@@ -87,9 +89,9 @@ function getHighlighter() {
  */
 export async function highlight(code: string, lang = "text"): Promise<string> {
   const shiki = await getHighlighter();
-  const known = lang in bundledLanguages;
+  const known = isBundled(lang);
   if (known && !shiki.getLoadedLanguages().includes(lang)) {
-    await shiki.loadLanguage(lang as BundledLanguage);
+    await shiki.loadLanguage(lang);
   }
   return shiki.codeToHtml(code.replace(/\n$/, ""), {
     lang: known ? lang : "text",

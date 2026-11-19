@@ -8,7 +8,6 @@ import { FRAMEWORK_IDS, isFramework, type Framework } from "../frameworks";
 /** A node as the helpers below read it. Satteri's own types are a large union. */
 interface Node {
   type: string;
-  name?: string | null;
   attributes?: readonly { type: string; name?: string; value?: unknown }[];
   position?: { start: { line: number; column: number } };
 }
@@ -32,8 +31,6 @@ export function fail(ctx: MdastVisitorContext, node: Node, message: string): nev
   throw new Error(`${where}: ${message}`);
 }
 
-const isOnly = (node: Node) => node.type === "mdxJsxFlowElement" && node.name === "Only";
-
 /** The `framework` of an `<Only>` element, checked against the framework list. */
 export function onlyValue(ctx: MdastVisitorContext, node: Node): Framework {
   const value = literal(node, "framework");
@@ -45,10 +42,8 @@ export function onlyValue(ctx: MdastVisitorContext, node: Node): Framework {
 
 /** The framework of the nearest `<Only>` around `node`, or undefined outside one. */
 export function enclosingFramework(ctx: MdastVisitorContext, node: MdastNode): Framework | undefined {
-  let parent = ctx.parent(node) as (Node & MdastNode) | undefined;
-  while (parent && parent.type !== "root") {
-    if (isOnly(parent)) return onlyValue(ctx, parent);
-    parent = ctx.parent(parent) as (Node & MdastNode) | undefined;
+  for (let parent = ctx.parent(node); parent && parent.type !== "root"; parent = ctx.parent(parent)) {
+    if (parent.type === "mdxJsxFlowElement" && parent.name === "Only") return onlyValue(ctx, parent);
   }
   return undefined;
 }
@@ -101,10 +96,10 @@ export function headingsFor<H>(
   headings: readonly H[],
   data: Partial<FrameworkBlocksData> | Record<string, unknown> | undefined,
 ): H[] {
-  const frameworks = data?.headingFrameworks;
+  const frameworks: unknown = data?.headingFrameworks;
   if (!Array.isArray(frameworks) || frameworks.length !== headings.length) return [...headings];
   return headings.filter((_, index) => {
-    const only = frameworks[index] as Framework | null;
+    const only: unknown = frameworks[index];
     return only === null || only === framework;
   });
 }

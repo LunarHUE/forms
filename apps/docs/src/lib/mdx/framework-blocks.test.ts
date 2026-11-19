@@ -3,13 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { frameworkBlocks, headingsFor } from "./framework-blocks";
 
-async function headingFrameworks(source: string) {
-  const result = await mdxToJs(source, {
-    mdastPlugins: [frameworkBlocks],
-    data: { astro: { frontmatter: {} } },
-  });
-  const astro = result.data.astro as { frontmatter: { headingFrameworks: unknown } };
-  return astro.frontmatter.headingFrameworks;
+function headingFrameworks(source: string): unknown {
+  const astro = { frontmatter: {}, headings: [], localImagePaths: new Set<string>(), remoteImagePaths: new Set<string>() };
+  const result = mdxToJs(source, { mdastPlugins: [frameworkBlocks], data: { astro } });
+  return result.data.astro?.frontmatter.headingFrameworks;
 }
 
 const page = `# Masks
@@ -32,15 +29,15 @@ const page = `# Masks
 `;
 
 describe("frameworkBlocks", () => {
-  it("records the framework of each heading in document order", async () => {
-    expect(await headingFrameworks(page)).toEqual([null, null, "react", "react", "solid", null]);
+  it("records the framework of each heading in document order", () => {
+    expect(headingFrameworks(page)).toEqual([null, null, "react", "react", "solid", null]);
   });
 
-  it("fails on an <Only> without a known framework", async () => {
-    await expect(headingFrameworks(`<Only framework="vue2">\n\n## A\n\n</Only>\n`)).rejects.toThrow(
+  it("fails on an <Only> without a known framework", () => {
+    expect(() => headingFrameworks(`<Only framework="vue2">\n\n## A\n\n</Only>\n`)).toThrow(
       /<Only> needs framework/,
     );
-    await expect(headingFrameworks(`<Only>\n\ntext\n\n</Only>\n`)).rejects.toThrow(/<Only> needs framework/);
+    expect(() => headingFrameworks(`<Only>\n\ntext\n\n</Only>\n`)).toThrow(/<Only> needs framework/);
   });
 });
 
