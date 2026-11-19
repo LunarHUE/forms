@@ -1,7 +1,9 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
+import { arrays } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
 
-const forms = createForms({ fields: { TextField } });
+// arrays() gives the array handle its commands: push, insert, remove, move.
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 
 // With no schema, `defaultValues` types the form.
 const checklist = forms.define({

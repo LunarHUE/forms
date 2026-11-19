@@ -1,8 +1,10 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
+import { arrays } from "@lunarhue/forms-solid/plugins";
 import { Show } from "solid-js";
 import { TextField } from "./TextField";
 
-const forms = createForms({ fields: { TextField } });
+// arrays() gives the array handle its commands: push, insert, remove, move.
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 
 // With no schema, `defaultValues` types the form.
 const checklist = forms.define({

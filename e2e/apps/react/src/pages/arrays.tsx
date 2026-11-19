@@ -1,8 +1,9 @@
 import { arraysScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useField, useForm } from "@lunarhue/forms-react";
+import { arrays } from "@lunarhue/forms-react/plugins";
 import { forms, Probe, Status, SubmitButton } from "../parts.js";
 
-const team = forms.define(scenario.definition);
+const team = forms.define({ ...scenario.definition, plugins: [arrays()] });
 const { labels } = scenario;
 
 export function ArraysPage() {
