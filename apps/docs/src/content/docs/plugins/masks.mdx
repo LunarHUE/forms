@@ -5,4 +5,84 @@ section: plugins
 order: 3
 ---
 
-Placeholder. The real page arrives with the plugins pages.
+Placeholder. The real page arrives with the plugins pages. Until then it
+shows each kind of code block.
+
+## Display text
+
+A cleaner changes what the store holds, not what the input shows. To show the
+value formatted, give the field `clean` and `display`:
+
+```ts
+mask({
+  phone: { clean: digits, display: formatPhone },
+});
+```
+
+The import depends on the adapter:
+
+```tsx title="contact.tsx" framework=react lineNumbers
+import { createForms, useForm } from "@lunarhue/forms-react";
+import { digits, mask } from "@lunarhue/forms-react/plugins/mask";
+import { PhoneField } from "./PhoneField";
+
+const contact = forms.define({
+  defaultValues: { phone: "" },
+  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
+  onSubmit: (value) => value.phone,
+});
+
+export default function ContactForm() {
+  const form = useForm(contact);
+  // …
+}
+```
+
+```tsx title="contact.tsx" framework=solid lineNumbers
+import { createForm, createForms } from "@lunarhue/forms-solid";
+import { digits, mask } from "@lunarhue/forms-solid/plugins/mask";
+import { PhoneField } from "./PhoneField";
+
+const contact = forms.define({
+  defaultValues: { phone: "" },
+  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
+  onSubmit: (value) => value.phone,
+});
+
+export default function ContactForm() {
+  const form = createForm(contact);
+  // …
+}
+```
+
+<Only framework="react">
+
+## Using the form in React
+
+`useForm` returns the form for the component that renders it:
+
+```tsx
+import { useForm } from "@lunarhue/forms-react";
+
+const form = useForm(contact);
+```
+
+</Only>
+
+<Only framework="solid">
+
+## Using the form in Solid
+
+`createForm` returns the form for the component that renders it:
+
+```tsx
+import { createForm } from "@lunarhue/forms-solid";
+
+const form = createForm(contact);
+```
+
+</Only>
+
+## Caret
+
+The caret stays where the user is typing.
