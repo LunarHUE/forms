@@ -37,6 +37,6 @@ Write your own with `definePlugin` from `./plugins`. The rules are in
 ## More
 
 The [main README](https://github.com/LunarHUE/forms#readme) has a full example and the plugin guide.
-Every error code is in [docs/errors.md](https://github.com/LunarHUE/forms/blob/main/docs/errors.md).
+Every error code is on [the errors page](https://forms.lunarhue.dev/errors).
 
 MIT licensed.

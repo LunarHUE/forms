@@ -237,7 +237,7 @@ adapter, so it works under React and Solid alike. If you publish one, call it
 `forms-plugin-<name>`.
 
 The full rules are in [docs/plugins.md](docs/plugins.md), and every error code
-is listed in [docs/errors.md](docs/errors.md).
+is listed on [the errors page](https://forms.lunarhue.dev/errors).
 
 ## Contributing
 
