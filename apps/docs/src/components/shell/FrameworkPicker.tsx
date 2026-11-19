@@ -80,7 +80,8 @@ export function FrameworkPicker({
         <ChevronsUpDownIcon className="size-3.5 text-muted-foreground" />
       </ComboboxPrimitive.Trigger>
       <ComboboxContent className="min-w-(--anchor-width)">
-        <ComboboxList>
+        {/* The items are children, not Base UI's `items`, so the list counts as empty and loses its padding. */}
+        <ComboboxList className="data-empty:p-1">
           <ComboboxGroup>
             <ComboboxLabel className={labelClass}>Framework</ComboboxLabel>
             {frameworks.map((item) => (
