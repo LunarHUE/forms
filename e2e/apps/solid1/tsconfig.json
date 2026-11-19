@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "customConditions": ["@lunarhue/source", "@lunarhue/solid1"],
+    // Solid 1's types for this app, the shared pages and the adapter, which
+    // would otherwise find the workspace's Solid 2. The pages' `@solidjs/web`
+    // is `solid-js/web` here, as vite.config.ts makes it.
+    "paths": {
+      "solid-js": ["./node_modules/solid-js/types/index.d.ts"],
+      "solid-js/web": ["./node_modules/solid-js/web/types/index.d.ts"],
+      "solid-js/jsx-runtime": ["./node_modules/solid-js/types/jsx.d.ts"],
+      "@solidjs/web": ["./node_modules/solid-js/web/types/index.d.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

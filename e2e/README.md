@@ -5,7 +5,7 @@ framework the adapter supports. Each framework has a small app that renders
 the same forms, server-renders them and hydrates them. Each supported major
 builds that app against its own copy of the framework. The same spec files
 run against every major, one Playwright project each: `react16`, `react17`,
-`react18`, `react19` and `solid2`. A spec that passes on React 19 and fails
+`react18`, `react19`, `solid1` and `solid2`. A spec that passes on React 19 and fails
 on Solid 2 or React 17 is a bug in an adapter or in core.
 
 The suite is private (`@lunarhue/forms-e2e`) and isn't part of the six root
@@ -99,13 +99,16 @@ which run in the root `test`.
   never built or run on its own. `src/parts.tsx` has the field components,
   the probe and the render counter. `src/pages/*.tsx` has one page per scenario. `src/app.tsx`
   exports `App`, the page for a path.
-- `apps/react16` to `apps/react19`, `apps/solid2`: one thin package per
-  major. Its `package.json` installs that major (React 16 to 18 come from the
-  root `react16`, `react17` and `react18` catalogs, the newest from the
-  default catalog). Its `src/entry-server.tsx` and `src/entry-client.tsx`
+- `apps/react16` to `apps/react19`, `apps/solid1`, `apps/solid2`: one thin
+  package per major. Its `package.json` installs that major (React 16 to 18
+  come from the root `react16`, `react17` and `react18` catalogs, Solid 1
+  from `solid19`, the newest from the default catalog). Its `src/entry-server.tsx` and `src/entry-client.tsx`
   render and hydrate the shared `App` with that major's API: React 16 and 17
   hydrate with `ReactDOM.hydrate`, React 18 and 19 with `hydrateRoot`. Its
-  `vite.config.ts` builds it.
+  `vite.config.ts` builds it. `apps/solid1` builds with `vite-plugin-solid`,
+  sends the pages' `@solidjs/web` to `solid-js/web`, and sets the
+  `@lunarhue/solid1` condition, under which the adapter's source is its
+  `./v1` build.
 - `server.ts`: the one server every app runs on. It imports the app's built
   server entry, wraps the markup in the same document and serves the client
   build.
@@ -142,26 +145,26 @@ components run once, so its counters stay at 1, and the contract's
 
 ## Adding a major
 
-Say Solid 1, as `solid1`:
+Say React 15, as `react15`:
 
 1. If the major needs a version the workspace doesn't install, add a named
-   catalog for it to the root `package.json`, such as `"solid1": { "solid-js":
-   "1.9.x" }`, the way `react16` to `react18` are.
-2. Add `apps/solid1`, a copy of `apps/solid2`: a `package.json` named
-   `@lunarhue/forms-e2e-solid1` that depends on `@lunarhue/forms-e2e`,
-   `@lunarhue/forms-e2e-solid-shared` (the shared app) and the framework
+   catalog for it to the root `package.json`, such as `"react15": { "react":
+   "15.7.0" }`, the way `react16` to `react18` are.
+2. Add `apps/react15`, a copy of `apps/react16`: a `package.json` named
+   `@lunarhue/forms-e2e-react15` that depends on `@lunarhue/forms-e2e`,
+   `@lunarhue/forms-e2e-react-shared` (the shared app) and the framework
    from that catalog, a `tsconfig.json`, a `vite.config.ts` that passes
    `pinFramework` the framework's module names, and the two entries. Where
    the major's API differs, the entries and the Vite config absorb it.
    `pinFramework`'s second argument sends an import to another module, such
-   as `@solidjs/web` to `solid-js/web`, or to a file, as `apps/react16` does
-   for its JSX runtime. Whatever the shared app uses that the major can't
-   provide that way needs a branch in the shared app, as `serverId` is in
-   the React one.
+   as `@solidjs/web` to `solid-js/web` in `apps/solid1`, or to a file, as
+   `apps/react16` does for its JSX runtime. Whatever the shared app uses
+   that the major can't provide that way needs a branch in the shared app,
+   as `serverId` is in the React one and `afterHydration` in the Solid one.
 3. Add an entry to `frameworks` in `contract/frameworks.ts`: its name, a free
    port, whether it is the newest major of its framework, whether its
    components run again on a change, and the capabilities it lacks.
-4. Run `bun install`, then `bun run e2e:changed --framework solid1`.
+4. Run `bun install`, then `bun run e2e:changed --framework react15`.
 
 No spec changes. `e2e:changed` finds the new package through its
 `package.json`, and the picker's tests read the list in
@@ -188,6 +191,7 @@ spec is skipped, and the reason shows in the run's list of skips.
 | Capability | Lacked by | Why |
 | --- | --- | --- |
 | `generatedIds` | `react16`, `react17` | React before 18 has no `useId`, so a form with no `id` gets a different id on the server and the client. The React pages pass `serverId(scenario.id)` to `useForm`, which gives the form an `id` before 18, as the adapter's docs say, and leaves it out from 18. The one spec that checks generated ids skips on 16 and 17. |
+| `focusedMoves` | `solid1` | Solid 1's `For` moves a row's DOM nodes with `insertBefore`, which takes the focused input out of the document and blurs it. Solid 2 moves them with `moveBefore`, which keeps focus. The focus half of the row-move spec skips on Solid 1. The half that checks the input and key still runs. |
 
 Use a capability for something the major can't do. A spec that should pass
 and doesn't is a known failure, below.

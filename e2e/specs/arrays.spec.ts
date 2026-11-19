@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { arraysScenario as scenario } from "../contract/index.js";
-import { describedBy, expect, input, open, probe, test } from "./fixtures.js";
+import { describedBy, expect, input, open, probe, requires, test } from "./fixtures.js";
 
 const { labels, errors } = scenario;
 
@@ -47,17 +47,27 @@ test("removing the first row shifts the second up, keeping its input", async ({ 
   await expect.poll(async () => (await probe(page)).keys["members"]).toEqual(keys?.slice(1));
 });
 
-test("moving a row keeps its input, its focus and its key", async ({ page }) => {
+test("moving a row keeps its input and its key", async ({ page }) => {
+  await tag(member(page, 1), "somerville");
+  const keys = (await probe(page)).keys["members"] ?? [];
+  await button(page, labels.moveUp(1)).click();
+  await expect(member(page, 0)).toHaveValue("Mary Somerville");
+  await expect(member(page, 0)).toHaveAttribute("data-marker", "somerville");
+  await expect.poll(async () => (await probe(page)).keys["members"]).toEqual(keys.toReversed());
+  await button(page, labels.moveDown(0)).click();
+  await expect(member(page, 1)).toHaveAttribute("data-marker", "somerville");
+  await expect.poll(async () => (await probe(page)).keys["members"]).toEqual(keys);
+});
+
+test("moving a row keeps its focus", async ({ page, framework }) => {
+  requires(framework, "focusedMoves");
   const second = member(page, 1);
   await tag(second, "somerville");
   await second.focus();
-  const keys = (await probe(page)).keys["members"] ?? [];
   // A dispatched click runs the handler without moving focus to the button.
   await button(page, labels.moveUp(1)).dispatchEvent("click");
-  await expect(member(page, 0)).toHaveValue("Mary Somerville");
   await expect(member(page, 0)).toHaveAttribute("data-marker", "somerville");
   await expect(member(page, 0)).toBeFocused();
-  await expect.poll(async () => (await probe(page)).keys["members"]).toEqual(keys.toReversed());
   await button(page, labels.moveDown(0)).dispatchEvent("click");
   await expect(member(page, 1)).toHaveAttribute("data-marker", "somerville");
   await expect(member(page, 1)).toBeFocused();

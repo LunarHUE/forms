@@ -1,0 +1,22 @@
+{
+  "name": "@lunarhue/forms-e2e-solid1",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Solid app built against the newest Solid 1 and the adapter's ./v1 build. It has a package of its own so its Solid, not the workspace's, is the one installed beside it.",
+  "dependencies": {
+    "@lunarhue/forms-e2e": "workspace:*",
+    "@lunarhue/forms-e2e-solid-shared": "workspace:*",
+    "@lunarhue/forms-solid": "workspace:*",
+    "solid-js": "catalog:solid19"
+  },
+  "devDependencies": {
+    "babel-preset-solid": "catalog:solid19",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:solid19"
+  },
+  "scripts": {
+    "build": "vite build && vite build --ssr src/entry-server.tsx",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
