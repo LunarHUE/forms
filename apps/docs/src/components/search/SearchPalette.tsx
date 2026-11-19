@@ -155,9 +155,7 @@ export function SearchPalette() {
               placeholder={`Search ${label} docs`}
               className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground sm:text-sm"
             />
-            <span className="shrink-0 rounded-sm bg-muted px-1.5 font-mono text-[11px] leading-5 text-muted-foreground">
-              {label}
-            </span>
+            <span className={cn(kbd, "shrink-0 px-1.5")}>{label}</span>
             <DialogClose className={cn(kbd, "cursor-pointer hover:text-foreground")} aria-label="Close search">
               <span className="sm:hidden">Close</span>
               <span className="hidden sm:inline">Esc</span>
