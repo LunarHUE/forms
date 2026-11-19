@@ -1,0 +1,73 @@
+---
+title: History
+description: Undo and redo the user's edits.
+section: plugins
+order: 2
+---
+
+<Demo name="history/note" />
+
+`history()` records the user's value and array writes, one step per task, such
+as one keystroke or one paste. `form.plugins.history` has `undo()` and
+`redo()`, and each returns false when there is no step to take. It keeps the
+latest 100 steps. Pass another limit as `history(50)`.
+
+## Undo buttons
+
+Whether there is a step to undo or redo is form meta. Read it with the
+plugin's own `formMeta` reader, so keep the object `history()` returns:
+
+```tsx framework=react
+const undoHistory = history();
+const forms = createForms({ plugins: [undoHistory] });
+
+// In a component with a form of those forms.
+<form.State select={(state) => undoHistory.formMeta(state).canUndo}>
+  {(canUndo) => (
+    <button
+      type="button"
+      disabled={!canUndo}
+      onClick={() => form.plugins.history.undo()}
+    >
+      Undo
+    </button>
+  )}
+</form.State>;
+```
+
+```tsx framework=solid
+const undoHistory = history();
+const forms = createForms({ plugins: [undoHistory] });
+
+// In a component with a form of those forms.
+<button
+  type="button"
+  disabled={!undoHistory.formMeta(form.state).canUndo}
+  onClick={() => form.plugins.history.undo()}
+>
+  Undo
+</button>;
+```
+
+Both flags are false before the first step, on the server too. They change in
+the same render as an undo, a redo or a reset. After an edit they change a
+microtask later, when `history` records the step.
+
+## What it records
+
+Only user writes make a step. A plugin's writes, resets and rebases don't, and
+a reset clears both stacks. A plugin that writes to the store directly instead
+of through `ctx.write` makes a user write, so that does make a step. See
+[Writing a plugin](./writing-a-plugin).
+
+Undo and redo go through the fields, so validation runs on the values they
+write.
+
+## Arrays
+
+Undoing an insert or a move keeps the keys of the rows that stay, and their
+touched, edited and error state with them.
+
+Undoing a remove puts the row back with a new key. Core never brings a removed
+key back, so the row's state starts fresh: touched, edited and errors are
+gone, and a component keyed by the old key mounts again.

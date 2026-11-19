@@ -1,0 +1,57 @@
+---
+/*
+ * Site search: the palette island and the script that opens it.
+ *
+ * The palette hydrates when the browser is idle, so this inline script owns
+ * the triggers from the first paint: clicks on any `[data-search-trigger]`
+ * (the header's search field and phone icon) and Ctrl K / Cmd K anywhere.
+ * Each one sets `window.formsSearch.pending` and fires `forms-search:open`.
+ * The palette opens on mount if a request is pending and listens for the
+ * event after that.
+ *
+ * Until the palette's input has focus, which can be a while if the palette
+ * hasn't hydrated yet, the script keeps the keys typed after Ctrl K in
+ * `formsSearch.typed`, and the input takes them when it gets focus.
+ */
+import { SearchPalette } from "./SearchPalette";
+---
+
+<script is:inline>
+  (() => {
+    if (window.formsSearch) return;
+    const state = (window.formsSearch = { pending: false, open: false, typed: null });
+    const open = (event) => {
+      event.preventDefault();
+      state.pending = true;
+      if (!state.open) state.typed = "";
+      document.dispatchEvent(new CustomEvent("forms-search:open"));
+    };
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (state.typed === null || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+        if (event.target instanceof Element && event.target.closest("[data-search-input]")) return;
+        if (event.key === "Escape") {
+          state.typed = null;
+          return;
+        }
+        if (event.key.length === 1) state.typed += event.key;
+        else if (event.key === "Backspace") state.typed = state.typed.slice(0, -1);
+        else return;
+        event.preventDefault();
+      },
+      true,
+    );
+    document.addEventListener("pointerdown", () => {
+      if (!state.open) state.typed = null;
+    });
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("[data-search-trigger]")) open(event);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey)) open(event);
+    });
+  })();
+</script>
+<SearchPalette client:idle />

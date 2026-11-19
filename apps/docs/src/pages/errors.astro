@@ -1,0 +1,40 @@
+---
+import { render } from "astro:content";
+
+import { mdxComponents } from "@/components/mdx";
+import Article from "@/components/page/Article.astro";
+import type { TocItem } from "@/components/page/toc-list";
+import Shell from "@/components/shell/Shell.astro";
+import { getErrors } from "@/lib/content";
+import { AVAILABLE_FRAMEWORKS } from "@/lib/frameworks";
+import { errorAnchors } from "@/lib/errors";
+
+const entry = await getErrors();
+const { Content, headings } = await render(entry);
+const { title, description } = entry.data;
+
+// "On this page": each package's heading, then its codes, which link to the
+// `<a id="package:code">` anchors rather than the code headings' own slugs.
+// The package headings are "## Core" and so on, whose slug is the package name.
+const toc: TocItem[] = [];
+const seen = new Set<string>();
+for (const anchor of errorAnchors(entry.body ?? "")) {
+  if (!seen.has(anchor.package)) {
+    seen.add(anchor.package);
+    const heading = headings.find((candidate) => candidate.depth === 2 && candidate.slug === anchor.package);
+    if (!heading) throw new Error(`errors.mdx: no "## " heading with the slug "${anchor.package}"`);
+    toc.push({ depth: 2, slug: heading.slug, text: heading.text });
+  }
+  toc.push({ depth: 3, slug: anchor.id, text: anchor.code });
+}
+---
+
+<Shell title={title} description={description} currentSlug="errors">
+  <main data-pagefind-body data-pagefind-meta="section:Reference">
+    {/* Search lists the errors page for every framework. Pagefind takes one value per element. */}
+    {AVAILABLE_FRAMEWORKS.map((framework) => <span data-pagefind-filter="framework[data-value]" data-value={framework} />)}
+    <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc}>
+      <Content components={mdxComponents} />
+    </Article>
+  </main>
+</Shell>

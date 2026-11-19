@@ -1,0 +1,53 @@
+{
+  "name": "@lunarhue/forms-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1",
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1",
+    "typecheck": "astro check && tsc -p src/demos/solid/tsconfig.json",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.10",
+    "@astrojs/mdx": "8.1.6",
+    "@astrojs/react": "7.1.9",
+    "@base-ui/react": "1.9.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "@lunarhue/forms-bind": "workspace:*",
+    "@lunarhue/forms-react": "workspace:*",
+    "@lunarhue/forms-schema": "workspace:*",
+    "@lunarhue/forms-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
+    "astro": "7.4.13",
+    "class-variance-authority": "0.7.1",
+    "cmdk": "1.1.1",
+    "cn": "0.5.2",
+    "lucide-react": "1.75.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "satteri": "0.11.7",
+    "shiki": "4.6.0",
+    "solid-js": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@playwright/test": "catalog:",
+    "@solidjs/vite-plugin": "catalog:",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "pagefind": "1.6.0",
+    "shadcn": "4.23.0",
+    "tailwindcss": "4.3.5",
+    "tw-animate-css": "1.4.0",
+    "typescript": "6.0.3",
+    "vite": "catalog:"
+  }
+}

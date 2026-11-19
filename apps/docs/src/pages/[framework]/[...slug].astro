@@ -1,0 +1,85 @@
+---
+import type { GetStaticPaths } from "astro";
+import { render } from "astro:content";
+
+import { mdxComponents } from "@/components/mdx";
+import Article from "@/components/page/Article.astro";
+import Shell from "@/components/shell/Shell.astro";
+import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
+import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
+import { headingsFor } from "@/lib/mdx/framework-blocks";
+import { alternates, pagination, SECTION_LABELS, sidebar } from "@/lib/nav";
+import { docHref } from "@/lib/routes";
+import { LATEST_VERSION, VERSIONS } from "@/lib/versions";
+
+export const getStaticPaths = (async () => {
+  const entries = await getDocs();
+  const pages = entries.map(toNavPage);
+  return VERSIONS.flatMap(({ id: version }) =>
+    AVAILABLE_FRAMEWORKS.flatMap((framework) => {
+      const groups = sidebar(pages, framework, version);
+      return entries
+        .filter((entry) => entry.data.frameworks.includes(framework))
+        .map((entry) => {
+          // The rest param carries the version segment of an older version.
+          const href = docHref({ framework, version, slug: entry.id });
+          return {
+            params: { framework, slug: href.slice(`/${framework}/`.length) },
+            props: {
+              entry,
+              framework,
+              version,
+              sidebar: groups,
+              ...pagination(groups, entry.id),
+              alternates: alternates(pages, entry.id, version),
+            },
+          };
+        });
+    }),
+  );
+}) satisfies GetStaticPaths;
+
+interface Props {
+  entry: DocEntry;
+  framework: Framework;
+  version: string;
+  sidebar: ReturnType<typeof sidebar>;
+  previous?: ReturnType<typeof pagination>["previous"];
+  next?: ReturnType<typeof pagination>["next"];
+  alternates: ReturnType<typeof alternates>;
+}
+
+const { entry, framework, version, sidebar: groups, previous, next, alternates: others } = Astro.props;
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+const { title, description, section } = entry.data;
+// Search (integrations/pagefind.ts) indexes the latest version only. The
+// framework filter keeps a React search to React pages; the section names the
+// result's path, as in "Plugins / Masks".
+---
+
+<Shell
+  title={`${title} · ${frameworkLabel(framework)}`}
+  description={description}
+  framework={framework}
+  version={version}
+  groups={groups}
+  currentSlug={entry.id}
+  alternates={others}
+>
+  <main
+    data-pagefind-body={version === LATEST_VERSION ? "" : undefined}
+    data-pagefind-filter={`framework:${framework}`}
+    data-pagefind-meta={`section:${SECTION_LABELS[section]}`}
+  >
+    <Article
+      title={title}
+      description={description}
+      breadcrumb={[{ label: SECTION_LABELS[section] }, { label: title }]}
+      headings={headingsFor(framework, headings, remarkPluginFrontmatter)}
+      previous={previous}
+      next={next}
+    >
+      <Content components={mdxComponents} />
+    </Article>
+  </main>
+</Shell>

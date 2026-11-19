@@ -1,0 +1,159 @@
+---
+title: Validation
+description: Check fields with a Zod schema or your own functions, sync or async.
+section: plugins
+order: 1
+---
+
+import Install from "@/components/mdx/Install.astro";
+
+<Demo name="validation/sign-up" />
+
+Validation is a plugin. Without one, the compiler rejects `schema` and
+`validate` in `define`. Try `ada` as the username to see the async check.
+
+## A schema
+
+`zod()` from `@lunarhue/forms-schema` validates the form with a Zod 4 schema
+and types it from the schema, so you write the shape once:
+
+<Install packages="@lunarhue/forms-schema zod" />
+
+```ts
+import { zod } from "@lunarhue/forms-schema/zod";
+import { z } from "zod";
+
+const forms = createForms({ plugins: [zod()] });
+
+const signUp = forms.define({
+  schema: z.object({
+    username: z.string().min(3, "Use at least 3 characters."),
+    email: z.email("Enter a valid email."),
+  }),
+  onSubmit: (value) => value,
+});
+```
+
+The starting values come from the schema too: strings start empty, booleans
+false, arrays empty, and a declared `.default()` wins. A number or an enum has
+no empty value, so it starts `undefined`. `defaultValues` is optional and
+overrides any part of what the schema gives.
+
+Valibot works the same way with `valibot()` from
+`@lunarhue/forms-schema/valibot`. The library is an optional peer dependency,
+so install only the one you use.
+
+## Field validators
+
+`validate.fields` is shaped like the value. Give a field a function that
+returns an error, or `undefined` when the value passes. A Standard Schema for
+that one field works too:
+
+```ts
+const signUp = forms.define({
+  schema: SignUp,
+  validate: {
+    fields: {
+      username: (name) =>
+        name === "admin" ? { message: "That name is reserved." } : undefined,
+    },
+  },
+});
+```
+
+`validate.form` takes one validator for the whole value. It returns
+`{ fields: { "address.city": error } }`, keyed by dotted field name, and each
+error lands on its field. `form` in the same object holds errors for the form
+as a whole. At an array, a one-element
+tuple applies its entry to every item: `{ lines: [{ sku: checkSku }] }`.
+
+## Async
+
+A validator that returns a promise is async. While it runs, `field.validating`
+is true.
+
+```ts
+username: {
+  validate: async (name, { signal }) =>
+    (await isTaken(name, signal))
+      ? { message: "That name is taken." }
+      : undefined,
+  debounce: 400,
+},
+```
+
+When the user types again, the older run's `signal` aborts and its result is
+dropped, so a slow answer never wins over a newer one. Pass the signal to
+`fetch`. `debounce` waits for a pause in typing. Submit skips the wait, and a
+submit waits for a check that is still running and goes on only if it passed.
+
+## When validators run
+
+A validator first runs on the field's first blur. Set `validate` on
+`createForms` to `"input"`, `"blur"` or `"submit"` to change that for every
+form, `validate.on` in a definition for one form, or `on` on one validator.
+After its first run, a validator runs on every input.
+
+Errors show once a field is touched or the form submitted. `show` on
+`createForms` or a definition changes that: `"always"`, `"touched"`,
+`"submitted"`, `"touched-or-submitted"`, or a function. `field.errors` has
+every error and `field.shownErrors` only the ones to show now.
+
+## Without a schema plugin
+
+`validation()` is the runner alone. Install it for function validators, or
+for a Standard Schema from a library with no schema plugin, such as ArkType.
+Schema plugins bring the runner, so a form with `zod()` doesn't need it.
+
+```tsx framework=react
+import { validation } from "@lunarhue/forms-react/plugins/validation";
+
+const forms = createForms({ plugins: [validation()] });
+```
+
+```tsx framework=solid
+import { validation } from "@lunarhue/forms-solid/plugins/validation";
+
+const forms = createForms({ plugins: [validation()] });
+```
+
+No schema plugin knows that library's defaults, so the definition needs
+complete `defaultValues`.
+
+Without any runner a form still holds errors. `setErrors` and server errors
+work, and `validate()` resolves valid.
+
+## A helper generic over the schema
+
+A helper that takes any schema and returns a definition fails with TS2353
+when its type parameter is the schema type. Make it generic over the schema's
+values instead. [Writing a plugin](writing-a-plugin#ts2353-from-define-in-a-function-generic-over-the-schema)
+explains why and has both fixes.
+
+## Where plugins come from
+
+Every plugin goes in a `plugins` list: on `createForms` for every form, on a
+definition for its forms, or on one form.
+
+```tsx framework=react
+const form = useForm(signUp, { plugins: [persist("sign-up")] });
+```
+
+```tsx framework=solid
+const form = createForm(signUp, { plugins: [persist("sign-up")] });
+```
+
+A form's own list is read once, when the form is made, and its plugins run
+after the others.
+
+| Kind        | Needs another library | Import from                                         |
+| ----------- | --------------------- | --------------------------------------------------- |
+| First class | No                    | your adapter, `<adapter>/plugins/<name>`            |
+| Third party | Yes                   | its package, such as `@lunarhue/forms-schema/zod`   |
+| Community   | Up to the author      | the author's package, named `forms-plugin-<name>`   |
+
+First-class plugins live in `@lunarhue/forms-core`, one entry each, so
+importing one never loads another. Each adapter re-exports them at the same
+paths. `validation`, `history`, `mask`, `rules`, `persist`, `rebase` and
+`dirty` are first class, and each has a page in this section. To make your
+own, see [Writing a plugin](./writing-a-plugin).

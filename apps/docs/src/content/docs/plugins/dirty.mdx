@@ -1,0 +1,88 @@
+---
+title: Dirty
+description: Know which fields the user changed, and get clean again after a save.
+section: plugins
+order: 7
+---
+
+<Demo name="dirty/profile" />
+
+With `dirty()` installed, each field and the form get `dirty`, true while the
+value differs from its baseline. The baseline starts as the form's starting
+value. Typing a field back to that value makes it clean again.
+
+```tsx framework=react
+import { dirty } from "@lunarhue/forms-react/plugins/dirty";
+
+const forms = createForms({ plugins: [dirty()] });
+```
+
+```tsx framework=solid
+import { dirty } from "@lunarhue/forms-solid/plugins/dirty";
+
+const forms = createForms({ plugins: [dirty()] });
+```
+
+`form.store.changes()` lists the fields that differ, for event handlers and effects. An `equals` function on
+`createForms` or a definition decides what counts as equal, as two dates with
+the same time.
+
+## Without it
+
+`dirty` is always false, `changes()` is empty, and `equals` is a type error.
+In development the first call to `changes()` logs
+[`dirty:untracked`](/errors#core:dirty:untracked). Reading `dirty` doesn't
+warn.
+
+Core keeps the baseline either way, so a reset still goes back to it, and
+`rebase` and `bind` still move it. [`rebase`](./rebase) then compares values
+by `Object.is` alone.
+
+## Clean after a save
+
+Nothing moves the baseline when a save succeeds. A settings page that stays on
+screen after saving stays dirty, and its Save button never disables again.
+`baselineOnSubmit` fixes that. Import it from the same entry and put it on the
+definition:
+
+```tsx framework=react
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-react/plugins/dirty";
+
+const forms = createForms({ plugins: [dirty()] });
+const settings = forms.define({
+  defaultValues,
+  plugins: [baselineOnSubmit()],
+  onSubmit: saveSettings,
+});
+```
+
+```tsx framework=solid
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins/dirty";
+
+const forms = createForms({ plugins: [dirty()] });
+const settings = forms.define({
+  defaultValues,
+  plugins: [baselineOnSubmit()],
+  onSubmit: saveSettings,
+});
+```
+
+When a submit ends `"succeeded"`, the value `onSubmit` got as `ctx.input`
+becomes the baseline. An invalid, refused or failed submit leaves the baseline
+alone, and so does a submit that a reset stops.
+
+- A field the user edits while the save runs keeps the newer text and stays
+  dirty. Typing the saved text back makes it clean.
+- Array items pair by the keys they had when the value was sent. An item
+  inserted, removed or moved during the save keeps its own dirty flag.
+- Moving the baseline writes no value, so `history` records no step.
+- Without `dirty()` nothing is dirty, but the baseline still moves, so a later
+  reset goes back to the saved value.
+
+You don't need it for a create form that navigates away after saving, for a
+search form, or for an app that refetches after saving and calls `rebase`
+with the fresh copy.
+
+The plugin trusts the value that was sent. When the server stores something
+else, such as a trimmed name or a new `updatedAt`, bring its copy in with
+[`rebase`](./rebase).

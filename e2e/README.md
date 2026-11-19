@@ -50,7 +50,7 @@ contract and the contract imports the library from source. `run.ts` sets it.
 It lists the files changed against the base (committed, uncommitted and
 untracked), then:
 
-- Docs (`docs/`, Markdown anywhere, changesets, `LICENSE`, issue templates)
+- Docs (Markdown anywhere, changesets, `LICENSE`, issue templates)
   count for nothing. Docs alone run nothing. CI uses the same rule to skip
   its checks on a docs-only change.
 - A file outside every workspace package, such as root config or `bun.lock`,

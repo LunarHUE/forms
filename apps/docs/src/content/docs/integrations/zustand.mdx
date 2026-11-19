@@ -1,0 +1,96 @@
+---
+title: Zustand
+description: Keep a form's value in step with a Zustand store.
+section: integrations
+order: 1
+frameworks: [react]
+---
+
+import Install from "@/components/mdx/Install.astro";
+
+`zustand()` binds a form to a Zustand 5 store. The form doesn't move into the
+store. It keeps its own store with the values, errors, touched flags and the
+rest. The binding copies the value both ways: a form write goes out to your
+store, and a change in your store comes into the form. Remove the binding and
+the form works the same.
+
+<Install packages="@lunarhue/forms-bind zustand" />
+
+<Demo name="zustand/settings" />
+
+Type in a field and the greeting, which reads the store, follows. Load saved
+writes to the store, and the form takes the new value.
+
+## Bind the whole state
+
+Pass the store and the store's state becomes the form value:
+
+```tsx
+import { zustand } from "@lunarhue/forms-bind/zustand";
+import { create } from "zustand";
+
+const useProfileStore = create(() => ({ name: "", email: "" }));
+
+const profile = forms.define({
+  defaultValues: { name: "", email: "" },
+  plugins: [zustand(useProfileStore)],
+  onSubmit: saveProfile,
+});
+```
+
+A form write calls `setState` with the whole form value, so a store bound this
+way should hold no actions. If it has them, bind a slice.
+
+## Bind a slice
+
+`select` picks the slice that is the form value. `update` turns a form value
+back into the state to merge in:
+
+```tsx
+zustand(useAppStore, {
+  select: (state) => state.settings,
+  update: (settings) => ({ settings }),
+});
+```
+
+A store change that leaves the slice as the same object doesn't reach the
+form, so other parts of the store can change freely.
+
+## Where it goes
+
+Put the binding in the definition's `plugins` when the store lives at module
+scope. When a component makes the store, pass the binding to `useForm` instead.
+It runs after the shared plugins and the definition's:
+
+```tsx framework=react
+const form = useForm(settingsForm, {
+  plugins: [zustand(store, { select, update })],
+});
+```
+
+The compiler checks that the form's value type is the bound type. Binding a
+`Profile` form to a store whose state is something else is a type error.
+
+A form has one binding. The binding listens to the store only while the form
+has listeners, which is while its fields are mounted, and catches up with the
+store when it starts listening again.
+
+## Options
+
+Both forms of `zustand()` also take these:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `initial` | `"outside"` | Where the starting value comes from. `"outside"` starts the form from the store, server render included. `"form"` keeps the form's defaults and writes them to the store when the form is first listened to. |
+| `incoming` | `"replace"` | What a store change does to the form. `"replace"` writes the store's value over the form's. `"rebase"` moves the form's baseline to it and keeps the fields the user edited. A function picks per field, as [rebase](../plugins/rebase) does. |
+
+```tsx
+zustand(useProfileStore, { incoming: "rebase" });
+```
+
+With `"rebase"`, a server refresh that lands in the store updates the fields
+the user hasn't touched and leaves their edits alone.
+
+For a store that isn't Zustand, `bind()` from
+`@lunarhue/forms-react/plugins/bind` takes `get`, `set` and `subscribe`
+functions and the same two options.

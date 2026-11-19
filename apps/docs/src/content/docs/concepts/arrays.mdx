@@ -1,0 +1,94 @@
+---
+title: Arrays
+description: Render a list of rows, and add, remove and move them.
+section: concepts
+order: 3
+---
+
+An array field is a list of rows. `form.Items` renders one child per row,
+and the array's handle has the commands that change the list.
+
+<Demo name="arrays/checklist" />
+
+## Rendering rows
+
+`form.Items` takes the array's name, or `handle`, and a function that gets
+each row's handle and its index:
+
+```tsx framework=react
+<form.Items name="tasks">
+  {(task, index) => <form.TextField handle={task.at("title")} label={`Task ${index + 1}`} />}
+</form.Items>
+```
+
+```tsx framework=solid
+<form.Items name="tasks">
+  {(task, index) => <form.TextField handle={task.at("title")} label={`Task ${index() + 1}`} />}
+</form.Items>
+```
+
+<Only framework="solid">
+
+`index` is an accessor. A row renders once, and `index()` follows it when
+it moves.
+
+</Only>
+
+Rows have no names, since a name like `tasks.0.title` would point at another
+row after a move. Reach into a row through its handle: `task.at("title")`.
+
+`form.Items` updates when a row is added, removed or moved. Typing in a row
+doesn't re-render the list.
+
+## Changing the list
+
+The array's handle has the commands. Get it with `form.root.at("tasks")`:
+
+| Command | What it does |
+| --- | --- |
+| `push(item?)` | Adds a row at the end. |
+| `insert(index, item?)` | Adds a row before `index`. |
+| `remove(index)` | Removes the row at `index`. |
+| `move(from, to)` | Moves a row. |
+| `setValue(items)` | Replaces the whole list. |
+
+With no `item`, `push` and `insert` add an empty row built from the schema,
+or `undefined` when the form has none.
+
+## Keys
+
+Each row gets a key when it is added. The key stays with the row through
+moves and removes, and so does its handle: `task` is the same object for
+that row for the life of the form, and `task.key` is its key. `form.Items`
+uses the key for the list key, so an input keeps its focus and its text
+while its row moves. The current keys, in order, are the array snapshot's
+`keys`, and `tasks.item(key)` returns a row's handle.
+
+<Only framework="react">
+
+For a list you lay out yourself, `useItems(handle)` returns the row handles
+in order and re-renders only when the keys change. Use `task.key` as the
+React key.
+
+</Only>
+
+<Only framework="solid">
+
+For a list you lay out yourself, `createItems(handle)` returns an accessor
+of the row handles in order, which changes only when the keys do. Pass it to
+`<For each={items()}>`.
+
+</Only>
+
+## Errors on the list
+
+A rule about the list as a whole, such as "add at least one task", puts its
+error on the array field, not on a row. Render it next to the rows:
+
+```tsx framework=react
+const errors = useField(tasks, (snapshot) => snapshot.shownErrors);
+```
+
+```tsx framework=solid
+const list = createField(tasks); // list.shownErrors
+```

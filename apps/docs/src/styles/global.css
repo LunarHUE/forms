@@ -1,0 +1,155 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Colours come from the tokens in the Forms Paper file. One accent (--brand)
+ * for the active nav item, links, focus and the selected form outline; red
+ * only for errors. The devtools stay dark in both themes.
+ */
+:root {
+  color-scheme: light;
+
+  --background: #ffffff;
+  --foreground: #18191c;
+  --card: #ffffff;
+  --card-foreground: #18191c;
+  --popover: #ffffff;
+  --popover-foreground: #18191c;
+  --primary: #18191c;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f6f4;
+  --secondary-foreground: #18191c;
+  --muted: #f6f6f4;
+  --muted-foreground: #6b6c68;
+  --accent: #f6f6f4;
+  --accent-foreground: #18191c;
+  --destructive: #c93a3a;
+  --border: #e4e4e0;
+  --input: #e4e4e0;
+  --ring: #4c7dff;
+
+  --brand: #4c7dff;
+  --brand-foreground: #ffffff;
+  --brand-tint: #edf2ff;
+
+  --sidebar: #f6f6f4;
+  --sidebar-foreground: #18191c;
+  --sidebar-primary: #4c7dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #edf2ff;
+  --sidebar-accent-foreground: #4c7dff;
+  --sidebar-border: #e4e4e0;
+  --sidebar-ring: #4c7dff;
+
+  --devtools: #18191c;
+  --devtools-foreground: #e6e6e3;
+  --devtools-muted: #8b8d93;
+  --devtools-border: #2c2e33;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0e0f11;
+  --foreground: #ececea;
+  --card: #0e0f11;
+  --card-foreground: #ececea;
+  --popover: #18191c;
+  --popover-foreground: #ececea;
+  --primary: #ececea;
+  --primary-foreground: #0e0f11;
+  --secondary: #141517;
+  --secondary-foreground: #ececea;
+  --muted: #141517;
+  --muted-foreground: #93948f;
+  --accent: #26272b;
+  --accent-foreground: #ececea;
+  --destructive: #c93a3a;
+  --border: #26272b;
+  --input: #26272b;
+  --ring: #4c7dff;
+
+  --brand: #4c7dff;
+  --brand-foreground: #ffffff;
+  --brand-tint: #18213a;
+
+  --sidebar: #141517;
+  --sidebar-foreground: #ececea;
+  --sidebar-primary: #4c7dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #18213a;
+  --sidebar-accent-foreground: #4c7dff;
+  --sidebar-border: #26272b;
+  --sidebar-ring: #4c7dff;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-tint: var(--brand-tint);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-devtools: var(--devtools);
+  --color-devtools-foreground: var(--devtools-foreground);
+  --color-devtools-muted: var(--devtools-muted);
+  --color-devtools-border: var(--devtools-border);
+
+  /* Paper: 6px for controls, tabs and nav items; 8px for blocks, panels and popovers. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.375rem;
+  --radius-lg: var(--radius);
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

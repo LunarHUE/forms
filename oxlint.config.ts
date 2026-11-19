@@ -46,12 +46,24 @@ export default defineConfig({
     "import/namespace": "off",
     "import/default": "off",
     "import/no-named-as-default-member": "off",
+    // Stylesheets are imported for their side effect (the docs' global.css).
+    "import/no-unassigned-import": ["warn", { allow: ["**/*.css"] }],
   },
   overrides: [
     {
-      // The adapter, the React examples, the e2e React app and the parked
-      // inspector's React wrapper follow the same rules.
-      files: ["packages/react/**", "examples/react/**", "e2e/apps/react/**", "parked/inspector/src/react.tsx"],
+      // The adapter, the e2e React app, the parked inspector's React wrapper
+      // and the docs site's React code, the README's example included, follow
+      // the same rules. The docs' Solid demos live in src/demos/solid and stay out.
+      files: [
+        "packages/react/**",
+        "e2e/apps/react/**",
+        "parked/inspector/src/react.tsx",
+        "apps/docs/src/components/**",
+        "apps/docs/src/devtools/**",
+        "apps/docs/src/demos/react/**",
+        "apps/docs/src/layouts/**",
+        "apps/docs/src/readme/**",
+      ],
       // An override's `plugins` replaces the base list.
       plugins: [...basePlugins, "react"],
       // `react` is a reserved plugin name, so the upstream plugin gets an alias.
@@ -64,5 +76,6 @@ export default defineConfig({
       },
     },
   ],
-  ignorePatterns: ["**/dist/**", "**/coverage/**"],
+  // shadcn generates apps/docs/src/components/ui; it isn't edited by hand.
+  ignorePatterns: ["**/dist/**", "**/coverage/**", "**/.astro/**", "apps/docs/src/components/ui/**"],
 });

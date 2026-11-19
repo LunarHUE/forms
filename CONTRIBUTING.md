@@ -127,7 +127,7 @@ oxlint enforces most of it. The rest:
   components.
 - Comments say why, not what.
 - A message the user can hit goes through `problem()` and gets an entry in
-  [docs/errors.md](docs/errors.md).
+  [apps/docs/src/content/errors.mdx](apps/docs/src/content/errors.mdx).
 
 ## Tests
 
@@ -150,7 +150,8 @@ lives.
 - **Community**: yours, in your own package, named `forms-plugin-<name>`.
 
 A plugin depends on core and never on an adapter.
-[docs/plugins.md](docs/plugins.md) has the rules.
+[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin)
+has the rules.
 
 ## Adapters
 

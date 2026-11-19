@@ -1,0 +1,76 @@
+---
+title: Solid signals
+description: Keep a form's value in step with a Solid signal.
+section: integrations
+order: 2
+frameworks: [solid]
+---
+
+import Install from "@/components/mdx/Install.astro";
+
+`signal()` binds a form to a Solid 2 signal. The form doesn't move into the
+signal. It keeps its own store with the values, errors, touched flags and the
+rest. The binding copies the value both ways: a form write sets the signal,
+and a change to the signal comes into the form. Remove the binding and the
+form works the same.
+
+<Install packages="@lunarhue/forms-bind" />
+
+<Demo name="solid-signals/settings" />
+
+Type in a field and the greeting, which reads the signal, follows. Load saved
+sets the signal, and the form takes the new value.
+
+## Bind a signal
+
+Pass the getter and setter that `createSignal` returns:
+
+```tsx framework=solid
+import { signal } from "@lunarhue/forms-bind/solid";
+import { createForm } from "@lunarhue/forms-solid";
+import { createSignal } from "solid-js";
+
+const [settings, setSettings] = createSignal({
+  displayName: "Ada",
+  timezone: "Europe/London",
+});
+
+const form = createForm(settingsForm, {
+  plugins: [signal(settings, setSettings)],
+});
+```
+
+The binding can also go in the definition's `plugins` when the signal lives at
+module scope. Passed to `createForm`, it runs after the shared plugins and the
+definition's.
+
+The compiler checks that the form's value type is the signal's type, and that
+the getter and setter share it.
+
+## Timing
+
+A form write sets the signal right away. A signal change reaches the form when
+Solid runs its effects, not in the same line of code.
+
+The binding watches the signal with an effect in a root of its own. It makes
+the root when the form gets its first listener, which is when its fields
+mount, and disposes it when the last one goes. Listening again catches up with
+the signal. The setter runs outside any owner, so a form write made inside a
+component or a memo sets the signal where Solid would otherwise throw.
+
+A form has one binding.
+
+## Options
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `initial` | `"outside"` | Where the starting value comes from. `"outside"` starts the form from the signal, server render included. `"form"` keeps the form's defaults and sets the signal to them when the form is first listened to. |
+| `incoming` | `"replace"` | What a signal change does to the form. `"replace"` writes the signal's value over the form's. `"rebase"` moves the form's baseline to it and keeps the fields the user edited. A function picks per field, as [rebase](../plugins/rebase) does. |
+
+```tsx
+signal(settings, setSettings, { initial: "form", incoming: "rebase" });
+```
+
+For anything other than a signal, such as a Solid store, `bind()`
+from `@lunarhue/forms-solid/plugins/bind` takes `get`, `set` and `subscribe`
+functions and the same two options.

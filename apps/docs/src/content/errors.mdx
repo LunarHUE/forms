@@ -1,0 +1,289 @@
+---
+title: Errors
+description: Every error and warning code the packages raise, with what it means.
+---
+
+Every error and warning the packages raise has a code, written `area:name`.
+In development the message is a sentence that says what went wrong,
+followed by a link to the code's entry on this page:
+
+```
+@lunarhue/forms-core: Two plugins are named "email". https://forms.lunarhue.dev/errors#core:plugins:name
+```
+
+A production build drops the sentence to save bytes and keeps the code and
+the link:
+
+```
+@lunarhue/forms-react: context:form https://forms.lunarhue.dev/errors#react:context:form
+```
+
+Core's production messages leave the link out, since it would cost about
+22 B in every core entry point. When a sentence names something, such as a
+plugin, the name comes after the code:
+
+```
+@lunarhue/forms-core: plugins:name email
+```
+
+Each entry below has the sentence, with the named value in angle brackets,
+so a production message can be read back from its code. The anchor of an
+entry is the package and the code, as in `#react:context:form`.
+
+Each package keeps the address in one constant, `docs` in its
+`src/problem.ts`.
+
+The Vue adapter, `@lunarhue/forms-schema` and `@lunarhue/forms-bind` raise
+no errors of their own.
+
+## Core
+
+These come from `@lunarhue/forms-core`. The adapters use core, so a React,
+Solid or Vue app gets them too.
+
+`onPluginError` is an option of `createForms`. Without it, an error sent
+there is thrown on a later task, so it reaches the page's error handler
+without breaking the write that was running.
+
+<a id="core:plugins:name"></a>
+
+### `plugins:name`
+
+> Two plugins are named "&lt;name&gt;".
+
+Thrown when the store is made. Two hook plugins in one store have the same
+name. The lists on `createForms`, on the definition and on the form all
+count. Install the plugin once. To run two masks side by side, give one a
+`name`. A form has one `bind`.
+
+<a id="core:plugins:cycle"></a>
+
+### `plugins:cycle`
+
+> Plugin "&lt;name&gt;" is part of an `after` cycle.
+
+Thrown when the store is made. The plugins' `after` lists make a loop, such
+as `a` after `b` and `b` after `a`. Remove a name from one of the `after`
+lists.
+
+<a id="core:plugins:write"></a>
+
+### `plugins:write`
+
+> A plugin wrote to the store from inside a hook. Write through `ctx.write`.
+
+Sent to `onPluginError`. A plugin wrote to the store directly while one of
+its hooks was running, `setup` included. Write inside `ctx.write`. The write
+then runs once every plugin in the round has run.
+
+<a id="core:plugins:loop"></a>
+
+### `plugins:loop`
+
+> Plugins kept answering each other's writes for 10 rounds: &lt;names&gt;.
+
+Sent to `onPluginError`. Plugins kept answering each other's writes for 10
+rounds in one batch, and the writes still waiting are dropped. The value is
+the names of the plugins still writing. Make a plugin skip writes it caused,
+by checking `record.cause`, or write only when the value would change.
+
+<a id="core:plugins:copies"></a>
+
+### `plugins:copies`
+
+> This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.
+
+A warning, logged in development only. The app bundles two copies of core,
+and plugins only work with the copy they were made with. Install one copy,
+as by deduping the lockfile.
+
+<a id="core:validation:definition"></a>
+
+### `validation:definition`
+
+> This form's definition has `validate` or `schema`, but no plugin brings the validation runner. Add `validation()` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as `valibot()`, to `plugins`.
+
+Thrown when the store is made. Add `validation()` from
+`<adapter>/plugins/validation`, or a schema plugin such as `valibot()`, to
+`plugins`.
+
+<a id="core:validation:validator"></a>
+
+### `validation:validator`
+
+> A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner. Add `validation()` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as `valibot()`, to `plugins`.
+
+Thrown when the validator is added. The fix is the same as for
+`validation:definition`.
+
+<a id="core:schema:defaults"></a>
+
+### `schema:defaults`
+
+> No schema plugin for vendor "&lt;vendor&gt;", so the definition needs defaultValues.
+
+Thrown when the store is made. The definition has a `schema` from a library
+with no schema plugin installed, and no `defaultValues`. Install that
+library's schema plugin, such as `valibot()` or `zod()`. For a library with
+none, such as arktype, give complete `defaultValues`.
+
+<a id="core:rebase:store"></a>
+
+### `rebase:store`
+
+> rebase: the handle belongs to another store.
+
+Thrown by `form.plugins.rebase`, as a `TypeError`. The handle passed to
+`rebase` belongs to another store. Pass a handle of the form the `rebase`
+plugin is installed on.
+
+<a id="core:dirty:untracked"></a>
+
+### `dirty:untracked`
+
+> This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.
+
+A warning, logged in development only, once per form. Something called
+`changes()` on a form whose plugins have no `dirty()`. Add `dirty()` from
+`<adapter>/plugins/dirty` to `plugins`, on `createForms` or on the
+definition.
+
+Reading `dirty` on such a form gives `false` and logs nothing. So when a
+Save button that waits for `dirty` never enables, first check that the form
+has `dirty()`.
+
+<a id="core:submit:unseen"></a>
+
+### `submit:unseen`
+
+> A submit failed on errors at &lt;where&gt;, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.
+
+A warning, logged in development only, once per store. A submit failed, and
+the only errors are on the root or on an object or array field that nothing
+reads. The user sees nothing, and focus goes to the `<form>`.
+
+Every form should render its root errors. Errors land on the root in three
+ways:
+
+- The schema rejects the value as a whole, such as "Invalid type: Expected
+  Object but received undefined", or a check across fields has no path.
+- A server error comes back for the whole form, through `setErrors({ form })`.
+- An error names a field that doesn't exist, so it falls back to the root.
+
+Errors on an object or array field, such as an empty list that needs a row,
+stay on that field. Render them next to its fields.
+
+In React:
+
+```tsx
+const errors = useField(form.root, (snapshot) => snapshot.shownErrors);
+
+<ul id={errorId(form.root)}>
+  {errors.map((error) => (
+    <li key={error.message}>{error.message}</li>
+  ))}
+</ul>;
+```
+
+In Solid:
+
+```tsx
+const root = createField(form.root);
+
+<ul id={root.errorId}>
+  <For each={root.shownErrors}>{(error) => <li>{error.message}</li>}</For>
+</ul>;
+```
+
+Core can't see the page. It counts an error as read when something
+subscribes to its field, as `useField` and `createField` do. The warning
+stays quiet when any field with an error is read. It names only the root and
+fields that have fields read under them, since an unread field may be on a
+step the app shows after the submit. It can miss a case too. A component
+that reads the root's value, or a list's items, counts as reading its errors.
+
+## React
+
+These come from `@lunarhue/forms-react`.
+
+<a id="react:form:definition"></a>
+
+### `form:definition`
+
+> useForm takes a definition from forms.define.
+
+`useForm` got something that `define` didn't return. Pass the definition
+`forms.define(...)` returned.
+
+<a id="react:context:form"></a>
+
+### `context:form`
+
+> no form.Form is mounted above this component. Render it inside form.Form, or pass the form down as a prop.
+
+`useFormContext()` found no form above it. Render the component inside
+`form.Form`, or pass the form down as a prop.
+
+<a id="react:context:forms"></a>
+
+### `context:forms`
+
+> no form.Form of these forms is mounted above this component. Forms of other createForms calls don't count. Render it inside the form.Form of a form made from one of their definitions.
+
+`useFormContext(forms)` found no form made from one of those forms'
+definitions.
+
+<a id="react:context:definition"></a>
+
+### `context:definition`
+
+> no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.
+
+`useFormContext(definition)` found no form made from that definition.
+
+<a id="react:id:server"></a>
+
+### `id:server`
+
+> a form was server rendered without an `id`. React before 18 has no `useId`, so the generated id can't match on the client. Pass `id` to `useForm`.
+
+A warning, logged in development only. React 16.8 and 17 have no `useId`,
+so the generated id can't match on the client. Pass `id` to `useForm`.
+
+## Solid
+
+These come from `@lunarhue/forms-solid`.
+
+<a id="solid:field:target"></a>
+
+### `field:target`
+
+> give a bound component a `name` or a `handle`.
+
+A bound component, such as `form.TextField`, got neither `name` nor
+`handle`. Pass `name`, or a `handle`.
+
+<a id="solid:context:form"></a>
+
+### `context:form`
+
+> useFormContext() found no form. Render it inside the form's `form.Form`.
+
+`useFormContext()` found no form above it.
+
+<a id="solid:context:forms"></a>
+
+### `context:forms`
+
+> useFormContext(forms) found no form made from those forms. It skips forms of other `createForms` calls. Render it inside the `form.Form` of a form made from one of their definitions.
+
+`useFormContext(forms)` found no form made from one of those forms'
+definitions.
+
+<a id="solid:context:definition"></a>
+
+### `context:definition`
+
+> useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.
+
+`useFormContext(definition)` found no form made from that definition.

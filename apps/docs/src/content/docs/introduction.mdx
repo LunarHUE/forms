@@ -1,0 +1,65 @@
+---
+title: Introduction
+description: Forms for React and Solid, with the form logic in one small core.
+section: start
+order: 1
+---
+
+The core holds values, arrays, errors and submit state, and knows nothing about either framework. The adapter, `@lunarhue/forms-react` or `@lunarhue/forms-solid`, connects it to your components. A Vue adapter is planned.
+
+Validation, undo, input masks and the rest are plugins, each imported from its own entry point. Your bundle carries only the ones you import.
+
+Field names are typed. Define a form from a schema and every `name` you write is checked against it:
+
+```tsx framework=react
+const signUp = forms.define({
+  schema: z.object({ name: z.string(), email: z.email() }),
+  onSubmit: (value) => save(value),
+});
+
+function SignUpForm() {
+  const form = useForm(signUp);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.TextField name="name" label="Name" />
+          {/* Type error: "emial" is not a field of signUp. */}
+          <form.TextField name="emial" label="Email" />
+        </form>
+      )}
+    </form.Form>
+  );
+}
+```
+
+```tsx framework=solid
+const signUp = forms.define({
+  schema: z.object({ name: z.string(), email: z.email() }),
+  onSubmit: (value) => save(value),
+});
+
+function SignUpForm() {
+  const form = createForm(signUp);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.TextField name="name" label="Name" />
+          {/* Type error: "emial" is not a field of signUp. */}
+          <form.TextField name="emial" label="Email" />
+        </form>
+      )}
+    </form.Form>
+  );
+}
+```
+
+`TextField` is your own component. You register it once and every form gets it.
+
+## Where to go next
+
+- [Install](install) the adapter.
+- Build [your first form](first-form), step by step.
+- Read about [fields](concepts/fields) and [typed paths](concepts/typed-paths).
+- Browse the plugins, starting with [validation](plugins/validation).

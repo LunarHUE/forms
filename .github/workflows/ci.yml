@@ -49,6 +49,47 @@ jobs:
       - if: steps.setup.outputs.docs-only != 'true'
         run: bun run size
 
+  # The docs site builds the packages from source, so a package change runs
+  # this too. A change to Markdown alone counts as docs and skips it.
+  docs:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The docs-only check needs the merge base with the base branch.
+          fetch-depth: 0
+          persist-credentials: false
+      - id: setup
+        uses: ./.github/actions/setup
+      - if: steps.setup.outputs.docs-only == 'true'
+        run: echo "Only docs changed, so there is nothing to check."
+      - if: steps.setup.outputs.docs-only != 'true'
+        working-directory: apps/docs
+        run: bun run typecheck
+      - if: steps.setup.outputs.docs-only != 'true'
+        working-directory: apps/docs
+        run: bun run build
+      # The docs and e2e use the same catalog Playwright, so the action's
+      # browser fits both.
+      - if: steps.setup.outputs.docs-only != 'true'
+        uses: ./.github/actions/playwright
+        with:
+          browser: chromium
+      - if: steps.setup.outputs.docs-only != 'true'
+        working-directory: apps/docs
+        env:
+          # Serve the build above instead of building again.
+          DOCS_BUILT: "1"
+        run: bun run test:e2e
+      - if: failure() && steps.setup.outputs.docs-only != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-docs
+          path: apps/docs/playwright-report
+          retention-days: 7
+
   # One job per browser, so a failure in one shows on its own. Only Chromium
   # is required to merge. Firefox and WebKit report beside it.
   e2e:

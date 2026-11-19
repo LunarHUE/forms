@@ -1,0 +1,54 @@
+---
+title: Install
+description: Install the adapter for your framework. The other packages are optional.
+section: start
+order: 2
+---
+
+import Install from "@/components/mdx/Install.astro";
+
+<Install adapter />
+
+The adapter brings the core and the plugins that need no other library.
+
+## Optional packages
+
+Validation from a Zod schema. Valibot works the same way.
+
+<Install packages="@lunarhue/forms-schema zod" />
+
+<Only framework="react">
+
+Keeps a form in step with a Zustand store.
+
+</Only>
+
+<Only framework="solid">
+
+Keeps a form in step with a Solid signal.
+
+</Only>
+
+<Install packages="@lunarhue/forms-bind" />
+
+## Requirements
+
+<Only framework="react">
+
+|                         |                     |
+| ----------------------- | ------------------- |
+| @lunarhue/forms-react   | React 16.8 and later |
+| @lunarhue/forms-schema  | Zod 4 or Valibot 1  |
+| @lunarhue/forms-bind    | Zustand 5           |
+
+</Only>
+
+<Only framework="solid">
+
+|                         |                    |
+| ----------------------- | ------------------ |
+| @lunarhue/forms-solid   | Solid 2            |
+| @lunarhue/forms-schema  | Zod 4 or Valibot 1 |
+| @lunarhue/forms-bind    | Solid 2            |
+
+</Only>

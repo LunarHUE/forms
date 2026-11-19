@@ -1,0 +1,12 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "customConditions": ["@lunarhue/source"],
+    "paths": { "@/*": ["./src/*"] },
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  // The Solid demos compile with Solid's JSX and have their own tsconfig.
+  "exclude": ["dist", "src/demos/solid"]
+}
