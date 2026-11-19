@@ -53,7 +53,10 @@ const commonMembers = {
   setValue: true,
   handle: true,
   errorId: true,
-  inputProps: true,
+  text: true,
+  setText: true,
+  setNumberText: true,
+  ref: true,
   "~types": false,
 } as const;
 const leafMembers = commonMembers satisfies Record<keyof ExactFieldApi<string>, boolean>;

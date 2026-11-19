@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { createEffect, createMemo, createRoot, createSignal, flush, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createField, createForm, createForms, createItems, createValidator, type FieldApi, type FormOf } from "../index.js";
+import { createField, createForm, createForms, createItems, createValidator, type FieldApi, type FormOf, inputProps } from "../index.js";
 import { countSubscriptions, get, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ plugins: [valibot()] });
@@ -18,7 +18,7 @@ const Profile = forms.define({
 /** One text input for the first name. */
 function FirstName() {
   const form = createForm(Profile);
-  return <form.Field name="first">{(field) => <input {...field.inputProps()} />}</form.Field>;
+  return <form.Field name="first">{(field) => <input {...inputProps(field)} />}</form.Field>;
 }
 
 /** Writes to the store from its body and from a memo. */
@@ -50,7 +50,7 @@ describe("fine-grained updates", () => {
       return (
         <input
           data-which={props.which}
-          {...props.field.inputProps()}
+          {...inputProps(props.field)}
           data-reads={(reads[props.which]++, props.field.value.length)}
         />
       );
@@ -211,7 +211,7 @@ describe("batching", () => {
     let form: FormOf<typeof Profile> | undefined;
     const { host } = mount(() => {
       form = createForm(Profile);
-      return <form.Field name="last">{(field) => <input {...field.inputProps()} />}</form.Field>;
+      return <form.Field name="last">{(field) => <input {...inputProps(field)} />}</form.Field>;
     });
     form?.root.at("last").setValue("Lovelace");
     flush();

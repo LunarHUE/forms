@@ -1,6 +1,6 @@
 import type { Path } from "../path.js";
 import type { FieldDisplay, HookPlugin, PluginContext } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
 import { replaceText } from "./caret.js";
 
 export { replaceText } from "./caret.js";
@@ -97,7 +97,7 @@ export function mask(fields: Readonly<Record<string, Mask | MaskField>>, options
     }
     return value;
   };
-  return definePlugin({
+  return defineHooks({
     name: options.name ?? "mask",
     ...(options.after && { after: options.after }),
     initial: (value) => run([], value, value),

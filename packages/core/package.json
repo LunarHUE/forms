@@ -88,37 +88,37 @@
       "name": "./plugins bind()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ bind }",
-      "limit": "2.7 kB"
+      "limit": "2.6 kB"
     },
     {
       "name": "./plugins history()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history }",
-      "limit": "2.25 kB"
+      "limit": "2.35 kB"
     },
     {
       "name": "./plugins mask()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ mask }",
-      "limit": "2.5 kB"
+      "limit": "2.4 kB"
     },
     {
       "name": "./plugins persist()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ persist }",
-      "limit": "2.1 kB"
+      "limit": "2.2 kB"
     },
     {
       "name": "./plugins rebase()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rebase }",
-      "limit": "2.55 kB"
+      "limit": "2.45 kB"
     },
     {
       "name": "./plugins rules()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
-      "limit": "2.1 kB"
+      "limit": "2.0 kB"
     },
     {
       "name": "./plugins/testing",
@@ -130,7 +130,7 @@
       "name": "history() + mask()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history, mask }",
-      "limit": "2.85 kB"
+      "limit": "2.9 kB"
     },
     {
       "name": "core + dirty()",

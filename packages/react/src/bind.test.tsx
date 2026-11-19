@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createForms, type FieldApi, useForm } from "./index.js";
+import { createForms, type FieldApi, inputProps, useForm } from "./index.js";
 import { bind, type BindOptions, type Rebase, rebase } from "./plugins.js";
 
 interface Profile {
@@ -46,7 +46,7 @@ const rendered = vi.fn<() => void>();
 
 function TextField({ field, label }: TextFieldProps) {
   rendered();
-  return <input aria-label={label} {...field.inputProps()} />;
+  return <input aria-label={label} {...inputProps(field)} />;
 }
 
 const forms = createForms({ fields: { TextField } });

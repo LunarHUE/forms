@@ -1,6 +1,6 @@
 import type { FieldPath, Path } from "../path.js";
 import type { HookPlugin, PluginContext } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
 import type { IsUnknown } from "../value.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
@@ -60,7 +60,7 @@ export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta
  * object, such as `"shipping"`, disables every field below it.
  */
 export function rules<V>(fields: RuleFields<V>): RulesPlugin<V> {
-  const plugin: RulesPlugin<V> = definePlugin({
+  const plugin: RulesPlugin<V> = defineHooks({
     name: "rules",
     initialMeta: shown,
     setup(ctx: PluginContext<RulesMeta>) {

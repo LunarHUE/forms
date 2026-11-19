@@ -21,7 +21,7 @@ You need the adapter, the schema package and Zod. See [Install](install) for the
 A field component is your own component with a `field` prop. The library doesn't ship inputs, so this is where your markup and styles go.
 
 ```tsx title="TextField.tsx" framework=react
-import type { FieldApi } from "@lunarhue/forms-react";
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
 interface TextFieldProps {
   readonly field: FieldApi<string>;
@@ -32,7 +32,7 @@ export function TextField({ field, label }: TextFieldProps) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} />
+      <input {...inputProps(field)} />
       <ul id={field.errorId}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>
@@ -44,7 +44,7 @@ export function TextField({ field, label }: TextFieldProps) {
 ```
 
 ```tsx title="TextField.tsx" framework=solid
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 import { For } from "solid-js";
 
 interface TextFieldProps {
@@ -56,7 +56,7 @@ export function TextField(props: TextFieldProps) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <ul id={props.field.errorId}>
         <For each={props.field.shownErrors}>
           {(error) => <li>{error.message}</li>}
@@ -73,7 +73,7 @@ Read the field through `props` rather than destructuring it, or it stops updatin
 
 </Only>
 
-`inputProps()` returns the value, the change and blur handlers, and the aria attributes that point at `field.errorId`. `shownErrors` stays empty until the user leaves the field or submits.
+`inputProps(field)` returns the value, the change and blur handlers, and the aria attributes that point at `field.errorId`. `shownErrors` stays empty until the user leaves the field or submits.
 
 ## Register it
 

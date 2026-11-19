@@ -1,13 +1,13 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForm, createForms, createInputProps, useFormContext, type FieldApi } from "../index.js";
+import { createForm, createForms, createInputProps, inputProps, useFormContext, type FieldApi } from "../index.js";
 import { digits, mask, rules } from "../plugins.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }
@@ -71,7 +71,7 @@ interface RuledTextProps {
 function RuledText(props: RuledTextProps) {
   return (
     <>
-      {shippingRules.meta(props.field).hidden ? null : <input aria-label={props.label} {...props.field.inputProps()} />}
+      {shippingRules.meta(props.field).hidden ? null : <input aria-label={props.label} {...inputProps(props.field)} />}
     </>
   );
 }
@@ -109,7 +109,7 @@ interface LabeledTextProps {
 }
 
 function LabeledText(props: LabeledTextProps) {
-  return <input aria-label={props.label} {...props.field.inputProps()} />;
+  return <input aria-label={props.label} {...inputProps(props.field)} />;
 }
 
 const Deliveries = createForms({ fields: { LabeledText } }).define({

@@ -1,7 +1,7 @@
 import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
+import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -13,7 +13,7 @@ declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
 declare const profileSchema: FakeSchema<{ name: string }>;
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
-  return <input aria-label={props.label} {...props.field.inputProps()} />;
+  return <input aria-label={props.label} {...inputProps(props.field)} />;
 }
 
 const required = (value: string) => (value ? undefined : { message: "Required" });

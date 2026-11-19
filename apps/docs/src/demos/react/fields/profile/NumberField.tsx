@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-react";
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
 interface NumberFieldProps {
   readonly field: FieldApi<number>;
@@ -11,7 +11,7 @@ export function NumberField({ field, label }: NumberFieldProps) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps({ kind: "number" })} />
+      <input {...inputProps(field, { kind: "number" })} />
       <ul id={field.errorId}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>

@@ -1,8 +1,8 @@
 import type { FieldSnapshot } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
-import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
 import { errorId } from "./input.js";
 import { type NumberText, numberTextSource } from "./number-text.js";
+import { piecesFor, textOf } from "./pieces.js";
 import { cached, type Source } from "./select.js";
 import { fieldSource } from "./sources.js";
 
@@ -36,7 +36,8 @@ function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>,
     id: handle.id,
     path: handle.path,
     errorId: errorId(handle),
-    inputProps: (options?: AnyInputOptions) => inputPropsFor(handle, snapshot, text, options),
+    ...piecesFor(handle),
+    text: textOf(snapshot, text),
   };
   return { snapshot, text, api };
 }

@@ -5,8 +5,6 @@ export * from "@lunarhue/forms-core";
 export type * from "@lunarhue/forms-core/plugins";
 export { createForms, useDisabledErrors, useForm, useFormContext } from "./forms.js";
 export type {
-  CheckedFields,
-  CreateForms,
   FocusOnInvalid,
   FocusTarget,
   FormComponent,
@@ -19,44 +17,25 @@ export type {
   FormsOptions,
   FormStateComponent,
   FormStateProps,
-  ObjectHandleLike,
   ReactFormDefinition,
-  ReservedName,
-  ReservedProp,
   UnknownForm,
-  UseDisabledErrors,
-  UseForm,
-  UseFormArgs,
-  UseFormContext,
   UseFormOptions,
 } from "./forms.js";
 export type {
-  AcceptedHandle,
-  AcceptedValues,
   BoundChoiceComponent,
   BoundField,
   BoundFieldComponent,
-  BoundFieldComponents,
   BoundItems,
-  ChoiceFieldOf,
   FieldApi,
   FieldApiOf,
-  FieldByHandle,
-  FieldByName,
   FieldComponentMap,
-  FieldComponentType,
   ExactFieldApi,
-  FieldPropOf,
   Fieldset,
   HandleOf,
-  InputPropsMethod,
-  ItemsByHandle,
-  ItemsByName,
-  NameFitting,
-  NameFittingChoice,
   NoFields,
+  // Stays public: declarations inferred from a bound field component, as
+  // `typeof form.TextField`, name it as `OwnPropsOf<typeof TextField>`.
   OwnPropsOf,
-  PropsOf,
   Scope,
   ScopeMembers,
   ValidateProp,
@@ -64,31 +43,20 @@ export type {
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { useField, useFormState, useItems, useValidator } from "./field.js";
 export type {
-  ArrayHandleLike,
-  FormStateSource,
   HandleLike,
   IsEqual,
   SnapshotOf,
-  UseField,
-  UseFormState,
-  UseItems,
-  UseValidator,
-  ValidatorHandleLike,
 } from "./field.js";
-export { errorId, useFieldRef, useInputProps } from "./input.js";
+export { errorId, inputProps, useFieldRef, useInputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
   CheckboxGroupInputProps,
   CheckboxGroupOptions,
   CheckboxInputOptions,
   CheckboxInputProps,
-  EmptyOption,
-  ErrorId,
+  FieldObjectLike,
   FieldRef,
-  NoOptionsArgs,
-  InputHandleLike,
-  InputOptionsFor,
-  InputPropsFor,
   NumberInputOptions,
   NumberInputProps,
   RadioInputOptions,
@@ -100,6 +68,4 @@ export type {
   TextInputOptions,
   TextInputProps,
   TextInputType,
-  UseFieldRef,
-  UseInputProps,
 } from "./input.js";

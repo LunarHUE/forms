@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-react";
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
 interface PhoneFieldProps {
   readonly field: FieldApi<string>;
@@ -11,7 +11,7 @@ export function PhoneField({ field, label }: PhoneFieldProps) {
   return (
     <label>
       {label}
-      <input {...field.inputProps({ type: "tel" })} />
+      <input {...inputProps(field, { type: "tel" })} />
     </label>
   );
 }

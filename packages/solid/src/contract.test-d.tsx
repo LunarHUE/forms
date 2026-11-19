@@ -23,6 +23,7 @@ import {
   createValidator,
   errorId,
   fieldRef,
+  inputProps,
   useFormContext,
   type AnyForm,
   type CheckableProps,
@@ -46,7 +47,7 @@ function TextField(props: { field: FieldApi<string>; label: string; placeholder?
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} placeholder={props.placeholder} />
+      <input {...inputProps(props.field)} placeholder={props.placeholder} />
       <Show when={props.field.shownErrors[0]}>{(error) => <p id={props.field.errorId}>{error().message}</p>}</Show>
     </label>
   );
@@ -55,7 +56,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps({ kind: "number" })} />
+      <input {...inputProps(props.field, { kind: "number" })} />
     </label>
   );
 }
@@ -154,7 +155,7 @@ function AddressFields(props: { field: HandleOf<typeof AddressShape>; title: str
       <legend>{props.title}</legend>
       <scope.TextField name="street" label="Street" />
       <scope.TextField name="city" label="City" />
-      <scope.Field name="zip">{(field) => <input {...field.inputProps()} />}</scope.Field>
+      <scope.Field name="zip">{(field) => <input {...inputProps(field)} />}</scope.Field>
       <scope.Field name="geo.lat">{(field) => <span>{field.value}</span>}</scope.Field>
       {/* @ts-expect-error: names are typed against the shape */}
       <scope.Field name="country">{() => null}</scope.Field>
@@ -190,7 +191,7 @@ function SignupPage() {
         <form {...props}>
           <form.TextField name="name" label="Name" placeholder="Ada" />
           <form.NumberField name="age" label="Age" />
-          <form.Field name="billing.city">{(field) => <input {...field.inputProps({ type: "text" })} />}</form.Field>
+          <form.Field name="billing.city">{(field) => <input {...inputProps(field, { type: "text" })} />}</form.Field>
           <form.Items name="rows" fallback={<p>No rows</p>}>
             {(row, index) => (
               <fieldset>
@@ -380,7 +381,7 @@ describe("Field", () => {
       <form.Field handle={qty} validate={(value) => (value === undefined ? { message: "Required" } : null)}>
         {(field) => {
           expectTypeOf(field.value).toEqualTypeOf<number | undefined>();
-          return <input {...field.inputProps({ kind: "number" })} />;
+          return <input {...inputProps(field, { kind: "number" })} />;
         }}
       </form.Field>
     );
@@ -415,12 +416,12 @@ describe("Field", () => {
     void (
       <form.Field name="plan">
         {(field) => {
-          expectTypeOf(field.inputProps({ kind: "select" })).toEqualTypeOf<SelectProps>();
-          expectTypeOf(field.inputProps({ kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
+          expectTypeOf(inputProps(field, { kind: "select" })).toEqualTypeOf<SelectProps>();
+          expectTypeOf(inputProps(field, { kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
           // @ts-expect-error: a union of literals takes no free text
-          field.inputProps();
+          inputProps(field);
           // @ts-expect-error: "team" is not a plan
-          field.inputProps({ kind: "radio", value: "team" });
+          inputProps(field, { kind: "radio", value: "team" });
           return null;
         }}
       </form.Field>
@@ -462,10 +463,10 @@ describe("Items", () => {
 
 // Registered components that declare a validate prop of their own, which the bound component reserves.
 function OwnValidate(props: { field: FieldApi<string>; validate: boolean }) {
-  return <input {...props.field.inputProps()} data-validate={props.validate} />;
+  return <input {...inputProps(props.field)} data-validate={props.validate} />;
 }
 function OptionalValidate(props: { field: FieldApi<string>; validate?: () => void }) {
-  return <input {...props.field.inputProps()} onBlur={props.validate} />;
+  return <input {...inputProps(props.field)} onBlur={props.validate} />;
 }
 
 describe("registered field components", () => {
@@ -754,7 +755,7 @@ describe("free functions", () => {
 function Checkbox(props: { field: FieldApi<boolean>; label: string }) {
   return (
     <label>
-      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      <input {...inputProps(props.field, { kind: "checkbox" })} />
       {props.label}
     </label>
   );

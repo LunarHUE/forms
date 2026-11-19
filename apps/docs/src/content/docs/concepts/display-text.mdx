@@ -14,9 +14,9 @@ phone number. Type in the demo and compare the input with the line under it.
 
 ## Number inputs
 
-A field read with `inputProps({ kind: "number" })` holds a number, or
-`undefined` while the input is empty. Some text on the way to a number isn't
-one yet:
+A number field bound with `inputProps(field, { kind: "number" })`, or with
+`field.setNumberText`, holds a number, or `undefined` while the input is
+empty. Some text on the way to a number isn't one yet:
 
 | Typed | Input shows | Field holds |
 | --- | --- | --- |
@@ -24,9 +24,9 @@ one yet:
 | `-` | `-` | the value it held before |
 | nothing | nothing | `undefined`, or the `empty` option |
 
-The input keeps the typed text while the field still holds the value that
+`field.text` keeps the typed text while the field still holds the value that
 text wrote, so the caret and the `.` don't jump. Once the input loses focus,
-or something else writes the field, it shows the number again.
+or something else writes a different value, it shows the number again.
 
 ## Formatted fields
 
@@ -52,8 +52,10 @@ call it, and it runs on every change.
 
 Everything except the input reads the stored value: `field.value`, the
 schema, `onSubmit`, `dirty`, history and persistence. The display text lives
-only in the props `inputProps()` returns. If you render your own input
-without `inputProps`, it shows `field.value`.
+only in `field.text`, which `inputProps(field)` uses too. An input bound to
+`field.value` instead shows the stored value. To keep the caret in place,
+write with `field.setText(text, event)`. See
+[Binding an element](./fields#binding-an-element).
 
 To give a field display text from your own plugin, set display meta on it.
 See [Writing a plugin](../plugins/writing-a-plugin).

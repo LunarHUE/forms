@@ -2,7 +2,7 @@ import type { PluginContext } from "@lunarhue/forms-core";
 import { baselineOnSubmit, definePlugin, dirty, history, type Rebase, rebase } from "./plugins.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createForms, type FieldApi, type FormOf, useForm, useFormState } from "./index.js";
+import { createForms, type FieldApi, type FormOf, inputProps, useForm, useFormState } from "./index.js";
 
 // Shared: stores each written string's length as the field's meta.
 const chars = definePlugin({
@@ -31,7 +31,7 @@ function TextField(props: { readonly field: FieldApi<string> }) {
   const { field } = props;
   return (
     <>
-      <input aria-label="name" {...field.inputProps()} />
+      <input aria-label="name" {...inputProps(field)} />
       <output>{chars.meta(field) ?? "none"}</output>
     </>
   );
@@ -109,7 +109,7 @@ function NotePage() {
   noteRendered();
   return (
     <>
-      <form.Field name="text">{(field) => <input aria-label="text" {...field.inputProps()} />}</form.Field>
+      <form.Field name="text">{(field) => <input aria-label="text" {...inputProps(field)} />}</form.Field>
       <form.State select={(snapshot) => undoHistory.formMeta(snapshot).canUndo}>
         {(canUndo) => (
           <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
@@ -153,7 +153,7 @@ function SettingsPage() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.Field name="name">{(field) => <input aria-label="name" {...field.inputProps()} />}</form.Field>
+          <form.Field name="name">{(field) => <input aria-label="name" {...inputProps(field)} />}</form.Field>
           <form.State select={(snapshot) => snapshot.dirty}>
             {(changed) => (
               <button type="submit" disabled={!changed}>

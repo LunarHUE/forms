@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createItems, type FormOf } from "../index.js";
+import { createForm, createForms, createItems, type FormOf, inputProps } from "../index.js";
 import { getAs, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ plugins: [valibot()] });
@@ -30,7 +30,7 @@ function mountList() {
           rowBodies.push(row.key);
           return (
             <f.Field handle={row.at("title")}>
-              {(field) => <input data-index={index()} {...field.inputProps()} />}
+              {(field) => <input data-index={index()} {...inputProps(field)} />}
             </f.Field>
           );
         }}

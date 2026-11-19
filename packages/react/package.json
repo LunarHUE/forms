@@ -74,9 +74,23 @@
   },
   "size-limit": [
     {
+      "name": "react, fields bound by hand",
+      "import": {
+        "dist/esm/index.js": "{ createForms, useForm }"
+      },
+      "limit": "11.55 kB"
+    },
+    {
+      "name": "react + inputProps",
+      "import": {
+        "dist/esm/index.js": "{ createForms, useForm, inputProps }"
+      },
+      "limit": "12.15 kB"
+    },
+    {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.45 kB"
+      "limit": "12.65 kB"
     },
     {
       "name": "react + valibot()",
@@ -84,7 +98,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "12.9 kB"
+      "limit": "13.15 kB"
     },
     {
       "name": "react + dirty()",
@@ -92,7 +106,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13 kB"
+      "limit": "13.25 kB"
     },
     {
       "name": "react, everything on",

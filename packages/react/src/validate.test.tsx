@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
+import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -12,7 +12,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <span role="status" aria-label={`${props.label} errors`}>
         {props.field.errors.map((error) => error.message).join(",")}
       </span>
@@ -61,7 +61,7 @@ function Signup(props: { readonly check?: Check; readonly debounce?: number }) {
             {(field) => (
               <label>
                 Name
-                <input {...field.inputProps()} />
+                <input {...inputProps(field)} />
                 <span role="status" aria-label="Name errors">
                   {field.errors.map((error) => error.message).join(",")}
                 </span>
@@ -92,7 +92,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
       {props.options.map((option) => (
         <label key={option}>
           {option}
-          <input {...props.field.inputProps({ kind: "radio", value: option })} />
+          <input {...inputProps(props.field, { kind: "radio", value: option })} />
         </label>
       ))}
     </>
