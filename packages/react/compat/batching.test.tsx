@@ -1,7 +1,7 @@
 import { useLayoutEffect } from "react";
 import { expect, it } from "vitest";
 import { createForms, type FormOf, useField, useForm, useFormState } from "../src/index.js";
-import { dirty as dirtyPlugin } from "../src/plugins/dirty.js";
+import { dirty as dirtyPlugin } from "../src/plugins.js";
 import { modern, render } from "./render.js";
 
 const profile = createForms({ plugins: [dirtyPlugin()] }).define({ defaultValues: { name: "" } });

@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createForm, createForms } from "../index.js";
-import { bind, type BindOptions } from "../plugins/bind.js";
-import { type Rebase, rebase } from "../plugins/rebase.js";
+import { bind, type BindOptions, type Rebase, rebase } from "../plugins.js";
 import { get, mount, settle, typeText } from "./dom.js";
 
 interface Profile {

@@ -3,7 +3,7 @@ import { createSignal, Errored, flush, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
 import { createForm, createForms, useFormContext, type AnyForm, type FormOf } from "../index.js";
-import { dirty } from "../plugins/dirty.js";
+import { dirty } from "../plugins.js";
 import { getAs, mount, settle } from "./dom.js";
 
 const forms = createForms({ plugins: [valibot(), dirty()] });

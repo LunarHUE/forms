@@ -1,5 +1,5 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 
 const forms = createForms({ plugins: [dirty()], fields: { TextField } });

@@ -1,6 +1,5 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { dirty } from "@lunarhue/forms-solid/plugins/dirty";
-import { rebase } from "@lunarhue/forms-solid/plugins/rebase";
+import { dirty, rebase } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 
 const forms = createForms({ plugins: [dirty(), rebase()], fields: { TextField } });

@@ -1,4 +1,4 @@
-import { rules } from "@lunarhue/forms-react/plugins/rules";
+import { rules } from "@lunarhue/forms-react/plugins";
 
 export interface Order {
   pickup: boolean;

@@ -1,4 +1,4 @@
-import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins/bind";
+import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins";
 import { createEffect, createRoot, runWithOwner, untrack, type Accessor, type Setter } from "solid-js";
 
 /** What every `signal` call takes: `bind`'s `incoming` and `initial`. */

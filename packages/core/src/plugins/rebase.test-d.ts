@@ -1,5 +1,5 @@
 import type { AnyFieldHandle, FormStore, HookPlugin, ObjectHandle } from "@lunarhue/forms-core";
-import { type Rebase, rebase, type RebaseLeaf, type RebaseResult } from "@lunarhue/forms-core/plugins/rebase";
+import { type Rebase, rebase, type RebaseLeaf, type RebaseResult } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 

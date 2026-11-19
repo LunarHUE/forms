@@ -1,4 +1,4 @@
-import { baselineOnSubmit, dirty } from "@lunarhue/forms-core/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-core/plugins";
 import * as v from "valibot";
 import { fakeServer } from "../fake-server.js";
 import { scenario } from "../scenario.js";

@@ -73,7 +73,7 @@ describe("codeFences", () => {
   });
 
   it("catches adapter subpaths and the Solid adapter", () => {
-    expect(() => compile(fence("", `import { mask } from "@lunarhue/forms-solid/plugins/mask";`))).toThrow(
+    expect(() => compile(fence("", `import { mask } from "@lunarhue/forms-solid/plugins";`))).toThrow(
       /@lunarhue\/forms-solid/,
     );
   });

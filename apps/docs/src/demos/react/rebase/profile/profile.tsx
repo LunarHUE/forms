@@ -1,6 +1,5 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
-import { dirty } from "@lunarhue/forms-react/plugins/dirty";
-import { rebase } from "@lunarhue/forms-react/plugins/rebase";
+import { dirty, rebase } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
 
 const forms = createForms({ plugins: [dirty(), rebase()], fields: { TextField } });

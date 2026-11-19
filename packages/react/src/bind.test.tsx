@@ -4,8 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createForms, type FieldApi, useForm } from "./index.js";
-import { bind, type BindOptions } from "./plugins/bind.js";
-import { type Rebase, rebase } from "./plugins/rebase.js";
+import { bind, type BindOptions, type Rebase, rebase } from "./plugins.js";
 
 interface Profile {
   name: string;

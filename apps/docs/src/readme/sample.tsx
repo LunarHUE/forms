@@ -8,7 +8,7 @@ import {
   type FieldApi,
   type HandleOf,
 } from "@lunarhue/forms-react";
-import { rebase } from "@lunarhue/forms-react/plugins/rebase";
+import { rebase } from "@lunarhue/forms-react/plugins";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { zustand } from "@lunarhue/forms-bind/zustand";
 

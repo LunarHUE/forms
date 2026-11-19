@@ -1,5 +1,5 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { history } from "@lunarhue/forms-solid/plugins/history";
+import { history } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 
 // Keep the object `history()` returns. Its `formMeta` reader says

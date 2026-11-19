@@ -15,7 +15,7 @@ import {
   useFormState,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
-import { dirty as dirtyPlugin } from "./plugins/dirty.js";
+import { dirty as dirtyPlugin } from "./plugins.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (

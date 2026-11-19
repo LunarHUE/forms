@@ -1,9 +1,5 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { definePlugin, refuse } from "../plugins.js";
-import { baselineOnSubmit, dirty } from "../plugins/dirty.js";
-import { history } from "../plugins/history.js";
-import { mask, upper as upperCase } from "../plugins/mask.js";
-import { type Rebase, rebase } from "../plugins/rebase.js";
+import { baselineOnSubmit, definePlugin, dirty, history, mask, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
 import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createField, createForm, createForms, type FormOf } from "../index.js";

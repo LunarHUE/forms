@@ -1,5 +1,4 @@
-import { definePlugin } from "./plugins.js";
-import { dirty } from "./plugins/dirty.js";
+import { definePlugin, dirty } from "./plugins.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";

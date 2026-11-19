@@ -1,8 +1,5 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "./plugins.js";
-import { baselineOnSubmit, dirty } from "./plugins/dirty.js";
-import { history } from "./plugins/history.js";
-import { type Rebase, rebase } from "./plugins/rebase.js";
+import { baselineOnSubmit, definePlugin, dirty, history, type Rebase, rebase } from "./plugins.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, useForm, useFormState } from "./index.js";

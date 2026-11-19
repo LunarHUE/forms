@@ -1,6 +1,5 @@
 import type { FieldSnapshot, HookPlugin, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { history, type HistoryMeta } from "@lunarhue/forms-core/plugins/history";
+import { definePlugin, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 

@@ -1,5 +1,5 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
-import { history } from "@lunarhue/forms-react/plugins/history";
+import { history } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
 
 // Keep the object `history()` returns. Its `formMeta` reader says

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createForm, createForms, createInputProps, type FormOf } from "../index.js";
-import { digits, mask, upper } from "../plugins/mask.js";
+import { digits, mask, upper } from "../plugins.js";
 import { choose, getAs, mount, settle } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
 

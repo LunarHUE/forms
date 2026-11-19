@@ -1,8 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { createForm, createForms, createInputProps, useFormContext, type FieldApi } from "../index.js";
-import { digits, mask } from "../plugins/mask.js";
-import { rules } from "../plugins/rules.js";
+import { digits, mask, rules } from "../plugins.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (

@@ -1,4 +1,4 @@
-import { digits, mask } from "@lunarhue/forms-core/plugins/mask";
+import { digits, mask } from "@lunarhue/forms-core/plugins";
 import { scenario } from "../scenario.js";
 
 /** Shows "5551234567" as "(555) 123-4567". */

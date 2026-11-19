@@ -1,5 +1,5 @@
 import { createFormsCore } from "@lunarhue/forms-core";
-import type { BindPlugin } from "@lunarhue/forms-core/plugins/bind";
+import type { BindPlugin } from "@lunarhue/forms-core/plugins";
 import { createSignal } from "solid-js";
 import { describe, expectTypeOf, it } from "vitest";
 import { signal } from "./solid.js";

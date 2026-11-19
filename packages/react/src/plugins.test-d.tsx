@@ -1,6 +1,5 @@
 import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
-import { definePlugin } from "./plugins.js";
-import { dirty } from "./plugins/dirty.js";
+import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
 

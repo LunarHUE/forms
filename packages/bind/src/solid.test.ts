@@ -1,7 +1,5 @@
 import { createFormsCore, type WriteRecord } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { dirty } from "@lunarhue/forms-core/plugins/dirty";
-import type { Resolve } from "@lunarhue/forms-core/plugins/rebase";
+import { definePlugin, dirty, type Resolve } from "@lunarhue/forms-core/plugins";
 import { createMemo, createRoot, createSignal, flush, getOwner, type Setter } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import { signal } from "./solid.js";

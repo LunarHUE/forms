@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createForms, type FormOf, useForm } from "./index.js";
-import { dirty } from "./plugins/dirty.js";
+import { dirty } from "./plugins.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
 
 const commits: Commits = new Map();

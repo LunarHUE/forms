@@ -1,4 +1,4 @@
-import { persist } from "@lunarhue/forms-core/plugins/persist";
+import { persist } from "@lunarhue/forms-core/plugins";
 import { scenario } from "../scenario.js";
 
 /** The localStorage key the draft is saved under. */

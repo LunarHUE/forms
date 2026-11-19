@@ -1,6 +1,6 @@
 import { zustand } from "@lunarhue/forms-bind/zustand";
 import type { HandleBase } from "@lunarhue/forms-core";
-import { type Rebase, rebase } from "@lunarhue/forms-core/plugins/rebase";
+import { type Rebase, rebase } from "@lunarhue/forms-core/plugins";
 import { createStore } from "zustand/vanilla";
 import { fakeServer } from "../fake-server.js";
 import type { ProbeSource } from "../probe.js";

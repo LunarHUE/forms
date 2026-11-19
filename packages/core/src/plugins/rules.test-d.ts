@@ -1,4 +1,4 @@
-import { type RuleFields, rules, type RulesMeta, type RulesNeedValueType, type RulesPlugin } from "@lunarhue/forms-core/plugins/rules";
+import { type RuleFields, rules, type RulesMeta, type RulesNeedValueType, type RulesPlugin } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 

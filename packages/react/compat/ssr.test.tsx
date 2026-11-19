@@ -5,9 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { FieldApi } from "../src/index.js";
 import { act, hydrate, modern } from "./render.js";
 
-type Adapter = typeof import("../src/index.js") &
-  typeof import("../src/plugins/rules.js") &
-  typeof import("../src/plugins/dirty.js");
+type Adapter = typeof import("../src/index.js") & typeof import("../src/plugins.js");
 
 /**
  * Loads a fresh copy of the adapter, with `rules` and `dirty` from the same copy of core.
@@ -21,8 +19,7 @@ async function loadAdapter(server: boolean): Promise<Adapter> {
   try {
     return {
       ...(await import("../src/index.js")),
-      ...(await import("../src/plugins/rules.js")),
-      ...(await import("../src/plugins/dirty.js")),
+      ...(await import("../src/plugins.js")),
     };
   } finally {
     vi.unstubAllGlobals();

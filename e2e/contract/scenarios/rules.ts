@@ -1,4 +1,4 @@
-import { rules } from "@lunarhue/forms-core/plugins/rules";
+import { rules } from "@lunarhue/forms-core/plugins";
 import { scenario } from "../scenario.js";
 
 export interface Delivery {
