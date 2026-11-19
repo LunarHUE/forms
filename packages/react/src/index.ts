@@ -1,5 +1,8 @@
 // Binds React to the form store in @lunarhue/forms-core.
 export * from "@lunarhue/forms-core";
+// Plugin types too, so declarations that tsc writes for a consumer name them
+// through this package. Strict installs (pnpm, Bun isolated) hide core from it.
+export type * from "@lunarhue/forms-core/plugins";
 export { createForms, useDisabledErrors, useForm, useFormContext } from "./forms.js";
 export type {
   CheckedFields,
