@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { CheckIcon, ChevronDownIcon, SquareEqualIcon, SquareMousePointerIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -12,7 +13,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 
 import { registry, type FormEntry } from "./registry";
 
@@ -311,36 +311,42 @@ export function DevtoolsDock() {
       >
         <SquareEqualIcon aria-hidden />
       </button>
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
-          side="bottom"
-          showCloseButton={false}
-          className="gap-0 rounded-t-xl border-devtools-border bg-devtools p-0 font-mono text-xs text-devtools-foreground lg:hidden"
-        >
-          <div aria-hidden className="mx-auto mt-2 h-1 w-9 rounded-full bg-devtools-border" />
-          <SheetTitle className="sr-only">Forms devtools</SheetTitle>
-          <div className="flex h-12 items-center gap-1 border-b border-devtools-border px-3">
-            <span className="inline-flex size-7 items-center justify-center text-devtools-muted [&_svg]:size-4">
-              <SquareEqualIcon aria-hidden />
-            </span>
-            <FormChip forms={forms} selected={selected} side="top" />
-            <div className="ms-auto flex items-center gap-1">
-              <Tabs tab={tab ?? "fields"} onTab={setTab} />
-              <button
-                type="button"
-                aria-label="Close the devtools"
-                className={iconButton}
-                onClick={() => setSheetOpen(false)}
-              >
-                <XIcon />
-              </button>
-            </div>
-          </div>
-          <SheetDescription render={<div />} className="min-h-32 p-4 text-xs">
-            <PanelBody tab={tab ?? "fields"} selected={selected} />
-          </SheetDescription>
-        </SheetContent>
-      </Sheet>
+      {/*
+        The sheet from components/ui/sheet blurs the page behind it, and the
+        selected outline has to stay in view, so this is a non-modal dialog
+        with the sheet's look.
+      */}
+      <Dialog.Root open={sheetOpen} onOpenChange={setSheetOpen} modal={false}>
+        <Dialog.Portal>
+          <Dialog.Popup
+            data-devtools-dock
+            className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-xl border-t border-devtools-border bg-devtools font-mono text-xs text-devtools-foreground shadow-lg transition duration-200 ease-in-out data-ending-style:translate-y-10 data-ending-style:opacity-0 data-starting-style:translate-y-10 data-starting-style:opacity-0 lg:hidden"
+          >
+              <div aria-hidden className="mx-auto mt-2 h-1 w-9 rounded-full bg-devtools-border" />
+              <Dialog.Title className="sr-only">Forms devtools</Dialog.Title>
+              <div className="flex h-12 items-center gap-1 border-b border-devtools-border px-3">
+                <span className="inline-flex size-7 items-center justify-center text-devtools-muted [&_svg]:size-4">
+                  <SquareEqualIcon aria-hidden />
+                </span>
+                <FormChip forms={forms} selected={selected} side="top" />
+                <div className="ms-auto flex items-center gap-1">
+                  <Tabs tab={tab ?? "fields"} onTab={setTab} />
+                  <button
+                    type="button"
+                    aria-label="Close the devtools"
+                    className={iconButton}
+                    onClick={() => setSheetOpen(false)}
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+              </div>
+              <Dialog.Description render={<div />} className="min-h-32 p-4">
+                <PanelBody tab={tab ?? "fields"} selected={selected} />
+              </Dialog.Description>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
