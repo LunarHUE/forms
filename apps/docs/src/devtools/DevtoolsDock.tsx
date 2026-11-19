@@ -1,8 +1,9 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { CheckIcon, ChevronDownIcon, SquareEqualIcon, SquareMousePointerIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, EyeOffIcon, SquareEqualIcon, SquareMousePointerIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
+import { useDevtoolsEnabled } from "@/components/hooks/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +12,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { setDevtools } from "@/lib/store";
 
 import { registry, type FormEntry } from "./registry";
 
@@ -24,6 +27,8 @@ import { registry, type FormEntry } from "./registry";
  *
  * Desktop: a dark bar in a corner, with the panel above (or below) it. Phone:
  * a round button that opens a bottom sheet.
+ *
+ * Renders nothing while the visitor has the devtools off (`devtoolsEnabled`).
  */
 
 export const CORNER_KEY = "forms:devtools-corner";
@@ -202,6 +207,7 @@ function PanelBody({ tab, selected }: { tab: Tab; selected?: FormEntry }) {
 }
 
 export function DevtoolsDock() {
+  const enabled = useDevtoolsEnabled();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -229,7 +235,7 @@ export function DevtoolsDock() {
   }, []);
 
   // The page's corner is only known in the browser, so the dock renders after hydration.
-  if (!mounted) return null;
+  if (!mounted || !enabled) return null;
 
   const top = corner.startsWith("top");
   const right = corner.endsWith("right");
@@ -273,6 +279,11 @@ export function DevtoolsDock() {
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
+              <DropdownMenuSeparator className="bg-devtools-border" />
+              <DropdownMenuItem className={menuItem} onClick={() => setDevtools(false)}>
+                <EyeOffIcon aria-hidden />
+                Turn off devtools
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <FormChip forms={forms} selected={selected} side={top ? "bottom" : "top"} />
@@ -331,6 +342,14 @@ export function DevtoolsDock() {
                 <FormChip forms={forms} selected={selected} side="top" />
                 <div className="ms-auto flex items-center gap-1">
                   <Tabs tab={tab ?? "fields"} onTab={setTab} />
+                  <button
+                    type="button"
+                    aria-label="Turn off devtools"
+                    className={iconButton}
+                    onClick={() => setDevtools(false)}
+                  >
+                    <EyeOffIcon />
+                  </button>
                   <button
                     type="button"
                     aria-label="Close the devtools"

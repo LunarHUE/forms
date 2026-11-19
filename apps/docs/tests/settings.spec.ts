@@ -52,3 +52,29 @@ test("the dark theme survives a reload and applies before hydration", async ({ p
   expect(first.theme).toBe("dark");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
 });
+
+test("the devtools turn off from the dock, stay off after a reload and come back from the header", async ({ page }) => {
+  await page.goto("/react/plugins/masks");
+  const dock = page.getByRole("toolbar", { name: "Forms devtools" });
+  const tag = page.locator('[data-demo="masks/contact"] [data-form-tag]');
+  await expect(dock).toBeVisible();
+  await expect(tag).toBeVisible();
+
+  await dock.getByRole("button", { name: "Devtools menu" }).click();
+  await page.getByRole("menuitem", { name: "Turn off devtools" }).click();
+  await expect(dock).toBeHidden();
+  await expect(tag).toBeHidden();
+  await expect(page.locator("html")).toHaveAttribute("data-devtools", "off");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-devtools", "off");
+  await expect(tag).toBeHidden();
+  const toggle = page.getByRole("button", { name: "Forms devtools" });
+  await hydrated(page, "astro-island:has([aria-label='Forms devtools'])");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(dock).toBeVisible();
+  await expect(tag).toBeVisible();
+});
