@@ -267,7 +267,7 @@ export interface FieldDisplay {
    * typed text went to the store. `input` still holds the typed text and
    * its caret, `value` is the field's value now and `event` is the input
    * event. Put the display text in `input` and place the caret, as
-   * `replaceText` from `@lunarhue/forms-core/plugins/mask` does. Without
+   * `replaceText` from `@lunarhue/forms-core/plugins` does. Without
    * `edit` the framework puts the text in and the caret lands where the
    * browser leaves it.
    */
@@ -286,7 +286,7 @@ export interface MetaSource {
  *   `definePlugin` in `@lunarhue/forms-core/plugins` (see `HookPlugin`);
  * - a schema adapter, which gives its library's schemas default values, so
  *   their forms need no `defaultValues` (see `SchemaPlugin`);
- * - dirty tracking, which `dirty()` from `@lunarhue/forms-core/plugins/dirty`
+ * - dirty tracking, which `dirty()` from `@lunarhue/forms-core/plugins`
  *   brings.
  *
  * The host and dirty tracking come with the plugin, so a store whose

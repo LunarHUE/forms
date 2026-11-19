@@ -144,7 +144,7 @@ There are three tiers, and which one a plugin belongs to decides where it
 lives.
 
 - **First class**: no dependencies, lives in core under
-  `packages/core/src/plugins` with its own entry point.
+  `packages/core/src/plugins` and is exported from the `./plugins` entry.
 - **Third party**: needs a dependency, so it gets its own package in this
   repo. The schema plugins are these.
 - **Community**: yours, in your own package, named `forms-plugin-<name>`.

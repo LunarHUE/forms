@@ -12,13 +12,13 @@ value differs from its baseline. The baseline starts as the form's starting
 value. Typing a field back to that value makes it clean again.
 
 ```tsx framework=react
-import { dirty } from "@lunarhue/forms-react/plugins/dirty";
+import { dirty } from "@lunarhue/forms-react/plugins";
 
 const forms = createForms({ plugins: [dirty()] });
 ```
 
 ```tsx framework=solid
-import { dirty } from "@lunarhue/forms-solid/plugins/dirty";
+import { dirty } from "@lunarhue/forms-solid/plugins";
 
 const forms = createForms({ plugins: [dirty()] });
 ```
@@ -46,7 +46,7 @@ screen after saving stays dirty, and its Save button never disables again.
 definition:
 
 ```tsx framework=react
-import { baselineOnSubmit, dirty } from "@lunarhue/forms-react/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-react/plugins";
 
 const forms = createForms({ plugins: [dirty()] });
 const settings = forms.define({
@@ -57,7 +57,7 @@ const settings = forms.define({
 ```
 
 ```tsx framework=solid
-import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins/dirty";
+import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins";
 
 const forms = createForms({ plugins: [dirty()] });
 const settings = forms.define({

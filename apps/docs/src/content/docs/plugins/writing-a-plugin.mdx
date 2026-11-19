@@ -102,14 +102,14 @@ The adapters look through the field's meta for the first slot with a
 Make the object once and keep it, because selectors compare meta by identity.
 Set it in `setup` and it is in the server HTML.
 
-For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins/mask`, or
+For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins`, or
 the same path under your adapter. It takes the input, the text to show, a
 cleaner and the input event, and keeps the caret the way `mask` does. Pass the
 cleaner your `beforeWrite` runs, so the caret counts the characters the store
 keeps:
 
 ```ts
-import { replaceText } from "@lunarhue/forms-core/plugins/mask";
+import { replaceText } from "@lunarhue/forms-core/plugins";
 
 const shown: FieldDisplay = {
   display: (value) => formatCard(String(value ?? "")),

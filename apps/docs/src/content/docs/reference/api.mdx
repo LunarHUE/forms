@@ -8,9 +8,8 @@ order: 1
 Each entry point and what it exports. Signatures leave out type parameters.
 Your editor shows the full types, and each export has a doc comment.
 
-The adapter re-exports core, and each adapter plugin entry re-exports the
-core plugin of the same name, so you import everything from the adapter you
-installed.
+The adapter re-exports core, and its `plugins` entry re-exports core's
+plugins, so you import everything from the adapter you installed.
 
 ## Adapter
 
@@ -321,18 +320,18 @@ tests.
 
 ## Plugins
 
-Each plugin has its own entry, so a plugin you don't import isn't in your
-bundle.
+Every plugin comes from one entry. A plugin you don't import isn't in your
+bundle, since the package has no side effects and your bundler drops it.
 
 <Only framework="react">
 
-Import from `@lunarhue/forms-react/plugins/<name>`.
+Import from `@lunarhue/forms-react/plugins`.
 
 </Only>
 
 <Only framework="solid">
 
-Import from `@lunarhue/forms-solid/plugins/<name>`.
+Import from `@lunarhue/forms-solid/plugins`.
 
 </Only>
 

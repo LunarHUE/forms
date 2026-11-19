@@ -78,9 +78,10 @@ Type `name="emial"` and the build fails.
 
 ## Plugins
 
-The plugins that need no other library ship with this package, one entry
-each: `@lunarhue/forms-solid/plugins/history`, `/mask`, `/rules`,
-`/persist`, `/rebase`, `/bind` and `/dirty`. Validation is built in.
+The plugins that need no other library ship with this package, all from
+`@lunarhue/forms-solid/plugins`: `history`, `mask`, `rules`, `persist`,
+`rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
+Validation is built in.
 
 ## More
 

@@ -44,9 +44,9 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * The plugins every form gets, in one list:
    * - schema plugins such as `valibot()` from `@lunarhue/forms-schema/valibot`,
    *   which give their library's schemas default values;
-   * - first-class plugins such as `history()`, each from its own
-   *   `@lunarhue/forms-core/plugins/<name>` entry, and hook plugins from
-   *   `definePlugin` in `@lunarhue/forms-core/plugins`.
+   * - first-class plugins such as `history()` from
+   *   `@lunarhue/forms-core/plugins`, and hook plugins made with
+   *   `definePlugin` from the same entry.
    *
    * The list's type decides what `define` accepts: a schema a schema plugin
    * accepts makes `defaultValues` optional, `equals` needs `dirty()`, and

@@ -86,12 +86,12 @@ after the others.
 
 | Kind        | Needs another library | Import from                                         |
 | ----------- | --------------------- | --------------------------------------------------- |
-| First class | No                    | your adapter, `<adapter>/plugins/<name>`            |
+| First class | No                    | your adapter, `<adapter>/plugins`                   |
 | Third party | Yes                   | its package, such as `@lunarhue/forms-schema/zod`   |
 | Community   | Up to the author      | the author's package, named `forms-plugin-<name>`   |
 
-First-class plugins live in `@lunarhue/forms-core`, one entry each, so
-importing one never loads another. Each adapter re-exports them at the same
-paths. `history`, `mask`, `rules`, `persist`, `rebase` and `dirty` are first
+First-class plugins live in `@lunarhue/forms-core/plugins`, and each adapter
+re-exports them from its own `plugins` entry. Your bundler keeps only the ones
+you import. `history`, `mask`, `rules`, `persist`, `rebase` and `dirty` are first
 class, and each has a page in this section. To make your own, see
 [Writing a plugin](writing-a-plugin).
