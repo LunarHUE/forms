@@ -11,18 +11,12 @@ followed by a link to the code's entry on this page:
 @lunarhue/forms-core: Two plugins are named "email". https://forms.lunarhue.dev/errors#core:plugins:name
 ```
 
-A production build drops the sentence to save bytes and keeps the code and
-the link:
+A production build drops the sentence and the link to save bytes and keeps
+the code. When a sentence names something, such as a plugin, the name comes
+after the code:
 
 ```
-@lunarhue/forms-react: context:form https://forms.lunarhue.dev/errors#react:context:form
-```
-
-Core's production messages leave the link out, since it would cost about
-22 B in every core entry point. When a sentence names something, such as a
-plugin, the name comes after the code:
-
-```
+@lunarhue/forms-react: context:form
 @lunarhue/forms-core: plugins:name email
 ```
 

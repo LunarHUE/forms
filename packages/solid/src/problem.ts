@@ -4,7 +4,7 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
 /**
  * The errors page, up to the anchor. Its source is
  * apps/docs/src/content/errors.mdx. Each code's entry has the
- * anchor `solid:<code>`.
+ * anchor `solid:<code>`. Only development messages carry the link, as in core.
  */
 const docs = "https://forms.lunarhue.dev/errors#solid:";
 
@@ -12,10 +12,10 @@ const docs = "https://forms.lunarhue.dev/errors#solid:";
 export type Code = "field:target" | "context:form" | "context:forms" | "context:definition";
 
 /**
- * The message for `code`: the package, then what went wrong, then a link to
- * the code's entry on the errors page. Development says what went wrong in a
- * sentence. A bundler replaces the read of NODE_ENV with "production", folds
- * the check to false and drops the sentences, so production says the code.
+ * The message for `code`: the package, then what went wrong. Development
+ * says it in a sentence and links to the code's entry on the errors page. A
+ * bundler replaces the read of NODE_ENV with "production", folds the check to
+ * false and drops the sentences and the link, so production says the code.
  */
 export function problem(code: Code): string {
   let text: string = code;
@@ -28,7 +28,7 @@ export function problem(code: Code): string {
       "context:definition":
         "useFormContext(definition) found no form made from that definition. It skips forms of other definitions. Render it inside the `form.Form` of a form made by `createForm(definition)`.",
     };
-    text = sentences[code];
+    text = `${sentences[code]} ${docs}${code}`;
   }
-  return `@lunarhue/forms-solid: ${text} ${docs}${code}`;
+  return `@lunarhue/forms-solid: ${text}`;
 }
