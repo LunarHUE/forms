@@ -683,6 +683,32 @@ describe("timing", () => {
     expect([deferred.calls.length, idle.calls.length]).toEqual([2, 2]);
   });
 
+  it("flushes without history or persist, when no installed plugin brings the timings", async () => {
+    vi.useFakeTimers();
+    const flusher = definePlugin({ name: "flusher", setup: (ctx) => ({ api: { flush: () => ctx.flush() } }) });
+    const store = make(contact(), [mask({ code: upper })]);
+    store.root.at("code").setValue("ab");
+    expect(() => flushPlugins(store)).not.toThrow();
+    await Promise.resolve();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(store.root.at("code").peek().value).toBe("AB");
+    // The public `definePlugin` brings the timings, so its `ctx.flush` works next to them.
+    const withFlusher = make(contact(), [mask({ code: upper }), flusher]);
+    withFlusher.root.at("code").setValue("ab");
+    expect(() => withFlusher.plugins.flusher.flush()).not.toThrow();
+  });
+
+  it("flushes history and persist when a plugin before them brings no timings", () => {
+    vi.useFakeTimers();
+    const storage = memory();
+    const store = make(contact(), [mask({ code: upper }), history(), persist("contact", storage)]);
+    store.root.at("code").setValue("ab");
+    flushPlugins(store);
+    expect(JSON.parse(storage.saved.get("contact") ?? "null")).toEqual({ phone: "", code: "AB" });
+    expect(store.plugins.history.undo()).toBe(true);
+    expect(store.root.at("code").peek().value).toBe("");
+  });
+
   it("schedules nothing for a timing no plugin uses", () => {
     vi.useFakeTimers();
     const { plugin } = watcher("watch", "sync");
