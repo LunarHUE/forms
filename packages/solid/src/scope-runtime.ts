@@ -96,7 +96,7 @@ function RegisteredField(props: OneField & { readonly root: RuntimeHandle; reado
   const entry = untrack(() => props.entry);
   const { component, parts } = typeof entry === "function" ? { component: entry, parts: [] } : entry;
   // The parts attach before the field is read, so it renders what they did, on the server too.
-  if (parts.length > 0) attach(handle, parts, true);
+  attach(handle, parts, true);
   addPropValidator(handle, props);
   const field = createFieldApi(handle);
   return createComponent(component, merge(omit(props, "root", "entry", "name", "handle", "validate"), { field }));

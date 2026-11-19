@@ -75,7 +75,7 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
     const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
     return {
       scope(handle: RuntimeHandle) {
-        if (parts.length > 0) attach(handle, parts, true);
+        attach(handle, parts, true);
         return scopeOf(handle);
       },
       at: (name: string) => pin(parts, name),

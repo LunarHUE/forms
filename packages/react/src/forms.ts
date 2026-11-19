@@ -449,7 +449,7 @@ export const createForms: <const P extends Plugins = [], E = FormError, F extend
     const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
     return {
       scope(handle: AnyScope["root"]) {
-        if (parts.length > 0) attach(handle, parts);
+        attach(handle, parts);
         return scope(handle);
       },
       at: (name: string) => pin(parts, name),

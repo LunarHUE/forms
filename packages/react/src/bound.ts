@@ -2,7 +2,6 @@ import { type AnyFieldHandle, attach, type FieldSnapshot, type ValidatorInput } 
 import { type ComponentType, createElement, Fragment, type ReactElement, type ReactNode } from "react";
 import { type FieldView, fieldViewSource } from "./field-api.js";
 import { type IsEqual, useItems, useValidator } from "./field.js";
-import { isFieldType } from "./field-type.js";
 import type { FieldComponentMap } from "./scope.js";
 import { useSelected } from "./select.js";
 
@@ -72,13 +71,13 @@ export function makeScope(root: AnyHandle, fields: FieldComponentMap): AnyScope 
   }
   const registered: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(fields)) {
-    const { component, parts } = isFieldType(entry) ? entry : { component: entry, parts: [] };
+    const { component, parts } = "parts" in entry ? entry : { component: entry, parts: [] };
     /** Renders the registered component with its `field` filled in. */
     function BoundComponent(props: OneField): ReactElement {
       const { name: _name, handle: _handle, validate, ...own } = props;
       const handle = targetOf(root, props);
       // The parts attach before the field is read, so a store with no listeners yet renders what they did.
-      if (parts.length > 0) attach(handle, parts);
+      attach(handle, parts);
       useValidator(handle, validate);
       const field = useSelected(fieldViewSource(handle), pickApi);
       // The component's own props pass through as they came, and `field` is its field object.

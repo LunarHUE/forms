@@ -28,6 +28,3 @@ export const field = <C extends FieldComponentType, N extends string = never>(
   at: (name) => pin(parts, name) as never,
 });
 
-/** True for a `fields` entry made by `field`. */
-export const isFieldType = (entry: unknown): entry is FieldType =>
-  typeof entry === "object" && entry !== null && "parts" in entry && "component" in entry;
