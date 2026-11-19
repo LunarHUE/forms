@@ -214,7 +214,7 @@ describe("context", () => {
     ]);
   });
 
-  it("throws a short code and a link in production", () => {
+  it("throws a short code in production", () => {
     vi.stubEnv("NODE_ENV", "production");
     try {
       const { host } = mount(() => {
@@ -240,10 +240,10 @@ describe("context", () => {
         );
       });
       expect([...host.querySelectorAll("p")].map((p) => p.textContent)).toEqual([
-        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:form https:\/\/\S+#solid:context:form$/),
-        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:definition https:\/\/\S+#solid:context:definition$/),
-        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:forms https:\/\/\S+#solid:context:forms$/),
-        expect.stringMatching(/^Error: @lunarhue\/forms-solid: field:target https:\/\/\S+#solid:field:target$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:form$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:definition$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: context:forms$/),
+        expect.stringMatching(/^Error: @lunarhue\/forms-solid: field:target$/),
       ]);
     } finally {
       vi.unstubAllEnvs();
