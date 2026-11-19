@@ -1,6 +1,6 @@
+import { App } from "@lunarhue/forms-e2e-react/app";
 import { type RenderPage, statusFor } from "@lunarhue/forms-e2e/contract";
 import { renderToString } from "react-dom/server";
-import { App } from "./app.js";
 
 export const render: RenderPage = (path) => ({
   status: statusFor(path),

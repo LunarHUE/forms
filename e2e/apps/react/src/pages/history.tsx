@@ -1,12 +1,12 @@
 import { historyScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm, useFormState } from "@lunarhue/forms-react";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const note = forms.define(scenario.definition);
 const { labels } = scenario;
 
 export function HistoryPage() {
-  const form = useForm(note);
+  const form = useForm(note, serverId(scenario.id));
   const canUndo = useFormState(form, (state) => scenario.steps(state).canUndo);
   const canRedo = useFormState(form, (state) => scenario.steps(state).canRedo);
   return (

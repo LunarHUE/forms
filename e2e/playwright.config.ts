@@ -27,7 +27,7 @@ export default defineConfig<Options>({
   // can be far more than the container may use. This counts the usable ones.
   workers: Math.max(1, Math.floor(availableParallelism() / 2)),
   forbidOnly: process.env["CI"] !== undefined,
-  reporter: process.env["CI"] === undefined ? "list" : [["list"], ["html", { open: "never" }]],
+  reporter: [["list"], ["./skips.ts"], ...(process.env["CI"] === undefined ? [] : [["html", { open: "never" }] as const])],
   use: { trace: "retain-on-failure" },
   // One project per framework, all running the same specs.
   projects: selected.map((framework) => ({

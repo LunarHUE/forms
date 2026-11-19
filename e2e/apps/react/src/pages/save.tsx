@@ -1,12 +1,12 @@
 import { saveScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm } from "@lunarhue/forms-react";
-import { FormErrors, forms, Probe, Status, SubmitButton } from "../parts.js";
+import { FormErrors, forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const account = forms.define(scenario.definition);
 const { labels } = scenario;
 
 export function SavePage() {
-  const form = useForm(account);
+  const form = useForm(account, serverId(scenario.id));
   return (
     <>
       <form.Form>

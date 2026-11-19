@@ -1,12 +1,12 @@
 import { dirtyScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm } from "@lunarhue/forms-react";
-import { forms, Probe, Status } from "../parts.js";
+import { forms, Probe, serverId, Status } from "../parts.js";
 
 const profile = forms.define(scenario.definition);
 const { labels } = scenario;
 
 export function DirtyPage() {
-  const form = useForm(profile);
+  const form = useForm(profile, serverId(scenario.id));
   return (
     <>
       <form.Form>

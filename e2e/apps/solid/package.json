@@ -3,18 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "The Solid app's pages and parts. Each major's package in e2e/apps/solid<major> builds it against its own Solid.",
+  "exports": {
+    "./app": "./src/app.tsx"
+  },
   "dependencies": {
     "@lunarhue/forms-e2e": "workspace:*",
     "@lunarhue/forms-solid": "workspace:*",
     "@solidjs/web": "catalog:",
     "solid-js": "catalog:"
   },
-  "devDependencies": {
-    "@solidjs/vite-plugin": "catalog:",
-    "vite": "catalog:"
-  },
   "scripts": {
-    "build": "vite build && vite build --ssr src/entry-server.tsx",
     "typecheck": "tsc -p tsconfig.json"
   }
 }

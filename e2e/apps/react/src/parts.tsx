@@ -19,7 +19,18 @@ import {
   useFormContext,
   useFormState,
 } from "@lunarhue/forms-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, version } from "react";
+
+/** True on React 18 and later, which have `useId`. */
+const hasUseId = Number(version.split(".")[0]) >= 18;
+
+/**
+ * The `useForm` options that give a page's form its id. React before 18 has
+ * no `useId`, so a form it renders on the server needs an `id` of its own, as
+ * the adapter's docs say, and gets the scenario's. From 18 the form uses the
+ * id `useId` generates, which the `generatedIds` spec checks.
+ */
+export const serverId = (id: string): { readonly id?: string } => (hasUseId ? {} : { id });
 
 interface RendersProps {
   readonly id: string;

@@ -1,12 +1,12 @@
 import { arraysScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useField, useForm } from "@lunarhue/forms-react";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const team = forms.define(scenario.definition);
 const { labels } = scenario;
 
 export function ArraysPage() {
-  const form = useForm(team);
+  const form = useForm(team, serverId(scenario.id));
   const members = form.root.at("members");
   const count = useField(members, (snapshot) => snapshot.keys.length);
   return (

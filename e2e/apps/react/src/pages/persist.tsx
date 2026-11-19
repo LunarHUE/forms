@@ -1,12 +1,12 @@
 import { persistScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm } from "@lunarhue/forms-react";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const feedback = forms.define(scenario.definition);
 const { labels } = scenario;
 
 export function PersistPage() {
-  const form = useForm(feedback);
+  const form = useForm(feedback, serverId(scenario.id));
   return (
     <>
       <form.Form>

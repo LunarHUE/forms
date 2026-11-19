@@ -1,7 +1,7 @@
+import { App } from "@lunarhue/forms-e2e-react/app";
 import { appElementId } from "@lunarhue/forms-e2e/contract";
-import { hydrate } from "@solidjs/web";
-import { App } from "./app.js";
+import { hydrateRoot } from "react-dom/client";
 
 const container = document.getElementById(appElementId);
 if (container === null) throw new Error(`No #${appElementId} element.`);
-hydrate(() => <App path={location.pathname} />, container);
+hydrateRoot(container, <App path={location.pathname} />);

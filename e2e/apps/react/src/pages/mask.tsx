@@ -1,11 +1,11 @@
 import { maskScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm } from "@lunarhue/forms-react";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const contact = forms.define(scenario.definition);
 
 export function MaskPage() {
-  const form = useForm(contact);
+  const form = useForm(contact, serverId(scenario.id));
   return (
     <>
       <form.Form>

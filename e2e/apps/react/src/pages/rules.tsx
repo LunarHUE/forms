@@ -1,13 +1,13 @@
 import { rulesScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useField, useForm } from "@lunarhue/forms-react";
 import { rules } from "@lunarhue/forms-react/plugins";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const delivery = forms.define(scenario.definition, scenario.deliveryRules);
 const { labels } = scenario;
 
 export function RulesPage() {
-  const form = useForm(delivery);
+  const form = useForm(delivery, serverId(scenario.id));
   const hidden = useField(form.root.at("message"), (snapshot) => rules.meta(snapshot).hidden);
   return (
     <>

@@ -1,6 +1,6 @@
 import { type Line, rendersScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { type FieldHandle, useField, useForm, useFormContext } from "@lunarhue/forms-react";
-import { forms, Probe, Renders, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, Renders, serverId, Status, SubmitButton } from "../parts.js";
 
 const order = forms.define(scenario.definition);
 const { labels, counters, totals } = scenario;
@@ -47,7 +47,7 @@ function OrderTotal() {
 }
 
 export function RendersPage() {
-  const form = useForm(order);
+  const form = useForm(order, serverId(scenario.id));
   return (
     <>
       <form.Form>

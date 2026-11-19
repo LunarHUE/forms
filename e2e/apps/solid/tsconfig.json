@@ -8,5 +8,5 @@
     "allowImportingTsExtensions": true,
     "customConditions": ["@lunarhue/source"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src"]
 }

@@ -1,7 +1,7 @@
 import { bindScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { useForm } from "@lunarhue/forms-react";
 import { useState } from "react";
-import { forms, Probe, Status, SubmitButton } from "../parts.js";
+import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
 const profile = forms.define(scenario.definition);
 const { labels } = scenario;
@@ -10,7 +10,7 @@ export function BindPage() {
   // One outside store per page, made once.
   const [store] = useState(scenario.createAppStore);
   const [sources] = useState(() => scenario.sources(store));
-  const form = useForm(profile, { plugins: [scenario.bindTo(store)] });
+  const form = useForm(profile, { ...serverId(scenario.id), plugins: [scenario.bindTo(store)] });
   return (
     <>
       <form.Form>
