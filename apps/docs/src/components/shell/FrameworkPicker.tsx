@@ -1,6 +1,5 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { AtomIcon, ChevronsUpDownIcon, LayersIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { ChevronsUpDownIcon } from "lucide-react";
 
 import {
   Combobox,
@@ -11,63 +10,42 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from "@/components/ui/combobox";
+import { isFramework } from "@/lib/frameworks";
+import { setFramework } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-// Sketch of the sidebar picker from the mock. Item 1.3 builds the real one from
-// `alternates` and lib/versions.ts; until then the hrefs are placeholders.
+import { FrameworkIcon } from "./icons";
+import type { PickerItem } from "./picker";
 
-export interface PickerItem {
-  group: "framework" | "version";
-  value: string;
-  label: string;
-  href: string;
-  disabled?: boolean;
-  hint?: string;
-}
+export type { PickerItem } from "./picker";
 
-function VueIcon(props: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="M2 4h4l6 10 6-10h4L12 20z" />
-      <path d="M7 4l5 8 5-8" />
-    </svg>
-  );
-}
-
-const icons: Record<string, (props: { className?: string }) => ReactNode> = {
-  react: AtomIcon,
-  solid: LayersIcon,
-  vue: VueIcon,
-};
-
-function FrameworkIcon({ name, className }: { name: string; className?: string }) {
-  const Icon = icons[name];
-  return Icon ? <Icon className={className} /> : null;
-}
+/*
+ * The framework and version picker at the top of the sidebar: one combobox
+ * with a framework group and a version group. Both groups always have their
+ * current item selected (it is a `multiple` combobox for that reason), so
+ * picking another item means "go there". Build `items` with `pickerItems()`.
+ */
 
 const labelClass = "px-2 pt-2 pb-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase";
 const itemClass =
   "h-8 gap-2 rounded-md pl-2 text-sm data-[selected]:bg-brand-tint data-[selected]:data-highlighted:bg-brand-tint [&>span:last-child_*]:text-brand!";
 
+/** Follows the item's link, or switches the last-used framework when it has none. */
+function go(item: PickerItem): void {
+  if (item.href) window.location.assign(item.href);
+  else if (item.group === "framework" && isFramework(item.value)) setFramework(item.value);
+}
+
 export function FrameworkPicker({
   items,
   framework,
   version,
-  onNavigate = (href) => window.location.assign(href),
+  onNavigate = go,
 }: {
   items: PickerItem[];
   framework: string;
   version: string;
-  onNavigate?: (href: string) => void;
+  onNavigate?: (item: PickerItem) => void;
 }) {
   const selected = items.filter(
     (item) =>
@@ -85,12 +63,12 @@ export function FrameworkPicker({
       itemToStringLabel={(item) => item.label}
       isItemEqualToValue={(a, b) => a.group === b.group && a.value === b.value}
       onValueChange={(next) => {
-        // Both groups stay selected; picking another item means "go there".
         const picked = next.find((item) => !selected.includes(item));
-        if (picked) onNavigate(picked.href);
+        if (picked) onNavigate(picked);
       }}
     >
       <ComboboxPrimitive.Trigger
+        aria-label={`${current?.label ?? framework} ${version}, change framework or version`}
         className={cn(
           "flex h-10 w-full items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium outline-none",
           "hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 data-[popup-open]:border-ring",

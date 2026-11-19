@@ -1,6 +1,7 @@
 import { CheckIcon, ChevronRightIcon, CopyIcon, MenuIcon, MonitorIcon, MoonIcon, SearchIcon, SunIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { FrameworkPicker, type PickerItem } from "@/components/shell/FrameworkPicker";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,8 +24,6 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-import { FrameworkPicker, type PickerItem } from "./FrameworkPicker";
 
 const pickerItems: PickerItem[] = [
   { group: "framework", value: "react", label: "React", href: "#react" },
@@ -106,7 +105,7 @@ export default function UiShowcase({ framework = "react" }: { framework?: string
               items={pickerItems}
               framework={framework}
               version="0.1.1"
-              onNavigate={(href) => console.info("navigate", href)}
+              onNavigate={(item) => console.info("navigate", item.href)}
             />
           </div>
         </Section>
