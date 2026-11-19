@@ -68,6 +68,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "check:package": "bun run --filter './packages/*' check:package",
+    "check:consumer-types": "bun scripts/check-consumer-types.ts",
     "size": "bun run --filter './packages/*' size",
     "bench": "vitest bench --run",
     "e2e": "bun e2e/run.ts --all",
