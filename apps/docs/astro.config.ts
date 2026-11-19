@@ -1,3 +1,4 @@
+import { satteri } from "@astrojs/markdown-satteri";
 import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
@@ -6,6 +7,8 @@ import { defaultClientConditions, defaultServerConditions } from "vite";
 
 // Swap for `@astrojs/solid-js` once 8.x (Solid 2) is on npm.
 import solid from "./integrations/solid";
+import { codeFences } from "./src/lib/mdx/code-fences";
+import { frameworkBlocks } from "./src/lib/mdx/framework-blocks";
 
 // Workspace packages export their source under this condition, so the docs
 // build the library from source and need no package build first.
@@ -18,7 +21,9 @@ export default defineConfig({
   // Internal links fetch their page on hover.
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   integrations: [
-    mdx(),
+    // Fences become <Code> (highlighted by lib/highlight.ts, filtered by
+    // framework); framework-blocks records which headings sit in <Only>.
+    mdx({ processor: satteri({ mdastPlugins: [codeFences, frameworkBlocks] }) }),
     // Each renderer only takes its own folders. Both compile .tsx, so an
     // overlap would hand a component to the wrong JSX transform.
     react({

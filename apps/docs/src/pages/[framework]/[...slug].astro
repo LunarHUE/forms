@@ -2,6 +2,7 @@
 import type { GetStaticPaths } from "astro";
 import { render } from "astro:content";
 
+import { mdxComponents } from "@/components/mdx";
 import Layout from "@/layouts/Layout.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
@@ -76,7 +77,7 @@ const { title, description } = entry.data;
     <p>{frameworkLabel(framework)} {version}</p>
     <h1>{title}</h1>
     <p>{description}</p>
-    <Content />
+    <Content components={mdxComponents} />
     <nav aria-label="Pagination">
       {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
       {next && <a href={next.href} rel="next">Next: {next.label}</a>}

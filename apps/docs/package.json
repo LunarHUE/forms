@@ -9,6 +9,7 @@
     "typecheck": "astro check && tsc -p src/demos/solid/tsconfig.json"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.10",
     "@astrojs/mdx": "8.1.6",
     "@astrojs/react": "7.1.9",
     "@base-ui/react": "1.9.0",
@@ -25,6 +26,8 @@
     "lucide-react": "1.75.0",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "satteri": "0.11.7",
+    "shiki": "4.6.0",
     "solid-js": "catalog:"
   },
   "devDependencies": {

@@ -1,0 +1,16 @@
+---
+import type { Framework } from "@/lib/frameworks";
+
+/**
+ * Content for one framework's pages, left out of the others at build time.
+ * Headings inside are recorded by the framework-blocks plugin so the table
+ * of contents can leave them out too.
+ */
+interface Props {
+  framework: Framework;
+}
+
+const shown = Astro.props.framework === Astro.params.framework;
+---
+
+{shown && <slot />}
