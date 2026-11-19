@@ -12,7 +12,7 @@ export function NumberField({ field, label }: { field: FieldApi<number>; label: 
   );
 }
 
-export function PhoneField({ field, label }: { field: FieldApi<string>; label: string }) {
+export function PhoneInput({ field, label }: { field: FieldApi<string>; label: string }) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>

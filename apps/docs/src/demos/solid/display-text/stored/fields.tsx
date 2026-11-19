@@ -12,7 +12,7 @@ export function NumberField(props: { field: FieldApi<number>; label: string }) {
   );
 }
 
-export function PhoneField(props: { field: FieldApi<string>; label: string }) {
+export function PhoneInput(props: { field: FieldApi<string>; label: string }) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>

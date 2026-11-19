@@ -1,6 +1,6 @@
 import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
-import { orderRules } from "./rules";
+import { rules } from "@lunarhue/forms-solid/plugins";
 
 interface FieldProps<V> {
   readonly field: FieldApi<V>;
@@ -11,7 +11,7 @@ interface FieldProps<V> {
 // plugin's own meta, so the component reads it.
 export function TextField(props: FieldProps<string>) {
   return (
-    <Show when={!orderRules.meta(props.field).hidden}>
+    <Show when={!rules.meta(props.field).hidden}>
       <label>
         {props.label}
         <input {...inputProps(props.field)} />

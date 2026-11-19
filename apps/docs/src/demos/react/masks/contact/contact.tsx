@@ -1,6 +1,6 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
-import { digits, mask } from "@lunarhue/forms-react/plugins";
-import { PhoneField } from "./PhoneField";
+import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
+import { PhoneInput } from "./PhoneInput";
 
 // "5551234567" shows as "(555) 123-4567".
 function formatPhone(value: string) {
@@ -12,12 +12,14 @@ function formatPhone(value: string) {
   return area;
 }
 
-const forms = createForms({ fields: { PhoneField } });
+// Every PhoneField stores digits and shows them formatted. The store only
+// ever holds digits, so `onSubmit` gets digits.
+const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+
+const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 
 const contact = forms.define({
   defaultValues: { phone: "" },
-  // The store only ever holds digits, so `onSubmit` gets digits.
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
   onSubmit: (value) => value.phone,
 });
 

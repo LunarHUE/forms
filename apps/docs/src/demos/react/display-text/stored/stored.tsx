@@ -1,6 +1,6 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
-import { digits, mask } from "@lunarhue/forms-react/plugins";
-import { NumberField, PhoneField } from "./fields";
+import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
+import { NumberField, PhoneInput } from "./fields";
 
 // "5551234567" shows as "(555) 123-4567".
 function formatPhone(value: string) {
@@ -9,11 +9,12 @@ function formatPhone(value: string) {
   return value;
 }
 
-const forms = createForms({ fields: { NumberField, PhoneField } });
+const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+
+const forms = createForms({ plugins: [mask()], fields: { NumberField, PhoneField } });
 
 const order = forms.define({
   defaultValues: { price: undefined as number | undefined, phone: "" },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
 });
 
 export default function OrderForm() {
