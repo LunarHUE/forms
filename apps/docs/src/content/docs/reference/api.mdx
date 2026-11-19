@@ -275,17 +275,21 @@ tests.
 
 | | |
 | --- | --- |
-| `getFormSnapshot()`, `subscribeForm(listener)` | Reads and watches the form snapshot. |
-| `getSnapshot(path)`, `subscribe(path, listener)` | Reads and watches one field by stable path. |
+| `getFormSnapshot()` | The form snapshot. The same object until something in it changes. |
+| `subscribeForm(listener)` | Calls `listener` after a write that changes the form snapshot. |
+| `getSnapshot(path)` | The snapshot of the field at a stable path. |
+| `subscribe(path, listener)` | Calls `listener` after a write that changes that field. |
 | `peek()` | The form snapshot, for event handlers. |
 | `batch(fn)` | Runs `fn`, notifying listeners once at the end. |
-| `submit(intent?)`, `handleSubmit(event?)` | Submit without the adapter's focus handling. |
+| `submit(intent?)` | Submits without the adapter's focus handling. |
+| `handleSubmit(event?)` | The same, for a submit event. |
 | `setErrors(errorMap)` | Replaces user errors across the form. |
 | `validate()` | Runs every validator now. |
 | `reset(options?)` | Resets the whole form. |
 | `fieldAt(path)` | The handle at a stable path. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
-| `firstInvalid()`, `disabledInvalid()` | The first enabled invalid field, and every disabled one. |
+| `firstInvalid()` | The first enabled field with a validation error. |
+| `disabledInvalid()` | Every disabled field with a validation error. |
 
 ### Types
 
@@ -312,7 +316,8 @@ tests.
 | `createFormsCore(config?)` | Core's entry point, which the adapters wrap. Returns `define`. |
 | `branch(handle, snapshot, key, value)` | Narrows a handle to one member of a discriminated union. |
 | `splitPath(path)` | `"items.0.name"` to `["items", 0, "name"]`. |
-| `fieldId(formId, path)`, `optionId(id, option)` | The DOM ids the adapters give fields and options. |
+| `fieldId(formId, path)` | The DOM id the adapters give a field. |
+| `optionId(id, option)` | The DOM id of one radio or checkbox in a group. |
 
 ## Plugins
 
@@ -400,7 +405,7 @@ Each rule takes the form value and returns `{ disabled?, hidden? }`. Read
 
 | | |
 | --- | --- |
-| `bind({ get, set, subscribe, incoming?, initial? })` | Copies the form value to a store you own and back. |
+| `bind(options)` | Copies the form value to a store you own and back. Takes `get`, `set`, `subscribe`, `incoming` and `initial`. |
 
 ### Testing
 
