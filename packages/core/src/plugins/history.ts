@@ -1,3 +1,4 @@
+import type { AnyFieldHandle } from "../handle.js";
 import type { Plugin, PluginContext, WriteRecord } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { createTiming } from "../store/timing.js";
@@ -74,7 +75,9 @@ export function history(limit = 100): Plugin<HistoryApi, "history", never, Histo
         const list = back ? [...next].reverse() : next;
         ctx.write(() => {
           for (const record of list) {
-            const field = store.fieldAt(record.path);
+            // Array records come only from a store with arrays(), so its handles have the commands.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            const field = store.fieldAt(record.path) as AnyFieldHandle<unknown, "arrays"> | undefined;
             if (!field) continue;
             if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
             else if (record.type === "move") field.move(back ? record.to : record.from, back ? record.from : record.to);

@@ -10,8 +10,9 @@ const plugin: Plugin<undefined, "arrays"> = { name: "arrays", "~arrays": [create
  * length or order of an array: `createForms({ plugins: [arrays()] })`.
  *
  * Without it every array has the positional keys `k0`, `k1`, ..., which is
- * all `Items` needs to render one, and the commands throw in development and
- * do nothing in production.
+ * all `Items` needs to render one. Calling a command is a type error, and
+ * code without types throws `arrays:missing` in development and does
+ * nothing in production.
  */
 export function arrays(): Plugin<undefined, "arrays"> {
   return plugin;

@@ -1006,6 +1006,7 @@ const parcel = (): Parcel => ({ note: "", shipping: { street: "", city: "Oslo" }
 /** Writes the whole `shipping` object and drops the first row, so no node below either is made in setup. */
 const fills = definePlugin({
   name: "fill",
+  requires: () => [arrays],
   setup: (ctx) => {
     ctx.write(() => {
       ctx.store.root.at("shipping").setValue({ street: "1 Main St", city: "Oslo" }, { edited: false });

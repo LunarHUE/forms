@@ -136,8 +136,11 @@ export interface PluginBaseline {
  * parameter to set `M` and `F`: `setup(ctx: PluginContext<{ hidden: boolean }>)`.
  */
 export interface PluginContext<M = never, F = never, Q extends Plugins = readonly []> {
-  /** The store the plugin is installed on. */
-  readonly store: AnyFormStore<unknown>;
+  /**
+   * The store the plugin is installed on. Its handles have the members the
+   * plugins `requires` names give, such as `push` from `arrays()`.
+   */
+  readonly store: AnyFormStore<unknown, PluginNames<Q>>;
   /** The stable path the hooks attach at. `[]` in `setup`. */
   readonly path: Path;
   /** The APIs of the plugins `requires` names, by name. Their setup has run. */

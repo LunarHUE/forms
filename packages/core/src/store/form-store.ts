@@ -48,7 +48,7 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
  * definition's types take them away when the form has no `dirty()`.
  */
 // oxlint-disable-next-line typescript/no-empty-object-type
-export type MadeStore<V, E, I, R> = FormStore<V, E, I, R, {}, "dirty">;
+export type MadeStore<V, E, I, R> = FormStore<V, E, I, R, {}, "dirty" | "arrays">;
 
 /** A form store with the parts it is made of, for tests and internal callers. */
 export interface FormInternals<V, E, I, R> {
@@ -130,7 +130,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     get root() {
       // The runtime handle has every member, and the value type is the caller's.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return handles.root() as FieldHandle<V, E, "dirty">;
+      return handles.root() as FieldHandle<V, E, "dirty" | "arrays">;
     },
     subscribe: core.subscribe,
     getSnapshot: core.getSnapshot,

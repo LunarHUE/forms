@@ -85,6 +85,7 @@ describe("testStore", () => {
     const fill = definePlugin({
       name: "fill",
       initialFormMeta: "",
+      requires: () => [arrays],
       setup: (ctx) => {
         ctx.write(() => ctx.store.root.at("rows").push({ t: "b" }, { edited: false }));
         ctx.setFormMeta("filled");

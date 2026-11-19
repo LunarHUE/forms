@@ -9,8 +9,8 @@ import { fieldId } from "./ids.js";
 import { isPlainObject, merge } from "./tree.js";
 import type { Validation } from "./runner.js";
 
-/** A handle as core makes it. Its snapshots have `dirty` with or without `dirty()`. */
-export type Handle<E> = Loose<E, "dirty">;
+/** A handle as core makes it. Its snapshots have `dirty` and it has the array commands with or without the plugins. */
+export type Handle<E> = Loose<E, "dirty" | "arrays">;
 
 /** An item's handle at runtime. */
 export type AnyItemHandle<E> = Handle<E> & { readonly key: string };
