@@ -14,7 +14,6 @@ export default defineConfig({
       "packages/react/vitest.react-*.config.ts",
       "packages/solid/vitest.ssr.config.ts",
       "packages/solid/vitest.hydrate.config.ts",
-      "parked/*/vitest.config.ts",
       "e2e/vitest.config.ts",
       "scripts/vitest.config.ts",
       "apps/docs/vitest.config.ts",
