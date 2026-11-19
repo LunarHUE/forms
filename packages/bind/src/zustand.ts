@@ -1,4 +1,4 @@
-import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins/bind";
+import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins";
 
 /**
  * The part of a zustand store the binding uses. The hook `create` returns

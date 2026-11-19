@@ -5,7 +5,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { createForms, type FormOf, useForm, useInputProps } from "./index.js";
-import { digits, mask, upper } from "./plugins/mask.js";
+import { digits, mask, upper } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
 function formatPhone(value: string): string {

@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-react";
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
 // Each field prints what the store holds under the input.
 
@@ -6,7 +6,7 @@ export function NumberField({ field, label }: { field: FieldApi<number>; label: 
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps({ kind: "number" })} />
+      <input {...inputProps(field, { kind: "number" })} />
       <output>Stored: {JSON.stringify(field.value) ?? "undefined"}</output>
     </div>
   );
@@ -16,7 +16,7 @@ export function PhoneField({ field, label }: { field: FieldApi<string>; label: s
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps({ type: "tel" })} />
+      <input {...inputProps(field, { type: "tel" })} />
       <output>Stored: {JSON.stringify(field.value)}</output>
     </div>
   );

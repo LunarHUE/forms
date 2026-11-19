@@ -13,7 +13,7 @@ For schema validation add `@lunarhue/forms-schema` and Zod or Valibot.
 ## A form
 
 ```tsx
-import { createForms, useForm, type FieldApi } from "@lunarhue/forms-react";
+import { createForms, inputProps, useForm, type FieldApi } from "@lunarhue/forms-react";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 
@@ -22,8 +22,8 @@ const SignUp = v.object({
   email: v.pipe(v.string(), v.email("Enter a valid email.")),
 });
 
-// Your own input, registered once. `inputProps()` carries the value, the
-// handlers and the aria attributes.
+// Your own input, registered once. `inputProps(field)` carries the value,
+// the handlers and the aria attributes.
 interface TextFieldProps {
   readonly field: FieldApi<string>;
   readonly label: string;
@@ -33,7 +33,7 @@ function TextField({ field, label }: TextFieldProps) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} />
+      <input {...inputProps(field)} />
       <ul id={field.errorId}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>
@@ -73,9 +73,10 @@ Type `name="emial"` and the build fails.
 
 ## Plugins
 
-The plugins that need no other library ship with this package, one entry
-each: `@lunarhue/forms-react/plugins/history`, `/mask`, `/rules`,
-`/persist`, `/rebase`, `/bind`, `/dirty` and `/validation`.
+The plugins that need no other library ship with this package, all from
+`@lunarhue/forms-react/plugins`: `history`, `mask`, `rules`, `persist`,
+`rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
+Validation is built in.
 
 ## More
 

@@ -1,29 +1,17 @@
 // Binds Solid 2 (solid-js 2 with @solidjs/web).
 export * from "@lunarhue/forms-core";
+// Plugin types too, so declarations that tsc writes for a consumer name them
+// through this package. Strict installs (pnpm, Bun isolated) hide core from it.
+export type * from "@lunarhue/forms-core/plugins";
 export { createDisabledErrors, createForm, createForms, useFormContext } from "./forms.js";
 export type {
-  AnyComponent,
   AnyForm,
   BoundChoiceComponent,
   BoundField,
   BoundFieldComponent,
-  BoundFieldComponents,
   BoundItems,
-  CheckedFields,
-  ChoiceFieldOf,
-  ChoicePath,
-  ComponentHandle,
-  CreateDisabledErrors,
-  CreateForm,
-  CreateFormArgs,
-  CreateForms,
-  DefineFieldset,
   FieldComponents,
-  FieldErrorOf,
   Fieldset,
-  FieldValueOf,
-  FitPath,
-  FitsComponent,
   FocusOnInvalid,
   FocusTarget,
   FormComponent,
@@ -34,51 +22,31 @@ export type {
   FormsOptions,
   HandleOf,
   NoFieldComponents,
-  OwnProps,
-  PropsOf,
-  ReservedName,
-  ReservedProp,
   Scope,
   ScopeMembers,
   SolidForm,
   SolidFormDefinition,
   SolidForms,
-  UseFormContext,
   ValidateProp,
-  ValidatePropFor,
 } from "./forms.js";
 export { createField, createItems, createValidator } from "./field.js";
 export type {
-  ArrayHandleLike,
-  CreateField,
-  CreateItems,
-  CreateValidator,
   ExactFieldApi,
   FieldApi,
-  FieldCommands,
-  FieldTypes,
   FormState,
   HandleLike,
   SnapshotOf,
-  ValidatorHandleLike,
 } from "./field.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
-export { createInputProps, errorId, fieldRef } from "./input.js";
+export { createInputProps, errorId, fieldRef, inputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   CheckableProps,
   CheckboxGroupOptions,
   CheckboxOptions,
   ControlProps,
-  CreateInputProps,
-  FieldRef,
+  FieldObjectLike,
   InputOptions,
-  InputPropsOf,
-  IsBoolean,
-  IsChoice,
-  IsNumber,
-  IsOption,
-  IsOptionList,
-  IsText,
   NumberInputOptions,
   NumberInputProps,
   NumberInputType,

@@ -41,7 +41,8 @@ export function toSpec(input: unknown, kind: Spec["kind"]): Spec | undefined {
   const options: OptionFields = isOptions(input) ? input : { validate: input };
   const { validate } = options;
   let check: Check;
-  if (isSchema(validate)) {
+  const schema = isSchema(validate);
+  if (schema) {
     const props = validate["~standard"];
     check = (value) => props.validate(value);
   } else if (typeof validate === "function") {
@@ -52,7 +53,7 @@ export function toSpec(input: unknown, kind: Spec["kind"]): Spec | undefined {
   const debounce = typeof options.debounce === "number" && options.debounce > 0 ? options.debounce : 0;
   return {
     kind,
-    schema: isSchema(validate),
+    schema,
     check,
     debounce,
     on: isTiming(options.on) ? options.on : undefined,

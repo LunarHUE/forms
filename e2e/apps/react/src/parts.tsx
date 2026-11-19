@@ -12,6 +12,7 @@ import {
   createForms,
   type FieldApi,
   type FormError,
+  inputProps,
   useField,
   useFormContext,
   useFormState,
@@ -72,7 +73,7 @@ function TextField({ field, label }: FieldProps<string>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} />
+      <input {...inputProps(field)} />
       <span className="checking" hidden={!field.validating}>
         Checking...
       </span>
@@ -86,7 +87,7 @@ function NumberField({ field, label }: FieldProps<number>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps({ kind: "number" })} />
+      <input {...inputProps(field, { kind: "number" })} />
       <ErrorList id={field.errorId} errors={field.shownErrors} />
       <Renders id={field.name} />
     </div>
@@ -97,7 +98,7 @@ function Checkbox({ field, label }: FieldProps<boolean>) {
   return (
     <div className="field">
       <label>
-        <input {...field.inputProps({ kind: "checkbox" })} />
+        <input {...inputProps(field, { kind: "checkbox" })} />
         {label}
       </label>
       <ErrorList id={field.errorId} errors={field.shownErrors} />
@@ -111,7 +112,7 @@ function PhoneField({ field, label }: FieldProps<string>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps({ type: "tel" })} />
+      <input {...inputProps(field, { type: "tel" })} />
       <ErrorList id={field.errorId} errors={field.shownErrors} />
       <Renders id={field.name} />
     </div>

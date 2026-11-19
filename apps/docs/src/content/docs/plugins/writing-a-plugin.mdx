@@ -30,7 +30,7 @@ store's starting state:
   written to, as on the server, starts no timer.
 - It doesn't move the baseline. A value written in setup is dirty against the
   defaults. To start from a value without making the form dirty, use
-  [`initial`](#validation-and-starting-values).
+  [`initial`](#starting-values).
 
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
@@ -102,14 +102,14 @@ The adapters look through the field's meta for the first slot with a
 Make the object once and keep it, because selectors compare meta by identity.
 Set it in `setup` and it is in the server HTML.
 
-For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins/mask`, or
+For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins`, or
 the same path under your adapter. It takes the input, the text to show, a
 cleaner and the input event, and keeps the caret the way `mask` does. Pass the
 cleaner your `beforeWrite` runs, so the caret counts the characters the store
 keeps:
 
 ```ts
-import { replaceText } from "@lunarhue/forms-core/plugins/mask";
+import { replaceText } from "@lunarhue/forms-core/plugins";
 
 const shown: FieldDisplay = {
   display: (value) => formatCard(String(value ?? "")),
@@ -136,6 +136,11 @@ A row that `push` or `insert` adds comes through as a write at the row's path,
 with `before` undefined. The row is already in the array by then, since the
 insert makes its key. Return a replacement row, or `refuse` to take the row
 out again. A form with no `beforeWrite` plugin skips all of this.
+
+Writes that aren't user edits rerun the validators that already run on the
+paths they change. A plugin that writes many paths in one `ctx.write` reruns
+each validator once, after the last write. A form validator over those paths
+runs once, and an async one isn't restarted.
 
 ## Writes after an `await`
 
@@ -202,12 +207,7 @@ changes that for one array, by its stable path: return `true` to keep the old
 baseline's pairing, or a list of item keys to pair with. `baselineOnSubmit`
 passes the keys each array had when the value was sent.
 
-## Validation and starting values
-
-Writes that aren't user edits rerun the validators that already run on the
-paths they change. A plugin that writes many paths in one `ctx.write` reruns
-each validator once, after the last write. A form validator over those paths
-runs once, and an async one isn't restarted.
+## Starting values
 
 A plugin can give the form its starting value with `initial`. It runs before
 the store is made, gets the value the store would start from, and returns the
@@ -237,7 +237,8 @@ with one entry per library. The library is an optional peer dependency, so
 you install only the ones you use. Adapters don't re-export these.
 
 The schema plugins are in `@lunarhue/forms-schema`. They give their library's
-schemas default values and bring the validation runner.
+schemas default values. Every form validates on its own, so that is all they
+add. [Schemas](schemas) shows how to make one for another library.
 
 ```ts
 import { valibot } from "@lunarhue/forms-schema/valibot";
@@ -399,8 +400,8 @@ it("trims the fields it names", () => {
 
 `testStore` takes what `define` takes (`defaultValues` or a `schema`,
 `validate`, `onSubmit` and the rest) with the plugins under test in `plugins`.
-Put `dirty()`, `validation()` or a schema plugin there too when the test needs
-them. It returns:
+Put `dirty()` or a schema plugin there too when the test needs them.
+Validators work without one. It returns:
 
 - `store`: the store, typed as an app's would be, so `store.plugins.<name>`
   has your plugin's API. Drive it as an app would. `store.root.at("name")`

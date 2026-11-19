@@ -2,13 +2,14 @@ import { z } from "zod";
 import { create } from "zustand";
 import {
   createForms,
+  inputProps,
   useForm,
   useFormContext,
   useFormState,
   type FieldApi,
   type HandleOf,
 } from "@lunarhue/forms-react";
-import { rebase } from "@lunarhue/forms-react/plugins/rebase";
+import { rebase } from "@lunarhue/forms-react/plugins";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { zustand } from "@lunarhue/forms-bind/zustand";
 
@@ -22,7 +23,7 @@ function TextField({ field, label }: TextFieldProps) {
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...field.inputProps()} />
+      <input {...inputProps(field)} />
       <ul id={field.errorId}>
         {field.shownErrors.map((error) => (
           <li key={error.message}>{error.message}</li>

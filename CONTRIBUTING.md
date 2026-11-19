@@ -18,7 +18,7 @@ Packages read each other from source, so you never build before you test.
 
 ## The checks
 
-Six checks run on every pull request. Run them from the repo root before you
+Seven checks run on every pull request. Run them from the repo root before you
 push.
 
 ```sh
@@ -28,7 +28,13 @@ bun run test
 bun run build
 bun run check:package
 bun run size
+bun run size:forms
 ```
+
+`typecheck` also writes declarations for the fixtures in `scripts/fixtures`,
+which export forms, definitions and fieldsets with inferred types the way an
+app does. If an adapter stops exporting a type those inferred types name, it
+fails with TS2883 ("cannot be named").
 
 The browser suite is separate. It runs the same specs against every adapter.
 
@@ -115,6 +121,11 @@ Each entry point has a limit in its package's `size-limit` list, and
 - The "everything on" lines have no limit. They are printed so the total
   stays in view.
 
+`bun run size:forms` measures whole forms instead: the fixtures in
+`scripts/fixtures`, built from source with Vite in production and in
+development. It prints a table and has no limits. Paste the table in a pull
+request that changes what a form ships.
+
 ## Code style
 
 oxlint enforces most of it. The rest:
@@ -144,7 +155,7 @@ There are three tiers, and which one a plugin belongs to decides where it
 lives.
 
 - **First class**: no dependencies, lives in core under
-  `packages/core/src/plugins` with its own entry point.
+  `packages/core/src/plugins` and is exported from the `./plugins` entry.
 - **Third party**: needs a dependency, so it gets its own package in this
   repo. The schema plugins are these.
 - **Community**: yours, in your own package, named `forms-plugin-<name>`.

@@ -3,9 +3,9 @@ import { userEvent } from "@testing-library/user-event";
 import type { StandardSchemaV1 } from "@lunarhue/forms-core";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, type FormOf, useForm, useFormContext, useFormState } from "./index.js";
+import { createForms, type FieldApi, type FormOf, inputProps, useForm, useFormContext, useFormState } from "./index.js";
 import { type Commits, settle, useCommits } from "./test/helpers.js";
-import { defineSchemaPlugin } from "./plugins/validation.js";
+import { defineSchemaPlugin } from "./plugins.js";
 
 // Fast Refresh runs an edited module again and keeps the state of its mounted
 // components. These tests do the same: `load` stands for the module body, and
@@ -42,7 +42,7 @@ function load(version: string, min: number, onSubmit: (value: Value) => void) {
     return (
       <label>
         {`${props.label} ${version}`}
-        <input {...props.field.inputProps()} />
+        <input {...inputProps(props.field)} />
       </label>
     );
   }

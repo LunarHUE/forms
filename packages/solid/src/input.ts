@@ -1,8 +1,7 @@
 import type { ItemOf, ValueOf } from "@lunarhue/forms-core";
-import type { HandleLike } from "./field.js";
-import { inputSourceFor } from "./field-api.js";
-import { buildInputProps, errorIdOf, type AnyInputOptions } from "./input-props.js";
-import { fieldReader } from "./reader.js";
+import type { FieldTypes, HandleLike } from "./field.js";
+import { createFieldApi } from "./field-api.js";
+import { type AnyInputOptions, errorIdOf, type InputField, inputPropsFor } from "./input-props.js";
 import { elementRegistrar } from "./refs.js";
 
 /** The input types whose value is a string. */
@@ -210,9 +209,6 @@ export type IsOptionList<V> = [V] extends [readonly (string | number)[] | null |
 /** `unknown` when `Ok` is true, `never` otherwise. Intersected with a parameter, `never` rejects the argument. */
 type Allow<Ok extends boolean> = Ok extends true ? unknown : never;
 
-/** The arguments of an overload: `Args` when `Ok` is true, else one `never`, which no call can pass. */
-type ArgsIf<Ok extends boolean, Args extends readonly unknown[]> = Ok extends true ? Args : [never];
-
 /**
  * Returns the props for an input bound to a field, to spread on the
  * element: `<input {...createInputProps(handle)} />`. Call it in a component
@@ -236,7 +232,7 @@ type ArgsIf<Ok extends boolean, Args extends readonly unknown[]> = Ok extends tr
  * To run your own handler as well, spread these props, set your own handler
  * after them, and call ours from it.
  */
-export interface CreateInputProps {
+export const createInputProps: {
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options?: TextInputOptions): TextInputProps;
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options: TextareaOptions): TextareaProps;
   <H extends HandleLike>(handle: H & Allow<IsNumber<ValueOf<H>>>, options: NumberInputOptions<ValueOf<H>>): NumberInputProps;
@@ -247,31 +243,48 @@ export interface CreateInputProps {
   ): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsOption<ValueOf<H>>>, options: RadioOptions<NonNullable<ValueOf<H>>>): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
+} = (handle: HandleLike, options?: AnyInputOptions) =>
+  // The field object has the members `InputField` names, and the overloads pick the props type from `kind`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  inputPropsFor(createFieldApi(handle) as InputField, options) as never;
+
+/** What `inputProps` needs from a field object. Every field object fits. */
+export interface FieldObjectLike {
+  readonly handle: HandleLike;
+  readonly text: string;
+  /** Type information only. */
+  readonly "~field"?: FieldTypes<unknown, unknown>;
 }
 
-function inputPropsOf(handle: HandleLike, options?: AnyInputOptions): unknown {
-  return buildInputProps(inputSourceFor(handle, fieldReader(handle)), options);
-}
-
-/** See `CreateInputProps`. */
-// The overloads pick the props type from `kind`, which is what `buildInputProps` builds.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createInputProps = inputPropsOf as CreateInputProps;
+/** The value type of a field object. */
+type FieldValue<F> = F extends { readonly "~field"?: FieldTypes<infer V, unknown> } ? V : never;
 
 /**
- * `createInputProps` for one field whose value type `V` is known: the same
- * kinds and the same checks, without the handle argument. A kind the field
- * doesn't fit takes no call.
+ * Returns the props that bind one plain HTML element to a field object:
+ * `<input {...inputProps(field)} />`. It is built on the field's pieces
+ * (`text`, `setText`, `setNumberText`, `ref`, `handleBlur`) and adds `id`,
+ * `name`, `disabled`, `readonly` and the aria members, with the same kinds
+ * and checks as `createInputProps`. It returns the same props object for the
+ * same field object and options, so it can be called in JSX.
+ *
+ * A form that never calls it doesn't ship it. A component library's
+ * primitives usually own their ids and aria, so bind those with the pieces
+ * instead.
  */
-export interface InputPropsOf<V> {
-  (...args: ArgsIf<IsText<V>, [options?: TextInputOptions]>): TextInputProps;
-  (...args: ArgsIf<IsText<V>, [options: TextareaOptions]>): TextareaProps;
-  (...args: ArgsIf<IsNumber<V>, [options: NumberInputOptions<V>]>): NumberInputProps;
-  (...args: ArgsIf<IsBoolean<V>, [options: CheckboxOptions]>): CheckableProps;
-  (...args: ArgsIf<IsOptionList<V>, [options: CheckboxGroupOptions<ItemOf<V>>]>): CheckableProps;
-  (...args: ArgsIf<IsOption<V>, [options: RadioOptions<NonNullable<V>>]>): CheckableProps;
-  (...args: ArgsIf<IsChoice<V>, [options: SelectOptions]>): SelectProps;
-}
+// Every field object has the members `InputField` names, and the overloads pick the props type from `kind`.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const inputProps = inputPropsFor as unknown as {
+  <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options?: TextInputOptions): TextInputProps;
+  <F extends FieldObjectLike>(field: F & Allow<IsText<FieldValue<F>>>, options: TextareaOptions): TextareaProps;
+  <F extends FieldObjectLike>(field: F & Allow<IsNumber<FieldValue<F>>>, options: NumberInputOptions<FieldValue<F>>): NumberInputProps;
+  <F extends FieldObjectLike>(field: F & Allow<IsBoolean<FieldValue<F>>>, options: CheckboxOptions): CheckableProps;
+  <F extends FieldObjectLike>(
+    field: F & Allow<IsOptionList<FieldValue<F>>>,
+    options: CheckboxGroupOptions<ItemOf<FieldValue<F>>>,
+  ): CheckableProps;
+  <F extends FieldObjectLike>(field: F & Allow<IsOption<FieldValue<F>>>, options: RadioOptions<NonNullable<FieldValue<F>>>): CheckableProps;
+  <F extends FieldObjectLike>(field: F & Allow<IsChoice<FieldValue<F>>>, options: SelectOptions): SelectProps;
+};
 
 /**
  * Returns a ref callback that registers an element as the focus target of a
@@ -279,10 +292,7 @@ export interface InputPropsOf<V> {
  * `ref={fieldRef(handle)}`, and call it in a component body: the element is
  * forgotten when that owner is disposed.
  */
-export type FieldRef = (handle: HandleLike) => (element: HTMLElement) => void;
-
-/** See `FieldRef`. */
-export const fieldRef: FieldRef = (handle) => elementRegistrar(handle);
+export const fieldRef = (handle: HandleLike): ((element: HTMLElement) => void) => elementRegistrar(handle);
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field

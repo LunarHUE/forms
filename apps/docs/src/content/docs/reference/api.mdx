@@ -8,9 +8,8 @@ order: 1
 Each entry point and what it exports. Signatures leave out type parameters.
 Your editor shows the full types, and each export has a doc comment.
 
-The adapter re-exports core, and each adapter plugin entry re-exports the
-core plugin of the same name, so you import everything from the adapter you
-installed.
+The adapter re-exports core, and its `plugins` entry re-exports core's
+plugins, so you import everything from the adapter you installed.
 
 ## Adapter
 
@@ -56,7 +55,7 @@ createForms(options?: {
 ```ts
 forms.define({
   defaultValues?,  // required unless a schema plugin accepts the schema
-  schema?,         // needs validation() or a schema plugin
+  schema?,         // needs the schema plugin for its library
   plugins?,        // this form's plugins, after the shared ones
   validate?: { on?, form?, fields? },
   show?,
@@ -181,7 +180,8 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `useInputProps(handle, options?)` | Props that bind one element to the field. |
+| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
+| `useInputProps(handle, options?)` | The same props for a handle. |
 | `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 
@@ -191,7 +191,8 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `createInputProps(handle, options?)` | Props that bind one element to the field. |
+| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
+| `createInputProps(handle, options?)` | The same props for a handle. |
 | `fieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 
@@ -229,11 +230,15 @@ children.
 | `readOnly` | True when it or a field above it is read-only. |
 | `meta` | Plugin state by plugin name, read with the plugin's reader. |
 | `keys` | Array fields only: the item keys, in order. |
-| `inputProps(options?)` | As the input props function above, for this field. |
+| `text` | The text an element shows: typed number text, else a plugin's display text, else the value. |
+| `setText(text, from?)` | Writes typed text. With a mask, puts the formatted text in the element `from` names and places the caret. |
+| `setNumberText(text, empty?)` | Writes typed number text. Text that isn't a number yet writes nothing. |
+| `ref` | Records the element for focus after an invalid submit. |
 | `handle` | The field's handle. |
 | `id`, `path`, `errorId` | The handle's id, its stable path, and the error element id. |
 
-It also has every command of its handle, bound.
+It also has every command of its handle, bound. Its `handleBlur` also drops
+typed number text.
 
 ### Handles
 
@@ -309,6 +314,13 @@ tests.
 | `Draft<T>` | `T` as a schema form holds it, with leaves that may be `undefined`. |
 | `StandardSchemaV1` | The Standard Schema interface any schema library implements. |
 
+A function has no type of its own name. Write `typeof createForms` for its
+signature, or `ReturnType<typeof createForms>` for what it returns.
+
+Hovers in your editor also show types the adapter doesn't export, such as
+the ones that work out which names fit a field component. They can change in
+any release, so don't copy them into your own code.
+
 ### Core helpers
 
 | | |
@@ -321,18 +333,18 @@ tests.
 
 ## Plugins
 
-Each plugin has its own entry, so a plugin you don't import isn't in your
-bundle.
+Every plugin comes from one entry. A plugin you don't import isn't in your
+bundle, since the package has no side effects and your bundler drops it.
 
 <Only framework="react">
 
-Import from `@lunarhue/forms-react/plugins/<name>`.
+Import from `@lunarhue/forms-react/plugins`.
 
 </Only>
 
 <Only framework="solid">
 
-Import from `@lunarhue/forms-solid/plugins/<name>`.
+Import from `@lunarhue/forms-solid/plugins`.
 
 </Only>
 
@@ -343,13 +355,7 @@ Import from `@lunarhue/forms-solid/plugins/<name>`.
 | `definePlugin(definition)` | Makes a plugin from hooks and a `setup`. See [Writing a plugin](../plugins/writing-a-plugin). |
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
-
-### plugins/validation
-
-| | |
-| --- | --- |
-| `validation()` | Runs validators and collects errors. Schema plugins bring it, so list it only without one. |
-| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. |
+| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. See [Schemas](../plugins/schemas#another-library). |
 
 ### plugins/history
 
@@ -417,8 +423,8 @@ Each rule takes the form value and returns `{ disabled?, hidden? }`. Read
 
 ## Schema
 
-`@lunarhue/forms-schema`. Each plugin types the form from the schema, fills
-`defaultValues` from it and brings `validation()`.
+`@lunarhue/forms-schema`. Each plugin lets `schema` take its library's
+schemas and fills `defaultValues` from them. Validation needs no plugin.
 
 | | |
 | --- | --- |

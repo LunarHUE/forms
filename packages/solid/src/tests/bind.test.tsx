@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { createForm, createForms } from "../index.js";
-import { bind, type BindOptions } from "../plugins/bind.js";
-import { type Rebase, rebase } from "../plugins/rebase.js";
+import { createForm, createForms, inputProps } from "../index.js";
+import { bind, type BindOptions, type Rebase, rebase } from "../plugins.js";
 import { get, mount, settle, typeText } from "./dom.js";
 
 interface Profile {
@@ -43,7 +42,7 @@ interface BoundProps {
 
 function Bound(props: BoundProps) {
   const form = createForm(Profile, { plugins: [bind(props.store)] });
-  return <form.Field name="name">{(field) => <input aria-label={props.label} {...field.inputProps()} />}</form.Field>;
+  return <form.Field name="name">{(field) => <input aria-label={props.label} {...inputProps(field)} />}</form.Field>;
 }
 
 function Wrong() {

@@ -1,7 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, type FieldApi, type FormOf, type HandleOf } from "../index.js";
+import { createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps } from "../index.js";
 import { get, mount, settle, typeText } from "./dom.js";
 
 const bodies = { text: 0, number: 0, address: 0 };
@@ -11,7 +11,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
-      <input data-label={props.label} {...props.field.inputProps()} />
+      <input data-label={props.label} {...inputProps(props.field)} />
     </label>
   );
 }
@@ -21,7 +21,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <label>
       {props.label}
-      <input data-label={props.label} {...props.field.inputProps({ kind: "number" })} />
+      <input data-label={props.label} {...inputProps(props.field, { kind: "number" })} />
     </label>
   );
 }
@@ -48,7 +48,7 @@ function AddressFields(props: { field: HandleOf<typeof Address>; title: string }
     <fieldset>
       <legend>{props.title}</legend>
       <scope.TextField name="street" label={`${props.title} street`} />
-      <scope.Field name="city">{(field) => <input data-label={`${props.title} city`} {...field.inputProps()} />}</scope.Field>
+      <scope.Field name="city">{(field) => <input data-label={`${props.title} city`} {...inputProps(field)} />}</scope.Field>
       <GeoFields field={scope.root.at("geo")} prefix={props.title} />
     </fieldset>
   );

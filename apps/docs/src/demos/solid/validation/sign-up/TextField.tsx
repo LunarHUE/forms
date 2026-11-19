@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 import { For, Show } from "solid-js";
 
 interface TextFieldProps {
@@ -11,7 +11,7 @@ export function TextField(props: TextFieldProps) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <Show when={props.field.validating}>
         <span>Checking...</span>
       </Show>

@@ -1,5 +1,5 @@
 import type { FormSnapshot } from "@lunarhue/forms-core";
-import { history } from "@lunarhue/forms-core/plugins/history";
+import { history } from "@lunarhue/forms-core/plugins";
 import { scenario } from "../scenario.js";
 
 const undoHistory = history();

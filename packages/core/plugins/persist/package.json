@@ -1,5 +1,0 @@
-{
-  "main": "../../dist/cjs/plugins/persist.js",
-  "module": "../../dist/esm/plugins/persist.js",
-  "types": "../../dist/cjs/plugins/persist.d.ts"
-}

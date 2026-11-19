@@ -1,14 +1,17 @@
-import { errorId as coreErrorId, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
+import { errorId as coreErrorId, type FieldSnapshot, type HandleTypes, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import { fieldViewSource } from "./field-api.js";
 import { type HandleLike, whole } from "./field.js";
-import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
+import { type AnyInputOptions, type InputState, inputPropsFor } from "./input-props.js";
+import type { FieldPieces } from "./pieces.js";
 import { refFor } from "./refs.js";
 import { useSelected } from "./select.js";
 
 /**
  * The ref callback the adapter puts on a field's element. It records the
- * element for focus after an invalid submit. On React 19 it returns the
+ * element for focus after an invalid submit. On a native input, textarea or
+ * select that the browser filled back in before hydration, it puts back
+ * what React rendered. On React 19 it returns the
  * cleanup that forgets it. Earlier versions get no cleanup, since React 18.3
  * warns about one, and call the callback again with `null`, which does
  * nothing: an element that left the document is skipped by focus and dropped
@@ -224,36 +227,63 @@ export interface InputHandleLike extends HandleLike {
  * `shownErrors`. The callbacks keep their identity for the life of the
  * handle. The props object changes only when the field's snapshot does.
  */
-export interface UseInputProps {
+export const useInputProps: {
   <H extends InputHandleLike, const O extends InputOptionsFor<ValueOf<H>>>(handle: H, options: O): InputPropsFor<O>;
   <H extends InputHandleLike>(handle: H, ...options: NoOptionsArgs<ValueOf<H>>): TextInputProps;
+} = (handle: InputHandleLike, options?: AnyInputOptions) => {
+  // The field object changes when the snapshot or the typed number text does.
+  const { api } = useSelected(fieldViewSource(handle), whole);
+  // The field object has the pieces, and the props match the options by kind,
+  // which the overloads check against the value type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return inputPropsFor(handle, api as unknown as InputState, options) as never;
+};
+
+/** What `inputProps` needs from a field object: its handle, snapshot members and pieces. Every field object fits. */
+export interface FieldObjectLike extends FieldSnapshot<unknown, unknown>, Omit<FieldPieces, "setNumberText"> {
+  readonly handle: { readonly id: string };
+  readonly text: string;
+  /** See `FieldPieces.setNumberText`. A method, so a field of any value type fits. */
+  setNumberText(text: string, empty?: never): void;
+  /** Type information only. */
+  readonly "~types"?: HandleTypes<unknown, unknown>;
 }
 
-/** See `UseInputProps`. */
-export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: AnyInputOptions) => {
-  // The view holds the snapshot and the number text, and changes when either does.
-  const { snapshot, text } = useSelected(fieldViewSource(handle), whole);
-  // The props match the options by kind, which the overloads check against the value type.
+/**
+ * Returns the props that bind one plain HTML element to a field object:
+ * `<input {...inputProps(field)} />`. It is built on the field's pieces
+ * (`text`, `setText`, `setNumberText`, `ref`, `handleBlur`) and adds `name`,
+ * `id`, `disabled`, `readOnly` and the aria members. The options are checked
+ * against the field's value type, see `InputOptionsFor`. Errors show in
+ * `aria-invalid` and `aria-describedby` only while they are in
+ * `shownErrors`. The callbacks keep their identity for the life of the
+ * handle, and the props object changes only when the field object does.
+ *
+ * It is a plain function, not a hook, so it can be called anywhere the field
+ * object is, and a form that never calls it doesn't ship it. A component
+ * library's primitives usually own their ids and aria, so bind those with the
+ * pieces instead.
+ */
+export const inputProps: {
+  <F extends FieldObjectLike, const O extends InputOptionsFor<ValueOf<F>>>(field: F, options: O): InputPropsFor<O>;
+  <F extends FieldObjectLike>(field: F, ...options: NoOptionsArgs<ValueOf<F>>): TextInputProps;
+} = (field: FieldObjectLike, options?: AnyInputOptions) =>
+  // `setNumberText` takes the field's own value type, and the props match the
+  // options by kind, which the overloads check against the value type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return inputPropsFor(handle, snapshot, text, options) as never;
-};
+  inputPropsFor(field.handle, field as InputState, options) as never;
 
 /**
  * Returns a ref callback that records an element for a field, for custom
  * inputs that don't use `useInputProps`. The callback keeps its identity for
  * the life of the handle.
  */
-export type UseFieldRef = (handle: HandleLike) => FieldRef;
-
-/** See `UseFieldRef`. It reads no state, so it is a plain lookup. */
-export const useFieldRef: UseFieldRef = (handle) => refFor(handle);
+// It reads no state, so it is a plain lookup.
+export const useFieldRef = (handle: HandleLike): FieldRef => refFor(handle);
 
 /**
  * The id of the element that shows a field's errors, core's
  * `errorId(handle.id)`: the handle id with `---error` after it. It never
  * names a field or an option. Input props point `aria-describedby` at it.
  */
-export type ErrorId = (handle: { readonly id: string }) => string;
-
-/** See `ErrorId`. */
-export const errorId: ErrorId = (handle) => coreErrorId(handle.id);
+export const errorId = (handle: { readonly id: string }): string => coreErrorId(handle.id);

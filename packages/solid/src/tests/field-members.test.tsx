@@ -1,7 +1,7 @@
 import type { PluginContext } from "@lunarhue/forms-core";
 import { createMemo, createRoot, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf } from "../index.js";
+import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf, inputProps } from "../index.js";
 import { definePlugin } from "../plugins.js";
 import { getAs, mount } from "./dom.js";
 
@@ -9,7 +9,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <>
       <label for={props.field.id}>{props.label}</label>
-      <input data-label={props.label} {...props.field.inputProps()} />
+      <input data-label={props.label} {...inputProps(props.field)} />
       <output data-label={props.label}>{props.field.path.join("/")}</output>
     </>
   );
@@ -134,7 +134,10 @@ const commonMembers = {
   setValue: true,
   handle: true,
   errorId: true,
-  inputProps: true,
+  text: true,
+  setText: true,
+  setNumberText: true,
+  ref: true,
   "~field": false,
 } as const;
 const leafMembers = commonMembers satisfies Record<keyof ExactFieldApi<string>, boolean>;

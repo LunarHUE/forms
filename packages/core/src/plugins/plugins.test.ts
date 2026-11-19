@@ -9,7 +9,6 @@ import {
   type WriteRecord,
 } from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
-import { validation } from "./validation.js";
 import { dirty } from "./dirty.js";
 import { history } from "./history.js";
 import { mask, upper } from "./mask.js";
@@ -684,6 +683,32 @@ describe("timing", () => {
     expect([deferred.calls.length, idle.calls.length]).toEqual([2, 2]);
   });
 
+  it("flushes without history or persist, when no installed plugin brings the timings", async () => {
+    vi.useFakeTimers();
+    const flusher = definePlugin({ name: "flusher", setup: (ctx) => ({ api: { flush: () => ctx.flush() } }) });
+    const store = make(contact(), [mask({ code: upper })]);
+    store.root.at("code").setValue("ab");
+    expect(() => flushPlugins(store)).not.toThrow();
+    await Promise.resolve();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(store.root.at("code").peek().value).toBe("AB");
+    // The public `definePlugin` brings the timings, so its `ctx.flush` works next to them.
+    const withFlusher = make(contact(), [mask({ code: upper }), flusher]);
+    withFlusher.root.at("code").setValue("ab");
+    expect(() => withFlusher.plugins.flusher.flush()).not.toThrow();
+  });
+
+  it("flushes history and persist when a plugin before them brings no timings", () => {
+    vi.useFakeTimers();
+    const storage = memory();
+    const store = make(contact(), [mask({ code: upper }), history(), persist("contact", storage)]);
+    store.root.at("code").setValue("ab");
+    flushPlugins(store);
+    expect(JSON.parse(storage.saved.get("contact") ?? "null")).toEqual({ phone: "", code: "AB" });
+    expect(store.plugins.history.undo()).toBe(true);
+    expect(store.root.at("code").peek().value).toBe("");
+  });
+
   it("schedules nothing for a timing no plugin uses", () => {
     vi.useFakeTimers();
     const { plugin } = watcher("watch", "sync");
@@ -778,7 +803,7 @@ describe("reset and submit", () => {
   it("tells onSubmitted about an invalid submit too", async () => {
     const ended: string[] = [];
     const plugin = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({
         defaultValues: contact(),
         plugins: [plugin],
@@ -796,7 +821,7 @@ describe("reset and submit", () => {
     const gate = new Promise<void>((resolve) => (release = resolve));
     let sent: unknown;
     let fail = false;
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({
         defaultValues: contact(),
         plugins: [end],
@@ -825,7 +850,7 @@ describe("reset and submit", () => {
   it("gives onSubmitted no value when the submit ends invalid", async () => {
     const inputs: unknown[] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (_submission, input) => void inputs.push(input) }) });
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ defaultValues: contact(), plugins: [end], validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } } })
       .createStore();
     await store.submit();
@@ -1022,7 +1047,7 @@ describe("revalidation", () => {
       },
     });
     const form = vi.fn<(value: Contact) => undefined>(() => undefined);
-    const store = createFormsCore({ plugins: [validation()] })
+    const store = createFormsCore()
       .define({ defaultValues: contact(), validate: { form }, plugins: [filler] })
       .createStore();
     await store.validate();

@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { orderRules } from "./rules";
 
@@ -7,14 +7,14 @@ interface FieldProps<V> {
   readonly label: string;
 }
 
-// `inputProps()` sets `disabled` from the field. `hidden` is the
+// `inputProps` sets `disabled` from the field. `hidden` is the
 // plugin's own meta, so the component reads it.
 export function TextField(props: FieldProps<string>) {
   return (
     <Show when={!orderRules.meta(props.field).hidden}>
       <label>
         {props.label}
-        <input {...props.field.inputProps()} />
+        <input {...inputProps(props.field)} />
       </label>
     </Show>
   );
@@ -23,7 +23,7 @@ export function TextField(props: FieldProps<string>) {
 export function Checkbox(props: FieldProps<boolean>) {
   return (
     <label>
-      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      <input {...inputProps(props.field, { kind: "checkbox" })} />
       {props.label}
     </label>
   );

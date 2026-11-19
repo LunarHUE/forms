@@ -16,7 +16,7 @@ For schema validation add `@lunarhue/forms-schema` and Zod or Valibot.
 ## A form
 
 ```tsx
-import { createForm, createForms, type FieldApi } from "@lunarhue/forms-solid";
+import { createForm, createForms, inputProps, type FieldApi } from "@lunarhue/forms-solid";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
@@ -27,8 +27,8 @@ const SignUp = v.object({
 });
 
 // Your own input, registered once. Read it through `props` so it stays
-// reactive. `inputProps()` carries the value, the handlers and the aria
-// attributes.
+// reactive. `inputProps(props.field)` carries the value, the handlers and
+// the aria attributes.
 interface TextFieldProps {
   readonly field: FieldApi<string>;
   readonly label: string;
@@ -38,7 +38,7 @@ function TextField(props: TextFieldProps) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <ul id={props.field.errorId}>
         <For each={props.field.shownErrors}>
           {(error) => <li>{error.message}</li>}
@@ -78,9 +78,10 @@ Type `name="emial"` and the build fails.
 
 ## Plugins
 
-The plugins that need no other library ship with this package, one entry
-each: `@lunarhue/forms-solid/plugins/history`, `/mask`, `/rules`,
-`/persist`, `/rebase`, `/bind`, `/dirty` and `/validation`.
+The plugins that need no other library ship with this package, all from
+`@lunarhue/forms-solid/plugins`: `history`, `mask`, `rules`, `persist`,
+`rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
+Validation is built in.
 
 ## More
 

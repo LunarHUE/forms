@@ -1,5 +1,5 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { digits, mask } from "@lunarhue/forms-solid/plugins/mask";
+import { digits, mask } from "@lunarhue/forms-solid/plugins";
 import { PhoneField } from "./PhoneField";
 
 // "5551234567" shows as "(555) 123-4567".

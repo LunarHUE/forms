@@ -1,5 +1,5 @@
 import { createFormsCore } from "@lunarhue/forms-core";
-import { dirty } from "@lunarhue/forms-core/plugins/dirty";
+import { dirty } from "@lunarhue/forms-core/plugins";
 import { describe, expect, it, vi } from "vitest";
 import { createStore } from "zustand/vanilla";
 import { zustand } from "./zustand.js";

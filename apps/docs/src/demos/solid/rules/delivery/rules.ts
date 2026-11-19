@@ -1,4 +1,4 @@
-import { rules } from "@lunarhue/forms-solid/plugins/rules";
+import { rules } from "@lunarhue/forms-solid/plugins";
 
 export interface Order {
   pickup: boolean;

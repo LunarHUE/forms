@@ -1,5 +1,5 @@
 import { createFormsCore } from "@lunarhue/forms-core";
-import type { BindPlugin } from "@lunarhue/forms-core/plugins/bind";
+import type { BindPlugin } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createStore } from "zustand/vanilla";
 import { zustand } from "./zustand.js";

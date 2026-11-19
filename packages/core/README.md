@@ -1,7 +1,7 @@
 # @lunarhue/forms-core
 
-The framework-free core of [forms](https://github.com/LunarHUE/forms): values, arrays, submit and the plugin
-host, plus the plugins that need no other library.
+The framework-free core of [forms](https://github.com/LunarHUE/forms): values, arrays, validation, submit
+and the plugin host, plus the plugins that need no other library.
 
 You rarely install this yourself. The React and Solid adapters depend on it
 and re-export everything you need, plugins included:
@@ -18,20 +18,21 @@ npm install @lunarhue/forms-core
 
 ## Plugins in this package
 
-Each has its own entry point, so a plugin you don't import costs no bytes.
+All of them come from `@lunarhue/forms-core/plugins`. The package has no side
+effects, so your bundler drops a plugin you don't import and it costs no bytes.
 
-| Entry | Plugin |
+| Plugin | What it does |
 | --- | --- |
-| `./plugins/validation` | `validation()`: runs validators and collects errors |
-| `./plugins/dirty` | `dirty()` and `baselineOnSubmit()`: what changed since the saved values |
-| `./plugins/history` | `history()`: undo and redo |
-| `./plugins/mask` | `mask()`: cleans and formats what the user types |
-| `./plugins/rules` | `rules()`: `disabled` and `hidden` from the rest of the form |
-| `./plugins/persist` | `persist()`: saves the draft and restores it |
-| `./plugins/rebase` | `rebase()`: takes fresh server data without wiping edits |
-| `./plugins/bind` | `bind()`: copies the value to a store you own and back |
+| `dirty()` and `baselineOnSubmit()` | What changed since the saved values |
+| `history()` | Undo and redo |
+| `mask()` | Cleans and formats what the user types |
+| `rules()` | `disabled` and `hidden` from the rest of the form |
+| `persist()` | Saves the draft and restores it |
+| `rebase()` | Takes fresh server data without wiping edits |
+| `bind()` | Copies the value to a store you own and back |
 
-Write your own with `definePlugin` from `./plugins`. The rules are in
+Write your own with `definePlugin` from `./plugins`, or a schema plugin for
+another schema library with `defineSchemaPlugin` from the same entry. The rules are in
 [Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin).
 
 ## More

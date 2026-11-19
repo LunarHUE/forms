@@ -97,25 +97,6 @@ A warning, logged in development only. The app bundles two copies of core,
 and plugins only work with the copy they were made with. Install one copy,
 as by deduping the lockfile.
 
-<a id="core:validation:definition"></a>
-
-### `validation:definition`
-
-> This form's definition has `validate` or `schema`, but no plugin brings the validation runner. Add `validation()` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as `valibot()`, to `plugins`.
-
-Thrown when the store is made. Add `validation()` from
-`<adapter>/plugins/validation`, or a schema plugin such as `valibot()`, to
-`plugins`.
-
-<a id="core:validation:validator"></a>
-
-### `validation:validator`
-
-> A validator was added to a field (through `registerValidator`, `useValidator` or a `validate` prop), but no plugin brings the validation runner. Add `validation()` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as `valibot()`, to `plugins`.
-
-Thrown when the validator is added. The fix is the same as for
-`validation:definition`.
-
 <a id="core:schema:defaults"></a>
 
 ### `schema:defaults`
@@ -141,7 +122,7 @@ plugin is installed on.
 
 ### `dirty:untracked`
 
-> This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.
+> This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins" to `plugins`.
 
 A warning, logged in development only, once per form. Something called
 `changes()` on a form whose plugins have no `dirty()`. Add `dirty()` from

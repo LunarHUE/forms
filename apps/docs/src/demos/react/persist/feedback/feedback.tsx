@@ -1,5 +1,5 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
-import { persist } from "@lunarhue/forms-react/plugins/persist";
+import { persist } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
 
 const forms = createForms({ fields: { TextField } });

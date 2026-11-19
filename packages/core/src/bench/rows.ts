@@ -1,6 +1,6 @@
 import { createFormsCore } from "../index.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import { defineSchemaPlugin } from "../plugins/validation.js";
+import { defineSchemaPlugin } from "../plugins.js";
 
 // The row benchmark from solid-form, on the plain store: a form with `count`
 // array rows and one listener per row on that row's name errors, as a list of

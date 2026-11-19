@@ -1,5 +1,5 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { persist } from "@lunarhue/forms-solid/plugins/persist";
+import { persist } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 
 const forms = createForms({ fields: { TextField } });

@@ -13,7 +13,7 @@ import type {
 } from "@lunarhue/forms-core";
 import type { Accessor } from "solid-js";
 import { createFieldApi } from "./field-api.js";
-import type { InputPropsOf } from "./input.js";
+import type { FieldPieces } from "./pieces.js";
 import { createItemList } from "./items.js";
 import { addValidator } from "./validator.js";
 
@@ -62,11 +62,14 @@ export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHand
  *   `handleBlur`, `setTouched`, `setErrors`, `validate`, `reset`,
  *   `setDisabled`, `setReadOnly`, and `at` on objects or `push`, `insert`,
  *   `remove`, `move` and `item` on arrays;
- * - `handle` itself, `errorId`, and `inputProps`.
+ * - `handle` itself and `errorId`;
+ * - the pieces that bind an element by hand: `text`, `setText`,
+ *   `setNumberText`, `ref`, and `handleBlur`, which also drops typed number
+ *   text. `inputProps(field)` builds a DOM prop spread from them.
  *
- * Don't destructure the snapshot members: a destructured member is read once.
- * The commands, `handle`, `errorId` and `inputProps` never change, so
- * destructuring those is fine.
+ * Don't destructure the snapshot members or `text`: a destructured member is
+ * read once. The commands, `handle`, `errorId` and the other pieces never
+ * change, so destructuring those is fine.
  */
 export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
   FieldCommands<V, E> & {
@@ -74,8 +77,14 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     readonly handle: FieldHandle<V, E>;
     /** The id for the element that renders this field's errors. See `errorId`. */
     readonly errorId: string;
-    /** The props for an input bound to this field, with the same kinds and checks as `createInputProps`. */
-    readonly inputProps: InputPropsOf<V>;
+    /** See `FieldPieces.text`. Reactive. */
+    readonly text: string;
+    /** See `FieldPieces.setText`. */
+    readonly setText: FieldPieces["setText"];
+    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
+    readonly setNumberText: (text: string, empty?: V) => void;
+    /** See `FieldPieces.ref`. */
+    readonly ref: FieldPieces["ref"];
     /** Type information only, always undefined at runtime. */
     readonly "~field"?: FieldTypes<V, E>;
   };
@@ -113,12 +122,10 @@ export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
  * current snapshot without tracking. On the server, and in the browser while
  * hydrating, it reads the store's server snapshot, so the markup matches.
  */
-export type CreateField = <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>>;
-
-/** See `CreateField`. */
-// The runtime object has the members `ExactFieldApi` names for the handle's kind.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createField: CreateField = createFieldApi as unknown as CreateField;
+export const createField: <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>> =
+  // The runtime object has the members `ExactFieldApi` names for the handle's kind.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createFieldApi as never;
 
 /**
  * The form snapshot as reactive reads: every member of `FormSnapshot`, each
@@ -139,12 +146,10 @@ export interface ArrayHandleLike extends HandleLike {
  * maps to the same handle object every time, so `<For each={items()}>`
  * keeps a row's DOM through inserts, removes and moves.
  */
-export type CreateItems = <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]>;
-
-/** See `CreateItems`. */
-// Each entry is what `handle.item` returns, which the type names.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createItems: CreateItems = createItemList as unknown as CreateItems;
+export const createItems: <H extends ArrayHandleLike>(handle: H) => Accessor<readonly ReturnType<H["item"]>[]> =
+  // Each entry is what `handle.item` returns, which the type names.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createItemList as never;
 
 /** What `createValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {
@@ -157,15 +162,8 @@ export interface ValidatorHandleLike extends HandleLike {
  * it and its errors when the owner is disposed. It registers once, with the
  * validator it was given. To make a validator conditional, create it under
  * `<Show>`, or pass `undefined`, `null` or `false` to add none.
- *
- * It needs the validation runner, from `validation()` or a schema plugin. A
- * handle doesn't carry the form's plugins, so the compiler can't check that.
- * Without the runner it throws in development.
  */
-export type CreateValidator = <H extends ValidatorHandleLike>(
+export const createValidator: <H extends ValidatorHandleLike>(
   handle: H,
   validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
-) => void;
-
-/** See `CreateValidator`. */
-export const createValidator: CreateValidator = addValidator;
+) => void = addValidator;

@@ -55,94 +55,6 @@
         "default": "./dist/cjs/plugins.js"
       }
     },
-    "./plugins/bind": {
-      "@lunarhue/source": "./src/plugins/bind.ts",
-      "import": {
-        "types": "./dist/esm/plugins/bind.d.ts",
-        "default": "./dist/esm/plugins/bind.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/bind.d.ts",
-        "default": "./dist/cjs/plugins/bind.js"
-      }
-    },
-    "./plugins/dirty": {
-      "@lunarhue/source": "./src/plugins/dirty.ts",
-      "import": {
-        "types": "./dist/esm/plugins/dirty.d.ts",
-        "default": "./dist/esm/plugins/dirty.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/dirty.d.ts",
-        "default": "./dist/cjs/plugins/dirty.js"
-      }
-    },
-    "./plugins/history": {
-      "@lunarhue/source": "./src/plugins/history.ts",
-      "import": {
-        "types": "./dist/esm/plugins/history.d.ts",
-        "default": "./dist/esm/plugins/history.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/history.d.ts",
-        "default": "./dist/cjs/plugins/history.js"
-      }
-    },
-    "./plugins/mask": {
-      "@lunarhue/source": "./src/plugins/mask.ts",
-      "import": {
-        "types": "./dist/esm/plugins/mask.d.ts",
-        "default": "./dist/esm/plugins/mask.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/mask.d.ts",
-        "default": "./dist/cjs/plugins/mask.js"
-      }
-    },
-    "./plugins/persist": {
-      "@lunarhue/source": "./src/plugins/persist.ts",
-      "import": {
-        "types": "./dist/esm/plugins/persist.d.ts",
-        "default": "./dist/esm/plugins/persist.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/persist.d.ts",
-        "default": "./dist/cjs/plugins/persist.js"
-      }
-    },
-    "./plugins/rebase": {
-      "@lunarhue/source": "./src/plugins/rebase.ts",
-      "import": {
-        "types": "./dist/esm/plugins/rebase.d.ts",
-        "default": "./dist/esm/plugins/rebase.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/rebase.d.ts",
-        "default": "./dist/cjs/plugins/rebase.js"
-      }
-    },
-    "./plugins/rules": {
-      "@lunarhue/source": "./src/plugins/rules.ts",
-      "import": {
-        "types": "./dist/esm/plugins/rules.d.ts",
-        "default": "./dist/esm/plugins/rules.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/rules.d.ts",
-        "default": "./dist/cjs/plugins/rules.js"
-      }
-    },
-    "./plugins/validation": {
-      "@lunarhue/source": "./src/plugins/validation.ts",
-      "import": {
-        "types": "./dist/esm/plugins/validation.d.ts",
-        "default": "./dist/esm/plugins/validation.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/validation.d.ts",
-        "default": "./dist/cjs/plugins/validation.js"
-      }
-    },
     "./package.json": "./package.json"
   },
   "dependencies": {
@@ -169,23 +81,37 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
+    "build": "tsdown && tsc -p tsconfig.build.json && tsdown -c tsdown.types.config.ts && rm -rf dist/types",
     "typecheck": "tsc -p tsconfig.json",
     "check:package": "publint --strict --pack npm && attw --pack .",
     "size": "size-limit"
   },
   "size-limit": [
     {
+      "name": "solid, fields bound by hand",
+      "import": {
+        "dist/esm/index.js": "{ createForms, createForm }"
+      },
+      "limit": "11.25 kB"
+    },
+    {
+      "name": "solid + inputProps",
+      "import": {
+        "dist/esm/index.js": "{ createForms, createForm, inputProps }"
+      },
+      "limit": "12.05 kB"
+    },
+    {
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "10.65 kB"
+      "limit": "12.55 kB"
     },
     {
       "name": "./v1",
       "path": "dist/esm/v1.js",
       "import": "*",
-      "limit": "8 kB"
+      "limit": "9.45 kB"
     },
     {
       "name": "solid + valibot()",
@@ -193,28 +119,22 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.45 kB"
+      "limit": "13.05 kB"
     },
     {
       "name": "solid + dirty()",
       "import": {
         "dist/esm/index.js": "*",
-        "dist/esm/plugins/dirty.js": "{ dirty }"
+        "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "10.9 kB"
+      "limit": "13.15 kB"
     },
     {
       "name": "solid, everything on",
       "import": {
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }",
-        "dist/esm/plugins/history.js": "{ history }",
-        "dist/esm/plugins/mask.js": "{ mask }",
-        "dist/esm/plugins/persist.js": "{ persist }",
-        "dist/esm/plugins/rules.js": "{ rules }",
-        "dist/esm/plugins/rebase.js": "{ rebase }",
-        "dist/esm/plugins/bind.js": "{ bind }",
-        "dist/esm/plugins/dirty.js": "{ dirty, baselineOnSubmit }"
+        "dist/esm/plugins.js": "{ history, mask, persist, rules, rebase, bind, dirty, baselineOnSubmit }"
       }
     }
   ]

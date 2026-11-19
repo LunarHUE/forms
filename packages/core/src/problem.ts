@@ -18,8 +18,6 @@ export type Code =
   | "plugins:write"
   | "plugins:loop"
   | "plugins:copies"
-  | "validation:definition"
-  | "validation:validator"
   | "schema:defaults"
   | "rebase:store"
   | "dirty:untracked"
@@ -35,7 +33,6 @@ export type Code =
 export function problem(code: Code, value = ""): string {
   let text = value ? `${code} ${value}` : code;
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-    const fix = 'Add `validation()` from "@lunarhue/forms-core/plugins/validation", or a schema plugin such as `valibot()`, to `plugins`.';
     const sentences: Record<Code, (value: string) => string> = {
       "plugins:name": (name) => `Two plugins are named "${name}".`,
       "plugins:cycle": (name) => `Plugin "${name}" is part of an \`after\` cycle.`,
@@ -43,13 +40,10 @@ export function problem(code: Code, value = ""): string {
       // 10 is `maxRounds` in store/plugins.ts.
       "plugins:loop": (names) => `Plugins kept answering each other's writes for 10 rounds: ${names}.`,
       "plugins:copies": () => "This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.",
-      "validation:definition": () => `This form's definition has \`validate\` or \`schema\`, but no plugin brings the validation runner. ${fix}`,
-      "validation:validator": () =>
-        `A validator was added to a field (through \`registerValidator\`, \`useValidator\` or a \`validate\` prop), but no plugin brings the validation runner. ${fix}`,
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
       "dirty:untracked": () =>
-        'This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins/dirty" to `plugins`.',
+        'This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins" to `plugins`.',
       "submit:unseen": (where) =>
         `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
     };

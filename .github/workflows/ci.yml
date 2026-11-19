@@ -43,11 +43,16 @@ jobs:
         run: bun run test
       - if: steps.setup.outputs.docs-only != 'true'
         run: bun run build
-      # check:package and size read the build output.
+      # check:package, check:consumer-types and size read the build output.
       - if: steps.setup.outputs.docs-only != 'true'
         run: bun run check:package
       - if: steps.setup.outputs.docs-only != 'true'
+        run: bun run check:consumer-types
+      - if: steps.setup.outputs.docs-only != 'true'
         run: bun run size
+      # Builds a few real forms from source and prints their sizes, with no limits.
+      - if: steps.setup.outputs.docs-only != 'true'
+        run: bun run size:forms
 
   # The docs site builds the packages from source, so a package change runs
   # this too. A change to Markdown alone counts as docs and skips it.

@@ -87,19 +87,19 @@
       "name": "core + signal()",
       "import": {
         "../core/dist/esm/index.js": "{ createFormsCore }",
-        "../core/dist/esm/plugins/bind.js": "{ bind }",
+        "../core/dist/esm/plugins/index.js": "{ bind }",
         "dist/esm/solid.js": "{ signal }"
       },
-      "limit": "10.4 kB"
+      "limit": "11.35 kB"
     },
     {
       "name": "core + zustand()",
       "import": {
         "../core/dist/esm/index.js": "{ createFormsCore }",
-        "../core/dist/esm/plugins/bind.js": "{ bind }",
+        "../core/dist/esm/plugins/index.js": "{ bind }",
         "dist/esm/zustand.js": "{ zustand }"
       },
-      "limit": "10.4 kB"
+      "limit": "11.35 kB"
     }
   ]
 }

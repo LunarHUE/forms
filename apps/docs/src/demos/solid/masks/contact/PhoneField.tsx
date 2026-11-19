@@ -1,4 +1,4 @@
-import type { FieldApi } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
 interface PhoneFieldProps {
   readonly field: FieldApi<string>;
@@ -11,7 +11,7 @@ export function PhoneField(props: PhoneFieldProps) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps({ type: "tel" })} />
+      <input {...inputProps(props.field, { type: "tel" })} />
     </label>
   );
 }

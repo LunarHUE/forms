@@ -9,8 +9,9 @@ import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
-import { noValidation, type Validation, type ValidationOptions } from "./runner.js";
+import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
+import { createValidation } from "./validation.js";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 declare const console: { warn(message: string): void };
@@ -31,9 +32,8 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   /** The item `push` and `insert` add when called without one. Gets the array's stable path. Defaults to undefined. */
   readonly itemValue?: ((path: Path) => unknown) | undefined;
   /**
-   * The plugins, shared ones first. The hook plugins get a host, the first
-   * plugin that brings the validation runner gives the store its
-   * validation, and `dirty()` gives it dirty tracking.
+   * The plugins, shared ones first. The hook plugins get a host and
+   * `dirty()` gives the store dirty tracking.
    */
   readonly plugins?: readonly AnyPlugin[] | undefined;
   /** Called when a plugin hook throws. Defaults to throwing on a later task. */
@@ -69,9 +69,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     // The core first calls this when something reads, after `baseline` below exists.
     dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
   });
-  // Only a store with hook plugins gets a host, and only a store with a plugin
-  // that brings the runner gets validation. The plugins bring that code with
-  // them, so core neither carries nor runs it for a store without.
+  // Only a store with hook plugins gets a host. The plugins bring its code
+  // with them, so core neither carries nor runs it for a store without.
   const hooked = plugins.filter((plugin): plugin is AnyHookPlugin => plugin.setup !== undefined);
   const createHost = hooked[0]?.["~host"];
   const host = createHost?.(raw, hooked, options.onPluginError);
@@ -80,13 +79,12 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin["~host"] !== createHost)) {
     console.warn(problem("plugins:copies"));
   }
-  const runner = plugins.find((plugin) => plugin.validation)?.validation ?? noValidation;
   // The host's core wraps this store's and keeps its types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = (host?.core ?? raw) as StoreCore<E, I, R>;
   const context: FormContext<V, E, I, R> = { core, store: () => store };
   const baseline = createBaseline(context, options, createDirty);
-  const validation = runner(context, options);
+  const validation = createValidation(context, options);
   const submit = createSubmit(context, options, validation, host);
 
   const reset = (path: Path, resetOptions?: ResetOptions) => {

@@ -88,6 +88,30 @@
   accent-color: var(--primary);
 }
 
+/* Base UI's checkbox is a span with role="checkbox", beside its label text. */
+.demo-stage label:has(> [role="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+
+.demo-stage [role="checkbox"] {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.demo-stage [role="checkbox"][data-checked] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 /* A field's error list and status text. */
 .demo-stage label ul {
   margin: 0;

@@ -1,16 +1,17 @@
-import type { HookPlugin, MetaSource, PluginDefinition } from "./plugin.js";
-import { createPluginHost, hosts } from "./store/plugins.js";
+import type { HookPlugin, PluginDefinition, SchemaPlugin } from "./plugin.js";
+import type { SchemaAdapter } from "./schema-adapter.js";
+import type { StandardSchemaV1 } from "./standard-schema.js";
+import { defineHooks, type Unset } from "./store/define.js";
+import { hosts } from "./store/plugins.js";
+import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
-
-/** What a reader returns where the plugin has set nothing, given the definition's starting value `I`. */
-type Unset<I> = undefined extends I ? undefined : never;
 
 /**
  * Makes a hook plugin from its definition. Install it with
  * `createFormsCore({ plugins })` or a definition's `plugins`. The plugin
- * carries the code that runs plugins, so a store without hook plugins never
- * loads it.
+ * carries the code that runs plugins and delivers `deferred` and `idle`
+ * records, so a store without hook plugins never loads it.
  *
  * Its meta types come from `setup`'s parameter. Annotate it as
  * `PluginContext<M, F>`, where `M` is its meta on a field and `F` its meta
@@ -28,11 +29,16 @@ export function definePlugin<
 >(
   definition: PluginDefinition<A, N, M, F> & { readonly initialMeta?: MI; readonly initialFormMeta?: FI },
 ): HookPlugin<A, N, M, F, Unset<MI>, Unset<FI>> {
-  const { name } = definition;
-  // The host writes each plugin's meta under its name, with the type its context took.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const reader = (start: unknown) => (source: MetaSource) => (source.meta?.[name] ?? start) as never;
-  return { ...definition, "~host": createPluginHost, meta: reader(definition.initialMeta), formMeta: reader(definition.initialFormMeta) };
+  return { ...defineHooks(definition), "~timing": createTiming };
+}
+
+/**
+ * Makes a schema plugin from a schema adapter. Its name is the adapter's
+ * vendor. Validation needs no plugin, so the plugin only gives its
+ * library's schemas their default values.
+ */
+export function defineSchemaPlugin<S extends StandardSchemaV1>(adapter: SchemaAdapter<S>): SchemaPlugin<S> {
+  return { name: adapter.vendor, schema: adapter };
 }
 
 /**

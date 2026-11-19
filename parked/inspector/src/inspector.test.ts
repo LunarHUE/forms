@@ -1,5 +1,5 @@
 import { type AnyFormStore, createFormsCore, type Path } from "@lunarhue/forms-core";
-import { dirty } from "@lunarhue/forms-core/plugins/dirty";
+import { dirty } from "@lunarhue/forms-core/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

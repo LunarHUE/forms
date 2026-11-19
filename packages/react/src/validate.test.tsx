@@ -1,8 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, useForm, type ValidatorInput } from "./index.js";
-import { validation } from "./plugins/validation.js";
+import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -13,7 +12,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <span role="status" aria-label={`${props.label} errors`}>
         {props.field.errors.map((error) => error.message).join(",")}
       </span>
@@ -21,7 +20,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ plugins: [validation()], fields: { TextField } });
+const forms = createForms({ fields: { TextField } });
 const signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
@@ -62,7 +61,7 @@ function Signup(props: { readonly check?: Check; readonly debounce?: number }) {
             {(field) => (
               <label>
                 Name
-                <input {...field.inputProps()} />
+                <input {...inputProps(field)} />
                 <span role="status" aria-label="Name errors">
                   {field.errors.map((error) => error.message).join(",")}
                 </span>
@@ -93,14 +92,14 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
       {props.options.map((option) => (
         <label key={option}>
           {option}
-          <input {...props.field.inputProps({ kind: "radio", value: option })} />
+          <input {...inputProps(props.field, { kind: "radio", value: option })} />
         </label>
       ))}
     </>
   );
 }
 
-const choiceForms = createForms({ plugins: [validation()], fields: { RadioGroupField } });
+const choiceForms = createForms({ fields: { RadioGroupField } });
 const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
 const delivery = choiceForms.define({ defaultValues: deliveryStart });
 const deliveryHolder: { form?: FormOf<typeof delivery> } = {};
@@ -202,5 +201,33 @@ describe("the validate prop", () => {
     expect(check).toHaveBeenLastCalledWith("ab");
     expect(errorsOf("Name")).toBe("short");
     vi.useRealTimers();
+  });
+});
+
+const required = (value: string) => (value === "" ? { message: "required" } : undefined);
+
+describe("a form with no plugins", () => {
+  it("runs the validate prop and field.validate(), and shows the errors", async () => {
+    const bare = createForms().define({ defaultValues: { name: "" } });
+    const seen: { form?: FormOf<typeof bare> } = {};
+    function Page() {
+      const form = useForm(bare);
+      useEffect(() => {
+        seen.form = form;
+      });
+      return (
+        <form.Field name="name" validate={required}>
+          {(field) => <span role="status">{field.errors.map((error) => error.message).join(",")}</span>}
+        </form.Field>
+      );
+    }
+    render(<Page />);
+    let valid: boolean | undefined;
+    await act(async () => {
+      valid = await seen.form?.root.at("name").validate();
+    });
+    expect(valid).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("required");
+    expect(seen.form?.root.at("name").peek().errors).toEqual([{ message: "required" }]);
   });
 });

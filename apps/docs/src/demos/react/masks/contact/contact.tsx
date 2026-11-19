@@ -1,5 +1,5 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
-import { digits, mask } from "@lunarhue/forms-react/plugins/mask";
+import { digits, mask } from "@lunarhue/forms-react/plugins";
 import { PhoneField } from "./PhoneField";
 
 // "5551234567" shows as "(555) 123-4567".

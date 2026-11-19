@@ -1,8 +1,7 @@
 import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
+import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
-import { validation } from "../plugins/validation.js";
 
 /** The props each registered component was given, by label. */
 const given: Record<string, readonly string[]> = {};
@@ -12,13 +11,13 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
-      <input data-label={props.label} {...props.field.inputProps()} />
+      <input data-label={props.label} {...inputProps(props.field)} />
       <span data-errors={props.label}>{props.field.errors.map((error) => error.message).join(",")}</span>
     </label>
   );
 }
 
-const forms = createForms({ plugins: [validation()], fields: { TextField } });
+const forms = createForms({ fields: { TextField } });
 const Signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
   validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
@@ -53,7 +52,7 @@ function mountSignup(check: () => Check, debounce?: number) {
         <own.Field name="name" validate={nameValidator()}>
           {(field) => (
             <>
-              <input data-label="Name" {...field.inputProps()} />
+              <input data-label="Name" {...inputProps(field)} />
               <span data-errors="Name">{field.errors.map((error) => error.message).join(",")}</span>
             </>
           )}
@@ -80,10 +79,10 @@ function WithHome() {
 
 /** A registered radio group written with `Choice`. */
 function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Choice[] }) {
-  return <For each={props.options}>{(option) => <input data-option={option} {...props.field.inputProps({ kind: "radio", value: option })} />}</For>;
+  return <For each={props.options}>{(option) => <input data-option={option} {...inputProps(props.field, { kind: "radio", value: option })} />}</For>;
 }
 
-const choiceForms = createForms({ plugins: [validation()], fields: { RadioGroupField } });
+const choiceForms = createForms({ fields: { RadioGroupField } });
 const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
 const Delivery = choiceForms.define({ defaultValues: deliveryStart });
 
@@ -177,5 +176,28 @@ describe("the validate prop", () => {
     expect(check).toHaveBeenLastCalledWith("ab");
     expect(errorsOf(host, "Name")).toBe("short");
     vi.useRealTimers();
+  });
+});
+
+const required = (value: string) => (value === "" ? { message: "required" } : undefined);
+
+describe("a form with no plugins", () => {
+  it("runs the validate prop and field.validate(), and shows the errors", async () => {
+    const Bare = createForms().define({ defaultValues: { name: "" } });
+    const holder: { form?: FormOf<typeof Bare> } = {};
+    const { host } = mount(() => {
+      const form = createForm(Bare);
+      holder.form = form;
+      return (
+        <form.Field name="name" validate={required}>
+          {(field) => <span data-errors="Name">{field.errors.map((error) => error.message).join(",")}</span>}
+        </form.Field>
+      );
+    });
+    const name = holder.form?.root.at("name");
+    expect(await name?.validate()).toBe(false);
+    await settle();
+    expect(errorsOf(host, "Name")).toBe("required");
+    expect(name?.peek().errors).toEqual([{ message: "required" }]);
   });
 });
