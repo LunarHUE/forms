@@ -42,7 +42,23 @@ doesn't re-render the list.
 
 ## Changing the list
 
-The array's handle has the commands. Get it with `form.root.at("tasks")`:
+The commands come from the `arrays()` plugin. Install it on a form that
+adds, removes or reorders rows:
+
+```tsx framework=react
+import { arrays } from "@lunarhue/forms-react/plugins";
+
+const forms = createForms({ plugins: [arrays()] });
+```
+
+```tsx framework=solid
+import { arrays } from "@lunarhue/forms-solid/plugins";
+
+const forms = createForms({ plugins: [arrays()] });
+```
+
+The array's handle then has the commands. Get it with
+`form.root.at("tasks")`:
 
 | Command | What it does |
 | --- | --- |
@@ -79,6 +95,25 @@ of the row handles in order, which changes only when the keys do. Pass it to
 `<For each={items()}>`.
 
 </Only>
+
+## Without arrays()
+
+A form that only renders a list, or replaces it whole with `setValue`, can
+leave `arrays()` out and ship less code. `form.Items`, `useItems`,
+`createItems` and `setValue` all work without it.
+
+Calling `push`, `insert`, `remove` or `move` is then a type error that names
+`arrays()`. Code without types throws
+[`arrays:missing`](/errors#core:arrays:missing) in development, and the
+commands do nothing in production.
+
+Without the plugin a row's key is its position: `k0`, `k1`, and so on. The
+key, the handle and the row's state, such as touched, belong to the
+position, not to the item in it. Write `["a", "b"]` over `["a", "b", "c"]`
+and the third row goes away. Write `["a", "b", "d"]` after that and the
+third row comes back with `"d"` in it, under its old key, still touched if
+it was. With `arrays()` the old third row stays gone, and `"d"` gets a new
+key and fresh state.
 
 ## Errors on the list
 

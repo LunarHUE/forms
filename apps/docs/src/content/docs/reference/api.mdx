@@ -282,8 +282,8 @@ And by kind:
 | `setValue(patch)` | Objects: merges the keys given. |
 | `setValue(value, { replace: true })` | Objects: replaces the whole object. |
 | `at(key)` | Objects: the child handle. |
-| `push(item?)`, `insert(index, item?)` | Arrays: adds an item. |
-| `remove(index)`, `move(from, to)` | Arrays: removes or moves one. Items keep their keys and state. |
+| `push(item?)`, `insert(index, item?)` | Arrays: adds an item. Needs `arrays()`. |
+| `remove(index)`, `move(from, to)` | Arrays: removes or moves one. Items keep their keys and state. Needs `arrays()`. |
 | `item(key)` | Arrays: the handle of the item with that stable key. |
 | `key` | Item handles: the item's stable key. |
 
@@ -374,6 +374,12 @@ Import from `@lunarhue/forms-solid/plugins`.
 | `definePlugin(definition)` | Makes a plugin from a `setup`, an `attach` for its parts, or a schema plugin from a `schema` adapter. See [Writing a plugin](../plugins/writing-a-plugin) and [Schemas](../plugins/schemas#another-library). |
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
+
+### plugins/arrays
+
+| | |
+| --- | --- |
+| `arrays()` | Turns on `push`, `insert`, `remove` and `move`, with keys that follow the items. See [Arrays](../concepts/arrays#without-arrays) for a form without it. |
 
 ### plugins/history
 
