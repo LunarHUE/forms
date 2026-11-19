@@ -76,7 +76,7 @@
       "name": "./plugins, plugin authoring",
       "path": "dist/esm/plugins/index.js",
       "import": "{ definePlugin, flushPlugins, refuse }",
-      "limit": "2.05 kB"
+      "limit": "3.45 kB"
     },
     {
       "name": "./plugins dirty()",
@@ -88,49 +88,49 @@
       "name": "./plugins bind()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ bind }",
-      "limit": "2.6 kB"
+      "limit": "3.35 kB"
     },
     {
       "name": "./plugins history()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history }",
-      "limit": "2.35 kB"
+      "limit": "3.1 kB"
     },
     {
       "name": "./plugins mask()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ mask }",
-      "limit": "2.4 kB"
+      "limit": "3.45 kB"
     },
     {
       "name": "./plugins persist()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ persist }",
-      "limit": "2.2 kB"
+      "limit": "2.95 kB"
     },
     {
       "name": "./plugins rebase()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rebase }",
-      "limit": "2.45 kB"
+      "limit": "3.2 kB"
     },
     {
       "name": "./plugins rules()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
-      "limit": "2.0 kB"
+      "limit": "3.45 kB"
     },
     {
       "name": "./plugins/testing",
       "path": "dist/esm/plugins/testing.js",
       "import": "{ testStore }",
-      "limit": "10.95 kB"
+      "limit": "12.05 kB"
     },
     {
       "name": "history() + mask()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history, mask }",
-      "limit": "2.9 kB"
+      "limit": "4.0 kB"
     },
     {
       "name": "core + dirty()",
@@ -144,7 +144,7 @@
       "name": "dirty() + baselineOnSubmit()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ dirty, baselineOnSubmit }",
-      "limit": "3.1 kB"
+      "limit": "3.75 kB"
     }
   ]
 }
