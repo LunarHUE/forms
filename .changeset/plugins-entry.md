@@ -21,6 +21,6 @@ Every first-class plugin now comes from one `plugins` entry, and the per-plugin 
 
 Imports from two plugins merge into one line, such as `import { dirty, rebase } from "@lunarhue/forms-react/plugins"`. `@lunarhue/forms-core/plugins/testing` stays where it is, so test helpers can't reach an app bundle by accident.
 
-The React and Solid main entries also re-export the plugin types, such as `HistoryApi` and `RulesPlugin`. Declarations that tsc writes for your code now name them through the adapter, not through a core path that pnpm or Bun's isolated installs hide from your project.
+The React and Solid packages now carry core's declarations in their own, and their main entries re-export the plugin types, such as `HistoryApi` and `RulesPlugin`. Declarations that tsc writes for your code name only the adapter, so they type-check under pnpm or Bun's isolated installs, where your project can't see `@lunarhue/forms-core`. Each adapter ships three to six bundled `.d.ts` files in place of one per source file.
 
 `@lunarhue/forms-bind` imports `bind` from the new entry, so it needs this version of core.
