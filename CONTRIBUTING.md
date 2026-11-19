@@ -127,7 +127,7 @@ oxlint enforces most of it. The rest:
   components.
 - Comments say why, not what.
 - A message the user can hit goes through `problem()` and gets an entry in
-  [docs/errors.md](docs/errors.md).
+  [apps/docs/src/content/errors.mdx](apps/docs/src/content/errors.mdx).
 
 ## Tests
 

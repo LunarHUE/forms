@@ -37,7 +37,7 @@ an adapter, import from `@lunarhue/forms-core/plugins/<name>`.
   that differ, and a definition or `createForms` can take an `equals`
   comparison. Without it `dirty` is always false, `changes()` is empty and
   `equals` is a type error. In development, the first call to `changes()`
-  on such a form logs the warning [`dirty:untracked`](errors.md). Reading
+  on such a form logs the warning [`dirty:untracked`](https://forms.lunarhue.dev/errors#core:dirty:untracked). Reading
   `dirty` doesn't warn. Reset still goes back to the baseline, and
   `rebase` and `bind` still move it, since core keeps the baseline either
   way. Without `dirty`, `rebase` compares values by reference alone, so a
