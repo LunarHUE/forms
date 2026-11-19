@@ -67,7 +67,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --outDir dist/cjs",
+    "build": "tsdown && tsc -p tsconfig.build.json && tsdown -c tsdown.types.config.ts && rm -rf dist/types",
     "typecheck": "tsc -p tsconfig.json",
     "check:package": "publint --strict --pack npm && attw --pack .",
     "size": "size-limit"

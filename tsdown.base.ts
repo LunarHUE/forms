@@ -48,3 +48,30 @@ export function libraryBuild(): UserConfig[] {
     },
   ];
 }
+
+// Declarations for an adapter. tsc writes them to dist/types first, then this
+// bundles each entry's and inlines @lunarhue/forms-core, so the adapter's
+// types are its own. A consumer under a strict install (pnpm, Bun isolated)
+// can't resolve core, and declarations tsc writes for that consumer's code
+// must name only the adapter. The entries share one chunk of core's types,
+// so a type from `.` and the same type from `./plugins` are one type.
+export function typesBuild(entries: readonly string[]): UserConfig[] {
+  const types: UserConfig = {
+    entry: Object.fromEntries(entries.map((name) => [name, `dist/types/${name}.d.ts`])),
+    // Without the @lunarhue/source condition, so core resolves to its built declarations.
+    tsconfig: "tsconfig.build.json",
+    // The input is declarations already, so oxc only parses them.
+    dts: { dtsOnly: true, generator: "oxc" },
+    deps: { neverBundle: true, alwaysBundle: [/^@lunarhue\/forms-core(\/|$)/] },
+    outExtensions: () => ({ dts: ".d.ts" }),
+    outputOptions: { entryFileNames: "[name].d.ts", chunkFileNames: "shared.d.ts" },
+    hash: false,
+    // The JS build already wrote these folders.
+    clean: false,
+    failOnWarn: true,
+  };
+  return [
+    { ...types, format: "esm", outDir: "dist/esm" },
+    { ...types, format: "esm", outDir: "dist/cjs" },
+  ];
+}
