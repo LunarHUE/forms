@@ -1,5 +1,7 @@
 import type { Needs, PluginsOf } from "@lunarhue/forms-core";
-import { createComponent, createMemo, For, getOwner, untrack, type Accessor, type Element as SolidElement } from "solid-js";
+import { createMemo } from "#solid";
+import { createComponent, For, getOwner, untrack, type Accessor } from "solid-js";
+import type { SolidElement } from "./element.js";
 import type { ArrayHandleLike } from "./field.js";
 import { fieldReader } from "./reader.js";
 

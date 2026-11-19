@@ -1,6 +1,6 @@
+import { flush } from "./solid.js";
 import type { PluginContext } from "@lunarhue/forms-core";
 import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
-import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { Items, createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";

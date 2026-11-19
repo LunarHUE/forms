@@ -7,6 +7,7 @@
     "packages": [
       "packages/*",
       "packages/react/compat/*",
+      "packages/solid/compat/*",
       "apps/*",
       "e2e",
       "e2e/apps/*",
@@ -58,6 +59,18 @@
       "react18": {
         "react": "18.3.1",
         "react-dom": "18.3.1"
+      },
+      "solid18": {
+        "@babel/core": "7.29.7",
+        "@babel/preset-typescript": "7.29.7",
+        "babel-preset-solid": "1.8.0",
+        "solid-js": "1.8.0"
+      },
+      "solid19": {
+        "@babel/core": "7.29.7",
+        "@babel/preset-typescript": "7.29.7",
+        "babel-preset-solid": "1.9.19",
+        "solid-js": "1.9.19"
       }
     }
   },

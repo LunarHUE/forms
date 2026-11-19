@@ -1,5 +1,5 @@
+import { renderToString } from "./solid.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
-import { renderToString } from "@solidjs/web";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { arrays } from "../plugins.js";
@@ -43,6 +43,6 @@ describe("server rendering", () => {
       );
     }
     const html = renderToString(() => <Page />);
-    expect(html.replace(/<!--[^>]*-->/g, "")).toMatch(/^<p _hk=\w+>initial 1 0 idle<\/p>$/);
+    expect(html.split(/<!--[^>]*-->/).join("")).toMatch(/^<p (_hk=\w+|data-hk="[\w-]+")>initial 1 0 idle<\/p>$/);
   });
 });

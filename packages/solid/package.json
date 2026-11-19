@@ -21,6 +21,12 @@
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
+  "imports": {
+    "#solid": {
+      "@lunarhue/solid1": "./src/solid1.ts",
+      "default": "./src/solid2.ts"
+    }
+  },
   "exports": {
     ".": {
       "@lunarhue/source": "./src/index.ts",
@@ -34,14 +40,14 @@
       }
     },
     "./v1": {
-      "@lunarhue/source": "./src/v1.ts",
+      "@lunarhue/source": "./src/index.ts",
       "import": {
-        "types": "./dist/esm/v1.d.ts",
-        "default": "./dist/esm/v1.js"
+        "types": "./dist/v1/esm/index.d.ts",
+        "default": "./dist/v1/esm/index.js"
       },
       "require": {
-        "types": "./dist/cjs/v1.d.ts",
-        "default": "./dist/cjs/v1.js"
+        "types": "./dist/v1/cjs/index.d.ts",
+        "default": "./dist/v1/cjs/index.js"
       }
     },
     "./plugins": {
@@ -82,7 +88,7 @@
   },
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.build.json && tsdown -c tsdown.types.config.ts && rm -rf dist/types",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.v1.json",
     "check:package": "publint --strict --pack npm && attw --pack .",
     "size": "size-limit"
   },
@@ -109,9 +115,9 @@
     },
     {
       "name": "./v1",
-      "path": "dist/esm/v1.js",
+      "path": "dist/v1/esm/index.js",
       "import": "*",
-      "limit": "9.45 kB"
+      "limit": "12.8 kB"
     },
     {
       "name": "solid + valibot()",

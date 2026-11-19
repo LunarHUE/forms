@@ -1,5 +1,6 @@
+import { createEffect, flush, major } from "./solid.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
-import { createEffect, createMemo, createRoot, createSignal, flush, Show } from "solid-js";
+import { createMemo, createRoot, createSignal, Show } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createField, createForm, createForms, createItems, createValidator, type FieldApi, type FormOf, inputProps } from "../index.js";
@@ -77,19 +78,21 @@ describe("fine-grained updates", () => {
 
     expect(first.value).toBe("Adam");
     expect(first.dataset.reads).toBe("4");
-    // Two writes in one tick land in one flush, and the other field's binding never re-runs.
-    expect(reads.first - before.first).toBe(1);
+    // In Solid 2 two writes in one tick land in one flush. Solid 1 applies each
+    // write at once. Either way the other field's binding never re-runs.
+    expect(reads.first - before.first).toBe(major === 1 ? 2 : 1);
     expect(reads.last - before.last).toBe(0);
     expect(last.dataset.reads).toBe("0");
     expect(bodies).toEqual({ page: 1, first: 1, last: 1 });
   });
 
   it("re-runs an effect over one field once per change of that field", () => {
-    createRoot((dispose) => {
-      const store = Profile.createStore();
+    // Solid 1 runs the effects once the root's function returns, so the writes come after it.
+    const store = Profile.createStore();
+    const runs = { first: 0, last: 0 };
+    const dispose = createRoot((disposeRoot) => {
       const first = createField(store.root.at("first"));
       const last = createField(store.root.at("last"));
-      const runs = { first: 0, last: 0 };
       createEffect(
         () => first.value,
         () => void runs.first++,
@@ -98,14 +101,15 @@ describe("fine-grained updates", () => {
         () => last.value,
         () => void runs.last++,
       );
-      flush();
-      store.root.at("first").setValue("A");
-      flush();
-      store.root.at("first").setValue("Ab");
-      flush();
-      expect(runs).toEqual({ first: 3, last: 1 });
-      dispose();
+      return disposeRoot;
     });
+    flush();
+    store.root.at("first").setValue("A");
+    flush();
+    store.root.at("first").setValue("Ab");
+    flush();
+    expect(runs).toEqual({ first: 3, last: 1 });
+    dispose();
   });
 });
 

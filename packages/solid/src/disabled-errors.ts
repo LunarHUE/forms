@@ -1,6 +1,6 @@
 import type { DisabledInvalid } from "@lunarhue/forms-core";
-import { isServer } from "@solidjs/web";
-import { createSignal, getOwner, onCleanup } from "solid-js";
+import { createSignal, isServer } from "#solid";
+import { getOwner, onCleanup } from "solid-js";
 import type { RuntimeStore } from "./form-runtime.js";
 
 const none: readonly DisabledInvalid<unknown>[] = [];

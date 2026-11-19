@@ -2,6 +2,13 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { Items, createForm, createForms, defineField, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
 import { arrays, digits, mask, masked, ruled, rules } from "../plugins.js";
+import { version } from "./solid.js";
+
+/** The markup of the Solid version the tests run on. Hydration keys, and the ids `createUniqueId` gives, differ by version. */
+const byVersion = (markup: Record<typeof version, string>): string => markup[version];
+
+/** The id `createUniqueId` gives `App`'s form. */
+export const appId = byVersion({ "2": "0", "1.9": "00", "1.8": "0-0" });
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
@@ -42,12 +49,26 @@ export function App() {
 // `renderToString` gives exactly this, and the hydration test hydrates it.
 
 /** The app's markup, as `renderToString` returns it without the hydration script. */
-export const serverHtml =
-  '<form _hk=10 id="0" novalidate tabindex="-1" data-submits="function">' +
-  '<!--$--><label _hk=11><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
-  '<!--$--><label _hk=1500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
-  '<label _hk=1510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
-  "<!--$--><output _hk=17>idle</output><!--/--></form>";
+export const serverHtml = byVersion({
+  "2":
+    '<form _hk=10 id="0" novalidate tabindex="-1" data-submits="function">' +
+    '<!--$--><label _hk=11><!--$-->Customer<!--/--><input value="Ada" type="text" id="0--customer" name="customer" /></label><!--/-->' +
+    '<!--$--><label _hk=1500><!--$-->Title<!--/--><input value="first" type="text" id="0--rows--k0--title" name="rows.0.title" /></label>' +
+    '<label _hk=1510><!--$-->Title<!--/--><input value="second" type="text" id="0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
+    "<!--$--><output _hk=17>idle</output><!--/--></form>",
+  "1.9":
+    '<form data-hk="0100" id="00" novalidate tabindex="-1" data-submits="function">' +
+    '<!--$--><label data-hk="0101000"><!--$-->Customer<!--/--><input value="Ada" type="text" id="00--customer" name="customer" /></label><!--/-->' +
+    '<!--$--><label data-hk="010200000"><!--$-->Title<!--/--><input value="first" type="text" id="00--rows--k0--title" name="rows.0.title" /></label>' +
+    '<label data-hk="010201000"><!--$-->Title<!--/--><input value="second" type="text" id="00--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
+    '<!--$--><output data-hk="01030">idle</output><!--/--></form>',
+  "1.8":
+    '<form data-hk="0-1-0-0" id="0-0" novalidate tabindex="-1" data-submits="function">' +
+    '<!--$--><label data-hk="0-1-0-1-0-0-0"><!--$-->Customer<!--/--><input value="Ada" type="text" id="0-0--customer" name="customer" /></label><!--/-->' +
+    '<!--$--><label data-hk="0-1-0-2-0-0-0-0-0"><!--$-->Title<!--/--><input value="first" type="text" id="0-0--rows--k0--title" name="rows.0.title" /></label>' +
+    '<label data-hk="0-1-0-2-0-1-0-0-0"><!--$-->Title<!--/--><input value="second" type="text" id="0-0--rows--k1--title" name="rows.1.title" /></label><!--/-->' +
+    '<!--$--><output data-hk="0-1-0-3-0">idle</output><!--/--></form>',
+});
 
 interface Shipping {
   sameAsBilling: boolean;
@@ -92,10 +113,20 @@ export function ShippingApp() {
 }
 
 /** `ShippingApp`'s markup, as `renderToString` returns it: `street` disabled and `note` absent. */
-export const shippingHtml =
-  '<form _hk=0 id="shipping" novalidate tabindex="-1">' +
-  '<!--$--><input _hk=11 aria-label="street" value="1 Main St" type="text" id="shipping--street" name="street" disabled /><!--/-->' +
-  "<!--$--><!--/--></form>";
+export const shippingHtml = byVersion({
+  "2":
+    '<form _hk=0 id="shipping" novalidate tabindex="-1">' +
+    '<!--$--><input _hk=11 aria-label="street" value="1 Main St" type="text" id="shipping--street" name="street" disabled /><!--/-->' +
+    "<!--$--><!--/--></form>",
+  "1.9":
+    '<form data-hk="00" id="shipping" novalidate tabindex="-1" >' +
+    '<!--$--><input data-hk="01000" aria-label="street" value="1 Main St" type="text" id="shipping--street" name="street" disabled /><!--/-->' +
+    "<!--$--><!--/--></form>",
+  "1.8":
+    '<form data-hk="0-0" id="shipping" novalidate tabindex="-1" >' +
+    '<!--$--><input data-hk="0-1-0-0-0" aria-label="street" value="1 Main St" type="text" id="shipping--street" name="street" disabled /><!--/-->' +
+    "<!--$--><!--/--></form>",
+});
 
 interface Delivery {
   sameAsBilling: boolean;
@@ -129,9 +160,17 @@ export function DeliveryApp() {
 }
 
 /** `DeliveryApp`'s markup, as `renderToString` returns it: `street` disabled through its parent. */
-export const deliveryHtml =
-  '<form _hk=0 id="delivery" novalidate tabindex="-1">' +
-  '<input _hk=1 aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>';
+export const deliveryHtml = byVersion({
+  "2":
+    '<form _hk=0 id="delivery" novalidate tabindex="-1">' +
+    '<input _hk=1 aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>',
+  "1.9":
+    '<form data-hk="00" id="delivery" novalidate tabindex="-1" >' +
+    '<input data-hk="01000" aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>',
+  "1.8":
+    '<form data-hk="0-0" id="delivery" novalidate tabindex="-1" >' +
+    '<input data-hk="0-1-0-0-0" aria-label="street" value="1 Main St" type="text" id="delivery--shipping--street" name="shipping.street" disabled /></form>',
+});
 
 /** Shows "5551234" as "(555) 123-4". */
 export function formatPhone(value: string): string {
@@ -183,6 +222,14 @@ export function PhoneApp() {
 }
 
 /** `PhoneApp`'s markup, as `renderToString` returns it: both phones shown formatted, and the street hidden. */
-export const phoneHtml =
-  '<input _hk=1 aria-label="phone" value="(555) 123-4" type="tel" id="0--phone" name="phone" />' +
-  '<input _hk=2 aria-label="fax" value="(555) 9" type="tel" id="0--fax" name="fax" />';
+export const phoneHtml = byVersion({
+  "2":
+    '<input _hk=1 aria-label="phone" value="(555) 123-4" type="tel" id="0--phone" name="phone" />' +
+    '<input _hk=2 aria-label="fax" value="(555) 9" type="tel" id="0--fax" name="fax" />',
+  "1.9":
+    '<input data-hk="01000" aria-label="phone" value="(555) 123-4" type="tel" id="00--phone" name="phone" />' +
+    '<input data-hk="02000" aria-label="fax" value="(555) 9" type="tel" id="00--fax" name="fax" />',
+  "1.8":
+    '<input data-hk="0-1-0-0-0" aria-label="phone" value="(555) 123-4" type="tel" id="0-0--phone" name="phone" />' +
+    '<input data-hk="0-2-0-0-0" aria-label="fax" value="(555) 9" type="tel" id="0-0--fax" name="fax" />',
+});
