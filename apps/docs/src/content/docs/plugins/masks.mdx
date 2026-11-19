@@ -1,14 +1,22 @@
 ---
 title: Masks
-description: Format input as the user types and keep the raw value.
+description: Clean what a field stores, and choose what its input shows.
 section: plugins
 order: 3
 ---
 
-Placeholder. The real page arrives with the plugins pages. Until then it
-shows each kind of code block.
-
 <Demo name="masks/contact" />
+
+`mask` takes a map from a field's path to a cleaner. Every value that reaches
+the field goes through it first, whether the user typed it, a reset wrote it
+or another plugin did. `digits` and `upper` are ready-made cleaners, and any
+function from value to value works:
+
+```ts
+mask({ phone: digits, "address.zip": upper, "lines.*.sku": upper });
+```
+
+A `*` segment matches every array item or object key.
 
 ## Display text
 
@@ -21,70 +29,47 @@ mask({
 });
 ```
 
-The import depends on the adapter:
+The input shows `(555) 123-4567`. The store, `field.value` and `onSubmit` get
+`5551234567`.
 
-```tsx title="contact.tsx" framework=react lineNumbers
-import { createForms, useForm } from "@lunarhue/forms-react";
-import { digits, mask } from "@lunarhue/forms-react/plugins/mask";
-import { PhoneField } from "./PhoneField";
+`display` gets the clean value and returns the text to show. A value that
+isn't a string reaches it as `""`. Keep it a pure function of the value, since
+the server and the browser both call it. Text inputs and textareas show the
+display text, on the server too, so the page hydrates with it. Number,
+checkbox, radio and select inputs ignore it.
 
-const contact = forms.define({
-  defaultValues: { phone: "" },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
-  onSubmit: (value) => value.phone,
-});
-
-export default function ContactForm() {
-  const form = useForm(contact);
-  // …
-}
-```
-
-```tsx title="contact.tsx" framework=solid lineNumbers
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { digits, mask } from "@lunarhue/forms-solid/plugins/mask";
-import { PhoneField } from "./PhoneField";
-
-const contact = forms.define({
-  defaultValues: { phone: "" },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
-  onSubmit: (value) => value.phone,
-});
-
-export default function ContactForm() {
-  const form = createForm(contact);
-  // …
-}
-```
-
-<Only framework="react">
-
-## Using the form in React
-
-`useForm` returns the form for the component that renders it:
-
-```tsx
-import { useForm } from "@lunarhue/forms-react";
-
-const form = useForm(contact);
-```
-
-</Only>
-
-<Only framework="solid">
-
-## Using the form in Solid
-
-`createForm` returns the form for the component that renders it:
-
-```tsx
-import { createForm } from "@lunarhue/forms-solid";
-
-const form = createForm(contact);
-```
-
-</Only>
+A plugin of your own can give a field display text too. See
+[Display text](../concepts/display-text).
 
 ## Caret
 
-The caret stays where the user is typing.
+The caret stays where the user is typing. After typing or pasting it steps
+over the characters the display adds, so typing carries on past a `-`. After a
+backspace it doesn't, so the next backspace deletes a digit. A character
+`clean` drops leaves the text and the caret as they were.
+
+A field with only a cleaner shows the clean value. When the cleaner changes
+the text, as `upper` does, React or Solid may move the caret to the end when
+it rewrites the input. `{ clean: upper, display: (value) => value }` keeps it
+in place.
+
+## Two masks on one field
+
+Give each field its display in one mask. Two masks need different names,
+given as `mask(fields, { name: "card" })`. If both give a field a display,
+the one that runs first wins: the input shows its text and keeps the caret
+with its `clean`.
+
+## What gets cleaned
+
+- A write above a field, such as `setValue` on `address`, a root replace from
+  `bind`, or a row that `push` or `insert` adds, is cleaned at each named
+  field below it.
+- The starting value is cleaned, so the baseline is clean, the form doesn't
+  start dirty, and a reset leaves it clean. When another plugin sets the
+  starting value, as `bind` does, put `mask` after it in the list.
+- User edits, resets and other plugins' writes are cleaned. A value `persist`
+  restores comes out clean.
+- Rebases aren't. The incoming value is the server's copy, and the baseline
+  moves to it as it came. Cleaning it would make the form dirty against its
+  own baseline.

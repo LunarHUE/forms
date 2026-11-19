@@ -69,6 +69,54 @@
   outline-offset: 2px;
 }
 
+.demo-stage input:disabled,
+.demo-stage button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-stage button:disabled:hover {
+  background: var(--primary);
+}
+
+/* A checkbox sits beside its label text. */
+.demo-stage label:has(> input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+
+.demo-stage input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: var(--primary);
+}
+
+/* A field's error list and status text. */
+.demo-stage label ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--destructive);
+  font-weight: 400;
+}
+
+.demo-stage label ul:empty {
+  display: none;
+}
+
+.demo-stage label > span:not(:first-child) {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+/* Buttons grouped in a div sit in a row. */
+.demo-stage form > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* The devtools outline. */
 
 [data-form-demo] {

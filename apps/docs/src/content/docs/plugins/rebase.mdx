@@ -1,0 +1,55 @@
+---
+title: Rebase
+description: Take a fresh server copy without losing what the user typed.
+section: plugins
+order: 6
+---
+
+<Demo name="rebase/profile" />
+
+Edit the name, then press Refresh. The name keeps your text and the email
+takes the server's.
+
+`form.plugins.rebase(handle, incoming, resolve)` moves the baseline of the
+subtree at `handle` to `incoming`, such as a fresh copy from the server. A
+leaf whose current value already equals the incoming one only moves its
+baseline. For every other leaf, `resolve` picks what it becomes:
+
+```ts
+const fresh = await fetchProfile();
+form.plugins.rebase(form.root, fresh, (leaf) => (leaf.edited ? "keep" : "take"));
+```
+
+- `"keep"` keeps the current value. The field stays dirty against the new
+  baseline.
+- `"take"` writes the incoming value.
+- `{ value }` writes a value of your own, such as a merge of the two.
+
+Each leaf comes with its `path`, the current `value`, the old `baseline`, the
+`incoming` value and `edited`, true when the user has edited it.
+
+## What it returns
+
+`rebase` returns `{ taken }`, the paths it wrote with `"take"` or `{ value }`.
+With validation installed, those fields are validated again. Listeners run
+once, after the whole rebase.
+
+Pass any handle of the form, such as `form.root.at("address")`, to rebase one
+part of it. A handle from another form throws
+[`rebase:store`](/errors#core:rebase:store).
+
+## Comparing values
+
+With [`dirty()`](./dirty) installed, rebase compares values with the form's
+dirty comparison, including any `equals` you gave. Without it, values compare
+by `Object.is`, so a date with the same time counts as changed and goes to
+`resolve`.
+
+Objects are walked key by key. An array is walked item by item when its items
+still have the keys and order of its baseline and the incoming array is as
+long. Otherwise the whole array is one leaf.
+
+## Other plugins
+
+Rebase writes aren't user edits. `history` records no step for them, and
+`mask` doesn't clean them, since the incoming value is the server's copy.
