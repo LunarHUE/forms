@@ -4,5 +4,5 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["*.ts", "packages/*/*.config.ts", "parked/*/*.config.ts"]
+  "include": ["*.ts", "packages/*/*.config.ts"]
 }
