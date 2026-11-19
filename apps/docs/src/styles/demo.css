@@ -190,7 +190,7 @@
 /* The devtools outline. */
 
 [data-form-demo] {
-  --demo-outline: #c4c4bf;
+  --demo-outline: #a9a9a5;
   --demo-tag: var(--foreground);
   --demo-tag-foreground: var(--background);
 
@@ -203,7 +203,7 @@
 }
 
 .dark [data-form-demo] {
-  --demo-outline: #3c3d42;
+  --demo-outline: #8a8b8f;
   --demo-tag: #26272b;
   --demo-tag-foreground: #ececea;
 }
