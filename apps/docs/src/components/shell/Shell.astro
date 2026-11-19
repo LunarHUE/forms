@@ -35,6 +35,8 @@ import { INTRODUCTION_SLUG } from "@/lib/routes";
 import { LATEST_VERSION } from "@/lib/versions";
 import Layout from "@/layouts/Layout.astro";
 
+import Search from "@/components/search/Search.astro";
+
 import Header from "./Header.astro";
 import { pickerItems } from "./picker";
 import Sidebar from "./Sidebar.astro";
@@ -91,6 +93,7 @@ if (framework) {
     Skip to content
   </a>
   <Header framework={framework} sidebars={sidebars} currentSlug={currentSlug} />
+  <Search />
   <div class="flex">
     {
       sidebars.map((data) => (
