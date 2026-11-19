@@ -1,6 +1,7 @@
 ---
 import { render } from "astro:content";
 
+import { mdxComponents } from "@/components/mdx";
 import { getErrors } from "@/lib/content";
 
 // Bare markup until the page frame replaces it.
@@ -20,7 +21,7 @@ const { title, description } = entry.data;
     <main>
       <h1>{title}</h1>
       <p>{description}</p>
-      <Content />
+      <Content components={mdxComponents} />
     </main>
   </body>
 </html>
