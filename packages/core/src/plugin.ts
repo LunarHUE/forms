@@ -5,6 +5,7 @@ import type { AnyFormStore } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
+import type { CreateParts } from "./store/parts.js";
 import type { CreateTiming } from "./store/timing.js";
 
 /**
@@ -328,6 +329,8 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~host"?: CreateHost;
   /** Makes the host's `deferred` and `idle` timings. Internal. */
   readonly "~timing"?: CreateTiming;
+  /** Attaches parts and runs the hooks they make. Internal. */
+  readonly "~parts"?: CreateParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
 }

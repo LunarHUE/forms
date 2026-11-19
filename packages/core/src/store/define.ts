@@ -1,7 +1,15 @@
 import type { Plugin, PluginContext, PluginHooks, RequiredPlugins, Requirements } from "../plugin.js";
 import type { SchemaAdapter } from "../schema-adapter.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
+import type { CreateParts } from "./parts.js";
 import { createPluginHost } from "./plugins.js";
+import type { CreateTiming } from "./timing.js";
+
+/** The optional host code a plugin carries: the `deferred` and `idle` timings, and attaching parts. */
+export interface HostCode {
+  readonly "~timing"?: CreateTiming;
+  readonly "~parts"?: CreateParts;
+}
 
 /**
  * What `definePlugin` takes. Its members are `Plugin`'s, and a plugin that
@@ -33,9 +41,10 @@ export type PluginDefinition<A, N extends string, M, F, S extends StandardSchema
   ([F] extends [never] ? unknown : { readonly initialFormMeta: F });
 
 /**
- * Makes a plugin without the `deferred` and `idle` timings, for the
- * built-in plugins whose `onWrite` is `sync` or absent. `definePlugin` adds
- * the timings to it.
+ * Makes a plugin that carries only the host code in `code`, for the
+ * built-in plugins. Each passes what it uses: `createTiming` for a
+ * `deferred` or `idle` `onWrite`, `createParts` for `attach`.
+ * `definePlugin` passes both.
  */
 export function defineHooks<
   A = undefined,
@@ -44,12 +53,12 @@ export function defineHooks<
   F = never,
   S extends StandardSchemaV1 = never,
   const R extends Requirements = [],
->(definition: PluginDefinition<A, N, M, F, S, R>): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
+>(definition: PluginDefinition<A, N, M, F, S, R>, code?: HostCode): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
   const { name, initialMeta, initialFormMeta } = definition;
   // The host writes each plugin's meta under its name, with the type its context took.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const reader = (start: unknown) => (source: { readonly meta?: Readonly<Record<string, unknown>> | undefined }) => (source.meta?.[name] ?? start) as never;
   // The readers are there for every plugin. `Plugin` types them only where the plugin keeps meta.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return { ...definition, "~host": createPluginHost, meta: reader(initialMeta), formMeta: reader(initialFormMeta) } as never;
+  return { ...definition, ...code, "~host": createPluginHost, meta: reader(initialMeta), formMeta: reader(initialFormMeta) } as never;
 }

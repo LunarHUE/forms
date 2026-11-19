@@ -1,5 +1,6 @@
 import type { Plugin } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
+import { createTiming } from "../store/timing.js";
 
 /** The part of `Storage` that `persist` uses. `localStorage` and `sessionStorage` fit. */
 export interface StorageLike {
@@ -24,7 +25,7 @@ declare const localStorage: StorageLike | undefined;
  * parse is removed and the form starts from its defaults.
  */
 export function persist(key: string, storage?: StorageLike): Plugin<undefined, "persist"> {
-  return definePlugin({
+  return defineHooks({
     name: "persist",
     setup(ctx) {
       const { store } = ctx;
@@ -68,5 +69,5 @@ export function persist(key: string, storage?: StorageLike): Plugin<undefined, "
         },
       };
     },
-  });
+  }, { "~timing": createTiming });
 }

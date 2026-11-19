@@ -14,11 +14,12 @@ import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
 import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
+import type { PartsKit } from "./parts.js";
 import type { Validation } from "./runner.js";
 import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 import { type HostLink, hosts } from "./hosts.js";
-import { setAt, valueAt } from "./tree.js";
+import { related } from "./tree.js";
 
 // Core has no DOM types, so this declares the platform global the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
@@ -86,15 +87,6 @@ interface Attached {
   off?: (() => void) | undefined;
 }
 
-/** True when one path starts with the other. */
-const related = (a: Path, b: Path): boolean => {
-  const length = Math.min(a.length, b.length);
-  for (let i = 0; i < length; i++) if (String(a[i]) !== String(b[i])) return false;
-  return true;
-};
-
-const samePath = (a: Path, b: Path): boolean => a.length === b.length && related(a, b);
-
 /**
  * The plugins in hook order: install order, except that each one comes
  * after the names in its `after` and the plugins its `requires` names. A
@@ -146,9 +138,6 @@ export function createPluginHost(
   }
   // Every set of hooks, in hook order: by plugin, then by when it attached.
   const attached: Attached[] = [];
-  // The paths each part is attached at, so attaching twice does nothing. A
-  // pinned copy counts as the part it copies.
-  const done = new Map<Part, Set<string>>();
   // True when some hooks have `onWrite`. Records are only made then.
   let listening = false;
   // Above 0 while attaching before the store has listeners: those writes leave no records.
@@ -198,7 +187,7 @@ export function createPluginHost(
     const { part, path } = at;
     if (!part || raw.isLive(path)) return true;
     attached.splice(attached.indexOf(at), 1);
-    done.get(part["~of"] ?? part)?.delete(JSON.stringify(path));
+    kit?.forget(at);
     return false;
   };
 
@@ -320,23 +309,6 @@ export function createPluginHost(
   const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
 
   /**
-   * The value path from `path` down to `below`, a path under it, with each
-   * array item's key turned into the index it has now. Undefined when
-   * `below` names no field or an item that isn't there.
-   */
-  const stepsDown = (path: Path, below: Path): Path | undefined => {
-    const items = raw.itemSteps(below);
-    if (!items) return undefined;
-    const steps: (string | number)[] = [];
-    for (let i = path.length; i < below.length; i++) {
-      const step = items[i] ? keysAt(below.slice(0, i)).indexOf(String(below[i])) : below[i]!;
-      if (step === -1) return undefined;
-      steps.push(step);
-    }
-    return steps;
-  };
-
-  /**
    * Runs `input` through each `beforeWrite` that the write at `path`
    * reaches. Hooks at or above `path` get the write as it is. Hooks below it
    * get the part of the value at their path. Returns the value to write, or
@@ -351,14 +323,9 @@ export function createPluginHost(
       if (at.path.length <= path.length) {
         const write = freeze({ path, input, value, before, cause });
         value = call(at, () => hooks.beforeWrite?.(write), value);
-      } else {
-        const steps = stepsDown(path, at.path);
-        if (!steps) continue;
-        const was = valueAt(value, steps);
-        const write = freeze({ path: at.path, input: valueAt(input, steps), value: was, before: valueAt(before, steps), cause });
-        const next = call(at, () => hooks.beforeWrite?.(write), was);
-        if (next === refuse) return refuse;
-        if (!Object.is(next, was)) value = setAt(value, steps, next);
+      } else if (kit) {
+        value = kit.down(at, path, input, value, before, cause);
+        if (value === refuse) return refuse;
       }
       if (value === refuse) break;
     }
@@ -436,8 +403,7 @@ export function createPluginHost(
       path: at.path,
       plugins: apis,
       installed,
-      attachments: (path) =>
-        attached.filter((other) => other.part && related(other.path, path) && other.path.length <= path.length).map((other) => ({ name: other.entry.plugin.name, path: other.path })),
+      attachments: (path) => kit?.list(path) ?? [],
       setMeta: (path, value) => later(at, () => raw.setMeta(name, value, path)),
       setFormMeta: (value) => later(at, () => raw.setMeta(name, value)),
       // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
@@ -464,13 +430,7 @@ export function createPluginHost(
         paths.push(path);
       });
     }
-    // The first display at the path in hook order is the one shown.
-    if (hooks.display !== undefined && attached.find((other) => other.hooks.display !== undefined && samePath(other.path, path)) === at) {
-      // The hooks are closures from `attach`, so they don't need `this`.
-      // oxlint-disable-next-line typescript/unbound-method
-      const shown = freeze({ display: hooks.display, edit: hooks.edit });
-      later(at, () => raw.setMeta("~display", shown, path));
-    }
+    kit?.arrive(at);
     if (listeners > 0) activate(at);
     if (hooks.onWrite) {
       listening = true;
@@ -488,24 +448,47 @@ export function createPluginHost(
     arrive(at);
   };
 
-  const attachAll = (base: Path, parts: readonly Part[]) => {
-    for (const part of parts) {
-      const entry = entries.get(part.plugin);
-      if (!entry?.plugin.attach) throw new Error(problem("plugins:missing", part.plugin));
-      const { plugin } = entry;
-      const name = raw.getSnapshot(base).name;
-      const path = part.path === undefined ? base : raw.pathOf(name ? `${name}.${part.path}` : part.path);
-      if (!path) continue;
-      const origin = part["~of"] ?? part;
-      let seen = done.get(origin);
-      if (!seen) done.set(origin, (seen = new Set()));
-      const key = JSON.stringify(path);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      // `attach` takes the config its part constructor typed.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
+  // Runs `fn` as a hook, so the writes it makes wait until it ends. They
+  // land before any observer knows of them, so they leave no records.
+  const quietly = (fn: () => void) => {
+    inHook++;
+    try {
+      fn();
+    } finally {
+      inHook--;
     }
+    quiet++;
+    try {
+      batch(() => {});
+    } finally {
+      quiet--;
+    }
+  };
+
+  // The parts code, from the first plugin that brings it, as every plugin with `attach` does.
+  const kit: PartsKit<Attached> | undefined = plugins
+    .find((plugin) => plugin["~parts"])
+    ?.["~parts"]?.<Attached>({
+      raw,
+      attached,
+      add(path, part) {
+        const entry = entries.get(part.plugin);
+        if (!entry?.plugin.attach) throw new Error(problem("plugins:missing", part.plugin));
+        const { plugin } = entry;
+        // `attach` takes the config its part constructor typed.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
+      },
+      quietly,
+      listened: () => listeners > 0,
+      later,
+      run: (at, write, fallback) => call(at, () => at.hooks.beforeWrite?.(write), fallback),
+      refuse,
+    });
+
+  const attach = (base: Path, parts: readonly Part[], now?: boolean) => {
+    if (kit) kit.attach(base, parts, now);
+    else if (parts[0]) throw new Error(problem("plugins:missing", parts[0].plugin));
   };
 
   // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
@@ -523,54 +506,18 @@ export function createPluginHost(
       validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
-      // Setup counts as a hook, so writes it makes wait until every plugin's setup has run.
-      inHook++;
-      try {
+      // Setup's writes wait until every plugin's setup has run. They are the
+      // store's starting state, so the server snapshot shows them.
+      quietly(() => {
         for (const entry of entries.values()) {
           const { plugin } = entry;
           if (plugin.setup) add(entry, [], undefined, (ctx) => plugin.setup?.(ctx) ?? {});
         }
-        attachAll([], parts);
-      } finally {
-        inHook--;
-      }
-      // Setup's writes land before any observer is known, so they leave no
-      // records. They are the store's starting state, so the server snapshot shows them.
-      quiet++;
-      try {
-        batch(() => {});
-      } finally {
-        quiet--;
-      }
+      });
+      attach([], parts, true);
       raw.started();
     },
-    attach(base, parts, now) {
-      // What the parts write is the field's starting state, so it makes no records.
-      const run = () => {
-        quiet++;
-        try {
-          inHook++;
-          try {
-            attachAll(base, parts);
-          } finally {
-            inHook--;
-          }
-          batch(() => {});
-        } finally {
-          quiet--;
-        }
-      };
-      // Once the store has listeners a framework is rendering it, and a write
-      // now would update other components mid-render. The parts attach just
-      // after, unless the framework takes writes while it renders.
-      if (listeners > 0 && !now) {
-        void Promise.resolve().then(run);
-        return;
-      }
-      run();
-      // The server renders this starting state too, so hydration starts from it.
-      raw.started();
-    },
+    attach,
     reset(path, run) {
       as("reset", () =>
         batch(() => {

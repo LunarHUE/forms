@@ -1,5 +1,6 @@
 import type { Part, Plugin, PluginContext } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
+import { createParts } from "../store/parts.js";
 import { replaceText } from "./caret.js";
 
 export { replaceText } from "./caret.js";
@@ -56,7 +57,7 @@ export function mask(): Plugin<undefined, "mask"> {
         }),
       };
     },
-  });
+  }, { "~parts": createParts });
 }
 
 /** A mask for a string field type, as `field(PhoneInput, masked({ clean: digits, display: formatPhone }))`. Needs `mask()`. */

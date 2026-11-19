@@ -2,6 +2,7 @@ import type { Plugin, RequiredPlugins, Requirements } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { defineHooks, type PluginDefinition } from "./store/define.js";
 import { hosts } from "./store/hosts.js";
+import { createParts } from "./store/parts.js";
 import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
@@ -11,7 +12,8 @@ export { refuse } from "./store/plugins.js";
  * `createFormsCore({ plugins })` or a definition's `plugins`. The plugin
  * carries the code that runs plugin hooks and delivers `deferred` and
  * `idle` records. `dirty()` and the schema plugins are built without it, so
- * an app that installs only those doesn't bundle it.
+ * an app that installs only those doesn't bundle it. It carries the code
+ * that attaches parts too.
  *
  * A plugin keeps meta when it gives a starting value: `initialMeta` for its
  * meta on a field, `initialFormMeta` for its meta on the form. The meta
@@ -36,7 +38,7 @@ export function definePlugin<
   definition: PluginDefinition<A, N, M, F, S, R>,
   // NoInfer: a `plugins` list's element type must not pick the meta types, only the definition.
 ): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
-  return Object.assign(defineHooks(definition), { "~timing": createTiming });
+  return defineHooks(definition, { "~timing": createTiming, "~parts": createParts });
 }
 
 /**
