@@ -18,6 +18,9 @@ You also need an adapter, `@lunarhue/forms-react` or `@lunarhue/forms-solid`.
 | `zustand()` | `@lunarhue/forms-bind/zustand` | a Zustand 5 store |
 | `signal()` | `@lunarhue/forms-bind/solid` | a Solid 2 signal |
 
+`signal()` needs Solid 2. On Solid 1, with `@lunarhue/forms-solid/v1`, bind a
+signal with `bind()` from `@lunarhue/forms-solid/plugins`.
+
 Working examples:
 [Zustand](https://forms.lunarhue.dev/react/integrations/zustand) and
 [Solid signals](https://forms.lunarhue.dev/solid/integrations/solid-signals) on the docs site.

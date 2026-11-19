@@ -7,5 +7,6 @@
     "jsxImportSource": "@solidjs/web",
     "customConditions": ["@lunarhue/source"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/solid1.ts", "src/tests/solid1.ts"]
 }

@@ -1,4 +1,5 @@
-import { createMemo, getOwner } from "solid-js";
+import { createMemo } from "#solid";
+import { getOwner } from "solid-js";
 import type { ArrayHandleLike } from "./field.js";
 import { fieldReader } from "./reader.js";
 

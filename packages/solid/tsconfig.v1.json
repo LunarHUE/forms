@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2020", "dom"],
+    "noEmit": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "customConditions": ["@lunarhue/source", "@lunarhue/solid1"],
+    // Solid 1's types, from the newest 1.x the tests run on.
+    "paths": {
+      "solid-js": ["./compat/solid-1.9/node_modules/solid-js/types/index.d.ts"],
+      "solid-js/web": ["./compat/solid-1.9/node_modules/solid-js/web/types/index.d.ts"],
+      "solid-js/jsx-runtime": ["./compat/solid-1.9/node_modules/solid-js/types/jsx.d.ts"]
+    }
+  },
+  "include": ["src/*.ts", "src/*.test-d.tsx", "src/tests/solid1.ts"],
+  "exclude": ["src/solid2.ts", "src/*.test.ts"]
+}

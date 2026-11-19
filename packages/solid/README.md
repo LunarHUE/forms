@@ -3,9 +3,9 @@
 The Solid adapter for [forms](https://github.com/LunarHUE/forms). Field names are checked by the compiler,
 features are plugins, and a plugin you don't use costs no bytes.
 
-This adapter needs Solid 2. Solid 1 support is not there yet. The
-`@lunarhue/forms-solid/v1` entry only re-exports core for now, and
-[#124](https://github.com/LunarHUE/forms/issues/124) tracks the real adapter.
+The main entry binds Solid 2. On Solid 1.8 or later, import from
+`@lunarhue/forms-solid/v1` instead: it has the same functions and types, so a
+component moves between the two by changing the import. See [Solid 1](#solid-1).
 
 ```sh
 npm install @lunarhue/forms-solid
@@ -75,6 +75,39 @@ export default function SignUpForm() {
 ```
 
 Type `name="emial"` and the build fails.
+
+## Solid 1
+
+`@lunarhue/forms-solid/v1` is the same adapter built against Solid 1. It needs
+`solid-js` 1.8 or later and no `@solidjs/web`. Plugins still come from
+`@lunarhue/forms-solid/plugins`.
+
+```tsx
+import { createForm, createForms, inputProps } from "@lunarhue/forms-solid/v1";
+import { render } from "solid-js/web";
+
+const signUp = createForms().define({
+  defaultValues: { name: "" },
+  onSubmit: (value) => `Signed up ${value.name}.`,
+});
+
+function SignUp() {
+  const form = createForm(signUp);
+  return (
+    <form {...form.formProps}>
+      <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
+      <button type="submit">Sign up</button>
+      <p>{form.state.submission.status}</p>
+    </form>
+  );
+}
+
+render(() => <SignUp />, document.getElementById("app")!);
+```
+
+Solid 1 applies each write as it happens, where Solid 2 holds writes until
+the next flush. So on Solid 1 an effect over a field can run once per write
+instead of once per tick.
 
 ## Plugins
 

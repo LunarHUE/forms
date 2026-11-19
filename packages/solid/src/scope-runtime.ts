@@ -1,5 +1,7 @@
 import { type AnyFieldHandle, attach, type Part, type Validator, type ValidatorInput } from "@lunarhue/forms-core";
-import { createComponent, For, merge, omit, untrack, type Accessor, type Element as SolidElement } from "solid-js";
+import { merge, omit } from "#solid";
+import { createComponent, For, untrack, type Accessor } from "solid-js";
+import type { SolidElement } from "./element.js";
 import { createFieldApi } from "./field-api.js";
 import { createItemList } from "./items.js";
 import { problem } from "./problem.js";
