@@ -1,21 +1,20 @@
-import type { Path } from "../path.js";
-import type { FieldDisplay, Plugin, PluginContext } from "../plugin.js";
+import type { Part, Plugin, PluginContext } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { replaceText } from "./caret.js";
 
 export { replaceText } from "./caret.js";
 
-/** A cleaner for one field. It gets the value so far and the caller's original input. */
-export type Mask = (value: unknown, input: unknown) => unknown;
+/** A cleaner for a string field. It gets the value so far and the caller's original input. */
+export type Mask = (value: string, input: unknown) => string;
 
 /** Keeps the digits of a string. */
-export const digits: Mask = (value) => (typeof value === "string" ? value.replace(/\D/g, "") : value);
+export const digits: Mask = (value) => value.replace(/\D/g, "");
 
 /** Upper-cases a string. */
-export const upper: Mask = (value) => (typeof value === "string" ? value.toUpperCase() : value);
+export const upper: Mask = (value) => value.toUpperCase();
 
-/** A field's cleaner and the text its inputs show. */
-export interface MaskField {
+/** What `masked` takes: a field's cleaner and the text its inputs show. */
+export interface MaskConfig {
   /** Cleans the value before the store takes it. */
   readonly clean: Mask;
   /**
@@ -23,102 +22,42 @@ export interface MaskField {
    * `(555) 123-4567` for `5551234567`. It must be a pure function of the
    * value. A value that isn't a string comes in as `""`.
    */
-  readonly display: (value: string) => string;
-}
-
-/** Options for `mask`. */
-export interface MaskOptions {
-  /** The plugin name, so two masks can run side by side. Defaults to `"mask"`. */
-  readonly name?: string;
-  /** The plugins this one runs after. */
-  readonly after?: readonly string[];
-}
-
-type Holder = Record<string, unknown>;
-
-const isHolder = (value: unknown): value is Holder => typeof value === "object" && value !== null;
-
-/**
- * Cleans the field at `rest` below `value`, with `input` the caller's value
- * at the same place. `*` matches every item or key. Copies only what changed.
- */
-function cleanBelow(value: unknown, input: unknown, rest: readonly string[], clean: Mask): unknown {
-  const [seg, ...tail] = rest;
-  if (seg === undefined) return clean(value, input);
-  if (!isHolder(value)) return value;
-  let out = value;
-  // A key segment never names an array item here: the items of a written array have no keys yet.
-  for (const at of seg === "*" ? Object.keys(value) : [seg]) {
-    if (!(at in value)) continue;
-    const next = cleanBelow(value[at], isHolder(input) ? input[at] : undefined, tail, clean);
-    if (Object.is(next, value[at])) continue;
-    if (out === value) out = Object.assign(Array.isArray(value) ? [] : {}, value);
-    out[at] = next;
-  }
-  return out;
+  readonly display?: (value: string) => string;
 }
 
 /**
- * Cleans the value written at each named field before the store takes it,
- * so the store only ever holds the clean value. `fields` maps a dotted
- * stable path, such as `"address.zip"`, to its `Mask`, or to a `MaskField`
- * that also gives the text the field's inputs show. A `*` segment matches
- * every array item or object key, as in `"lines.*.sku"`.
+ * The mask plugin. Put `mask()` in the form's plugins, and `masked(...)` on
+ * the field types it cleans: `field(PhoneInput, masked({ clean, display }))`.
  *
- * A write above a field, such as a root replace, a parent object or a row
- * that `push` adds, is cleaned at each field below it. The form's starting
- * value is cleaned too, so its baseline is clean and a reset leaves it
- * clean. User edits, resets and other plugins' writes are cleaned.
- * Rebases are not: the incoming value is the server's copy, and the
- * baseline moves to it as it came.
+ * Each field a masked field type renders, or a part pinned with `at`, gets
+ * its value cleaned before the store takes it, so the store only ever holds
+ * the clean value. A write above the field, such as a root replace, a
+ * parent object or a reset, is cleaned at the field too. The field's value
+ * is cleaned when the part attaches, and so is its baseline while the field
+ * isn't dirty. Rebases are not cleaned: the incoming value is the server's
+ * copy, and the baseline moves to it as it came. A value that isn't a
+ * string is left alone.
  *
- * A field with a `display` gets it as its meta, a `FieldDisplay`, so the
- * adapters' text inputs show the display text and keep the caret in place.
- * When two masks give one field a display, the one that runs first wins.
+ * With a `display`, the adapters' text inputs show the display text and
+ * keep the caret in place.
  */
-export function mask(fields: Readonly<Record<string, Mask | MaskField>>, options: MaskOptions = {}): Plugin<undefined, string, FieldDisplay | undefined> {
-  const list = Object.entries(fields).map(([name, field]) => {
-    const names = name.split(".");
-    if (typeof field === "function") return [names, field] as const;
-    const { clean, display } = field;
-    const text = (value: unknown) => display(typeof value === "string" ? value : "");
-    // Made once, so the meta keeps its identity.
-    const shown: FieldDisplay = {
-      display: text,
-      edit: (input, value, event) => replaceText(input, text(value), (typed) => clean(typed, typed), event),
-    };
-    return [names, clean, shown] as const;
-  });
-  // Cleans every field at or below `path` in `value`.
-  const run = (path: Path, value: unknown, input: unknown) => {
-    for (const [names, clean] of list) {
-      if (path.length <= names.length && path.every((seg, i) => names[i] === "*" || names[i] === String(seg)))
-        value = cleanBelow(value, input, names.slice(path.length), clean);
-    }
-    return value;
-  };
+export function mask(): Plugin<undefined, "mask"> {
   return defineHooks({
-    name: options.name ?? "mask",
-    ...(options.after && { after: options.after }),
-    initial: (value) => run([], value, value),
-    initialMeta: undefined,
-    setup(ctx: PluginContext<FieldDisplay | undefined>) {
-      // Sets the display meta on each field `names` matches below `path`.
-      const show = (names: readonly string[], shown: FieldDisplay, path: Path): void => {
-        const seg = names[path.length];
-        if (seg === undefined) return ctx.setMeta(path, shown);
-        const { value, keys } = ctx.store.getSnapshot(path);
-        for (const at of seg !== "*" ? [seg] : (keys ?? (isHolder(value) ? Object.keys(value) : []))) show(names, shown, [...path, at]);
-      };
-      const showAll = () => {
-        for (const [names, , shown] of list) if (shown) show(names, shown, []);
-      };
-      showAll();
+    name: "mask",
+    attach(_ctx: PluginContext, { clean, display }: MaskConfig) {
+      const run = (value: unknown, input: unknown) => (typeof value === "string" ? clean(value, input) : value);
+      const text = (value: unknown) => (display ? display(typeof value === "string" ? value : "") : "");
       return {
-        beforeWrite: (write) => (write.cause === "rebase" ? write.value : run(write.path, write.value, write.input)),
-        // Items a `*` matches come and go, so each batch gives the new ones their display.
-        ...(list.some(([names, , shown]) => shown && names.includes("*")) && { onWrite: showAll }),
+        initial: (value) => run(value, value),
+        beforeWrite: (write) => (write.cause === "rebase" ? write.value : run(write.value, write.input)),
+        ...(display && {
+          display: text,
+          edit: (input, value, event) => replaceText(input, text(value), (typed) => run(typed, typed), event),
+        }),
       };
     },
   });
 }
+
+/** A mask for a string field type, as `field(PhoneInput, masked({ clean: digits, display: formatPhone }))`. Needs `mask()`. */
+export const masked = (config: MaskConfig): Part<"mask", string> => ({ plugin: "mask", config });
