@@ -1,4 +1,4 @@
-import { RotateCwIcon, SquareEqualIcon } from "lucide-react";
+import { RotateCcwIcon, SquareEqualIcon } from "lucide-react";
 import { cn } from "cn";
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 
@@ -173,7 +173,7 @@ export function DemoFrame({ id, name, form, files, children }: DemoFrameProps) {
                   />
                 }
               >
-                <RotateCwIcon />
+                <RotateCcwIcon />
               </TooltipTrigger>
               <TooltipContent>Reset</TooltipContent>
             </Tooltip>
