@@ -1,6 +1,6 @@
 import type { Path } from "../path.js";
 import type { HookPlugin } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
 import { isPlainObject } from "../store/tree.js";
 
 /** An array's item keys, or an object's own keys. */
@@ -24,7 +24,7 @@ const children = (value: unknown, keys: Keys): [string, unknown][] =>
  * later reset goes back to the saved value.
  */
 export function baselineOnSubmit(): HookPlugin<undefined, "baselineOnSubmit"> {
-  return definePlugin({
+  return defineHooks({
     name: "baselineOnSubmit",
     setup({ store, baseline }) {
       // While a submit runs: each array and object the form held at each
