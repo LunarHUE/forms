@@ -21,8 +21,9 @@ import { freeze } from "./freeze.js";
 import { type HostLink, hosts } from "./hosts.js";
 import { related } from "./tree.js";
 
-// Core has no DOM types, so this declares the platform global the host uses.
+// Core has no DOM or node types, so this declares the globals the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** How many rounds of plugin writes one batch may set off before the host stops them. */
 const maxRounds = 10;
@@ -108,7 +109,10 @@ function order(plugins: readonly AnyPlugin[]): AnyPlugin[] {
     if (state === false) throw new Error(problem("plugins:cycle", plugin.name));
     placed.set(plugin, false);
     const required = (plugin.requires?.() ?? []).map((need) => (typeof need === "function" ? need() : need).name);
-    for (const name of required) if (!byName.has(name)) throw new Error(problem("plugins:missing", `${name} ${plugin.name}`));
+    // The types catch a missing plugin, so production doesn't check again.
+    if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+      for (const name of required) if (!byName.has(name)) throw new Error(problem("plugins:missing", `${name} ${plugin.name}`));
+    }
     for (const name of [...(plugin.after ?? []), ...required]) {
       const before = byName.get(name);
       if (before) visit(before);
@@ -403,7 +407,7 @@ export function createPluginHost(
       path: at.path,
       plugins: apis,
       installed,
-      attachments: (path) => kit?.list(path) ?? [],
+      attachments: (path) => list?.(attached, path) ?? [],
       setMeta: (path, value) => later(at, () => raw.setMeta(name, value, path)),
       setFormMeta: (value) => later(at, () => raw.setMeta(name, value)),
       // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
@@ -416,20 +420,8 @@ export function createPluginHost(
   // Runs what new hooks do when they arrive: clean the value with `initial`,
   // show the display, start `onActive` and join a timing.
   const arrive = (at: Attached) => {
-    const { hooks, path } = at;
+    const { hooks } = at;
     if (hooks.api !== undefined && !at.part) apis[at.entry.plugin.name] = hooks.api;
-    if (hooks.initial !== undefined) {
-      later(at, () => {
-        const value = valueOf(path);
-        const next = call(at, () => hooks.initial?.(value), value);
-        if (Object.is(next, value)) return;
-        const base = baseline.read(path);
-        // The baseline moves with the value while the field isn't dirty.
-        if (base && baseline.equals(path, base.value, value)) baseline.move(path, next);
-        raw.set(path, next);
-        paths.push(path);
-      });
-    }
     kit?.arrive(at);
     if (listeners > 0) activate(at);
     if (hooks.onWrite) {
@@ -465,30 +457,18 @@ export function createPluginHost(
     }
   };
 
-  // The parts code, from the first plugin that brings it, as every plugin with `attach` does.
-  const kit: PartsKit<Attached> | undefined = plugins
-    .find((plugin) => plugin["~parts"])
-    ?.["~parts"]?.<Attached>({
-      raw,
-      attached,
-      add(path, part) {
-        const entry = entries.get(part.plugin);
-        if (!entry?.plugin.attach) throw new Error(problem("plugins:missing", part.plugin));
-        const { plugin } = entry;
-        // `attach` takes the config its part constructor typed.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
-      },
-      quietly,
-      listened: () => listeners > 0,
-      later,
-      run: (at, write, fallback) => call(at, () => at.hooks.beforeWrite?.(write), fallback),
-      refuse,
-    });
+  // The parts code, from the first plugin that brings it, as every plugin
+  // with `attach` does. Made in `start`, once the baseline is there.
+  const createParts = plugins.find((plugin) => plugin["~parts"])?.["~parts"];
+  let kit: PartsKit<Attached> | undefined;
+  // What `ctx.attachments` returns, from the first plugin that brings it.
+  const list = plugins.find((plugin) => plugin["~list"])?.["~list"];
 
   const attach = (base: Path, parts: readonly Part[], now?: boolean) => {
     if (kit) kit.attach(base, parts, now);
-    else if (parts[0]) throw new Error(problem("plugins:missing", parts[0].plugin));
+    else if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && parts[0]) {
+      throw new Error(problem("plugins:missing", parts[0].plugin));
+    }
   };
 
   // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
@@ -506,6 +486,28 @@ export function createPluginHost(
       validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
+      kit = createParts?.({
+        raw,
+        attached,
+        baseline,
+        paths,
+        add(path, part) {
+          const entry = entries.get(part.plugin);
+          if (!entry?.plugin.attach) {
+            // The types catch a missing plugin, so production skips the part.
+            if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", part.plugin));
+            return;
+          }
+          const { plugin } = entry;
+          // `attach` takes the config its part constructor typed.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
+        },
+        quietly,
+        listened: () => listeners > 0,
+        later,
+        call,
+      });
       // Setup's writes wait until every plugin's setup has run. They are the
       // store's starting state, so the server snapshot shows them.
       quietly(() => {

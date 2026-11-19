@@ -2,7 +2,7 @@ import type { Plugin, RequiredPlugins, Requirements } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { defineHooks, type PluginDefinition } from "./store/define.js";
 import { hosts } from "./store/hosts.js";
-import { createParts } from "./store/parts.js";
+import { createParts, listParts } from "./store/parts.js";
 import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
@@ -38,7 +38,7 @@ export function definePlugin<
   definition: PluginDefinition<A, N, M, F, S, R>,
   // NoInfer: a `plugins` list's element type must not pick the meta types, only the definition.
 ): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
-  return defineHooks(definition, { "~timing": createTiming, "~parts": createParts });
+  return defineHooks(definition, { "~timing": createTiming, "~parts": createParts, "~list": listParts });
 }
 
 /**
