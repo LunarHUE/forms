@@ -5,7 +5,7 @@ import { validation } from "./validation.js";
 
 const contact = () => ({ phone: "", code: "" });
 
-// The plugin in docs/plugins.md: trims the ends of every string written at `fields`.
+// The plugin on the Writing a plugin docs page: trims the ends of every string written at `fields`.
 const trim = (...fields: string[]) =>
   definePlugin({
     name: "trim",
@@ -127,7 +127,7 @@ describe("testStore", () => {
     expect(errors).toEqual([]);
   });
 
-  it("runs the example in docs/plugins.md", () => {
+  it("runs the example on the Writing a plugin page", () => {
     const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
     store.root.at("name").setValue("  Ada ");
     store.root.at("note").setValue(" hi ");
