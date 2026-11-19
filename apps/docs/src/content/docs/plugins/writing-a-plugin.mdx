@@ -106,7 +106,8 @@ const autosave = () =>
 
 `requires` doesn't install anything. A form whose plugins list lacks one is a
 type error, `Add dirty() to the plugins: autosave requires it`, and without
-types the store throws [`plugins:missing`](/errors#core:plugins:missing). The
+types the store throws [`plugins:missing`](/errors#core:plugins:missing) in
+development. The
 plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
 APIs. To run after a plugin without needing it, name it in `after`.
 
