@@ -1,5 +1,6 @@
 import type { FieldSnapshot, Path, TextControl } from "@lunarhue/forms-core";
-import { createSignal, untrack } from "solid-js";
+import { afterProps, batch, createSignal } from "#solid";
+import { untrack } from "solid-js";
 import { displayOf } from "./display.js";
 import { elementRegistrar, elementsOf } from "./refs.js";
 
@@ -109,15 +110,18 @@ export function addPieces(field: object, handle: PiecesHandle, read: () => Field
   const pieces: Omit<FieldPieces, "text"> = {
     setText(text, from) {
       if (current().readOnly) return;
-      handle.setValue(text);
-      const { value, meta } = current();
-      const edit = displayOf(meta)?.edit;
-      if (edit === undefined) return;
-      const target = from === undefined || isControl(from) ? from : from.target;
-      const active = typeof document === "undefined" ? null : document.activeElement;
-      const focused = elementsOf(handle).some((element) => active !== null && element.contains(active)) ? active : undefined;
-      const control = isControl(target) ? target : focused;
-      if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : from);
+      // The display reads the element's text and caret after the write, before Solid updates the element.
+      batch(() => {
+        handle.setValue(text);
+        const { value, meta } = current();
+        const edit = displayOf(meta)?.edit;
+        if (edit === undefined) return;
+        const target = from === undefined || isControl(from) ? from : from.target;
+        const active = typeof document === "undefined" ? null : document.activeElement;
+        const focused = elementsOf(handle).some((element) => active !== null && element.contains(active)) ? active : undefined;
+        const control = isControl(target) ? target : focused;
+        if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : from);
+      });
     },
     setNumberText(text, empty) {
       const { value: before, readOnly } = current();
@@ -138,7 +142,7 @@ export function addPieces(field: object, handle: PiecesHandle, read: () => Field
     ref(element) {
       register(element);
       // The current snapshot, not the reactive one: the reader may still hold the server's while hydrating.
-      untrack(() => showState(element, current().value, textOf(typed(), current())));
+      afterProps(() => untrack(() => showState(element, current().value, textOf(typed(), current()))));
     },
   };
   Object.defineProperties(field, {

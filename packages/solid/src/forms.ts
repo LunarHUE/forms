@@ -34,7 +34,8 @@ import type {
   ValueOf,
   WithChoice,
 } from "@lunarhue/forms-core";
-import type { Accessor, Element as SolidElement } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { SolidElement } from "./element.js";
 import { createDisabledErrorList } from "./disabled-errors.js";
 import type { ArrayHandleLike, ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
 import { createFormRuntime, createFormsRuntime, useAnyForm } from "./forms-runtime.js";

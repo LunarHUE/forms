@@ -1,9 +1,10 @@
 import type { FormSnapshot, FormStore } from "@lunarhue/forms-core";
-import { isServer } from "@solidjs/web";
-import { getOwner, isDisposed, runWithOwner, type Element as SolidElement } from "solid-js";
+import { disposal, isServer } from "#solid";
+import { getOwner, runWithOwner } from "solid-js";
 import { provideForm, type FormChildren, type RuntimeForm } from "./context.js";
 import { focusInvalid, type RuntimeFocus } from "./focus.js";
 import { defineGetters, formReader } from "./reader.js";
+import type { SolidElement } from "./element.js";
 import { registerFormElement } from "./refs.js";
 import type { RuntimeScope } from "./scope-runtime.js";
 
@@ -18,14 +19,16 @@ export type RuntimeStore = FormStore<unknown, unknown, unknown>;
  */
 function createFormState(store: RuntimeStore): object {
   const owner = getOwner();
+  const disposed = owner === null ? () => true : disposal(owner);
   let read: (() => FormSnapshot<unknown>) | undefined;
   const current = () => {
     if (read) return read();
-    if (owner === null || isDisposed(owner) || getOwner() === null) {
+    if (owner === null || disposed() || getOwner() === null) {
       return isServer ? store.getServerFormSnapshot() : store.getFormSnapshot();
     }
+    // Solid 1's `runWithOwner` gives undefined when the function throws.
     read = runWithOwner(owner, () => formReader(store));
-    return read();
+    return read?.() ?? store.getFormSnapshot();
   };
   const state = {};
   // The server snapshot has every member the form snapshot has, except `meta`, which `defineGetters` adds.
@@ -62,6 +65,8 @@ export function buildForm(parts: FormParts): RuntimeForm {
       void handleSubmit(event);
     },
     ref: (element: HTMLFormElement) => {
+      // Solid 1 spreads `novalidate` to a property of that lowercase name, which does nothing.
+      element.noValidate = true;
       registerFormElement(store, element);
     },
   } as const;
