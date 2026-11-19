@@ -56,7 +56,7 @@ createForms(options?: {
 ```ts
 forms.define({
   defaultValues?,  // required unless a schema plugin accepts the schema
-  schema?,         // needs validation() or a schema plugin
+  schema?,         // needs the schema plugin for its library
   plugins?,        // this form's plugins, after the shared ones
   validate?: { on?, form?, fields? },
   show?,
@@ -343,13 +343,7 @@ Import from `@lunarhue/forms-solid/plugins/<name>`.
 | `definePlugin(definition)` | Makes a plugin from hooks and a `setup`. See [Writing a plugin](../plugins/writing-a-plugin). |
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
-
-### plugins/validation
-
-| | |
-| --- | --- |
-| `validation()` | Runs validators and collects errors. Schema plugins bring it, so list it only without one. |
-| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. |
+| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. See [Schemas](../plugins/schemas#another-library). |
 
 ### plugins/history
 
@@ -417,8 +411,8 @@ Each rule takes the form value and returns `{ disabled?, hidden? }`. Read
 
 ## Schema
 
-`@lunarhue/forms-schema`. Each plugin types the form from the schema, fills
-`defaultValues` from it and brings `validation()`.
+`@lunarhue/forms-schema`. Each plugin lets `schema` take its library's
+schemas and fills `defaultValues` from them. Validation needs no plugin.
 
 | | |
 | --- | --- |

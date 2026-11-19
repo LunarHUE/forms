@@ -31,7 +31,7 @@ Each leaf comes with its `path`, the current `value`, the old `baseline`, the
 ## What it returns
 
 `rebase` returns `{ taken }`, the paths it wrote with `"take"` or `{ value }`.
-With validation installed, those fields are validated again. Listeners run
+Validators that already ran on those fields run again. Listeners run
 once, after the whole rebase.
 
 Pass any handle of the form, such as `form.root.at("address")`, to rebase one

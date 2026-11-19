@@ -5,8 +5,9 @@ nothing about either. A Vue adapter is planned.
 
 We wrote it because we wanted three things at once: field names the compiler
 checks, a bundle well under what the big form libraries ship, and a way to add
-features without everyone paying for them. So the core does values, arrays and
-submit. Validation, undo, masks and the rest are plugins you install.
+features without everyone paying for them. So the core does values, arrays,
+validation and submit, since checking input is what a form library is for.
+Undo, masks, schema libraries and the rest are plugins you install.
 
 ## Install
 
@@ -172,8 +173,8 @@ export default function ProfileForm() {
 }
 ```
 
-Type `name="emial"` and the build fails. Same if you pass `schema` or
-`validate` with no validation plugin in the list.
+Type `name="emial"` and the build fails. Same if you pass a Zod schema with
+no `zod()` in the list.
 
 ## Packages
 
@@ -199,7 +200,6 @@ them, so you import from the package you already have.
 
 | Plugin         | What it does                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------- |
-| `validation()` | Runs validators and collects errors. Use it alone when you validate by hand, with no schema.   |
 | `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
 | `mask()`       | Cleans a value on its way into the store: digits only, upper case, or your own function.       |
 | `rules()`      | Works out `disabled` and `hidden` for a field from the rest of the form's value.               |
@@ -210,16 +210,18 @@ them, so you import from the package you already have.
 ### Schema
 
 These work with a schema library, so they sit in `@lunarhue/forms-schema`, one
-entry per library. Each brings validation with it, so you don't list
-`validation()` as well.
+entry per library. Validation is already in every form, so each one only
+adapts its library: it lets `schema` take that library's schemas and fills in
+the starting values.
 
 | Plugin      | Import                           | What it does                                           |
 | ----------- | -------------------------------- | ------------------------------------------------------ |
 | `zod()`     | `@lunarhue/forms-schema/zod`     | Validates with Zod 4 and types the form from the schema. |
 | `valibot()` | `@lunarhue/forms-schema/valibot` | The same for Valibot.                                  |
 
-Any other [Standard Schema](https://standardschema.dev) works as `schema` too,
-once validation is installed. You give `defaultValues` yourself in that case.
+For any other [Standard Schema](https://standardschema.dev) library, make a
+schema plugin with `defineSchemaPlugin`. See
+[Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library).
 
 Bindings for outside stores follow the same rule. `zustand()` comes from
 `@lunarhue/forms-bind/zustand` and `signal()` for a Solid signal from

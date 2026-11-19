@@ -101,7 +101,7 @@ export const forms = createForms({
 });
 ```
 
-The `zod()` plugin lets a form take a Zod schema. Every form defined from `forms` gets `form.TextField`.
+Every form can validate. The `zod()` plugin lets a form take its rules from a Zod schema. Every form defined from `forms` gets `form.TextField`.
 
 ## Define the form
 
@@ -213,4 +213,5 @@ A submission is `idle`, `submitting`, `invalid`, `failed` or `succeeded`. If `on
 ## Next
 
 - [Fields](concepts/fields) covers what a field component gets.
-- [Validation](plugins/validation) covers schemas and validators.
+- [Validation](concepts/validation) covers validators, async checks and when errors show.
+- [Schemas](plugins/schemas) covers Zod, Valibot and starting values.
