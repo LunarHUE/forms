@@ -197,18 +197,14 @@
    * A component's one-line Markdown body (`<Callout>Text with `code`</Callout>`)
    * has no paragraph, so inline elements directly in `.prose` count too.
    */
+  /* Inline code is plain mono text, as in the mock: no fill. */
   :where(.prose > :is(p, ul, ol, table, blockquote, h2, h3, h4)) :where(code),
   .prose > :where(code) {
-    border-radius: 0.25rem;
-    background: color-mix(in oklab, var(--foreground) 5%, transparent);
-    padding: 0.125rem 0.3125rem;
     font-family: var(--font-mono);
-    font-size: 0.8125em;
+    font-size: 0.875em;
     color: var(--foreground);
   }
   :where(.prose > :is(table, h2, h3, h4)) :where(code) {
-    background: none;
-    padding: 0;
     font-size: 0.9em;
   }
   :where(.prose > table) :where(td:first-child code) {
