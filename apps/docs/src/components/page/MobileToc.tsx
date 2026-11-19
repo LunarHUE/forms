@@ -1,5 +1,5 @@
 import { ChevronDownIcon } from "lucide-react";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -19,6 +19,20 @@ interface MobileTocProps {
 export default function MobileToc({ items, children }: MobileTocProps) {
   const [open, setOpen] = useState(false);
   const { active, select } = useActiveSection(items);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  // Escape closes the list. Focus inside it goes back to the toggle.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const inside = trigger.current?.closest("[data-slot=collapsible]")?.contains(document.activeElement);
+      setOpen(false);
+      if (inside) trigger.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   // Close first, then jump, so the jump lands where the target is once the
   // list has collapsed. Base UI removes the panel a frame after it closes.
@@ -36,7 +50,7 @@ export default function MobileToc({ items, children }: MobileTocProps) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className="flex h-11 items-center justify-between gap-3">
         <div className="min-w-0">{children}</div>
-        <CollapsibleTrigger className="-mr-2.5 flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-[panel-open]:bg-muted">
+        <CollapsibleTrigger ref={trigger} className="-mr-2.5 flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 data-[panel-open]:bg-muted">
           On this page
           <ChevronDownIcon
             aria-hidden
