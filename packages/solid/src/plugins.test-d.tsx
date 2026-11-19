@@ -4,7 +4,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import type { FormError } from "@lunarhue/forms-core";
-import { createForm, createForms, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf } from "./index.js";
+import { createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -12,7 +12,7 @@ import { createForm, createForms, useFormContext, type AnyForm, type FieldApi, t
 const profileSchema = v.object({ name: v.string() });
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
-  return <input aria-label={props.label} {...props.field.inputProps()} />;
+  return <input aria-label={props.label} {...inputProps(props.field)} />;
 }
 
 const required = (value: string) => (value ? undefined : { message: "Required" });

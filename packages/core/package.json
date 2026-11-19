@@ -153,7 +153,7 @@
       "name": "./plugins",
       "path": "dist/esm/plugins.js",
       "import": "*",
-      "limit": "2.05 kB"
+      "limit": "2.15 kB"
     },
     {
       "name": "./plugins/dirty",
@@ -165,37 +165,37 @@
       "name": "./plugins/bind",
       "path": "dist/esm/plugins/bind.js",
       "import": "{ bind }",
-      "limit": "2.7 kB"
+      "limit": "2.6 kB"
     },
     {
       "name": "./plugins/history",
       "path": "dist/esm/plugins/history.js",
       "import": "{ history }",
-      "limit": "2.25 kB"
+      "limit": "2.35 kB"
     },
     {
       "name": "./plugins/mask",
       "path": "dist/esm/plugins/mask.js",
       "import": "{ mask }",
-      "limit": "2.5 kB"
+      "limit": "2.4 kB"
     },
     {
       "name": "./plugins/persist",
       "path": "dist/esm/plugins/persist.js",
       "import": "{ persist }",
-      "limit": "2.1 kB"
+      "limit": "2.2 kB"
     },
     {
       "name": "./plugins/rebase",
       "path": "dist/esm/plugins/rebase.js",
       "import": "{ rebase }",
-      "limit": "2.55 kB"
+      "limit": "2.45 kB"
     },
     {
       "name": "./plugins/rules",
       "path": "dist/esm/plugins/rules.js",
       "import": "{ rules }",
-      "limit": "2.1 kB"
+      "limit": "2.0 kB"
     },
     {
       "name": "./plugins/testing",
@@ -209,7 +209,7 @@
         "dist/esm/plugins/history.js": "{ history }",
         "dist/esm/plugins/mask.js": "{ mask }"
       },
-      "limit": "2.85 kB"
+      "limit": "2.95 kB"
     },
     {
       "name": "core + dirty()",
@@ -224,7 +224,7 @@
       "import": {
         "dist/esm/plugins/dirty.js": "{ dirty, baselineOnSubmit }"
       },
-      "limit": "3.1 kB"
+      "limit": "3.0 kB"
     }
   ]
 }

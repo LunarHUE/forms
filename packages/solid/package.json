@@ -165,10 +165,24 @@
   },
   "size-limit": [
     {
+      "name": "solid, fields bound by hand",
+      "import": {
+        "dist/esm/index.js": "{ createForms, createForm }"
+      },
+      "limit": "11.25 kB"
+    },
+    {
+      "name": "solid + inputProps",
+      "import": {
+        "dist/esm/index.js": "{ createForms, createForm, inputProps }"
+      },
+      "limit": "12.05 kB"
+    },
+    {
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.35 kB"
+      "limit": "12.55 kB"
     },
     {
       "name": "./v1",
@@ -182,7 +196,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "12.85 kB"
+      "limit": "13.05 kB"
     },
     {
       "name": "solid + dirty()",
@@ -190,7 +204,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
-      "limit": "12.95 kB"
+      "limit": "13.15 kB"
     },
     {
       "name": "solid, everything on",

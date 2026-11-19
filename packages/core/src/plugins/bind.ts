@@ -1,5 +1,5 @@
 import type { HookPlugin, WriteRecord } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
 
@@ -57,7 +57,7 @@ const none = {};
 export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
   const { get, set, subscribe, incoming = "replace", initial = "outside" } = options;
   const outside = initial === "outside";
-  return definePlugin({
+  return defineHooks({
     name: "bind",
     // The store starts from the outside value, so the server renders it too.
     initial: () => (outside ? get() : undefined),

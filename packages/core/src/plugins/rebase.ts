@@ -1,7 +1,7 @@
 import type { HandleBase } from "../handle.js";
 import type { Path } from "../path.js";
 import type { HookPlugin } from "../plugin.js";
-import { definePlugin } from "../plugins.js";
+import { defineHooks } from "../store/define.js";
 import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
@@ -43,7 +43,7 @@ export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V | Deep
  * Writes are not user edits, and their records have `cause: "rebase"`.
  */
 export function rebase(): HookPlugin<Rebase, "rebase"> {
-  return definePlugin({
+  return defineHooks({
     name: "rebase",
     setup(ctx) {
       const { store } = ctx;

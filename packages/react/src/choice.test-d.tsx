@@ -4,6 +4,7 @@ import {
   type Choice,
   createForms,
   type FieldApi,
+  inputProps,
   type SchemaPlugin,
   type StandardSchemaV1,
   useForm,
@@ -31,7 +32,7 @@ function SelectField(props: {
   const { field } = props;
   expectTypeOf(field.value).toEqualTypeOf<Choice | undefined>();
   return (
-    <select {...field.inputProps({ kind: "select" })} aria-label={props.label}>
+    <select {...inputProps(field, { kind: "select" })} aria-label={props.label}>
       {props.options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -46,7 +47,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
   return (
     <>
       {props.options.map((option) => (
-        <input key={option.value} {...field.inputProps({ kind: "radio", value: option.value })} />
+        <input key={option.value} {...inputProps(field, { kind: "radio", value: option.value })} />
       ))}
       <button type="button" onClick={() => field.setValue(props.options[0]?.value)}>
         First
@@ -61,7 +62,7 @@ function CheckboxGroupField(props: { readonly field: FieldApi<Choice[]>; readonl
   return (
     <>
       {props.options.map((option) => (
-        <input key={option.value} {...field.inputProps({ kind: "checkbox", value: option.value })} />
+        <input key={option.value} {...inputProps(field, { kind: "checkbox", value: option.value })} />
       ))}
     </>
   );
@@ -72,14 +73,14 @@ function SizeField(props: { readonly field: FieldApi<Choice<number>>; readonly s
   return (
     <>
       {props.sizes.map((size) => (
-        <input key={size} {...field.inputProps({ kind: "radio", value: size })} />
+        <input key={size} {...inputProps(field, { kind: "radio", value: size })} />
       ))}
     </>
   );
 }
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
-  return <input {...props.field.inputProps()} aria-label={props.label} />;
+  return <input {...inputProps(props.field)} aria-label={props.label} />;
 }
 
 const forms = createForms({
@@ -164,7 +165,7 @@ function OwnValidateSelect(props: {
   readonly options: readonly Option<Choice>[];
   readonly validate?: boolean;
 }) {
-  return <select {...props.field.inputProps({ kind: "select" })} data-validate={props.validate} />;
+  return <select {...inputProps(props.field, { kind: "select" })} data-validate={props.validate} />;
 }
 
 // Fits a plain form's field with no undefined.

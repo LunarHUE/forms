@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/dom";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
+import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -13,7 +13,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }

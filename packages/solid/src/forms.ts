@@ -496,15 +496,13 @@ export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
  * with that owner. `options` is required when the definition was made with
  * the function form of `define`, and absent otherwise.
  */
-export type CreateForm = <V, E, I, R, O, F extends FieldComponents, P extends Plugins, const X extends Plugins = []>(
+export const createForm: <V, E, I, R, O, F extends FieldComponents, P extends Plugins, const X extends Plugins = []>(
   definition: SolidFormDefinition<V, E, I, R, O, F, P>,
   ...args: CreateFormArgs<NoInfer<O>, NoInfer<E>, NoInfer<V>, X>
-) => SolidForm<V, E, I, R, F, Combined<P, X>>;
-
-/** See `CreateForm`. */
-// The runtime builds the form the definition's types describe.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createForm: CreateForm = createFormRuntime as unknown as CreateForm;
+) => SolidForm<V, E, I, R, F, Combined<P, X>> =
+  // The runtime builds the form the definition's types describe.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createFormRuntime as never;
 
 /**
  * A reusable value shape, not tied to one form: a token with the shape type
@@ -533,18 +531,6 @@ export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldC
  * handle assignability.
  */
 export type HandleOf<T> = T extends { readonly "~shape"?: FieldTypes<infer V, infer E> } ? FieldHandle<V, E> : never;
-
-/** Defines a fieldset shape. Neither form takes options or registers anything. */
-export interface DefineFieldset<P extends Plugins, E, F extends FieldComponents> {
-  /** The shape from a type, with no schema: `forms.fieldset<Address>()`. */
-  <V>(): Fieldset<V, E, F>;
-  /**
-   * The shape from a schema: the `Draft` of its input when an installed
-   * schema plugin accepts it, as `define` types it, and the input itself
-   * otherwise. The schema only gives the type.
-   */
-  <S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F>;
-}
 
 /**
  * `F` when every registered component has a `field` prop of a `FieldApi`
@@ -595,8 +581,17 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
    * same handle. It needs no context. Call it in a component body.
    */
   scope<S>(handle: ObjectHandle<S, E>): Scope<S, E, F>;
-  /** Defines a fieldset shape. See `DefineFieldset`. */
-  readonly fieldset: DefineFieldset<P, E, F>;
+  /** Defines a fieldset shape. Neither form takes options or registers anything. */
+  readonly fieldset: {
+    /** The shape from a type, with no schema: `forms.fieldset<Address>()`. */
+    <V>(): Fieldset<V, E, F>;
+    /**
+     * The shape from a schema: the `Draft` of its input when an installed
+     * schema plugin accepts it, as `define` types it, and the input itself
+     * otherwise. The schema only gives the type.
+     */
+    <S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F>;
+  };
 }
 
 /**
@@ -604,21 +599,19 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
  * config plus the adapter's settings, and holds no state. Call it once at
  * module scope.
  */
-export type CreateForms = <const P extends Plugins = [], E = FormError, F extends FieldComponents = NoFieldComponents>(
+export const createForms: <const P extends Plugins = [], E = FormError, F extends FieldComponents = NoFieldComponents>(
   options?: FormsOptions<P, E, F>,
-) => SolidForms<P, E, F>;
-
-/** See `CreateForms`. */
-// The runtime builds every member the types name, with the types erased.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createForms: CreateForms = createFormsRuntime as unknown as CreateForms;
+) => SolidForms<P, E, F> =
+  // The runtime builds every member the types name, with the types erased.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createFormsRuntime as never;
 
 /**
  * Reads a form from the nearest `form.Form` above. Every `form.Form`
  * provides the same context, and each remembers the `form.Form` above it.
  * Call it in a component body.
  */
-export interface UseFormContext {
+export const useFormContext: {
   /**
    * Returns the form from the nearest `form.Form`, of any definition, with
    * its types unknown. Use it in reusable parts such as a submit button.
@@ -642,12 +635,10 @@ export interface UseFormContext {
    * skipped. Throws when no form of `forms` is above.
    */
   <P extends Plugins, E, F extends FieldComponents>(forms: SolidForms<P, E, F>): AnyForm<P, E, F>;
-}
-
-/** See `UseFormContext`. */
-// The context holds forms of any types. A form found by its definition or its forms is the form their types describe.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const useFormContext: UseFormContext = useAnyForm as unknown as UseFormContext;
+} =
+  // The context holds forms of any types. A form found by its definition or its forms is the form their types describe.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  useAnyForm as never;
 
 /**
  * Returns the disabled fields with validation errors, as of the latest
@@ -656,11 +647,9 @@ export const useFormContext: UseFormContext = useAnyForm as unknown as UseFormCo
  * the latest submit stays invalid it follows the form snapshot, so fixing or
  * enabling a field takes it off the list. Call it in a component body.
  */
-export type CreateDisabledErrors = <V, E, I, R>(
+export const createDisabledErrors: <V, E, I, R>(
   form: FormStore<V, E, I, R> | { readonly store: FormStore<V, E, I, R> },
-) => Accessor<readonly DisabledInvalid<E>[]>;
-
-/** See `CreateDisabledErrors`. */
-// The list comes from the store's `disabledInvalid()`, whose error type is the store's `E`.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createDisabledErrors: CreateDisabledErrors = createDisabledErrorList as unknown as CreateDisabledErrors;
+) => Accessor<readonly DisabledInvalid<E>[]> =
+  // The list comes from the store's `disabledInvalid()`, whose error type is the store's `E`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createDisabledErrorList as never;

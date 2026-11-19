@@ -1,11 +1,12 @@
 import { describe, expectTypeOf, it } from "vitest";
 import {
-  createForms,
-  errorId,
   type ArrayHandle,
   type CheckboxGroupInputProps,
   type CheckboxInputProps,
+  createForms,
+  errorId,
   type FieldApi,
+  inputProps,
   type LeafHandle,
   type NumberInputProps,
   type RadioInputProps,
@@ -102,15 +103,15 @@ function WrongKinds({ age, name, newsletter }: { readonly age: LeafHandle<number
   return <span />;
 }
 
-// The field object's inputProps has the same checks.
+// inputProps(field) has the same checks on a field object.
 function FromField({ text, count }: { readonly text: FieldApi<string>; readonly count: FieldApi<number> }) {
-  expectTypeOf(text.inputProps()).toEqualTypeOf<TextInputProps>();
-  expectTypeOf(count.inputProps({ kind: "number", empty: 0 })).toEqualTypeOf<NumberInputProps>();
+  expectTypeOf(inputProps(text)).toEqualTypeOf<TextInputProps>();
+  expectTypeOf(inputProps(count, { kind: "number", empty: 0 })).toEqualTypeOf<NumberInputProps>();
   // @ts-expect-error: count is a number, so it needs a kind
-  count.inputProps();
+  inputProps(count);
   // @ts-expect-error: text is a string
-  text.inputProps({ kind: "checkbox" });
-  return <input {...text.inputProps()} />;
+  inputProps(text, { kind: "checkbox" });
+  return <input {...inputProps(text)} />;
 }
 
 // A custom input records its element for focus and points at its error element itself.

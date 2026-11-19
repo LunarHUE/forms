@@ -181,7 +181,8 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `useInputProps(handle, options?)` | Props that bind one element to the field. |
+| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
+| `useInputProps(handle, options?)` | The same props for a handle. |
 | `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 
@@ -191,7 +192,8 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `createInputProps(handle, options?)` | Props that bind one element to the field. |
+| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
+| `createInputProps(handle, options?)` | The same props for a handle. |
 | `fieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 
@@ -229,11 +231,15 @@ children.
 | `readOnly` | True when it or a field above it is read-only. |
 | `meta` | Plugin state by plugin name, read with the plugin's reader. |
 | `keys` | Array fields only: the item keys, in order. |
-| `inputProps(options?)` | As the input props function above, for this field. |
+| `text` | The text an element shows: typed number text, else a plugin's display text, else the value. |
+| `setText(text, from?)` | Writes typed text. With a mask, puts the formatted text in the element `from` names and places the caret. |
+| `setNumberText(text, empty?)` | Writes typed number text. Text that isn't a number yet writes nothing. |
+| `ref` | Records the element for focus after an invalid submit. |
 | `handle` | The field's handle. |
 | `id`, `path`, `errorId` | The handle's id, its stable path, and the error element id. |
 
-It also has every command of its handle, bound.
+It also has every command of its handle, bound. Its `handleBlur` also drops
+typed number text.
 
 ### Handles
 
@@ -308,6 +314,9 @@ tests.
 | `Choice` | The value type for select, radio and checkbox group components. |
 | `Draft<T>` | `T` as a schema form holds it, with leaves that may be `undefined`. |
 | `StandardSchemaV1` | The Standard Schema interface any schema library implements. |
+
+A function has no type of its own name. Write `typeof createForms` for its
+signature, or `ReturnType<typeof createForms>` for what it returns.
 
 ### Core helpers
 

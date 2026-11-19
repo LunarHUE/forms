@@ -3,7 +3,7 @@ import { type ReactNode, StrictMode, Suspense, use } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { createForms, type FieldApi, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
+import { createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
 import { rules } from "./plugins/rules.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
@@ -11,7 +11,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label htmlFor={props.field.id}>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }
@@ -98,12 +98,12 @@ const commits: Commits = new Map();
 
 function CountedText(props: { readonly field: FieldApi<string>; readonly label: string }) {
   useCommits(commits, props.label);
-  return <input aria-label={props.label} {...props.field.inputProps()} />;
+  return <input aria-label={props.label} {...inputProps(props.field)} />;
 }
 
 function CountedNumber(props: { readonly field: FieldApi<number>; readonly label: string }) {
   useCommits(commits, props.label);
-  return <input aria-label={props.label} {...props.field.inputProps({ kind: "number" })} />;
+  return <input aria-label={props.label} {...inputProps(props.field, { kind: "number" })} />;
 }
 
 function Counted(props: { readonly name: string; readonly children: ReactNode }) {
@@ -129,7 +129,7 @@ function TripForm() {
       <form.Field name="title">
         {(field) => (
           <Counted name="Field">
-            <input aria-label="Field" {...field.inputProps()} />
+            <input aria-label="Field" {...inputProps(field)} />
           </Counted>
         )}
       </form.Field>
@@ -194,7 +194,7 @@ interface RuledTextProps {
 function RuledText({ field, label }: RuledTextProps) {
   useCommits(ruledCommits, label);
   if (shippingRules.meta(field).hidden) return null;
-  return <input aria-label={label} {...field.inputProps()} />;
+  return <input aria-label={label} {...inputProps(field)} />;
 }
 
 const shipping = createForms({ fields: { RuledText } }).define({
