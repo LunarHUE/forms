@@ -1,0 +1,33 @@
+---
+/*
+ * Site search: the palette island and the script that opens it.
+ *
+ * The palette hydrates when the browser is idle, so this inline script owns
+ * the triggers from the first paint: clicks on any `[data-search-trigger]`
+ * (the header's search field and phone icon) and Ctrl K / Cmd K anywhere.
+ * Each one sets `window.formsSearch.pending` and fires `forms-search:open`.
+ * The palette opens on mount if a request is pending and listens for the
+ * event after that.
+ */
+import { SearchPalette } from "./SearchPalette";
+---
+
+<script is:inline>
+  (() => {
+    if (window.formsSearch) return;
+    const state = (window.formsSearch = { pending: false });
+    const open = (event) => {
+      event.preventDefault();
+      state.pending = true;
+      document.dispatchEvent(new CustomEvent("forms-search:open"));
+    };
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("[data-search-trigger]")) open(event);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey)) open(event);
+    });
+  })();
+</script>
+<SearchPalette client:idle />
