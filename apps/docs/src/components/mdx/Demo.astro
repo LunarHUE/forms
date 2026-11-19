@@ -13,7 +13,7 @@
  * template in and unmounts the old island, which then hydrates from scratch.
  * See the README.
  */
-import { isFramework } from "@/lib/frameworks";
+import { AVAILABLE_FRAMEWORKS, isFramework } from "@/lib/frameworks";
 import { highlight } from "@/lib/highlight";
 
 import { DemoFrame, type DemoFile } from "./DemoFrame";
@@ -61,8 +61,25 @@ const html = await Astro.slots.render(framework);
 // bootstrap. They have run by the time anyone resets, so the template keeps
 // markup only.
 const initial = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+
+// Astro renders every slot of a component up front, whether the component
+// uses it or not. So the other frameworks' demos render too, and if one of
+// them is the page's first island it takes Astro's island loader with it and
+// no island on the page hydrates. Keep the loader from their output and drop
+// the rest. Renderer bootstraps (Solid's `_$HY`) stay behind, so a React page
+// gets no Solid code.
+const others = await Promise.all(
+  AVAILABLE_FRAMEWORKS.filter((other) => other !== framework && Astro.slots.has(other)).map((other) =>
+    Astro.slots.render(other),
+  ),
+);
+const loader = others
+  .flatMap((other) => other.match(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g) ?? [])
+  .filter((tag) => tag.includes("astro-island") || tag.includes("self.Astro"))
+  .join("");
 ---
 
+<Fragment set:html={loader} />
 <DemoFrame client:visible id={id} name={name} form={form} files={files}>
   <div data-demo-live><Fragment set:html={html} /></div>
   <template data-demo-initial><Fragment set:html={initial} /></template>
