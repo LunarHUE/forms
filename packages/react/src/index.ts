@@ -2,7 +2,6 @@
 export * from "@lunarhue/forms-core";
 export { createForms, useDisabledErrors, useForm, useFormContext } from "./forms.js";
 export type {
-  CreateForms,
   FocusOnInvalid,
   FocusTarget,
   FormComponent,
@@ -17,9 +16,6 @@ export type {
   FormStateProps,
   ReactFormDefinition,
   UnknownForm,
-  UseDisabledErrors,
-  UseForm,
-  UseFormContext,
   UseFormOptions,
 } from "./forms.js";
 export type {
@@ -33,7 +29,6 @@ export type {
   ExactFieldApi,
   Fieldset,
   HandleOf,
-  InputPropsMethod,
   NoFields,
   // Stays public: declarations inferred from a bound field component, as
   // `typeof form.TextField`, name it as `OwnPropsOf<typeof TextField>`.
@@ -48,19 +43,16 @@ export type {
   HandleLike,
   IsEqual,
   SnapshotOf,
-  UseField,
-  UseFormState,
-  UseItems,
-  UseValidator,
 } from "./field.js";
-export { errorId, useFieldRef, useInputProps } from "./input.js";
+export { errorId, inputProps, useFieldRef, useInputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
   CheckboxGroupInputProps,
   CheckboxGroupOptions,
   CheckboxInputOptions,
   CheckboxInputProps,
-  ErrorId,
+  FieldObjectLike,
   FieldRef,
   NumberInputOptions,
   NumberInputProps,
@@ -73,6 +65,4 @@ export type {
   TextInputOptions,
   TextInputProps,
   TextInputType,
-  UseFieldRef,
-  UseInputProps,
 } from "./input.js";

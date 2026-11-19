@@ -8,6 +8,7 @@ import {
   type FieldRef,
   type FocusTarget,
   type FormOf,
+  inputProps,
   useDisabledErrors,
   useFieldRef,
   useForm,
@@ -21,7 +22,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }

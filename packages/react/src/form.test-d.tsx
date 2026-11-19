@@ -4,6 +4,7 @@ import {
   createForms,
   type FieldApi,
   type FieldHandle,
+  type Fieldset,
   type FormError,
   type FormInstance,
   type FormOf,
@@ -11,10 +12,10 @@ import {
   type FormStateComponent,
   type FormStore,
   type HandleOf,
+  inputProps,
   type ItemHandle,
   type LeafHandle,
   type ObjectHandle,
-  type Fieldset,
   type ReactFormDefinition,
   type SchemaPlugin,
   type StandardSchemaV1,
@@ -37,7 +38,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} placeholder={props.placeholder} />
+      <input {...inputProps(props.field)} placeholder={props.placeholder} />
       {props.field.shownErrors.length > 0 && <p id={props.field.errorId}>{props.field.shownErrors[0]?.message}</p>}
     </label>
   );
@@ -49,7 +50,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps({ kind: "number" })} />
+      <input {...inputProps(props.field, { kind: "number" })} />
     </label>
   );
 }
@@ -126,15 +127,15 @@ function OrderPage() {
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<string>();
               expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string>>();
-              return <input {...field.inputProps({ type: "email" })} />;
+              return <input {...inputProps(field, { type: "email" })} />;
             }}
           </form.Field>
           <form.Field name="channels">
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<readonly ("email" | "sms")[]>();
               // @ts-expect-error: a picked option is never undefined
-              field.inputProps({ kind: "checkbox", value: undefined });
-              return <input {...field.inputProps({ kind: "checkbox", value: "sms" })} />;
+              inputProps(field, { kind: "checkbox", value: undefined });
+              return <input {...inputProps(field, { kind: "checkbox", value: "sms" })} />;
             }}
           </form.Field>
           <form.Items name="lines">
@@ -239,10 +240,10 @@ function ValidateProps() {
       />
       <form.NumberField name="age" label="Age" validate={{ validate: (value) => (value === undefined ? { message: "Required" } : null), debounce: 300 }} />
       <form.Field name="age" validate={{ validate: (value: number | undefined) => (value === 0 ? { message: "Zero" } : null), debounce: 300 }}>
-        {(field) => <input {...field.inputProps({ kind: "number" })} />}
+        {(field) => <input {...inputProps(field, { kind: "number" })} />}
       </form.Field>
       <form.Field handle={qty} validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>
-        {(field) => <input {...field.inputProps({ kind: "number" })} />}
+        {(field) => <input {...inputProps(field, { kind: "number" })} />}
       </form.Field>
       <form.Field name="email" validate={false}>{() => null}</form.Field>
       <billing.TextField
@@ -272,10 +273,10 @@ function ValidateProps() {
 
 // Registered components that declare a validate prop of their own, which the bound component reserves.
 function OwnValidate(props: { readonly field: FieldApi<string>; readonly validate: boolean }) {
-  return <input {...props.field.inputProps()} data-validate={props.validate} />;
+  return <input {...inputProps(props.field)} data-validate={props.validate} />;
 }
 function OptionalValidate(props: { readonly field: FieldApi<string>; readonly validate?: () => void }) {
-  return <input {...props.field.inputProps()} onBlur={props.validate} />;
+  return <input {...inputProps(props.field)} onBlur={props.validate} />;
 }
 
 describe("createForms", () => {
@@ -347,7 +348,7 @@ function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; r
       <legend>{props.title}</legend>
       <scope.TextField name="street" label="Street" />
       <scope.TextField name="city" label="City" />
-      <scope.Field name="zip">{(field) => <input {...field.inputProps()} />}</scope.Field>
+      <scope.Field name="zip">{(field) => <input {...inputProps(field)} />}</scope.Field>
       <GeoFields field={scope.root.at("geo")} />
       {/* @ts-expect-error: names are relative to the shape, which has no customer */}
       <scope.TextField name="customer" label="Customer" />
@@ -428,7 +429,7 @@ function LineDialogBody() {
   const inner = useFormContext(lineDialog);
   expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder>>();
   expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }>>();
-  return <inner.Field name="qty">{(field) => <input {...field.inputProps({ kind: "number", empty: 0 })} />}</inner.Field>;
+  return <inner.Field name="qty">{(field) => <input {...inputProps(field, { kind: "number", empty: 0 })} />}</inner.Field>;
 }
 
 function LineDialog() {
@@ -584,7 +585,7 @@ describe("form.State", () => {
 function Checkbox(props: { readonly field: FieldApi<boolean>; readonly label: string }) {
   return (
     <label>
-      <input {...props.field.inputProps({ kind: "checkbox" })} />
+      <input {...inputProps(props.field, { kind: "checkbox" })} />
       {props.label}
     </label>
   );

@@ -6,7 +6,7 @@ import { mask, upper as upperCase } from "../plugins/mask.js";
 import { type Rebase, rebase } from "../plugins/rebase.js";
 import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createField, createForm, createForms, type FormOf } from "../index.js";
+import { createField, createForm, createForms, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 // Shared: stores each written string's length as the field's meta.
@@ -41,7 +41,7 @@ function Name() {
     <form.Field name="name">
       {(field) => (
         <>
-          <input {...field.inputProps()} />
+          <input {...inputProps(field)} />
           <output>{chars.meta(field) ?? "none"}</output>
           <p>{upper.formMeta(form.state) ?? 0}</p>
           <button type="button" onClick={() => form.plugins.writes.count()}>
@@ -109,7 +109,7 @@ function NotePage() {
   const form = createForm(Note);
   return (
     <>
-      <form.Field name="text">{(field) => <input {...field.inputProps()} />}</form.Field>
+      <form.Field name="text">{(field) => <input {...inputProps(field)} />}</form.Field>
       <button type="button" disabled={!undoHistory.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
         Undo
       </button>
@@ -146,7 +146,7 @@ function LinesPage() {
   return (
     <>
       <form.Items name="lines">
-        {(row) => <form.Field handle={row.at("sku")}>{(field) => <input {...field.inputProps()} />}</form.Field>}
+        {(row) => <form.Field handle={row.at("sku")}>{(field) => <input {...inputProps(field)} />}</form.Field>}
       </form.Items>
       <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
         add
@@ -189,7 +189,7 @@ function SettingsPage() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.Field name="name">{(field) => <input {...field.inputProps()} />}</form.Field>
+          <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
           <button type="submit" disabled={!form.state.dirty}>
             Save
           </button>

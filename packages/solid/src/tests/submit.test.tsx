@@ -2,14 +2,14 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
-import { createDisabledErrors, createForm, createForms, type FocusTarget, type FieldApi, type FormOf } from "../index.js";
+import { createDisabledErrors, createForm, createForms, type FocusTarget, type FieldApi, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
     </label>
   );
 }
@@ -155,7 +155,7 @@ describe("the form object with no form.Form", () => {
       return (
         <form {...f.formProps}>
           <f.TextField name="title" label="Title" />
-          <f.Field name="body">{(field) => <textarea {...field.inputProps({ kind: "textarea" })} />}</f.Field>
+          <f.Field name="body">{(field) => <textarea {...inputProps(field, { kind: "textarea" })} />}</f.Field>
           <output>{f.state.submission.status}</output>
         </form>
       );

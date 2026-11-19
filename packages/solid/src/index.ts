@@ -7,10 +7,6 @@ export type {
   BoundField,
   BoundFieldComponent,
   BoundItems,
-  CreateDisabledErrors,
-  CreateForm,
-  CreateForms,
-  DefineFieldset,
   FieldComponents,
   Fieldset,
   FocusOnInvalid,
@@ -28,14 +24,10 @@ export type {
   SolidForm,
   SolidFormDefinition,
   SolidForms,
-  UseFormContext,
   ValidateProp,
 } from "./forms.js";
 export { createField, createItems, createValidator } from "./field.js";
 export type {
-  CreateField,
-  CreateItems,
-  CreateValidator,
   ExactFieldApi,
   FieldApi,
   FormState,
@@ -43,16 +35,15 @@ export type {
   SnapshotOf,
 } from "./field.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
-export { createInputProps, errorId, fieldRef } from "./input.js";
+export { createInputProps, errorId, fieldRef, inputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   CheckableProps,
   CheckboxGroupOptions,
   CheckboxOptions,
   ControlProps,
-  CreateInputProps,
-  FieldRef,
+  FieldObjectLike,
   InputOptions,
-  InputPropsOf,
   NumberInputOptions,
   NumberInputProps,
   NumberInputType,

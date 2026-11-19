@@ -11,7 +11,7 @@ function sameKeys(a: readonly string[], b: readonly string[]): boolean {
   return a.every((key, index) => key === b[index]);
 }
 
-/** See `CreateItems`. */
+/** See `createItems`. */
 export function createItemList(handle: ArrayHandleLike): () => readonly unknown[] {
   const read = fieldReader(handle);
   const keysNow = () => read().keys ?? noKeys;

@@ -2,7 +2,7 @@ import { errorId as coreErrorId } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf } from "../index.js";
+import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf, inputProps } from "../index.js";
 import { choose, click, get, getAs, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ plugins: [valibot()] });
@@ -38,7 +38,7 @@ describe("text and textarea", () => {
       <f.Field name="name">
         {(field) => (
           <>
-            <input {...field.inputProps({ type: "email", describedBy: "hint" })} />
+            <input {...inputProps(field, { type: "email", describedBy: "hint" })} />
             <p id={field.errorId}>{field.shownErrors[0]?.message}</p>
           </>
         )}
@@ -82,7 +82,7 @@ describe("text and textarea", () => {
 
 describe("number and range", () => {
   it("writes numbers, `empty` for an empty input, and nothing for partial text", async () => {
-    const { form, host } = mountSurvey((f) => <f.Field name="age">{(field) => <input {...field.inputProps({ kind: "number" })} />}</f.Field>);
+    const { form, host } = mountSurvey((f) => <f.Field name="age">{(field) => <input {...inputProps(field, { kind: "number" })} />}</f.Field>);
     const input = get(host, "input");
     const age = form.root.at("age");
     expect(input.type).toBe("number");
@@ -116,7 +116,7 @@ describe("number and range", () => {
   });
 
   it("keeps the typed text until the input loses focus, then shows the stored number", async () => {
-    const { form, host } = mountSurvey((f) => <f.Field name="age">{(field) => <input {...field.inputProps({ kind: "number" })} />}</f.Field>);
+    const { form, host } = mountSurvey((f) => <f.Field name="age">{(field) => <input {...inputProps(field, { kind: "number" })} />}</f.Field>);
     const input = get(host, "input");
     const age = form.root.at("age");
     const blur = async () => {
@@ -187,8 +187,8 @@ describe("checkbox", () => {
       <f.Field name="tags">
         {(field) => (
           <>
-            <input data-tag="news" {...field.inputProps({ kind: "checkbox", value: "news" })} />
-            <input data-tag="offers" {...field.inputProps({ kind: "checkbox", value: "offers" })} />
+            <input data-tag="news" {...inputProps(field, { kind: "checkbox", value: "news" })} />
+            <input data-tag="offers" {...inputProps(field, { kind: "checkbox", value: "offers" })} />
           </>
         )}
       </f.Field>
@@ -238,8 +238,8 @@ describe("radio", () => {
       <f.Field name="plan">
         {(field) => (
           <>
-            <input data-plan="free" {...field.inputProps({ kind: "radio", value: "free" })} />
-            <input data-plan="pro" {...field.inputProps({ kind: "radio", value: "pro" })} />
+            <input data-plan="free" {...inputProps(field, { kind: "radio", value: "free" })} />
+            <input data-plan="pro" {...inputProps(field, { kind: "radio", value: "pro" })} />
           </>
         )}
       </f.Field>
@@ -385,7 +385,7 @@ describe("refs", () => {
     mountSurvey((f) => (
       <f.Field name="name">
         {(field) => {
-          same = field.inputProps() === field.inputProps({ kind: "text" }) && field.inputProps() !== field.inputProps({ type: "email" });
+          same = inputProps(field) === inputProps(field, { kind: "text" }) && inputProps(field) !== inputProps(field, { type: "email" });
           return null;
         }}
       </f.Field>

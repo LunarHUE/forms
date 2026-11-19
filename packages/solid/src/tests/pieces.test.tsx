@@ -1,0 +1,211 @@
+import { createRoot } from "solid-js";
+import { describe, expect, it } from "vitest";
+import { createField, createForm, createForms, type FormOf, inputProps } from "../index.js";
+import { digits, mask } from "../plugins/mask.js";
+import { persist } from "../plugins/persist.js";
+import { get, getAs, mount, settle, typeText } from "./dom.js";
+import { formatPhone } from "./ssr-app.js";
+
+/** Storage that holds one saved draft, for `persist`. */
+function savedDraft(value: unknown) {
+  const items = new Map([["draft", JSON.stringify(value)]]);
+  return {
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, saved: string) => void items.set(key, saved),
+    removeItem: (key: string) => void items.delete(key),
+  };
+}
+
+const forms = createForms();
+const Order = forms.define({
+  defaultValues: { phone: "", price: 3, name: "", terms: false, size: "s" },
+  plugins: [
+    persist("draft", savedDraft({ phone: "5551234", price: 12, name: "Ada", terms: true, size: "l" })),
+    mask({ phone: { clean: digits, display: formatPhone } }),
+  ],
+});
+type OrderForm = FormOf<typeof Order>;
+
+/** Binds each field the way a primitive library takes it: a value or text, and a setter. */
+function mountOrder(fromEvent = true) {
+  let form: OrderForm | undefined;
+  const { host } = mount(() => {
+    const created = createForm(Order, { id: "order" });
+    form = created;
+    return (
+      <>
+        <created.Field name="phone">
+          {(field) => (
+            <input
+              aria-label="phone"
+              ref={field.ref}
+              value={field.text}
+              onInput={(event) => (fromEvent ? field.setText(event.currentTarget.value, event) : field.setText(event.currentTarget.value))}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </created.Field>
+        <created.Field name="price">
+          {(field) => (
+            <input
+              aria-label="price"
+              ref={field.ref}
+              value={field.text}
+              onInput={(event) => field.setNumberText(event.currentTarget.value)}
+              onBlur={field.handleBlur}
+            />
+          )}
+        </created.Field>
+        <created.Field name="name">{(field) => <input aria-label="name" {...inputProps(field)} />}</created.Field>
+        <created.Field name="terms">
+          {(field) => (
+            <input
+              type="checkbox"
+              aria-label="terms"
+              ref={field.ref}
+              checked={field.value}
+              onChange={(event) => field.setValue(event.currentTarget.checked)}
+            />
+          )}
+        </created.Field>
+        <created.Field name="size">
+          {(field) => (
+            <select aria-label="size" {...inputProps(field, { kind: "select" })}>
+              <option value="s">Small</option>
+              <option value="l">Large</option>
+            </select>
+          )}
+        </created.Field>
+      </>
+    );
+  });
+  if (!form) throw new Error("The form was not created.");
+  const found = form;
+  return {
+    form: found,
+    input: (label: string) => get(host, `[aria-label=${label}]`),
+    size: getAs(host, "[aria-label=size]", HTMLSelectElement),
+    value: (name: "phone" | "price" | "name") => found.root.at(name).peek().value,
+  };
+}
+
+/** Types `text` at `at`, as a browser does: the DOM changes, the caret moves, then `input` fires. */
+async function typeAt(element: HTMLInputElement, at: number, text: string) {
+  element.value = element.value.slice(0, at) + text + element.value.slice(at);
+  element.setSelectionRange(at + text.length, at + text.length);
+  element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+  await settle();
+}
+
+describe("field pieces", () => {
+  it.each([true, false])("keep the caret after a character typed in the middle (event passed: %s)", async (fromEvent) => {
+    const { input, value } = mountOrder(fromEvent);
+    await settle();
+    const phone = input("phone");
+    expect(phone.value).toBe("(555) 123-4");
+    // Without the event, `setText` finds the focused element `ref` registered.
+    phone.focus();
+    await typeAt(phone, 7, "9");
+    expect(phone.value).toBe("(555) 192-34");
+    expect(phone.selectionStart).toBe(8);
+    expect(value("phone")).toBe("55519234");
+  });
+
+  it("keep number text while it is typed and drop it on blur", async () => {
+    const { input, value } = mountOrder();
+    const price = input("price");
+    typeText(price, "-");
+    await settle();
+    expect(price.value).toBe("-");
+    expect(value("price")).toBe(12);
+    typeText(price, "-12.");
+    await settle();
+    expect(price.value).toBe("-12.");
+    expect(value("price")).toBe(-12);
+    price.dispatchEvent(new FocusEvent("blur"));
+    await settle();
+    expect(price.value).toBe("-12");
+  });
+
+  it("bind a plain input through inputProps(field)", async () => {
+    const { input, value } = mountOrder();
+    typeText(input("name"), "Grace");
+    await settle();
+    expect(value("name")).toBe("Grace");
+    expect(input("name").id).toBe("order--name");
+  });
+});
+
+describe("restored and reset values", () => {
+  it("show in elements bound through text and value", async () => {
+    const { form, input, size } = mountOrder();
+    await settle();
+    expect(input("phone").value).toBe("(555) 123-4");
+    expect(input("price").value).toBe("12");
+    expect(input("name").value).toBe("Ada");
+    expect(input("terms").checked).toBe(true);
+    expect(size.value).toBe("l");
+    form.root.reset();
+    await settle();
+    expect(input("phone").value).toBe("");
+    expect(input("price").value).toBe("3");
+    expect(input("name").value).toBe("");
+    expect(input("terms").checked).toBe(false);
+    expect(size.value).toBe("s");
+  });
+
+  it("replace number text typed into a focused input", async () => {
+    const { form, input } = mountOrder();
+    const price = input("price");
+    price.focus();
+    typeText(price, "4.");
+    await settle();
+    expect(price.value).toBe("4.");
+    form.root.reset();
+    await settle();
+    expect(document.activeElement).toBe(price);
+    expect(price.value).toBe("3");
+  });
+});
+
+/** An input of `type` with `value`. */
+const inputWith = (type: string, value = "") => Object.assign(document.createElement("input"), { type, value });
+
+const Survey = forms.define({ defaultValues: { name: "Ada", tags: ["b"], plan: "pro", size: "l", agree: true } });
+
+describe("ref", () => {
+  it("puts the field's state back in a native control that differs, as after a browser restore", () => {
+    createRoot((dispose) => {
+      const form = createForm(Survey);
+      const name = inputWith("text", "Grace");
+      createField(form.root.at("name")).ref(name);
+      expect(name.value).toBe("Ada");
+
+      const tags = createField(form.root.at("tags"));
+      const [a, b] = ["a", "b"].map((value) => inputWith("checkbox", value));
+      if (!a || !b) throw new Error("No boxes.");
+      a.checked = true;
+      tags.ref(a);
+      tags.ref(b);
+      expect([a.checked, b.checked]).toEqual([false, true]);
+
+      const plan = createField(form.root.at("plan"));
+      const [free, pro] = ["free", "pro"].map((value) => inputWith("radio", value));
+      if (!free || !pro) throw new Error("No radios.");
+      free.checked = true;
+      plan.ref(free);
+      plan.ref(pro);
+      expect([free.checked, pro.checked]).toEqual([false, true]);
+
+      const agree = inputWith("checkbox");
+      createField(form.root.at("agree")).ref(agree);
+      expect(agree.checked).toBe(true);
+
+      const select = document.createElement("select");
+      select.append(new Option("Small", "s"), new Option("Large", "l"));
+      createField(form.root.at("size")).ref(select);
+      expect(select.value).toBe("l");
+      dispose();
+    });
+  });
+});

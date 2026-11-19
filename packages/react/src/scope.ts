@@ -17,14 +17,9 @@ import type {
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
 import type { ArrayHandleLike, HandleLike, IsEqual, SnapshotOf } from "./field.js";
-import type { InputOptionsFor, InputPropsFor, NoOptionsArgs, TextInputProps } from "./input.js";
+import type { FieldRef } from "./input.js";
+import type { FieldPieces } from "./pieces.js";
 import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
-
-/** `inputProps` on a field: `useInputProps` with the handle filled in. */
-export interface InputPropsMethod<V> {
-  <const O extends InputOptionsFor<V>>(options: O): InputPropsFor<O>;
-  (...options: NoOptionsArgs<V>): TextInputProps;
-}
 
 /** The handle members a field object carries as commands. The rest are on `handle`. */
 type CommandsOf<V, E> = Omit<
@@ -38,7 +33,10 @@ type CommandsOf<V, E> = Omit<
  * `touched`, `dirty`, `name` and the rest), the commands of its handle kind
  * (`setValue`, `setErrors`, `setTouched`, `handleBlur`, `reset`, `push` on
  * arrays, `at` on objects and so on, all bound), the handle itself,
- * `inputProps` and `errorId`. A new object comes with each new snapshot.
+ * `errorId`, and the pieces that bind an element by hand: `text`,
+ * `setText`, `setNumberText`, `ref` and `handleBlur`, which also drops typed
+ * number text. `inputProps(field)` builds a DOM prop spread from them. A
+ * new object comes with each new snapshot.
  * `Field` passes this to its children. Registered components take `FieldApi`.
  */
 export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
@@ -51,8 +49,17 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     readonly path: Path;
     /** `errorId(handle)`, for the element that shows the errors. */
     readonly errorId: string;
-    /** Input props for this field, checked by kind as `useInputProps` checks them. */
-    readonly inputProps: InputPropsMethod<V>;
+    /**
+     * The text an element shows: the number text the user is typing, else
+     * the display text a plugin such as a mask gives, else the value.
+     */
+    readonly text: string;
+    /** See `FieldPieces.setText`. */
+    readonly setText: FieldPieces["setText"];
+    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
+    readonly setNumberText: (text: string, empty?: V) => void;
+    /** See `FieldPieces.ref`. */
+    readonly ref: FieldRef;
     /** Type information only. It lets `ValueOf` and `ErrorOf` read a field object. */
     readonly "~types"?: HandleTypes<V, E>;
   };
@@ -112,10 +119,10 @@ export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false
  * when `selected` changes by `isEqual`. Use it this way to read one thing
  * about a field, such as an error count or a derived label. The handle still
  * carries every command (`setValue`, `handleBlur`, `reset`, `push` and the
- * rest), and `errorId(handle)` gives the error id. There is no `inputProps`
- * with `select`, and there can't be: input props need the value, the
- * disabled and read-only flags and the shown errors, so a render that has
- * them must re-render on all of them.
+ * rest), and `errorId(handle)` gives the error id. There are no field
+ * pieces and no `inputProps` with `select`, and there can't be: binding an
+ * element needs the value, the disabled and read-only flags and the shown
+ * errors, so a render that has them must re-render on all of them.
  */
 export interface FieldByName<V, E, N extends string, T> {
   /** A dotted path relative to the scope, through objects only. */
@@ -123,7 +130,7 @@ export interface FieldByName<V, E, N extends string, T> {
   readonly handle?: never;
   /**
    * Picks what `children` gets instead of the field object. With it,
-   * `children` has no `inputProps`. See `FieldByName`.
+   * `children` gets no field object. See `FieldByName`.
    */
   readonly select?: (snapshot: FieldSnapshot<ValueAt<V, N>, E>) => T;
   /** Compares two results of `select`. Defaults to `Object.is`. */
@@ -139,7 +146,7 @@ export interface FieldByHandle<H extends HandleLike, T> {
   readonly name?: never;
   /**
    * Picks what `children` gets instead of the field object. With it,
-   * `children` has no `inputProps`. See `FieldByName`.
+   * `children` gets no field object. See `FieldByName`.
    */
   readonly select?: (snapshot: SnapshotOf<H>) => T;
   /** Compares two results of `select`. Defaults to `Object.is`. */

@@ -13,6 +13,7 @@ import {
   createForms,
   type FieldApi,
   type FormError,
+  inputProps,
   useFormContext,
 } from "@lunarhue/forms-solid";
 import { For, onSettled } from "solid-js";
@@ -80,7 +81,7 @@ function TextField(props: FieldProps<string>) {
   return (
     <div class="field">
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps()} />
+      <input {...inputProps(props.field)} />
       <span class="checking" hidden={!props.field.validating}>
         Checking...
       </span>
@@ -94,7 +95,7 @@ function NumberField(props: FieldProps<number>) {
   return (
     <div class="field">
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps({ kind: "number" })} />
+      <input {...inputProps(props.field, { kind: "number" })} />
       <ErrorList id={props.field.errorId} errors={props.field.shownErrors} />
       <Renders id={props.field.name} />
     </div>
@@ -105,7 +106,7 @@ function Checkbox(props: FieldProps<boolean>) {
   return (
     <div class="field">
       <label>
-        <input {...props.field.inputProps({ kind: "checkbox" })} />
+        <input {...inputProps(props.field, { kind: "checkbox" })} />
         {props.label}
       </label>
       <ErrorList id={props.field.errorId} errors={props.field.shownErrors} />
@@ -119,7 +120,7 @@ function PhoneField(props: FieldProps<string>) {
   return (
     <div class="field">
       <label for={props.field.id}>{props.label}</label>
-      <input {...props.field.inputProps({ type: "tel" })} />
+      <input {...inputProps(props.field, { type: "tel" })} />
       <ErrorList id={props.field.errorId} errors={props.field.shownErrors} />
       <Renders id={props.field.name} />
     </div>

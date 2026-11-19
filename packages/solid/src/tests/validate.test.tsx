@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, type ValidatorInput } from "../index.js";
+import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
@@ -11,7 +11,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
-      <input data-label={props.label} {...props.field.inputProps()} />
+      <input data-label={props.label} {...inputProps(props.field)} />
       <span data-errors={props.label}>{props.field.errors.map((error) => error.message).join(",")}</span>
     </label>
   );
@@ -52,7 +52,7 @@ function mountSignup(check: () => Check, debounce?: number) {
         <own.Field name="name" validate={nameValidator()}>
           {(field) => (
             <>
-              <input data-label="Name" {...field.inputProps()} />
+              <input data-label="Name" {...inputProps(field)} />
               <span data-errors="Name">{field.errors.map((error) => error.message).join(",")}</span>
             </>
           )}
@@ -79,7 +79,7 @@ function WithHome() {
 
 /** A registered radio group written with `Choice`. */
 function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Choice[] }) {
-  return <For each={props.options}>{(option) => <input data-option={option} {...props.field.inputProps({ kind: "radio", value: option })} />}</For>;
+  return <For each={props.options}>{(option) => <input data-option={option} {...inputProps(props.field, { kind: "radio", value: option })} />}</For>;
 }
 
 const choiceForms = createForms({ fields: { RadioGroupField } });
