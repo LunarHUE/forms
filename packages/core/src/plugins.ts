@@ -1,7 +1,7 @@
-import type { Plugin } from "./plugin.js";
+import type { Plugin, RequiredPlugins, Requirements } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { defineHooks, type PluginDefinition } from "./store/define.js";
-import { hosts } from "./store/plugins.js";
+import { hosts } from "./store/hosts.js";
 import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
@@ -20,13 +20,22 @@ export { refuse } from "./store/plugins.js";
  * `formMeta` reader, which returns the starting value until the plugin sets
  * another. Without a starting value it has no reader and can't set meta.
  *
- * Give `schema` to make a schema plugin, which gives one library's schemas
- * their default values. Validation needs no plugin.
+ * Give `attach` for hooks at the paths the plugin's parts attach at, as
+ * `mask` does for each masked field. Give `requires` for the plugins it
+ * needs. Give `schema` to make a schema plugin, which gives one library's
+ * schemas their default values. Validation needs no plugin.
  */
-export function definePlugin<A = undefined, N extends string = string, M = never, F = never, S extends StandardSchemaV1 = never>(
-  definition: PluginDefinition<A, N, M, F, S>,
+export function definePlugin<
+  A = undefined,
+  N extends string = string,
+  M = never,
+  F = never,
+  S extends StandardSchemaV1 = never,
+  const R extends Requirements = [],
+>(
+  definition: PluginDefinition<A, N, M, F, S, R>,
   // NoInfer: a `plugins` list's element type must not pick the meta types, only the definition.
-): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>> {
+): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>> {
   return Object.assign(defineHooks(definition), { "~timing": createTiming });
 }
 

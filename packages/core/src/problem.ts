@@ -18,6 +18,7 @@ export type Code =
   | "plugins:write"
   | "plugins:loop"
   | "plugins:copies"
+  | "plugins:missing"
   | "schema:defaults"
   | "rebase:store"
   | "dirty:missing"
@@ -40,6 +41,10 @@ export function problem(code: Code, value = ""): string {
       // 10 is `maxRounds` in store/plugins.ts.
       "plugins:loop": (names) => `Plugins kept answering each other's writes for 10 rounds: ${names}.`,
       "plugins:copies": () => "This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.",
+      "plugins:missing": (names) => {
+        const [name, by] = names.split(" ");
+        return `Add ${name}() to this form's plugins: ${by ? `plugin "${by}" requires it` : "a part uses it"}.`;
+      },
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
 "dirty:missing": () =>

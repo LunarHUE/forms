@@ -7,10 +7,11 @@ import type {
   StoreInstance,
   Combined,
   DefineConfig,
+  DefineParts,
   Equals,
 } from "./definition.js";
 import type { FormError } from "./errors.js";
-import type { PluginApis, PluginNames, Plugins } from "./plugin.js";
+import type { Part, PluginApis, PluginNames, Plugins } from "./plugin.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { problem } from "./problem.js";
@@ -62,7 +63,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
 ): FormsCore<P, E> => {
   const shared: Plugins = config.plugins ?? [];
 
-  const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined): AnyStoreOptions => {
+  const storeOptions = (definition: AnyConfig, instance: StoreInstance | undefined, parts: readonly Part[]): AnyStoreOptions => {
     const { schema } = definition;
     // The shared plugins run first, then the definition's own, then the instance's.
     const plugins = [...shared, ...(definition.plugins ?? []), ...(instance?.plugins ?? [])];
@@ -86,6 +87,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
       sharedEquals: config.equals as Equals | undefined,
       plugins,
       onPluginError: config.onPluginError,
+      parts,
     };
   };
 
@@ -98,7 +100,11 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
     const D extends Plugins = [],
   >(
     definition: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    ...given: readonly DefineParts<V, S, Combined<P, D>>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>> => {
+    // `.at` gives a list of parts, so the parts come flattened.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const parts = given.flat() as readonly Part[];
     // `Definition` is a conditional type the runtime can't narrow. Every branch of it is an `AnyConfig`.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const source = definition as unknown as AnyConfig | ((options: O) => AnyConfig);
@@ -108,7 +114,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
         const resolved = typeof source === "function" ? source(options) : source;
         // The options were built from a config of these types, which the store keeps.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        return createFormStore(storeOptions(resolved, instance)) as unknown as FormStore<
+        return createFormStore(storeOptions(resolved, instance, parts)) as unknown as FormStore<
           DefinedValue<V, S, Combined<P, D>>,
           E,
           I,

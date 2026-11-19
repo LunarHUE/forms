@@ -59,14 +59,13 @@ export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
   const outside = initial === "outside";
   return defineHooks({
     name: "bind",
-    // The store starts from the outside value, so the server renders it too.
-    initial: () => (outside ? get() : undefined),
     setup(ctx) {
       const { store } = ctx;
       const current = () => store.getSnapshot([]).value;
-      // The outside value and the form value as of the last sync.
+      // The outside value and the form value as of the last sync. With
+      // `initial: "outside"` the form starts from the outside value.
       let seen: unknown = outside ? get() : none;
-      let sent: unknown = outside ? current() : none;
+      let sent: unknown = seen;
       // True while `set` runs, so the outside store's own notice is ignored.
       let sending = false;
 
@@ -101,6 +100,8 @@ export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
       };
 
       return {
+        // The store starts from the outside value, so the server renders it too.
+        initial: (value) => (outside ? seen : value),
         onWrite(records) {
           const mine = records.filter((record) => typeof record.cause !== "object" || record.cause.plugin !== "bind");
           if (mine.length > 0) send(freeze(mine));

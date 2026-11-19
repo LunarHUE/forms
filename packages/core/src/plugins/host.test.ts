@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFormsCore } from "../index.js";
 import { definePlugin } from "../plugins.js";
-import { createPluginHost, hosts } from "../store/plugins.js";
+import { hosts } from "../store/hosts.js";
+import { createPluginHost } from "../store/plugins.js";
 
 // Every host is made through this spy, so a test can count them.
 vi.mock(import("../store/plugins.js"), async (original) => {

@@ -1,6 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type { HasSchemaPlugin, Needs, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor } from "./plugin.js";
+import type { HasSchemaPlugin, Needs, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
@@ -52,9 +52,10 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * accepts makes `defaultValues` optional, `equals` needs `dirty()`, and
    * each hook plugin's API shows up on the store's `plugins`. Hook plugins run in this
    * order, except where a plugin's `after` says otherwise, and before a
-   * definition's own plugins.
+   * definition's own plugins. A plugin that another one `requires` must be
+   * in this list too.
    */
-  readonly plugins?: P;
+  readonly plugins?: P & RequiresMet<P, PluginNames<P>>;
   /**
    * Turns schema issues and thrown validator errors into the error type. Its
    * return type sets `E` for every form. Without it `E` is `FormError`.
@@ -205,16 +206,17 @@ export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O 
    */
   createStore<const X extends Plugins = []>(
     options: O,
-    instance?: StoreInstance<X & PluginsFor<V>>,
+    instance?: StoreInstance<X & PluginsFor<V> & RequiresMet<X, PluginNames<Combined<P, X>>>>,
   ): FormStore<V, E, I, R, PluginApis<Combined<P, X>>, PluginNames<Combined<P, X>>>;
 }
 
 /**
  * A definition's config with `plugins`, the plugins it installs for itself.
  * `V` is the form's value type, which a plugin that names one, such as
- * `rules<V>`, must fit.
+ * `bind`, must fit. `Installed` is every plugin name the form has, which
+ * what these plugins require must be among.
  */
-export type WithPlugins<T, D extends Plugins, V> = T & {
+export type WithPlugins<T, D extends Plugins, V, Installed extends string = PluginNames<D>> = T & {
   /**
    * Plugins for this form only, such as one bound to an outside store this
    * form alone uses. Any kind of plugin goes here, as in the shared list.
@@ -222,7 +224,7 @@ export type WithPlugins<T, D extends Plugins, V> = T & {
    * together: `schema` and `validate` are checked against both, and the
    * APIs of both are on the store's `plugins`.
    */
-  readonly plugins?: D & PluginsFor<V>;
+  readonly plugins?: D & PluginsFor<V> & RequiresMet<D, Installed>;
 };
 
 /** The plugins a definition's stores get: the shared ones, then the definition's own. */
@@ -262,16 +264,24 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
    * `R` is `unknown` and `D` is empty. Pass `I` and `R` too, as
    * `define<V, never, void, I, R>(...)`, to keep them. `D` is the
    * definition's own plugins, inferred from its `plugins`.
+   *
+   * Parts after the config attach at the root when each store is made, as
+   * `ruled(...)`, or at a field, as `fieldset.at("billing")`. Their
+   * plugins must be among the form's.
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    ...parts: readonly DefineParts<V, S, Combined<P, D>>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>>;
 }
 
+/** What `define` takes after the config: parts of the form's plugins that fit its value. */
+export type DefineParts<V, S extends StandardSchemaV1, C extends Plugins> = Parts<PluginNames<C>, NoInfer<DefinedValue<V, S, C>>>;
+
 /** What `define` takes: a config, or a function of per-store options that returns one. `C` is every plugin the form gets. */
 export type DefineConfig<V, S extends StandardSchemaV1, O, C extends Plugins, E, I, R, D extends Plugins> =
-  | WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>>
-  | ((options: O) => WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>>);
+  | WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>, PluginNames<C>>
+  | ((options: O) => WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>, PluginNames<C>>);
 
 /** A definition's config: `SchemaDefinition` when `S` is a schema, `PlainDefinition` when it is `never`. */
 export type Definition<V, S extends StandardSchemaV1, P extends Plugins, E, I, R> = [S] extends [never]

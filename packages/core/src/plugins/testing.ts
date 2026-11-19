@@ -2,7 +2,7 @@ import type { DefinedValue, Definition, WithPlugins } from "../definition.js";
 import type { FormError } from "../errors.js";
 import { createFormsCore } from "../forms-core.js";
 import type { Path } from "../path.js";
-import type { PluginApis, PluginNames, Plugins, When, WriteRecord } from "../plugin.js";
+import type { Parts, PluginApis, PluginNames, Plugins, When, WriteRecord } from "../plugin.js";
 import { definePlugin, flushPlugins } from "../plugins.js";
 import type { FieldSnapshot, FormSnapshot } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
@@ -60,6 +60,9 @@ const timings: readonly When[] = ["sync", "deferred", "idle"];
  * definition with the plugins to test in its `plugins`, as `define` does, and
  * types the store the same way, so `store.plugins` has each plugin's API.
  *
+ * Parts after the config attach at the root when the store is made, as
+ * `define` takes them.
+ *
  * Three recording plugins run after the given ones, one at each timing, to
  * fill `records`. Plugin errors go to `errors`. No timer is needed: `flush`
  * delivers what waits, and an `idle` delivery never comes before it unless
@@ -67,6 +70,7 @@ const timings: readonly When[] = ["sync", "deferred", "idle"];
  */
 export function testStore<V = never, S extends StandardSchemaV1 = never, I = undefined, R = unknown, const D extends Plugins = []>(
   config: TestStoreConfig<V, S, I, R, D>,
+  ...parts: readonly Parts<PluginNames<D>, NoInfer<DefinedValue<V, S, D>>>[]
 ): TestStore<DefinedValue<V, S, D>, I, R, PluginApis<D>, PluginNames<D>> {
   type Store = TestStore<DefinedValue<V, S, D>, I, R, PluginApis<D>, PluginNames<D>>["store"];
   const errors: PluginFailure[] = [];
@@ -78,7 +82,7 @@ export function testStore<V = never, S extends StandardSchemaV1 = never, I = und
   // The parameter's type checked the config against `D`, and the recorders add no API,
   // so the store has the type an app's store of this definition has.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const store = forms.define({ ...config, plugins: [...(config.plugins ?? []), ...recorders] } as never).createStore() as unknown as Store;
+  const store = forms.define({ ...config, plugins: [...(config.plugins ?? []), ...recorders] } as never, ...(parts as never[])).createStore() as unknown as Store;
 
   const server = (): ServerState<I, R, PluginNames<D>> => {
     const fields: Record<string, FieldSnapshot<unknown, FormError, PluginNames<D>>> = {};

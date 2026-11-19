@@ -66,6 +66,19 @@ Thrown when the store is made. The plugins' `after` lists make a loop, such
 as `a` after `b` and `b` after `a`. Remove a name from one of the `after`
 lists.
 
+<a id="core:plugins:missing"></a>
+
+### `plugins:missing`
+
+> Add &lt;name&gt;() to this form's plugins: plugin "&lt;requirer&gt;" requires it.
+
+Thrown when the store is made, or when a field type or fieldset attaches
+its parts. A plugin's `requires` names a plugin the form doesn't have, or
+a part, such as `masked(...)` on a field type, needs a plugin the form
+doesn't have. The types report this too, so it shows up where the types
+don't reach, such as a `define` call with a cast. Add the plugin to the
+form's `plugins` or to the definition's.
+
 <a id="core:plugins:write"></a>
 
 ### `plugins:write`

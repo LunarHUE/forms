@@ -1,12 +1,16 @@
+export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 
 export type {
+  Attachment,
   BaselineAt,
-  FieldDisplay,
   Needs,
+  Part,
+  PartNames,
+  Parts,
   Plugin,
   PluginApis,
   PluginBaseline,
@@ -16,6 +20,8 @@ export type {
   PluginNames,
   Plugins,
   PluginsFor,
+  Requirements,
+  RequiresMet,
   TextControl,
   Write,
   WriteCause,

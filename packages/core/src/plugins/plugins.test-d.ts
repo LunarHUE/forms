@@ -1,5 +1,5 @@
-import type { FieldSnapshot, Plugin, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
+import type { FieldSnapshot, Part, Path, Plugin, PluginContext } from "@lunarhue/forms-core";
+import { definePlugin, dirty, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
 
@@ -26,6 +26,9 @@ const upload = definePlugin({
 });
 
 const required = (value: string) => (value ? undefined : { message: "Required" });
+
+const tagged = (prefix: string): Part<"tag", string> => ({ plugin: "tag", config: { prefix } });
+const counting = () => definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
 
 describe("plugin types", () => {
   it("types the meta readers from the context and the starting values", () => {
@@ -92,9 +95,52 @@ describe("plugin types", () => {
     expectTypeOf(writer.name).toEqualTypeOf<"writer">();
   });
 
-  it("takes initial on a plugin definition", () => {
-    const start = definePlugin({ name: "start", initial: () => ({ name: "a" }), setup: () => ({}) });
-    expectTypeOf<(typeof start)["initial"]>().toEqualTypeOf<((value: unknown) => unknown) | undefined>();
+  it("types ctx.plugins from requires, and checks the list has them", () => {
+    const autosave = definePlugin({
+      name: "autosave",
+      requires: () => [counting, dirty],
+      setup(ctx) {
+        expectTypeOf(ctx.plugins.counter.count).toEqualTypeOf<number>();
+        // @ts-expect-error history isn't required
+        void ctx.plugins.history;
+        return {};
+      },
+    });
+    createFormsCore({ plugins: [counting(), dirty(), autosave] });
+    // @ts-expect-error counting() is missing
+    createFormsCore({ plugins: [dirty(), autosave] });
+    // A definition's plugins count the shared ones.
+    createFormsCore({ plugins: [counting(), dirty()] }).define({ defaultValues: { a: "" }, plugins: [autosave] });
+    // @ts-expect-error counting() is missing
+    createFormsCore({ plugins: [dirty()] }).define({ defaultValues: { a: "" }, plugins: [autosave] });
+    expectTypeOf(autosave.name).toEqualTypeOf<"autosave">();
+  });
+
+  it("takes initial, display and edit hooks", () => {
+    const start = definePlugin({
+      name: "start",
+      setup: () => ({ initial: (value) => value, display: (value) => String(value), edit: (input) => input.setSelectionRange(0, 0) }),
+    });
+    expectTypeOf(start.name).toEqualTypeOf<"start">();
+    // @ts-expect-error a plugin-level `initial` is gone: return it from setup
+    definePlugin({ name: "old", initial: () => ({}), setup: () => ({}) });
+  });
+
+  it("types attach's config from its parameter, and parts need their plugin", () => {
+    const tag = definePlugin({
+      name: "tag",
+      attach(ctx, config: { readonly prefix: string }) {
+        expectTypeOf(ctx.path).toEqualTypeOf<Path>();
+        return { display: (value) => `${config.prefix}${String(value)}` };
+      },
+    });
+    expectTypeOf(tag.name).toEqualTypeOf<"tag">();
+    const pinned: Part<"tag", { readonly a: string }> = { plugin: "tag", config: { prefix: "#" }, path: "a" };
+    createFormsCore({ plugins: [tag] }).define({ defaultValues: { a: "" } }, pinned);
+    // @ts-expect-error the form has no tag()
+    createFormsCore().define({ defaultValues: { a: "" } }, pinned);
+    // @ts-expect-error a part for string values doesn't fit the root object
+    createFormsCore({ plugins: [tag] }).define({ defaultValues: { a: "" } }, tagged("#"));
   });
 
   it("puts each API on store.plugins, typed and not optional", () => {

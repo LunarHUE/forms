@@ -2,14 +2,13 @@ import type { Flags } from "../definition.js";
 import type { FormError, Show } from "../errors.js";
 import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
-import type { AnyPlugin, PluginErrorHandler } from "../plugin.js";
+import type { AnyPlugin, Part, PluginErrorHandler } from "../plugin.js";
 import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
-import type { HookedPlugin } from "./plugins.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
 import { createValidation } from "./validation.js";
@@ -39,6 +38,8 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   readonly plugins?: readonly AnyPlugin[] | undefined;
   /** Called when a plugin hook throws. Defaults to throwing on a later task. */
   readonly onPluginError?: PluginErrorHandler | undefined;
+  /** Parts to attach at the root once the plugins are set up, as `define` takes them after the config. */
+  readonly parts?: readonly Part[] | undefined;
 }
 
 /**
@@ -62,13 +63,9 @@ export interface FormInternals<V, E, I, R> {
 export function createFormInternals<V, E = FormError, I = undefined, R = unknown, O = V>(
   given: FormStoreOptions<V, E, I, R, O>,
 ): FormInternals<V, E, I, R> {
-  const plugins = given.plugins ?? [];
-  let initial: unknown = given.initial;
-  // Each plugin can replace the starting value, so the last one that does wins.
-  for (const plugin of plugins) initial = plugin.initial?.(initial) ?? initial;
-  // A plugin's starting value is one the form's value type allows, as a write's is.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const options = { ...given, initial: initial as V };
+  const options = given;
+  const plugins = options.plugins ?? [];
+  const parts = options.parts ?? [];
   // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
@@ -80,9 +77,11 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   });
   // Only a store with hook plugins gets a host. The plugins bring its code
   // with them, so core neither carries nor runs it for a store without.
-  const hooked = plugins.filter((plugin): plugin is HookedPlugin => plugin.setup !== undefined);
+  const hooked = plugins.filter((plugin) => plugin.setup !== undefined || plugin.attach !== undefined);
   const createHost = hooked[0]?.["~host"];
-  const host = createHost?.(raw, hooked, options.onPluginError);
+  const host = createHost?.(raw, plugins, options.onPluginError);
+  // A part's plugin is missing, as the types say when there are types.
+  if (!host && parts[0]) throw new Error(problem("plugins:missing", parts[0].plugin));
   // Each copy of core has its own host and its own `refuse`, so plugins from
   // two copies don't work together. Development only: production drops it.
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin["~host"] !== createHost)) {
@@ -149,7 +148,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
   };
-  host?.start(store, baseline, validation);
+  host?.start(store, baseline, validation, parts);
   return { store, core, baseline, validation, submit };
 }
 
