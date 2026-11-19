@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf, inputProps } from "../index.js";
 import { definePlugin } from "../plugins.js";
 import { getAs, mount } from "./dom.js";
+import { arrays } from "../plugins.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
@@ -15,7 +16,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 const Order = forms.define({
   defaultValues: { name: "", address: { city: "" }, rows: [{ title: "a" }, { title: "b" }] },
 });
@@ -194,7 +195,7 @@ const chars = definePlugin({
 
 describe("a field object's meta", () => {
   it("is reactive, so a plugin's meta reader tracks it", () => {
-    const Named = createForms({ plugins: [chars] }).define({ defaultValues: { name: "" } });
+    const Named = createForms({ plugins: [arrays(), chars] }).define({ defaultValues: { name: "" } });
     const { field, length, dispose } = createRoot((stop) => {
       const name = createField(createForm(Named).root.at("name"));
       return { field: name, length: createMemo(() => chars.meta(name)), dispose: stop };

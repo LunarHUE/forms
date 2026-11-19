@@ -5,11 +5,12 @@ import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals } from "../store/form-store.js";
 import type { ValidatorContext } from "../validator.js";
+import { arrays } from "./arrays.js";
 import { dirty } from "./dirty.js";
 import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
 
 const make = (initial: unknown, plugins: readonly AnyPlugin[] = [rebasePlugin(), dirty()]) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, plugins });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [arrays(), ...plugins] });
   // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const rebase = (parts.store.plugins as { readonly rebase: Rebase }).rebase;

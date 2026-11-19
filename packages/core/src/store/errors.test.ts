@@ -6,6 +6,7 @@ import type { FormStore } from "../store.js";
 import type { Validator } from "../validator.js";
 import { dirty } from "../plugins/dirty.js";
 import { createFormStore, type FormStoreOptions } from "./form-store.js";
+import { arrays } from "../plugins/arrays.js";
 
 interface Value {
   name: string;
@@ -17,7 +18,7 @@ const initial: Value = { name: "", rows: [{ title: "" }, { title: "" }] };
 const plugins = [dirty()];
 
 const make = (options: Omit<FormStoreOptions<Value>, "id" | "initial"> = {}, value: Value = initial) =>
-  createFormStore<Value>({ id: "f", initial: value, plugins, ...options });
+  createFormStore<Value>({ id: "f", initial: value, plugins: [arrays(), ...plugins], ...options });
 
 const err = (message: string): FormError => ({ message });
 const required = (value: unknown) => (value === "" ? err("Required") : undefined);

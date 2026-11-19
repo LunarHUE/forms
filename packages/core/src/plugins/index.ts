@@ -1,6 +1,7 @@
 // The ./plugins entry. Plugin modules import definePlugin from ../plugins.js,
 // so the barrel lives here instead of there, and nothing imports it back.
 export * from "../plugins.js";
+export * from "./arrays.js";
 export * from "./bind.js";
 export * from "./dirty.js";
 export * from "./history.js";

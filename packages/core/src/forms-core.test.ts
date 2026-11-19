@@ -7,6 +7,7 @@ import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { dirty } from "./plugins/dirty.js";
 import { definePlugin } from "./plugins.js";
+import { arrays } from "./plugins/arrays.js";
 
 /** A hand-written Standard Schema of vendor `vendor`. */
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -49,14 +50,14 @@ describe("defaults", () => {
   it("start from the schema plugin's defaults", () => {
     const { plugin, defaultValue } = fakeAdapter(userDefaults);
     const schema = fakeSchema<User>();
-    const store = createFormsCore({ plugins: [plugin] }).define({ schema }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), plugin] }).define({ schema }).createStore();
     expect(store.root.peek().value).toEqual(userDefaults);
     expect(defaultValue).toHaveBeenCalledWith(schema);
   });
 
   it("merge partial defaultValues over the schema plugin's, object by object", () => {
     const { plugin } = fakeAdapter({ ...userDefaults, tags: ["a"] });
-    const store = createFormsCore({ plugins: [plugin] })
+    const store = createFormsCore({ plugins: [arrays(), plugin] })
       .define({ schema: fakeSchema<User>(), defaultValues: { name: undefined, address: { city: "Paris" }, tags: ["b", "c"] } })
       .createStore();
     expect(store.root.peek().value).toEqual({ name: "", address: { city: "Paris", zip: "" }, tags: ["b", "c"] });
@@ -65,7 +66,7 @@ describe("defaults", () => {
   it("use complete defaultValues as given when no schema plugin has the schema's vendor", () => {
     const { plugin, defaultValue } = fakeAdapter(userDefaults);
     const defaultValues: User = { name: "Ada", address: { city: "Paris", zip: "75" }, tags: [] };
-    const store = createFormsCore({ plugins: [plugin] })
+    const store = createFormsCore({ plugins: [arrays(), plugin] })
       // The types can't see a vendor. At runtime no plugin has this one, so the complete defaultValues are used.
       .define({ schema: fakeSchema<User>(undefined, "other"), defaultValues })
       .createStore();
@@ -75,7 +76,7 @@ describe("defaults", () => {
 
   it("use defaultValues as given without a schema", () => {
     const { plugin, defaultValue } = fakeAdapter(userDefaults);
-    const store = createFormsCore({ plugins: [plugin] }).define({ defaultValues: { a: 1 } }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), plugin] }).define({ defaultValues: { a: 1 } }).createStore();
     expect(store.root.peek().value).toEqual({ a: 1 });
     expect(defaultValue).not.toHaveBeenCalled();
   });
@@ -83,7 +84,7 @@ describe("defaults", () => {
   it("throw at createStore for a schema with no schema plugin and no defaultValues", () => {
     const schema = fakeSchema<User>(undefined, "other");
     // @ts-expect-error: no schema plugin accepts this schema, so defaultValues is required
-    const form = createFormsCore().define({ schema });
+    const form = createFormsCore({ plugins: [arrays(), arrays()] }).define({ schema });
     expect(() => form.createStore()).toThrow(/vendor "other".*defaultValues/);
     vi.stubEnv("NODE_ENV", "production");
     try {
@@ -97,7 +98,7 @@ describe("defaults", () => {
   it("ask the first of two schema plugins with the same vendor", () => {
     const first = fakeAdapter({ from: "first" });
     const second = fakeAdapter({ from: "second" });
-    const store = createFormsCore({ plugins: [first.plugin, second.plugin] })
+    const store = createFormsCore({ plugins: [arrays(), first.plugin, second.plugin] })
       .define({ schema: fakeSchema<{ from: string }>() })
       .createStore();
     expect(store.root.peek().value).toEqual({ from: "first" });
@@ -109,14 +110,14 @@ describe("item values", () => {
   it("come from the schema plugin on a bare push", () => {
     const { plugin, itemValue } = fakeAdapter({ rows: [] }, { title: "" });
     const schema = fakeSchema<{ rows: { title: string }[] }>();
-    const store = createFormsCore({ plugins: [plugin] }).define({ schema }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), plugin] }).define({ schema }).createStore();
     store.root.at("rows").push();
     expect(store.root.peek().value).toEqual({ rows: [{ title: "" }] });
     expect(itemValue).toHaveBeenCalledWith(schema, ["rows"]);
   });
 
   it("are undefined without a schema", () => {
-    const store = createFormsCore().define<{ rows: (string | undefined)[] }>({ defaultValues: { rows: [] } }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), arrays()] }).define<{ rows: (string | undefined)[] }>({ defaultValues: { rows: [] } }).createStore();
     store.root.at("rows").push();
     expect(store.root.peek().value).toEqual({ rows: [undefined] });
   });
@@ -127,7 +128,7 @@ describe("the function form", () => {
     const config = vi.fn<(options: { name: string }) => { defaultValues: { name: string } }>((options) => ({
       defaultValues: { name: options.name },
     }));
-    const form = createFormsCore().define(config);
+    const form = createFormsCore({ plugins: [arrays(), arrays()] }).define(config);
     expect(config).not.toHaveBeenCalled();
     const ada = form.createStore({ name: "Ada" });
     const bob = form.createStore({ name: "Bob" });
@@ -138,7 +139,7 @@ describe("the function form", () => {
   });
 
   it("gives each store its own value from a plain config", () => {
-    const form = createFormsCore().define({ defaultValues: { name: "" } });
+    const form = createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "" } });
     const one = form.createStore();
     const two = form.createStore();
     one.root.at("name").setValue("x");
@@ -184,7 +185,7 @@ describe("shared settings and per-definition overrides", () => {
       if (ctx.path.join(".") === "name" && typeof a === "string" && typeof b === "string") return a.toLowerCase() === b.toLowerCase();
       return next(a, b);
     });
-    const store = createFormsCore({ plugins: [dirty()], equals: sharedEquals })
+    const store = createFormsCore({ plugins: [arrays(), dirty()], equals: sharedEquals })
       .define({ defaultValues: { name: "ada", age: 1 }, equals: ownEquals })
       .createStore();
     store.root.at("name").setValue("ADA");
@@ -203,7 +204,7 @@ describe("shared settings and per-definition overrides", () => {
   it("send schema issues and thrown errors through the shared mapError", () => {
     const schema = fakeSchema<{ a: string }>((value) => ({ issues: [{ message: "bad", path: ["a"] }], value }));
     const { plugin } = fakeAdapter({ a: "" });
-    const store = createFormsCore({ plugins: [plugin], mapError: (raw) => ({ code: `${raw.source}:${raw.message}` }) })
+    const store = createFormsCore({ plugins: [arrays(), plugin], mapError: (raw) => ({ code: `${raw.source}:${raw.message}` }) })
       .define({
         schema,
         defaultValues: { a: "" },
@@ -223,7 +224,7 @@ describe("shared settings and per-definition overrides", () => {
 
 describe("instance settings", () => {
   it("take the store id from instance.id, and default to form", () => {
-    const form = createFormsCore().define({ defaultValues: { name: "" } });
+    const form = createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "" } });
     const store = form.createStore(undefined, { id: "profile" });
     expect(store.id).toBe("profile");
     expect(store.root.at("name").id).toBe("profile--name");
@@ -241,7 +242,7 @@ describe("no side effects", () => {
     const onSubmit = vi.fn<() => void>();
     const mapError = vi.fn<(raw: RawError) => FormError>((raw) => ({ message: raw.message }));
     const equals = vi.fn<Equals>((a, b, _ctx, next) => next(a, b));
-    const core = createFormsCore({ plugins: [plugin, dirty()], mapError, equals });
+    const core = createFormsCore({ plugins: [arrays(), plugin, dirty()], mapError, equals });
     const definition = core.define({
       schema: fakeSchema<{ a: string; rows: string[] }>(validate),
       validate: { on: "input", form, fields: { a: field } },
@@ -280,7 +281,7 @@ describe("end to end", () => {
   it("defines, writes, blurs, fails a submit, and passes the schema output once fixed", async () => {
     const { plugin } = fakeAdapter({ name: "", age: "" });
     const onSubmit = vi.fn<(value: Output) => string>((value) => `saved ${value.name}`);
-    const store = createFormsCore({ plugins: [plugin] }).define({ schema, onSubmit }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), plugin] }).define({ schema, onSubmit }).createStore();
     const name = store.root.at("name");
     const age = store.root.at("age");
 
@@ -302,7 +303,7 @@ describe("end to end", () => {
 });
 
 const makeOrder = () =>
-  createFormsCore()
+  createFormsCore({ plugins: [arrays(), arrays()] })
     .define({ defaultValues: { name: "", tags: ["a"], address: { city: "Paris" }, rows: [{ title: "x", tags: ["t"] }] } })
     .createStore();
 

@@ -4,20 +4,7 @@ import { problem } from "../problem.js";
 import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
-import {
-  createKeyList,
-  hadKey,
-  indexOfKey,
-  initialIndex,
-  initialKeys,
-  insertKey,
-  keyAt,
-  keysView,
-  type KeyList,
-  moveKey,
-  removeKey,
-  resizeKeys,
-} from "./keys.js";
+import { hadKey, indexOfKey, initialIndex, initialKeys, keyAt, keysView, type KeyList } from "./keys.js";
 import { childOf, isPlainObject, setAt } from "./tree.js";
 
 export type { Snapshot } from "./entries.js";
@@ -48,7 +35,28 @@ export interface StoreCoreOptions {
    * The form's `dirty` is its answer for the root. Without it nothing is dirty.
    */
   readonly dirty?: ((path: Path, value: unknown) => boolean) | undefined;
+  /**
+   * The array code, from `arrays()`. Without it every array has the
+   * positional keys `k0`, `k1`, ..., and `insert`, `remove` and `move` do
+   * nothing.
+   */
+  readonly arrays?: CreateArrays | undefined;
 }
+
+/**
+ * The array code: what fits a node's key list to its value, then the
+ * `insert`, `remove` and `move` commands. A tuple, so the names minify.
+ */
+export type ArrayKit<E> = readonly [sync: (node: Node<E>) => void, insert: StoreCore<E>["insert"], remove: StoreCore<E>["remove"], move: StoreCore<E>["move"]];
+
+/** Makes the array code of one store core. */
+export type CreateArrays = <E>(
+  fieldAt: (path: Path) => Node<E> | undefined,
+  writeAt: (node: Node<E>, value: unknown) => void,
+  bump: (from: Node<E> | undefined, count: Count, delta: number) => void,
+  withErrors: Set<Node<E>>,
+  ownerNodes: Map<string, Set<Node<E>>>,
+) => ArrayKit<E>;
 
 /**
  * The value store under a form store: the value tree, item keys, per-field
@@ -193,7 +201,7 @@ interface Flag {
 type FlagKind = "disabled" | "readOnly";
 
 /** Counts of nodes at and below a node that are edited, invalid or validating. */
-type Count = "editedCount" | "invalidCount" | "validatingCount";
+export type Count = "editedCount" | "invalidCount" | "validatingCount";
 
 /**
  * One stable path the store knows about. A node exists once something read,
@@ -201,7 +209,7 @@ type Count = "editedCount" | "invalidCount" | "validatingCount";
  * to date on each write that reaches it, so reads only look nodes up. Field
  * state lives here, so it follows an item when the item moves.
  */
-interface Node<E> extends Cell<Snapshot<E>> {
+export interface Node<E> extends Cell<Snapshot<E>> {
   readonly parent: Node<E> | undefined;
   /** The stable segment under the parent, as a string. */
   readonly seg: string;
@@ -252,7 +260,7 @@ type Meta = Readonly<Record<string, unknown>> | undefined;
 function inValueOrder<E>(node: Node<E>): Node<E>[] {
   const { children, value } = node;
   if (!children) return [];
-  const order = Array.isArray(value) && node.list ? node.list.keys : isPlainObject(value) ? Object.keys(value) : [];
+  const order = Array.isArray(value) ? (node.snapshot.keys ?? []) : isPlainObject(value) ? Object.keys(value) : [];
   const ordered: Node<E>[] = [];
   for (const seg of order) {
     const child = children.get(seg);
@@ -262,7 +270,15 @@ function inValueOrder<E>(node: Node<E>): Node<E>[] {
   return ordered;
 }
 
-const clamp = (index: number, max: number) => Math.max(0, Math.min(index, max));
+// An array command on a store without `arrays()`. The types don't catch it, so production does nothing.
+const missing = (): undefined => {
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", "arrays"));
+  return undefined;
+};
+
+// The positional key lists, by length, shared by every array without `arrays()`.
+const positional: (readonly string[])[] = [];
+const positionalKeys = (length: number): readonly string[] => (positional[length] ??= freeze(initialKeys(length)));
 
 /** A value no field holds, so `dirty` is computed again. */
 const stale: unknown = Symbol("stale");
@@ -309,6 +325,10 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   // True once `submit:unseen` was logged for this store.
   let warnedUnseen = false;
 
+  // The index of item key `seg` in the array at `node` of `length` items, or -1.
+  const indexIn = (node: Node<E> | undefined, seg: string, length: number) =>
+    node?.list ? indexOfKey(node.list, seg) : initialIndex(seg, length);
+
   // Where `node` sits now, from its parent's value and key list.
   const place = (node: Node<E>) => {
     const parent = node.parent;
@@ -322,7 +342,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     if (parent.blocked) return;
     const holder = parent.value;
     if (Array.isArray(holder)) {
-      const index = parent.list ? indexOfKey(parent.list, node.seg) : -1;
+      const index = indexIn(parent, node.seg, holder.length);
       if (index < 0) node.blocked = true;
       else {
         node.index = index;
@@ -371,7 +391,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const invalid = node.validation.length > 0;
     // User errors always show: something set them on purpose.
     const shownErrors = invalid && showsValidation(node, dirty) ? node.errors : node.user;
-    return entries(node.value, node.name, Array.isArray(node.value) && node.list ? keysView(node.list) : undefined, {
+    return entries(node.value, node.name, Array.isArray(node.value) ? (node.list ? keysView(node.list) : positionalKeys(node.value.length)) : undefined, {
       errors: node.errors,
       shownErrors,
       invalid,
@@ -495,38 +515,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     rebuild(node);
   };
 
-  // Marks `node` and its subtree dead and drops them from the store-wide indexes.
-  const bury = (node: Node<E>) => {
-    node.dead = true;
-    withErrors.delete(node);
-    if (node.validating) for (const owner of node.validating) ownerNodes.get(owner)?.delete(node);
-    if (node.byOwner) for (const owner of node.byOwner.keys()) ownerNodes.get(owner)?.delete(node);
-    node.children?.forEach(bury);
-  };
-
-  // Moves the child at item key `key` to `removed`, takes its state out of the
-  // counts above it and marks its subtree dead. Its snapshots are current as
-  // of the last change, so they stay the last ones.
-  const kill = (node: Node<E>, key: string) => {
-    const child = node.children?.get(key);
-    if (!child) return;
-    node.children?.delete(key);
-    (node.removed ??= new Map()).set(key, child);
-    bump(node, "editedCount", -child.editedCount);
-    bump(node, "invalidCount", -child.invalidCount);
-    bump(node, "validatingCount", -child.validatingCount);
-    bury(child);
-  };
-
-  // Fits the key list to the value. Keys are made here the first time the value is an array.
-  const syncKeys = (node: Node<E>) => {
-    const length = Array.isArray(node.value) ? node.value.length : 0;
-    if (!node.list) {
-      if (Array.isArray(node.value)) node.list = createKeyList(length);
-      return;
-    }
-    for (const key of resizeKeys(node.list, length)) kill(node, key);
-  };
+  const syncKeys = (node: Node<E>) => kit?.[0](node);
 
   const createNode = (parent: Node<E> | undefined, seg: string): Node<E> => {
     const node: Node<E> = {
@@ -686,15 +675,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     commit(freezePath(next, path), node);
   };
 
-  // The array node at `path` when it can take an array write: an array, or missing.
-  const arrayAt = (path: Path): { node: Node<E>; items: readonly unknown[] } | undefined => {
-    const node = fieldAt(path);
-    if (!node) return undefined;
-    if (Array.isArray(node.value)) return { node, items: node.value };
-    if (node.value === undefined || node.value === null) return { node, items: [] };
-    return undefined;
-  };
-
   // The snapshot `node` had when the store started. The root and every node
   // made by then have theirs. A node made since gets one from its parent's:
   // the value under it, found by the parent's item keys then, and the flags
@@ -714,7 +694,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
         step = String(index);
       }
     } else if (isPlainObject(holder)) value = childOf(holder, step);
-    const keys = Array.isArray(value) ? freeze(initialKeys(value.length)) : undefined;
+    const keys = Array.isArray(value) ? positionalKeys(value.length) : undefined;
     return (node.server = freeze(
       entries(value, above.name === "" ? step : `${above.name}.${step}`, keys, {
         ...idle,
@@ -798,6 +778,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     };
   };
 
+  const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes);
+
   const form = (): Cell<FormSnapshot<I, R, "dirty">> =>
     (formCell ??= {
       snapshot: settle(buildForm(), serverFormSnapshot()),
@@ -828,43 +810,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       writeAt(node, value);
       return true;
     },
-    insert(path, index, item) {
-      const target = arrayAt(path);
-      if (!target || !Number.isInteger(index)) return undefined;
-      const { node, items } = target;
-      const at = clamp(index, items.length);
-      const key = insertKey((node.list ??= createKeyList(0)), at);
-      // Spread then splice, since `slice` is slow on the frozen arrays of development.
-      const next = [...items];
-      next.splice(at, 0, item);
-      writeAt(node, next);
-      return key;
-    },
-    remove(path, index) {
-      const target = arrayAt(path);
-      if (!target || !target.node.list || !Number.isInteger(index)) return undefined;
-      const { node, items } = target;
-      if (index < 0 || index >= items.length) return undefined;
-      const key = removeKey(target.node.list, index);
-      if (key !== undefined) kill(node, key);
-      const next = [...items];
-      next.splice(index, 1);
-      writeAt(node, next);
-      return key;
-    },
-    move(path, from, to) {
-      const target = arrayAt(path);
-      if (!target || !target.node.list || !Number.isInteger(from) || !Number.isInteger(to)) return false;
-      const { node, items } = target;
-      if (from < 0 || from >= items.length) return false;
-      const at = clamp(to, items.length - 1);
-      if (at === from) return false;
-      moveKey(target.node.list, from, at);
-      const next = [...items];
-      next.splice(at, 0, ...next.splice(from, 1));
-      writeAt(node, next);
-      return true;
-    },
+    insert: kit?.[1] ?? missing,
+    remove: kit?.[2] ?? missing,
+    move: kit?.[3] ?? (() => !!missing()),
 
     setTouched(path, touched) {
       const node = fieldAt(path);
@@ -1050,7 +998,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
         else if (Array.isArray(value)) {
           if (!hadKey(node?.list, seg, value.length)) return undefined;
           steps.push(true);
-          const index = node?.list ? indexOfKey(node.list, seg) : initialIndex(seg, value.length);
+          const index = indexIn(node, seg, value.length);
           if (index >= 0) value = value[index];
           else if (child) value = child.value;
           else known = false;

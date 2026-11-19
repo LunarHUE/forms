@@ -7,6 +7,7 @@ import * as zm from "zod/mini";
 import * as z3 from "zod/v3";
 import { valibot } from "./valibot.js";
 import { zod, type ZodSchema } from "./zod.js";
+import { arrays } from "@lunarhue/forms-core/plugins";
 
 const defaultValue = (schema: ZodSchema) => zod().schema.defaultValue(schema);
 const itemValue = (schema: ZodSchema, path: Path) => zod().schema.itemValue(schema, path);
@@ -246,7 +247,7 @@ describe("the plugin", () => {
 });
 
 describe("with core", () => {
-  const core = createFormsCore({ plugins: [zod()] });
+  const core = createFormsCore({ plugins: [arrays(), zod()] });
 
   const profile = z.object({
     name: z.string().min(1, "Name required"),
@@ -342,7 +343,7 @@ describe("with core", () => {
   });
 
   it("works next to the valibot plugin, each schema with its own", () => {
-    const both = createFormsCore({ plugins: [zod(), valibot()] });
+    const both = createFormsCore({ plugins: [arrays(), zod(), valibot()] });
     const fromZod = both.define({ schema: z.object({ a: z.string(), list: z.array(z.boolean()) }) }).createStore();
     const fromValibot = both.define({ schema: v.object({ b: v.boolean(), list: v.array(v.string()) }) }).createStore();
     expect(fromZod.root.peek().value).toEqual({ a: "", list: [] });

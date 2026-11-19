@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { definePlugin, refuse } from "../plugins.js";
 import { testStore } from "./testing.js";
+import { arrays } from "./arrays.js";
 
 const contact = () => ({ phone: "", code: "" });
 
@@ -15,7 +16,7 @@ const trim = (...fields: string[]) =>
 
 describe("testStore", () => {
   it("records each timing's deliveries, and delivers the waiting ones on flush", async () => {
-    const { store, records, flush } = testStore({ defaultValues: contact(), plugins: [] });
+    const { store, records, flush } = testStore({ defaultValues: contact(), plugins: [arrays(), ] });
     store.root.at("phone").setValue("1");
     const write = { type: "value", path: ["phone"], before: "", after: "1", cause: "user" };
     expect(records).toEqual({ sync: [write], deferred: [], idle: [] });
@@ -38,7 +39,7 @@ describe("testStore", () => {
         },
       }),
     });
-    const { store, records } = testStore({ defaultValues: contact(), plugins: [copy] });
+    const { store, records } = testStore({ defaultValues: contact(), plugins: [arrays(), copy] });
     store.root.at("phone").setValue("1");
     expect(records.sync.map((record) => [record.path, record.cause])).toEqual([
       [["phone"], "user"],
@@ -55,7 +56,7 @@ describe("testStore", () => {
         },
       }),
     });
-    const { store, errors } = testStore({ defaultValues: contact(), plugins: [broken] });
+    const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), broken] });
     store.root.at("phone").setValue("1");
     expect(store.root.at("phone").peek().value).toBe("1");
     expect(errors).toEqual([{ plugin: "broken", error: new Error("after") }]);
@@ -72,7 +73,7 @@ describe("testStore", () => {
         },
       }),
     });
-    const { listen } = testStore({ defaultValues: contact(), plugins: [active] });
+    const { listen } = testStore({ defaultValues: contact(), plugins: [arrays(), active] });
     expect(events).toEqual([]);
     const stop = listen();
     expect(events).toEqual(["on"]);
@@ -90,7 +91,7 @@ describe("testStore", () => {
         return {};
       },
     });
-    const config = { defaultValues: { name: "", rows: [{ t: "a" }] }, plugins: [fill] };
+    const config = { defaultValues: { name: "", rows: [{ t: "a" }] }, plugins: [arrays(), fill] };
     const { store, server } = testStore(config);
     const before = server();
     expect(Object.keys(before.fields)).toEqual(["", "name", "rows", "rows.0", "rows.0.t", "rows.1", "rows.1.t"]);
@@ -115,7 +116,7 @@ describe("testStore", () => {
     });
     const { store, errors } = testStore({
       defaultValues: contact(),
-      plugins: [watch],
+      plugins: [arrays(), watch],
       validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } },
       onSubmit: (value) => value.phone,
     });
@@ -128,7 +129,7 @@ describe("testStore", () => {
   });
 
   it("runs the example on the Writing a plugin page", () => {
-    const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
+    const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [arrays(), trim("name")] });
     store.root.at("name").setValue("  Ada ");
     store.root.at("note").setValue(" hi ");
     expect(store.root.peek().value).toEqual({ name: "Ada", note: " hi " });
@@ -138,7 +139,7 @@ describe("testStore", () => {
 
   it("types store.plugins from the plugin list", async () => {
     const lock = definePlugin({ name: "lock", setup: () => ({ onSubmit: () => refuse, api: { locked: true } }) });
-    const { store } = testStore({ defaultValues: contact(), plugins: [lock] });
+    const { store } = testStore({ defaultValues: contact(), plugins: [arrays(), lock] });
     const locked: boolean = store.plugins.lock.locked;
     expect(locked).toBe(true);
     expect(await store.submit()).toEqual({ status: "invalid" });

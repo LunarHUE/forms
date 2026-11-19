@@ -5,11 +5,12 @@ import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { dirty } from "../plugins/dirty.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { arrays } from "../plugins/arrays.js";
 
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [dirty()], ...options });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [arrays(), dirty()], ...options });
   const written = vi.spyOn(parts.validation, "written");
   const blurred = vi.spyOn(parts.validation, "blurred");
   return { ...parts, root: parts.store.root, written, blurred };

@@ -3,6 +3,7 @@ import type { Equals } from "../definition.js";
 import type { FormError } from "../errors.js";
 import type { Path } from "../path.js";
 import { type Rebase, rebase as rebasePlugin } from "../plugins/rebase.js";
+import { arrays } from "../plugins/arrays.js";
 import { dirty as dirtyPlugin } from "../plugins/dirty.js";
 import { createFormInternals, type FormStoreOptions, type MadeStore } from "./form-store.js";
 import type { Handle } from "./handles.js";
@@ -12,7 +13,7 @@ type Store = MadeStore<unknown, FormError, undefined, unknown>;
 type Options = Omit<FormStoreOptions<unknown>, "id" | "initial">;
 
 const make = (initial: unknown, options: Options = {}) => {
-  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [rebasePlugin(), dirtyPlugin()], ...options });
+  const parts = createFormInternals<unknown>({ id: "f", initial, plugins: [arrays(), rebasePlugin(), dirtyPlugin()], ...options });
   // The internals' store has no typed plugin APIs. The rebase plugin's API is a `Rebase`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const rebase = (parts.store.plugins as { readonly rebase: Rebase }).rebase;
@@ -390,7 +391,7 @@ describe("cost", () => {
 });
 
 /** A store as `make` builds it, without `dirty()`. */
-const bare = (initial: unknown, options: Options = {}) => make(initial, { plugins: [rebasePlugin()], ...options });
+const bare = (initial: unknown, options: Options = {}) => make(initial, { plugins: [arrays(), rebasePlugin()], ...options });
 
 describe("without dirty()", () => {
   it("is never dirty, on the server or the client, and throws for changes()", () => {

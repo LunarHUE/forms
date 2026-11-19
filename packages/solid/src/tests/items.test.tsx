@@ -4,8 +4,9 @@ import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import { createForm, createForms, createItems, type FormOf, inputProps } from "../index.js";
 import { getAs, mount, settle, typeText } from "./dom.js";
+import { arrays } from "../plugins.js";
 
-const forms = createForms({ plugins: [valibot()] });
+const forms = createForms({ plugins: [arrays(), valibot()] });
 const List = forms.define({
   schema: v.object({ rows: v.array(v.object({ title: v.string() })) }),
   defaultValues: { rows: [{ title: "a" }, { title: "b" }, { title: "c" }] },

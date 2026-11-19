@@ -4,6 +4,8 @@ import type { Submission } from "./snapshot.js";
 import type { AnyFormStore } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
+import type { CreateArrays } from "./store/core.js";
+import type { BuildKeys } from "./store/baseline/keys.js";
 import type { CreateHost } from "./store/plugins.js";
 import type { CreateParts, ListParts } from "./store/parts.js";
 import type { CreateTiming } from "./store/timing.js";
@@ -343,6 +345,8 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~list"?: ListParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
+  /** Item keys and array commands for the store core, then the baseline's key trie, from `arrays()`. Internal. */
+  readonly "~arrays"?: readonly [CreateArrays, BuildKeys];
 }
 
 /** The reader of a plugin that keeps meta on fields. */

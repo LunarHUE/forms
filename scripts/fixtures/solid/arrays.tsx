@@ -1,8 +1,9 @@
 // The bare form with an array of fields: items rendered by `form.Items`, added, removed and moved.
 import { createForm, createForms } from "@lunarhue/forms-solid";
+import { arrays } from "@lunarhue/forms-solid/plugins";
 import { TextInput } from "./input.js";
 
-const forms = createForms();
+const forms = createForms({ plugins: [arrays()] });
 const invite = forms.define({ defaultValues: { emails: [{ address: "" }] }, onSubmit: (value) => value.emails });
 
 export function App() {

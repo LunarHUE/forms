@@ -74,11 +74,14 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
+  // Item keys that follow inserts, removes and moves come with `arrays()`.
+  const arrays = plugins.find((plugin) => plugin["~arrays"])?.["~arrays"];
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
     // The core first calls this when something reads, after `baseline` below exists.
     dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
+    arrays: arrays?.[0],
   });
   // Only a store with hook plugins gets a host. The plugins bring its code
   // with them, so core neither carries nor runs it for a store without.
@@ -98,7 +101,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = (host?.core ?? raw) as StoreCore<E, I, R>;
   const context: FormContext<V, E, I, R> = { core, store: () => store };
-  const baseline = createBaseline(context, options, createDirty);
+  const baseline = createBaseline(context, options, createDirty, arrays?.[1]);
   const validation = createValidation(context, options);
   const submit = createSubmit(context, options, validation, host);
 

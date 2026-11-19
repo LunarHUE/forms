@@ -6,6 +6,7 @@ import { history } from "./history.js";
 import { persist } from "./persist.js";
 import { rebase } from "./rebase.js";
 import { testStore } from "./testing.js";
+import { arrays } from "./arrays.js";
 
 const profile = () => ({ name: "ada", email: "ada@example.com" });
 const list = () => ({ tags: ["a", "b"] });
@@ -32,7 +33,7 @@ function slowSave() {
 
 describe("baselineOnSubmit", () => {
   it("leaves the form clean after a successful save", async () => {
-    const { store, errors } = testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit()], onSubmit: () => "saved" });
+    const { store, errors } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: () => "saved" });
     store.root.at("name").setValue("grace");
     expect(store.getFormSnapshot().dirty).toBe(true);
     expect(await store.submit()).toEqual({ status: "succeeded", result: "saved" });
@@ -44,7 +45,7 @@ describe("baselineOnSubmit", () => {
 
   it("keeps a field edited while the save ran dirty, with its newer text", async () => {
     const saving = slowSave();
-    const { store } = testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
+    const { store } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
     store.root.at("name").setValue("grace");
     store.root.at("email").setValue("grace@example.com");
     const done = store.submit();
@@ -65,7 +66,7 @@ describe("baselineOnSubmit", () => {
     let sent: unknown;
     const { store } = testStore({
       defaultValues: profile(),
-      plugins: [dirty(), baselineOnSubmit()],
+      plugins: [arrays(), dirty(), baselineOnSubmit()],
       validate: { fields: { email: () => checking.promise.then(() => undefined) } },
       onSubmit: (value) => void (sent = value),
     });
@@ -83,18 +84,18 @@ describe("baselineOnSubmit", () => {
     const cases = [
       testStore({
         defaultValues: profile(),
-        plugins: [dirty(), baselineOnSubmit()],
+        plugins: [arrays(), dirty(), baselineOnSubmit()],
         validate: { fields: { email: (value) => (value.includes("@") ? undefined : { message: "Email" }) } },
       }),
-      testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit(), refusing] }),
+      testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit(), refusing] }),
       testStore({
         defaultValues: profile(),
-        plugins: [dirty(), baselineOnSubmit()],
+        plugins: [arrays(), dirty(), baselineOnSubmit()],
         onSubmit: () => {
           throw new Error("down");
         },
       }),
-      testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit()], onSubmit: () => Promise.reject(new Error("down")) }),
+      testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: () => Promise.reject(new Error("down")) }),
     ];
     const statuses: string[] = [];
     for (const { store } of cases) {
@@ -109,7 +110,7 @@ describe("baselineOnSubmit", () => {
 
   it("moves nothing when a reset aborts the save", async () => {
     const saving = slowSave();
-    const { store } = testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
+    const { store } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
     store.root.at("name").setValue("grace");
     const done = store.submit();
     await saving.called;
@@ -122,7 +123,7 @@ describe("baselineOnSubmit", () => {
 
   it("joins a second submit to the running one, and saves once", async () => {
     const saving = slowSave();
-    const { store } = testStore({ defaultValues: profile(), plugins: [dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
+    const { store } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
     store.root.at("name").setValue("grace");
     const first = store.submit();
     await saving.called;
@@ -138,7 +139,7 @@ describe("baselineOnSubmit", () => {
   });
 
   it("moves the baseline without dirty(), so reset goes to the saved value", async () => {
-    const { store, errors } = testStore({ defaultValues: profile(), plugins: [baselineOnSubmit()] });
+    const { store, errors } = testStore({ defaultValues: profile(), plugins: [arrays(), baselineOnSubmit()] });
     store.root.at("name").setValue("grace");
     await store.submit();
     store.root.at("name").setValue("other");
@@ -153,7 +154,7 @@ describe("arrays saved while the user changes them", () => {
   /** Saves the form while `during` runs, and returns each item's dirty flag after. */
   async function saveWhile(before: (tags: TagsHandle) => void, during: (tags: TagsHandle) => void) {
     const saving = slowSave();
-    const { store } = testStore({ defaultValues: list(), plugins: [dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
+    const { store } = testStore({ defaultValues: list(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
     const tags = store.root.at("tags");
     before(tags);
     const saved = store.getSnapshot(["tags"]).value;
@@ -196,7 +197,7 @@ describe("arrays saved while the user changes them", () => {
 
   it("keeps moved items clean, though the array is dirty", async () => {
     const saving = slowSave();
-    const { store } = testStore({ defaultValues: list(), plugins: [dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
+    const { store } = testStore({ defaultValues: list(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });
     const done = store.submit();
     await saving.called;
     store.root.at("tags").move(0, 1);
@@ -211,7 +212,7 @@ describe("arrays saved while the user changes them", () => {
     const saving = slowSave();
     const { store } = testStore({
       defaultValues: { rows: [{ title: "r", tags: ["a"] }] },
-      plugins: [dirty(), baselineOnSubmit()],
+      plugins: [arrays(), dirty(), baselineOnSubmit()],
       onSubmit: saving.onSubmit,
     });
     const rows = store.root.at("rows");
@@ -232,7 +233,7 @@ describe("arrays saved while the user changes them", () => {
 
 describe("with other plugins", () => {
   it("records no undo step and changes no value with history", async () => {
-    const { store, flush, errors } = testStore({ defaultValues: profile(), plugins: [dirty(), history(), baselineOnSubmit()] });
+    const { store, flush, errors } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), history(), baselineOnSubmit()] });
     store.root.at("name").setValue("grace");
     flush();
     await store.submit();
@@ -250,7 +251,7 @@ describe("with other plugins", () => {
   it("lets rebase bring in a server value that differs from the one saved", async () => {
     const { store, errors } = testStore({
       defaultValues: profile(),
-      plugins: [dirty(), rebase(), baselineOnSubmit()],
+      plugins: [arrays(), dirty(), rebase(), baselineOnSubmit()],
       onSubmit: (value) => ({ ...value, email: value.email.toLowerCase() }),
     });
     store.root.at("email").setValue("GRACE@example.com");
@@ -275,7 +276,7 @@ describe("with other plugins", () => {
     };
     const { store, listen, flush, errors } = testStore({
       defaultValues: profile(),
-      plugins: [
+      plugins: [arrays(), 
         dirty(),
         persist("profile", storage),
         bind({

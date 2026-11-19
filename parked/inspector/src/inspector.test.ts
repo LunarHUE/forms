@@ -1,5 +1,5 @@
 import { type AnyFormStore, createFormsCore, type Path } from "@lunarhue/forms-core";
-import { dirty } from "@lunarhue/forms-core/plugins";
+import { arrays, dirty } from "@lunarhue/forms-core/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -19,7 +19,7 @@ const Order = v.object({
 
 const london = { street: "12 St James's Square", city: "London", country: "GB" };
 
-const definition = createFormsCore({ plugins: [valibot(), dirty()] }).define({
+const definition = createFormsCore({ plugins: [valibot(), arrays(), dirty()] }).define({
   schema: Order,
   defaultValues: {
     customer: { name: "Ada Lovelace", email: "ada@example.com" },
