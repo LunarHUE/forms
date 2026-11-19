@@ -1,4 +1,4 @@
-import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { createForms, defineField, useForm } from "@lunarhue/forms-react";
 import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
@@ -11,7 +11,7 @@ function formatPhone(value: string) {
   return value;
 }
 
-const PhoneField = field(TextField, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(TextField, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({
   plugins: [zod(), mask()],

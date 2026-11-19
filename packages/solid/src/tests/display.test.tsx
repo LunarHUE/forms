@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createInputProps, type FieldApi, field as fieldType, type FormOf } from "../index.js";
+import { createForm, createForms, createInputProps, type FieldApi, defineField, type FormOf } from "../index.js";
 import { digits, mask, type MaskConfig, masked, upper } from "../plugins.js";
 import { choose, getAs, mount, settle } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
@@ -7,7 +7,7 @@ import { formatPhone } from "./ssr-app.js";
 /** A string field component, only for its field type. */
 const Text = (_props: { readonly field: FieldApi<string> }) => null;
 /** A mask pinned at `name`, as a field type that may not render pins it on the definition. */
-const masking = <K extends string>(name: K, config: MaskConfig) => fieldType(Text, masked(config)).at(name);
+const masking = <K extends string>(name: K, config: MaskConfig) => defineField(Text, masked(config)).at(name);
 
 const forms = createForms({ plugins: [mask()] });
 const Contact = forms.define(

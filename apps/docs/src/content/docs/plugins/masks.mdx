@@ -11,7 +11,7 @@ A mask cleans a field's value before the store takes it. Put `mask()` in the
 form's plugins, and a `masked(...)` part on the field type it cleans:
 
 ```ts
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 ```
@@ -21,7 +21,7 @@ value that reaches the field goes through `clean` first, whether the user
 typed it, a reset wrote it or another plugin did. `digits` and `upper` are
 ready-made cleaners, and any function from string to string works.
 
-`masked` fits string fields only, so `field(NumberInput, masked(...))` is a
+`masked` fits string fields only, so `defineField(NumberInput, masked(...))` is a
 type error. So is a form that renders `PhoneField` without `mask()` in its
 plugins: the error reads `Add mask() to this form's plugins: PhoneField uses
 it`.

@@ -201,7 +201,7 @@ export interface FieldType<C extends AnyComponent = AnyComponent, N extends stri
   at<K extends string>(name: K): readonly Part<N, Nested<K, PartValueOf<C>>>[];
 }
 
-/** The field components an app registers, by the name they get on every scope: plain components or `field(...)` results. */
+/** The field components an app registers, by the name they get on every scope: plain components or `defineField(...)` results. */
 export type FieldComponents = Readonly<Record<string, AnyComponent | FieldType>>;
 
 /** The component of a `fields` entry. */
@@ -236,7 +236,7 @@ export type ReservedName =
  */
 export type ReservedProp = "validate";
 
-/** The props of a component, or of a `field(...)` entry's component. */
+/** The props of a component, or of a `defineField(...)` entry's component. */
 export type PropsOf<C> = ComponentOf<C> extends (props: infer P) => unknown ? P : never;
 
 /** The field object type a registered component's `field` prop asks for. */

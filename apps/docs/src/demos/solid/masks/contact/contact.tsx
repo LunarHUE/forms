@@ -1,4 +1,4 @@
-import { createForm, createForms, field } from "@lunarhue/forms-solid";
+import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
 import { digits, mask, masked } from "@lunarhue/forms-solid/plugins";
 import { PhoneInput } from "./PhoneInput";
 
@@ -14,7 +14,7 @@ function formatPhone(value: string) {
 
 // Every PhoneField stores digits and shows them formatted. The store only
 // ever holds digits, so `onSubmit` gets digits.
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 

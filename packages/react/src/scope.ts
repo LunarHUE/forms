@@ -231,7 +231,7 @@ export interface FieldType<C extends FieldComponentType = FieldComponentType, N 
   at<K extends string>(name: K): readonly Part<N, Nested<K, FieldValueOf<C>>>[];
 }
 
-/** The app's field components by the name they get on every scope: plain components or `field(...)` results. */
+/** The app's field components by the name they get on every scope: plain components or `defineField(...)` results. */
 export type FieldComponentMap = Readonly<Record<string, FieldComponentType | FieldType>>;
 
 /** The component of a `fields` entry. */
@@ -240,7 +240,7 @@ export type ComponentOf<T> = T extends FieldType<infer C> ? C : T extends FieldC
 /** The plugins a `fields` entry's parts need. */
 export type NeedsOf<T> = T extends FieldType<FieldComponentType, infer N> ? N : never;
 
-/** The props of a registered component, or of a `field(...)` entry's component. */
+/** The props of a registered component, or of a `defineField(...)` entry's component. */
 export type PropsOf<C> = ComponentOf<C> extends JSXElementConstructor<infer P> ? P : never;
 
 /** The `field` prop type of a registered component. */

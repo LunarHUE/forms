@@ -28,7 +28,7 @@ export interface MaskConfig {
 
 /**
  * The mask plugin. Put `mask()` in the form's plugins, and `masked(...)` on
- * the field types it cleans: `field(PhoneInput, masked({ clean, display }))`.
+ * the field types it cleans: `defineField(PhoneInput, masked({ clean, display }))`.
  *
  * Each field a masked field type renders, or a part pinned with `at`, gets
  * its value cleaned before the store takes it, so the store only ever holds
@@ -60,5 +60,5 @@ export function mask(): Plugin<undefined, "mask"> {
   }, { "~parts": createParts });
 }
 
-/** A mask for a string field type, as `field(PhoneInput, masked({ clean: digits, display: formatPhone }))`. Needs `mask()`. */
+/** A mask for a string field type, as `defineField(PhoneInput, masked({ clean: digits, display: formatPhone }))`. Needs `mask()`. */
 export const masked = (config: MaskConfig): Part<"mask", string> => ({ plugin: "mask", config });

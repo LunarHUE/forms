@@ -11,7 +11,7 @@ import {
 import {
   type AnyFormStore,
   createForms,
-  field as fieldType,
+  defineField,
   type FieldApi,
   type FormError,
   inputProps,
@@ -121,7 +121,7 @@ function PhoneInput({ field, label }: FieldProps<string>) {
   );
 }
 
-const PhoneField = fieldType(PhoneInput, phoneMask);
+const PhoneField = defineField(PhoneInput, phoneMask);
 
 /** The app's one `createForms`. Every page defines its form with it. */
 export const forms = createForms({

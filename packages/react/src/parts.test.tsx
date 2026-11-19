@@ -3,7 +3,7 @@ import { type ReactNode, StrictMode, Suspense, use, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { createForms, type FieldApi, field, type HandleOf, inputProps, useForm } from "./index.js";
+import { createForms, type FieldApi, defineField, type HandleOf, inputProps, useForm } from "./index.js";
 import { digits, mask, masked, ruled, rules } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
@@ -24,7 +24,7 @@ function TextInput({ field: text, label }: InputProps) {
   return <input aria-label={label} {...inputProps(text)} />;
 }
 
-const PhoneField = field(TextInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({ plugins: [mask(), rules()], fields: { TextField: TextInput, PhoneField } });
 

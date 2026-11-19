@@ -3,7 +3,7 @@
 // something the adapter doesn't export.
 import {
   createForms,
-  field as fieldType,
+  defineField,
   type Choice,
   type ExactFieldApi,
   type FieldApi,
@@ -51,7 +51,7 @@ export function NoteField({ field }: { readonly field: ExactFieldApi<string> }) 
   return <textarea value={field.value} onChange={(event) => field.setValue(event.target.value)} />;
 }
 
-export const PhoneField = fieldType(TextField, masked({ clean: digits }));
+export const PhoneField = defineField(TextField, masked({ clean: digits }));
 
 export const forms = createForms({
   plugins: [valibot(), history(), mask(), rules()],

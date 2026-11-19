@@ -1,6 +1,6 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { createField, createForm, createForms, type FieldApi, field as fieldType, type FormOf, inputProps } from "../index.js";
+import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { digits, mask, masked, persist } from "../plugins.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
@@ -16,7 +16,7 @@ function savedDraft(value: unknown) {
 }
 
 /** A phone field type, pinned on the definition since these tests bind their inputs by hand. */
-const PhoneField = fieldType((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms();
 const Order = forms.define(

@@ -6,7 +6,7 @@
 
 Plugins that work per field now take parts. A part is a plugin's config for one place: a field type, a fieldset or a form. The plugin goes in the form's plugins once, with no config, and its parts go where they apply. Using a field type or fieldset whose parts need a plugin the form lacks is a type error, such as `Add mask() to this form's plugins: PhoneField uses it`. Without types the store throws `plugins:missing`.
 
-`field(component, ...parts)` from the adapters makes a field type. Register it in `fields` like a component. Its parts attach at each field it renders, the first time it renders it. `forms.fieldset(schema, ...parts)` and `forms.fieldset<V>(...parts)` take parts for each field the fieldset is used on, and `forms.define(config, ...parts)` takes parts for the whole form. `PhoneField.at(name)` and `Billing.at(name)` pin a field type's or fieldset's parts at one field, for `define`, so they attach when the store is made.
+`defineField(component, ...parts)` from the adapters makes a field type. Register it in `fields` like a component. Its parts attach at each field it renders, the first time it renders it. `forms.fieldset(schema, ...parts)` and `forms.fieldset<V>(...parts)` take parts for each field the fieldset is used on, and `forms.define(config, ...parts)` takes parts for the whole form. `PhoneField.at(name)` and `Billing.at(name)` pin a field type's or fieldset's parts at one field, for `define`, so they attach when the store is made.
 
 Fieldset scopes now carry the plugin names their parts need, so the field components a fieldset renders are checked against them.
 
@@ -17,7 +17,7 @@ To migrate a mask, install `mask()` and put `masked(...)` on the field type that
 const contact = forms.define({ defaultValues, plugins: [mask({ phone: { clean: digits, display: formatPhone } })] });
 
 // After
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 const contact = forms.define({ defaultValues });
 ```

@@ -34,7 +34,7 @@ A plugin can give a field display text: a function from the stored value to
 the text the input shows. A `masked` part does this with `display`:
 
 ```ts
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 ```
 
 The store holds `5551234567` and the input shows `(555) 123-4567`. Each

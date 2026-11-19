@@ -13,7 +13,7 @@ export type RuntimeHandle = AnyFieldHandle<unknown>;
 // oxlint-disable-next-line typescript/no-explicit-any
 export type RuntimeComponent = (props: any) => SolidElement;
 
-/** A `fields` entry with its types erased: a component, or a field type from `field`. */
+/** A `fields` entry with its types erased: a component, or a field type from `defineField`. */
 export type RuntimeEntry = RuntimeComponent | { readonly component: RuntimeComponent; readonly parts: readonly Part[] };
 
 /** A scope with its types erased: `root`, `Field`, `Items`, and the registered components. */

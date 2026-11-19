@@ -1,11 +1,11 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, field, type FieldType, type FormError, type Part, type HandleOf, type ObjectHandle, type StandardSchemaV1 } from "./index.js";
+import { createForms, type FieldApi, defineField, type FieldType, type FormError, type Part, type HandleOf, type ObjectHandle, type StandardSchemaV1 } from "./index.js";
 import { digits, dirty, mask, masked, ruled, rules } from "./plugins.js";
 
 declare function PhoneInput(props: { readonly field: FieldApi<string>; readonly label: string }): null;
 declare function NumberInput(props: { readonly field: FieldApi<number> }): null;
 
-const PhoneField = field(PhoneInput, masked({ clean: digits }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits }));
 
 interface Address {
   same: boolean;
@@ -19,10 +19,10 @@ describe("field types", () => {
   it("take parts that fit the component's value only", () => {
     expectTypeOf(PhoneField.component).toEqualTypeOf<typeof PhoneInput>();
     // @ts-expect-error: a mask cleans strings, and NumberInput's field holds a number
-    field(NumberInput, masked({ clean: digits }));
-    field(NumberInput);
+    defineField(NumberInput, masked({ clean: digits }));
+    defineField(NumberInput);
     const tagged: Part<"tag", string> = { plugin: "tag" };
-    expectTypeOf(field(PhoneInput, masked({ clean: digits }), tagged)).toEqualTypeOf<FieldType<typeof PhoneInput, "mask" | "tag">>();
+    expectTypeOf(defineField(PhoneInput, masked({ clean: digits }), tagged)).toEqualTypeOf<FieldType<typeof PhoneInput, "mask" | "tag">>();
   });
 
   it("bind on a form with the parts' plugins, and name the missing plugin on one without", () => {

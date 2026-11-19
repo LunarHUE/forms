@@ -7,7 +7,7 @@ import {
   createForms,
   createInputProps,
   createItems,
-  field,
+  defineField,
   type Choice,
   type ExactFieldApi,
   type FieldApi,
@@ -50,7 +50,7 @@ export function NoteField(props: { readonly field: ExactFieldApi<string> }) {
   return <textarea value={props.field.value} onInput={(event) => props.field.setValue(event.currentTarget.value)} />;
 }
 
-export const PhoneField = field(TextField, masked({ clean: digits }));
+export const PhoneField = defineField(TextField, masked({ clean: digits }));
 
 export const forms = createForms({
   plugins: [valibot(), history(), mask(), rules()],

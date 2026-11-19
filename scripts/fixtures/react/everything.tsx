@@ -1,5 +1,5 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
-import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { createForms, defineField, useForm } from "@lunarhue/forms-react";
 import { baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-react/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
@@ -16,7 +16,7 @@ type Order = v.InferOutput<typeof Order>;
 let saved: Order = { phone: "", note: "", address: { street: "", city: "" }, lines: [{ item: "" }] };
 const listeners = new Set<() => void>();
 
-const PhoneField = field(TextField, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
+const PhoneField = defineField(TextField, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
 const forms = createForms({
   plugins: [valibot(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), mask(), rules()],

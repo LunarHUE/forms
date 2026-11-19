@@ -14,10 +14,10 @@ export const pin = (parts: readonly Part[], name: string): readonly Part[] =>
  * used.
  *
  * ```tsx
- * export const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+ * export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
  * ```
  */
-export const field = <C extends AnyComponent, N extends string = never>(
+export const defineField = <C extends AnyComponent, N extends string = never>(
   component: C,
   ...parts: readonly Part<N, PartValueOf<C>>[]
 ): FieldType<C, N> => ({

@@ -1,6 +1,6 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForm, createForms, field, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
+import { createForm, createForms, defineField, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
 import { digits, mask, masked, ruled, rules } from "../plugins.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -145,7 +145,7 @@ function PhoneInput(props: { readonly field: FieldApi<string>; readonly label: s
   return <input aria-label={props.label} {...inputProps(props.field, { type: "tel" })} />;
 }
 
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 
 /** A text input that renders nothing while `rules` hides its field. */
 function StreetInput(props: { readonly field: FieldApi<string> }) {

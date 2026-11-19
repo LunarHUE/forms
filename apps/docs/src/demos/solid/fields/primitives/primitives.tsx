@@ -1,4 +1,4 @@
-import { createForm, createForms, field } from "@lunarhue/forms-solid";
+import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
 import { digits, mask, masked } from "@lunarhue/forms-solid/plugins";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
@@ -11,7 +11,7 @@ function formatPhone(value: string) {
   return value;
 }
 
-const PhoneField = field(TextField, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(TextField, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({
   plugins: [zod(), mask()],

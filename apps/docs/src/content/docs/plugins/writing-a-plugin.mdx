@@ -68,7 +68,7 @@ export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit
 ```
 
 An app puts `limit()` in the form's plugins and `limited(...)` where it
-applies: `field(NoteInput, limited(140))` for every field a component
+applies: `defineField(NoteInput, limited(140))` for every field a component
 renders, `forms.fieldset(Address, part)` for a fieldset, or
 `forms.define(config, part)` for the form. `Part<"limit", string>` makes two
 things type errors: a part on a field type whose value isn't a string, and a

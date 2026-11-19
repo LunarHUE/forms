@@ -56,10 +56,10 @@ installed: with `dev && dirty()` in the list, `equals` is still a type error.
 | `forms.fieldset<V>(...parts)` | The same shape from a type. |
 | `fieldset.at(name)` | The fieldset's parts pinned at `name`, for `define`. |
 
-### field
+### defineField
 
 ```ts
-field(component, ...parts): FieldType
+defineField(component, ...parts): FieldType
 ```
 
 A field type: `component` with `parts` that attach at each field it renders.
@@ -320,7 +320,7 @@ tests.
 | `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
 | `HandleOf<typeof fieldset>` | The handle prop a fieldset component takes. |
-| `FieldType<C, N>` | What `field` returns. `N` names the plugins its parts need. |
+| `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
 | `Part<N, V>` | A plugin's config for one place. `N` is the plugin and `V` the values it fits. |
 | `FormOf<typeof definition>` | The form a definition makes. |
 | `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. |

@@ -235,7 +235,7 @@ can bind to two different stores.
 `definePlugin` gives you hooks for writes, resets and submit, your own slot for
 field and form state, and an API that shows up typed at `form.plugins.<name>`.
 A plugin can also take parts: config for one field type, fieldset or form,
-as in `field(PhoneInput, masked({ clean: digits }))`. A form that uses a field
+as in `defineField(PhoneInput, masked({ clean: digits }))`. A form that uses a field
 type without the plugin its parts need is a type error.
 Plugins can't step on each other: a write made inside a hook is queued, and
 each plugin sees the records frozen. A plugin depends on core and never on an

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, field as fieldType, type FormOf, useForm, useInputProps } from "./index.js";
+import { createForms, type FieldApi, defineField, type FormOf, useForm, useInputProps } from "./index.js";
 import { digits, mask, type MaskConfig, masked, upper } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
@@ -23,7 +23,7 @@ interface Contact {
 /** A string field component, only for its field type. */
 const Text = (_props: { readonly field: FieldApi<string> }) => null;
 /** A mask pinned at `name`, as a field type that may not render pins it on the definition. */
-const masking = <K extends string>(name: K, config: MaskConfig) => fieldType(Text, masked(config)).at(name);
+const masking = <K extends string>(name: K, config: MaskConfig) => defineField(Text, masked(config)).at(name);
 
 const forms = createForms({ plugins: [mask()] });
 const contact = forms.define(

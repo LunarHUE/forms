@@ -1,4 +1,4 @@
-import { createForms, field, useForm } from "@lunarhue/forms-react";
+import { createForms, defineField, useForm } from "@lunarhue/forms-react";
 import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
 import { PhoneInput } from "./PhoneInput";
 
@@ -14,7 +14,7 @@ function formatPhone(value: string) {
 
 // Every PhoneField stores digits and shows them formatted. The store only
 // ever holds digits, so `onSubmit` gets digits.
-const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 

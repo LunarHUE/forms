@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, field as fieldType, inputProps, useForm } from "./index.js";
+import { createForms, type FieldApi, defineField, inputProps, useForm } from "./index.js";
 import { digits, mask, masked, persist } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
@@ -15,7 +15,7 @@ function formatPhone(value: string): string {
 }
 
 /** A phone field type, pinned on the definitions below since these tests bind their inputs by hand. */
-const PhoneField = fieldType((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
+const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits, display: formatPhone }));
 
 const forms = createForms();
 const order = forms.define({ defaultValues: { phone: "5551234", price: 3, name: "" }, plugins: [mask()] }, PhoneField.at("phone"));
