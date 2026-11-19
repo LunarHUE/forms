@@ -45,6 +45,7 @@
         "shiki": "4.6.0",
         "solid-js": "catalog:",
         "zod": "catalog:",
+        "zustand": "catalog:",
       },
       "devDependencies": {
         "@astrojs/check": "0.9.12",
