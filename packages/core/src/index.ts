@@ -8,6 +8,7 @@ export type {
   Attachment,
   BaselineAt,
   Needs,
+  Nested,
   Part,
   PartNames,
   Parts,
@@ -124,5 +125,6 @@ export type {
   SubmitContext,
   Combined,
   DefineConfig,
+  DefineParts,
   WithPlugins,
 } from "./definition.js";
