@@ -13,7 +13,7 @@ const packages: WorkspacePackage[] = [
   { name: "react", dir: "packages/react", dependsOn: ["core"] },
   { name: "solid", dir: "packages/solid", dependsOn: ["core", "schema"] },
   { name: "vue", dir: "packages/vue", dependsOn: ["core"] },
-  { name: "example-react", dir: "examples/react", dependsOn: ["react", "schema", "bind"] },
+  { name: "docs", dir: "apps/docs", dependsOn: ["react", "solid", "schema", "bind"] },
   { name: "e2e", dir: "e2e", dependsOn: ["core", "schema", "bind"] },
   { name: "e2e-react", dir: "e2e/apps/react", dependsOn: ["e2e", "react"] },
   { name: "e2e-solid", dir: "e2e/apps/solid", dependsOn: ["e2e", "solid"] },
@@ -73,7 +73,7 @@ describe("pickFrameworks", () => {
   });
 
   it("runs nothing for a package no app depends on", () => {
-    expect(pick("examples/react/basic.tsx")).toEqual([]);
+    expect(pick("apps/docs/src/pages/index.astro")).toEqual([]);
   });
 
   it("runs nothing when nothing changed", () => {

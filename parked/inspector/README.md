@@ -15,9 +15,9 @@ the form, and toggle a field's `disabled` and `readOnly`.
   optional "slow network" and "server rejects next save" toggles. A page
   with a fake server passes it in and reads it there.
 
-Nothing uses it today. It used to sit beside the example apps, which are
-now plain files that are only typechecked. It is waiting for the docs site,
-which will render each example form with this panel beside it.
+Nothing uses it today. It used to sit beside the example apps, which became
+the docs site's demos in `apps/docs/src/demos`. It is waiting for the docs
+site's devtools, which will show each demo's form with this panel beside it.
 
 The root `typecheck` and `test` scripts still cover it, so it keeps working
 while it waits.
