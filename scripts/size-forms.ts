@@ -27,6 +27,7 @@ const forms = [
   ["schema", "+ a Valibot schema"],
   ["plugins", "+ mask and rules"],
   ["registered", "Registered field component"],
+  ["arrays", "+ an array: items, add, remove, move"],
   ["everything", "Everything on"],
 ] as const;
 
