@@ -1,0 +1,59 @@
+---
+title: Display text
+description: What an input shows can differ from the value the form holds.
+section: concepts
+order: 5
+---
+
+The form holds values: `field.value`, what `onSubmit` gets, what validators
+check. An input shows text. For most string fields the two are the same. They
+differ in two places: number inputs, and fields a plugin formats, such as a
+phone number. Type in the demo and compare the input with the line under it.
+
+<Demo name="display-text/stored" />
+
+## Number inputs
+
+A field read with `inputProps({ kind: "number" })` holds a number, or
+`undefined` while the input is empty. Some text on the way to a number isn't
+one yet:
+
+| Typed | Input shows | Field holds |
+| --- | --- | --- |
+| `12.` | `12.` | `12` |
+| `-` | `-` | the value it held before |
+| nothing | nothing | `undefined`, or the `empty` option |
+
+The input keeps the typed text while the field still holds the value that
+text wrote, so the caret and the `.` don't jump. Once the input loses focus,
+or something else writes the field, it shows the number again.
+
+## Formatted fields
+
+A plugin can give a field display text: a function from the stored value to
+the text the input shows. The `mask` plugin does this with `display`:
+
+```ts
+mask({ phone: { clean: digits, display: formatPhone } });
+```
+
+The store holds `5551234567` and the input shows `(555) 123-4567`. Each
+keystroke goes through `clean` on its way into the store, and the input
+shows `display` of the result, with the caret kept where the user is typing.
+[Masks](../plugins/masks) covers the options.
+
+Text inputs and textareas show display text, on the server too, so the page
+hydrates with it. Number, checkbox, radio and select inputs ignore it.
+
+Keep `display` a pure function of the value. The server and the browser both
+call it, and it runs on every change.
+
+## What reads which
+
+Everything except the input reads the stored value: `field.value`, the
+schema, `onSubmit`, `dirty`, history and persistence. The display text lives
+only in the props `inputProps()` returns. If you render your own input
+without `inputProps`, it shows `field.value`.
+
+To give a field display text from your own plugin, set display meta on it.
+See [Writing a plugin](../plugins/writing-a-plugin).
