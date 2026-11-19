@@ -42,15 +42,14 @@ never listens, so it never runs there. [`persist`](persist) restores in
 
 `ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field or
 on the form. Annotate `setup`'s parameter as `PluginContext<M, F>` to type
-them, and read them back with the plugin's `meta` and `formMeta` readers. Both
-return undefined until the plugin sets something.
+them, and read them back with the plugin's `meta` and `formMeta` readers.
 
-If the meta has a sensible value before then, give it as `initialMeta` for
-fields or `initialFormMeta` for the form. The reader returns it until the
-plugin sets its own, and its type drops `undefined`. The reader works it out
-from the snapshot alone, so the server and the first client render read the
-same value. `history` starts from `{ canUndo: false, canRedo: false }` this
-way:
+A plugin with meta gives its starting value as `initialMeta` for fields or
+`initialFormMeta` for the form. Leaving it out is a type error. The reader
+returns it until the plugin sets its own, so a reader never returns undefined
+unless `undefined` is part of the meta type. The reader works it out from the
+snapshot alone, so the server and the first client render read the same value.
+`history` starts from `{ canUndo: false, canRedo: false }`:
 
 ```ts
 definePlugin({
@@ -78,11 +77,13 @@ definePlugin({
 });
 ```
 
-The plugin's type says which readers can return undefined. `definePlugin`
-returns a `HookPlugin<A, N, M, F, MU, FU>`. `MU` and `FU` are `undefined` by
-default and `never` when the definition gives `initialMeta` or
-`initialFormMeta`. `history()` is a
-`HookPlugin<HistoryApi, "history", never, HistoryMeta, undefined, never>`.
+Meta with no sensible start says so in its type. `mask` sets a display only on
+the fields it matches, so its meta is `FieldDisplay | undefined` and it starts
+from `initialMeta: undefined`.
+
+`definePlugin` returns a `Plugin<A, N, M, F>`: the API, the name, the field
+meta and the form meta. `history()` is a
+`Plugin<HistoryApi, "history", never, HistoryMeta>`.
 
 ### Display text from a plugin
 
@@ -310,7 +311,7 @@ export function makeForm<S extends z.ZodObject>(schema: S) {
 
 ```text
 error TS2353: Object literal may only specify known properties, and 'schema' does not exist in type
-'(options: void) => WithPlugins<Definition<never, S, readonly [SchemaPlugin<ZodSchema, string>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<never, S, readonly [...]>>>'.
+'(options: void) => WithPlugins<Definition<never, S, readonly [Plugin<undefined, "zod", never, never, ZodSchema>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<...>>>'.
 ```
 
 `define` uses conditional types to ask two things about the schema: is there

@@ -221,7 +221,7 @@ the starting values.
 | `valibot()` | `@lunarhue/forms-schema/valibot` | The same for Valibot.                                  |
 
 For any other [Standard Schema](https://standardschema.dev) library, make a
-schema plugin with `defineSchemaPlugin`. See
+schema plugin with `definePlugin({ name, schema })`. See
 [Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library).
 
 Bindings for outside stores follow the same rule. `zustand()` comes from

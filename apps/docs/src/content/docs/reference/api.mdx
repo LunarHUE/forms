@@ -300,7 +300,7 @@ tests.
 
 | | |
 | --- | --- |
-| `FieldApi<T>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. |
+| `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
 | `HandleOf<typeof fieldset>` | The handle prop a fieldset component takes. |
 | `FormOf<typeof definition>` | The form a definition makes. |
@@ -352,10 +352,9 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 | | |
 | --- | --- |
-| `definePlugin(definition)` | Makes a plugin from hooks and a `setup`. See [Writing a plugin](../plugins/writing-a-plugin). |
+| `definePlugin(definition)` | Makes a plugin from hooks and a `setup`, or a schema plugin from a `schema` adapter. See [Writing a plugin](../plugins/writing-a-plugin) and [Schemas](../plugins/schemas#another-library). |
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
-| `defineSchemaPlugin(adapter)` | Makes a schema plugin for another schema library. See [Schemas](../plugins/schemas#another-library). |
 
 ### plugins/history
 

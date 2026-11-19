@@ -32,7 +32,7 @@ effects, so your bundler drops a plugin you don't import and it costs no bytes.
 | `bind()` | Copies the value to a store you own and back |
 
 Write your own with `definePlugin` from `./plugins`, or a schema plugin for
-another schema library with `defineSchemaPlugin` from the same entry. The rules are in
+another schema library with `definePlugin({ name, schema })`. The rules are in
 [Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin).
 
 ## More
