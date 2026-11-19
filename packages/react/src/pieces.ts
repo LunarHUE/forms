@@ -30,7 +30,11 @@ export interface FieldPieces {
   readonly setNumberText: (text: string, empty?: unknown) => void;
   /** Marks the field touched, runs blur validation, and drops the typed number text. */
   readonly handleBlur: () => void;
-  /** Records the element for focus after an invalid submit. See `FieldRef`. */
+  /**
+   * Records the element for focus after an invalid submit. On a native
+   * input, textarea or select it also puts back what React rendered when the
+   * browser restored what the user typed before a reload. See `FieldRef`.
+   */
   readonly ref: FieldRef;
 }
 

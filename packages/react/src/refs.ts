@@ -18,6 +18,27 @@ function connected(set: Set<HTMLElement>): Set<HTMLElement> {
 const refCleanups = Number(version.split(".")[0]) >= 19;
 
 /**
+ * Puts back what React rendered in a form control the browser filled in
+ * again. A browser can restore what the user typed before a reload once it
+ * parses the server markup. Hydration leaves the control's value and checked
+ * state alone, but sets `defaultValue`, `defaultChecked` and the selected
+ * option's `defaultSelected` from the props, so a control whose live state
+ * differs from those was restored. Outside hydration they match by the time
+ * a ref runs, so this writes nothing.
+ */
+function showRendered(element: HTMLElement): void {
+  if (element instanceof HTMLInputElement) {
+    if (element.checked !== element.defaultChecked) element.checked = element.defaultChecked;
+    if (element.value !== element.defaultValue && element.type !== "file") element.value = element.defaultValue;
+  } else if (element instanceof HTMLTextAreaElement) {
+    if (element.value !== element.defaultValue) element.value = element.defaultValue;
+  } else if (element instanceof HTMLSelectElement) {
+    const rendered = [...element.options].find((option) => option.defaultSelected);
+    if (rendered !== undefined && !rendered.selected) rendered.selected = true;
+  }
+}
+
+/**
  * The ref callback that records its elements for `key`: a field handle for a
  * field's elements, or a store for its `<form>` elements. It is the same
  * function for the life of the key. On React 19 it returns a cleanup that
@@ -28,6 +49,7 @@ const refCleanups = Number(version.split(".")[0]) >= 19;
 export function refFor(key: object): FieldRef {
   return cached(refs, key, () => (element) => {
     if (element === null) return undefined;
+    showRendered(element);
     const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
     set.add(element);
     if (!refCleanups) return undefined;

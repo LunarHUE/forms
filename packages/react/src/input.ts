@@ -9,7 +9,9 @@ import { useSelected } from "./select.js";
 
 /**
  * The ref callback the adapter puts on a field's element. It records the
- * element for focus after an invalid submit. On React 19 it returns the
+ * element for focus after an invalid submit. On a native input, textarea or
+ * select that the browser filled back in before hydration, it puts back
+ * what React rendered. On React 19 it returns the
  * cleanup that forgets it. Earlier versions get no cleanup, since React 18.3
  * warns about one, and call the callback again with `null`, which does
  * nothing: an element that left the document is skipped by focus and dropped
