@@ -18,7 +18,7 @@ function currentList(store: RuntimeStore): readonly DisabledInvalid<unknown>[] {
 }
 
 /**
- * See `CreateDisabledErrors`. It follows the form snapshot, and each listed
+ * See `createDisabledErrors`. It follows the form snapshot, and each listed
  * field's snapshot, so a listed field that is fixed or enabled drops off.
  */
 export function createDisabledErrorList(form: RuntimeStore | { readonly store: RuntimeStore }): () => readonly DisabledInvalid<unknown>[] {

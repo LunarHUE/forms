@@ -236,7 +236,7 @@ type ArgsIf<Ok extends boolean, Args extends readonly unknown[]> = Ok extends tr
  * To run your own handler as well, spread these props, set your own handler
  * after them, and call ours from it.
  */
-export interface CreateInputProps {
+export const createInputProps: {
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options?: TextInputOptions): TextInputProps;
   <H extends HandleLike>(handle: H & Allow<IsText<ValueOf<H>>>, options: TextareaOptions): TextareaProps;
   <H extends HandleLike>(handle: H & Allow<IsNumber<ValueOf<H>>>, options: NumberInputOptions<ValueOf<H>>): NumberInputProps;
@@ -247,16 +247,10 @@ export interface CreateInputProps {
   ): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsOption<ValueOf<H>>>, options: RadioOptions<NonNullable<ValueOf<H>>>): CheckableProps;
   <H extends HandleLike>(handle: H & Allow<IsChoice<ValueOf<H>>>, options: SelectOptions): SelectProps;
-}
-
-function inputPropsOf(handle: HandleLike, options?: AnyInputOptions): unknown {
-  return buildInputProps(inputSourceFor(handle, fieldReader(handle)), options);
-}
-
-/** See `CreateInputProps`. */
-// The overloads pick the props type from `kind`, which is what `buildInputProps` builds.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-export const createInputProps = inputPropsOf as CreateInputProps;
+} = (handle: HandleLike, options?: AnyInputOptions) =>
+  // The overloads pick the props type from `kind`, which is what `buildInputProps` builds.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  buildInputProps(inputSourceFor(handle, fieldReader(handle)), options) as never;
 
 /**
  * `createInputProps` for one field whose value type `V` is known: the same
@@ -279,10 +273,7 @@ export interface InputPropsOf<V> {
  * `ref={fieldRef(handle)}`, and call it in a component body: the element is
  * forgotten when that owner is disposed.
  */
-export type FieldRef = (handle: HandleLike) => (element: HTMLElement) => void;
-
-/** See `FieldRef`. */
-export const fieldRef: FieldRef = (handle) => elementRegistrar(handle);
+export const fieldRef = (handle: HandleLike): ((element: HTMLElement) => void) => elementRegistrar(handle);
 
 /**
  * Returns the id the input props point `aria-describedby` at while the field
