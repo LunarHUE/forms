@@ -47,6 +47,8 @@ export interface Framework {
 export type Browser = "chromium" | "firefox" | "webkit";
 
 const noUseId = "React before 18 has no useId, so its pages pass an id to useForm.";
+const blursOnMove =
+  "Solid 1 moves a list's DOM nodes with insertBefore, and a node taken out of the document loses focus. Solid 2 uses moveBefore where the browser has it.";
 
 /** Every framework major with an app. Adding one is a new app in `apps/` and one entry here. */
 export const frameworks: readonly Framework[] = [
@@ -54,6 +56,7 @@ export const frameworks: readonly Framework[] = [
   { name: "react17", port: 4317, newest: false, rerendersOnChange: true, lacks: { generatedIds: noUseId } },
   { name: "react18", port: 4318, newest: false, rerendersOnChange: true },
   { name: "react19", port: 4319, newest: true, rerendersOnChange: true },
+  { name: "solid1", port: 4331, newest: false, rerendersOnChange: false, lacks: { focusedMoves: blursOnMove } },
   {
     name: "solid2",
     port: 4332,
