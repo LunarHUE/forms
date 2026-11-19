@@ -16,6 +16,7 @@ import type {
   WriteOptions,
 } from "./index.js";
 import { createFormsCore } from "./index.js";
+import { arrays } from "./plugins/arrays.js";
 
 interface Address {
   street: string;
@@ -27,11 +28,11 @@ interface Row {
   done: boolean;
 }
 
-declare const channels: ArrayHandle<("email" | "sms")[]>;
-declare const optionalChannels: ArrayHandle<("email" | "sms" | undefined)[]>;
-declare const nullableChannels: ArrayHandle<("email" | "sms" | null)[]>;
-declare const flags: ArrayHandle<boolean[]>;
-declare const emails: ArrayHandle<"email"[]>;
+declare const channels: ArrayHandle<("email" | "sms")[], FormError, "arrays">;
+declare const optionalChannels: ArrayHandle<("email" | "sms" | undefined)[], FormError, "arrays">;
+declare const nullableChannels: ArrayHandle<("email" | "sms" | null)[], FormError, "arrays">;
+declare const flags: ArrayHandle<boolean[], FormError, "arrays">;
+declare const emails: ArrayHandle<"email"[], FormError, "arrays">;
 
 type Shape = { kind: "circle"; radius: number } | { kind: "square"; side: number };
 
@@ -44,6 +45,7 @@ interface Profile {
 }
 
 declare const profile: ObjectHandle<Profile>;
+declare const listed: ObjectHandle<Profile, FormError, "arrays">;
 declare const shape: ObjectHandle<Shape>;
 declare const branch: Branch;
 declare const other: FieldSnapshot<Address>;
@@ -111,8 +113,25 @@ describe("child handles", () => {
     expectTypeOf(profile.at("tags").item("k2")).toEqualTypeOf<LeafHandle<string> & { readonly key: string }>();
   });
 
-  it("array commands take the item type", () => {
+  it("array commands need arrays()", () => {
     const rows = profile.at("rows");
+    // @ts-expect-error: Add arrays() to this form's plugins
+    rows.push();
+    // @ts-expect-error: Add arrays() to this form's plugins
+    rows.insert(0);
+    // @ts-expect-error: Add arrays() to this form's plugins
+    rows.remove(0);
+    // @ts-expect-error: Add arrays() to this form's plugins
+    rows.move(0, 1);
+    // Reading keys and items needs no plugin.
+    expectTypeOf(rows.item("k0").key).toEqualTypeOf<string>();
+    // A handle of a form with arrays() fits where one without is asked for.
+    expectTypeOf(listed.at("rows")).toExtend<ArrayHandle<Row[]>>();
+    expectTypeOf(rows).not.toExtend<ArrayHandle<Row[], FormError, "arrays">>();
+  });
+
+  it("array commands take the item type", () => {
+    const rows = listed.at("rows");
     rows.push();
     rows.push({ title: "a", done: false });
     rows.push(undefined, { edited: false });
@@ -273,7 +292,7 @@ describe("handle commands", () => {
 declare const takesList: (list: string[]) => number;
 
 describe("writing back a value read from a snapshot", () => {
-  const store = createFormsCore()
+  const store = createFormsCore({ plugins: [arrays()] })
     .define({ defaultValues: { name: "", tags: ["a"], address: { street: "", city: "" }, rows: [{ title: "", done: false }] } })
     .createStore();
   const tags = store.root.at("tags");
@@ -299,9 +318,9 @@ describe("writing back a value read from a snapshot", () => {
 
   it("leaves inference from defaultValues as it was", () => {
     expectTypeOf(store.root).toEqualTypeOf<
-      ObjectHandle<{ name: string; tags: string[]; address: { street: string; city: string }; rows: { title: string; done: boolean }[] }>
+      ObjectHandle<{ name: string; tags: string[]; address: { street: string; city: string }; rows: { title: string; done: boolean }[] }, FormError, "arrays">
     >();
-    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; done: boolean }>>();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; done: boolean }, FormError, "arrays">>();
   });
 
   it("still checks object literals", () => {

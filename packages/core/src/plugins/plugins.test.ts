@@ -16,6 +16,7 @@ import { mask, masked, upper } from "./mask.js";
 import { persist } from "./persist.js";
 import { ruled, rules } from "./rules.js";
 import { rebase } from "./rebase.js";
+import { arrays } from "./arrays.js";
 
 interface Contact {
   phone: string;
@@ -30,12 +31,12 @@ const rethrow: PluginErrorHandler = (error) => {
 
 /** A store with `plugins` on its definition. Plugin errors throw unless `onPluginError` says otherwise. */
 const make = <V, const D extends Plugins>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
-  createFormsCore({ onPluginError, plugins: [dirty()] }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
+  createFormsCore({ onPluginError, plugins: [arrays(), dirty()] }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
 
 /** A store as `make` makes it, with `parts` attached at the root. */
 // The parts are untyped here, so they go in as any form's.
 const makeWith = <V, const D extends Plugins>(defaultValues: V, plugins: D, parts: readonly Part[]) =>
-  createFormsCore({ onPluginError: rethrow, plugins: [dirty()] })
+  createFormsCore({ onPluginError: rethrow, plugins: [arrays(), dirty()] })
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     .define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }, ...(parts as never[]))
     .createStore();
@@ -85,7 +86,7 @@ describe("install", () => {
           return {};
         },
       });
-    createFormsCore({ plugins: [named("shared")] })
+    createFormsCore({ plugins: [arrays(), named("shared")] })
       .define({ defaultValues: contact(), plugins: [named("own")] })
       .createStore();
     expect(order).toEqual(["shared", "own"]);
@@ -96,7 +97,7 @@ describe("install", () => {
     const silent = definePlugin({ name: "silent", setup: () => ({}) });
     expect(make(contact(), [counter, silent]).plugins).toEqual({ counter: { count: 3 } });
     expect(make(contact(), []).plugins).toEqual({});
-    expect(createFormsCore().define({ defaultValues: contact() }).createStore().plugins).toEqual({});
+    expect(createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: contact() }).createStore().plugins).toEqual({});
   });
 
   it("throws at store creation on two plugins with one name", () => {
@@ -106,14 +107,14 @@ describe("install", () => {
 
   it("throws at store creation on a shared and a definition plugin with one name", () => {
     const one = definePlugin({ name: "one", setup: () => ({}) });
-    const form = createFormsCore({ plugins: [one] }).define({ defaultValues: contact(), plugins: [one] });
+    const form = createFormsCore({ plugins: [arrays(), one] }).define({ defaultValues: contact(), plugins: [one] });
     expect(() => form.createStore()).toThrow('Two plugins are named "one".');
   });
 
   it("puts the APIs of both lists on store.plugins", () => {
     const shared = definePlugin({ name: "shared", setup: () => ({ api: 1 }) });
     const own = definePlugin({ name: "own", setup: () => ({ api: 2 }) });
-    const store = createFormsCore({ plugins: [shared] }).define({ defaultValues: contact(), plugins: [own] }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), shared] }).define({ defaultValues: contact(), plugins: [own] }).createStore();
     expect(store.plugins).toEqual({ shared: 1, own: 2 });
   });
 
@@ -369,7 +370,7 @@ describe("the baseline on the context", () => {
 
   it("compares with the form's equals", () => {
     const { plugin, baseline } = outside();
-    createFormsCore().define({ defaultValues: { name: "" }, plugins: [plugin, dirty()], equals: trimmed }).createStore();
+    createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "" }, plugins: [plugin, dirty()], equals: trimmed }).createStore();
     expect(baseline()?.equals(["name"], "a ", "a")).toBe(true);
     expect(baseline()?.equals(["name"], "a", "b")).toBe(false);
   });
@@ -569,7 +570,7 @@ describe("isolation", () => {
         },
       }),
     });
-    const store = createFormsCore().define({ defaultValues: contact(), plugins: [broken] }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: contact(), plugins: [broken] }).createStore();
     store.root.at("phone").setValue("1");
     expect(store.root.at("phone").peek().value).toBe("1");
     expect(() => vi.runAllTimers()).toThrow("late");
@@ -811,7 +812,7 @@ describe("reset and submit", () => {
         onSubmitted: (submission) => void order.push(submission.status),
       }),
     });
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({ defaultValues: contact(), plugins: [upload], onSubmit: () => void order.push("onSubmit") })
       .createStore();
     await store.submit();
@@ -821,7 +822,7 @@ describe("reset and submit", () => {
   it("tells onSubmitted about an invalid submit too", async () => {
     const ended: string[] = [];
     const plugin = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({
         defaultValues: contact(),
         plugins: [plugin],
@@ -839,7 +840,7 @@ describe("reset and submit", () => {
     const gate = new Promise<void>((resolve) => (release = resolve));
     let sent: unknown;
     let fail = false;
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({
         defaultValues: contact(),
         plugins: [end],
@@ -868,7 +869,7 @@ describe("reset and submit", () => {
   it("gives onSubmitted no value when the submit ends invalid", async () => {
     const inputs: unknown[] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (_submission, input) => void inputs.push(input) }) });
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({ defaultValues: contact(), plugins: [end], validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } } })
       .createStore();
     await store.submit();
@@ -890,7 +891,7 @@ describe("reset and submit", () => {
     const ended: string[] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (submission) => void ended.push(submission.status) }) });
     const onSubmit = vi.fn<() => string>(() => "sent");
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({ defaultValues: contact(), plugins: [captcha(() => Promise.reject(new Error("offline"))), end], onSubmit })
       .createStore();
     expect(await store.submit()).toEqual({ status: "invalid" });
@@ -902,7 +903,7 @@ describe("reset and submit", () => {
 
   it("submits when the plugin gets its token, and the token isn't a user edit", async () => {
     const onSubmit = vi.fn<(value: Contact) => string>(() => "sent");
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({ defaultValues: contact(), plugins: [captcha(() => Promise.resolve("t0k"))], onSubmit })
       .createStore();
     expect(await store.submit()).toEqual({ status: "succeeded", result: "sent" });
@@ -912,7 +913,7 @@ describe("reset and submit", () => {
 
   it("skips the onSubmit of later plugins after a refusal returned at once", async () => {
     const later = vi.fn<() => void>();
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({
         defaultValues: contact(),
         plugins: [
@@ -1005,6 +1006,7 @@ const parcel = (): Parcel => ({ note: "", shipping: { street: "", city: "Oslo" }
 /** Writes the whole `shipping` object and drops the first row, so no node below either is made in setup. */
 const fills = definePlugin({
   name: "fill",
+  requires: () => [arrays],
   setup: (ctx) => {
     ctx.write(() => {
       ctx.store.root.at("shipping").setValue({ street: "1 Main St", city: "Oslo" }, { edited: false });
@@ -1066,7 +1068,7 @@ describe("revalidation", () => {
       },
     });
     const form = vi.fn<(value: Contact) => undefined>(() => undefined);
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define({ defaultValues: contact(), validate: { form }, plugins: [filler] })
       .createStore();
     await store.validate();
@@ -1084,7 +1086,7 @@ const starts = (name: string, value: Contact | undefined, seen?: unknown[]) =>
 describe("a plugin list", () => {
   it("skips false, null and undefined", () => {
     const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
-    const store = createFormsCore({ plugins: [false, counter, null] })
+    const store = createFormsCore({ plugins: [arrays(), false, counter, null] })
       .define({ defaultValues: contact(), plugins: [undefined] })
       .createStore();
     expect(store.plugins).toEqual({ counter: { count: 1 } });

@@ -1,7 +1,8 @@
 import { fireEvent } from "@testing-library/dom";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
+import { Items, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
+import { arrays } from "../src/plugins.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -26,7 +27,7 @@ interface Values {
   tags: { title: string }[];
 }
 const defaultValues: Values = { name: "", email: "", age: 30, agree: false, tags: [{ title: "a" }, { title: "b" }] };
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 const profile = forms.define({ defaultValues });
 type ProfileForm = FormOf<typeof profile>;
 
@@ -66,7 +67,7 @@ function Profile() {
       <NameFilled field={form.root.at("name")} />
       <Age field={form.root.at("age")} />
       <Agree field={form.root.at("agree")} />
-      <form.Items name="tags">{(tag, index) => <form.TextField handle={tag.at("title")} label={`Tag ${index}`} />}</form.Items>
+      <Items handle={form.root.at("tags")}>{(tag, index) => <form.TextField handle={tag.at("title")} label={`Tag ${index}`} />}</Items>
     </>
   );
 }

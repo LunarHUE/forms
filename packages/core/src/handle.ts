@@ -184,27 +184,46 @@ export type ItemArgs<I> =
       : [item?: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions]
     : [item?: NoInfer<I | DeepReadonly<I>>, options?: WriteOptions];
 
-/** The handle for an array value. Items are addressed by stable key, not index. */
-export interface ArrayHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
-  /** Replaces the whole array. A readonly array, such as a snapshot's value, works too. */
-  setValue(value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions): void;
+/**
+ * The commands that change an array's length or order. `T` is the `this`
+ * they take: anything when the form has `arrays()`, else a type that names
+ * it, so a call without it is a type error that says to add `arrays()`.
+ */
+export interface ArrayCommands<V, T> {
   /**
    * Adds an item at the end. With no item it uses the schema adapter's item
    * value, or `undefined` when there is no adapter. An array of a union of
    * literals has no empty item, so it needs the item. See `ItemArgs`.
    */
-  push(...args: ItemArgs<ItemOf<V>>): void;
+  push(this: T, ...args: ItemArgs<ItemOf<V>>): void;
   /** Adds an item before `index`. With no item it behaves as `push` does. */
-  insert(index: number, ...args: ItemArgs<ItemOf<V>>): void;
+  insert(this: T, index: number, ...args: ItemArgs<ItemOf<V>>): void;
   /**
    * Removes the item at `index`. Its handle keeps returning its last
    * snapshot, so a component that is still unmounting can read it. The store
    * keeps the removed item's state, last snapshots and handles until the
    * store itself is freed.
    */
-  remove(index: number, options?: WriteOptions): void;
+  remove(this: T, index: number, options?: WriteOptions): void;
   /** Moves the item at `from` to `to`. The item keeps its key and its handle. */
-  move(from: number, to: number, options?: WriteOptions): void;
+  move(this: T, from: number, to: number, options?: WriteOptions): void;
+}
+
+/**
+ * The handle for an array value. Items are addressed by stable key, not
+ * index. `push`, `insert`, `remove` and `move` need `arrays()` among the
+ * form's plugins `N`.
+ */
+export interface ArrayHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N>,
+    // Written out rather than aliased, so the type error shows the text.
+    // No conditional type, so a handle of a form with more plugins still
+    // fits where one with fewer is asked for. See `Gate`.
+    ArrayCommands<
+      V,
+      void | Omit<{ readonly "Add arrays() to this form's plugins": never }, { readonly [K in "arrays"]: "Add arrays() to this form's plugins" }["arrays" & N]>
+    > {
+  /** Replaces the whole array. A readonly array, such as a snapshot's value, works too. */
+  setValue(value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions): void;
   /**
    * Returns the handle of the item with stable key `key`. It reads no state:
    * it returns the same handle object for the same key on every call. The
@@ -226,7 +245,11 @@ export type ItemHandle<V, E = FormError, N extends string = never> = FieldHandle
  * without knowing their types. Structure members exist on every handle at
  * runtime but only do something on fields of that shape.
  */
-export interface AnyFieldHandle<E = FormError, N extends string = never> extends HandleBase<unknown, E, N> {
+export interface AnyFieldHandle<E = FormError, N extends string = never>
+  extends HandleBase<unknown, E, N>,
+    LooseArrayCommands<
+      void | Omit<{ readonly "Add arrays() to this form's plugins": never }, { readonly [K in "arrays"]: "Add arrays() to this form's plugins" }["arrays" & N]>
+    > {
   /** The stable key, on array items. */
   readonly key?: string;
   /** Writes a value. On an object it merges unless `replace` is true. */
@@ -235,14 +258,18 @@ export interface AnyFieldHandle<E = FormError, N extends string = never> extends
   at(key: PathSegment): AnyFieldHandle<E, N>;
   /** The item handle for stable key `key`, as on `ArrayHandle`. */
   item(key: string): AnyFieldHandle<E, N> & { readonly key: string };
-  /** As on `ArrayHandle`. */
-  push(item?: unknown, options?: WriteOptions): void;
-  /** As on `ArrayHandle`. */
-  insert(index: number, item?: unknown, options?: WriteOptions): void;
-  /** As on `ArrayHandle`. */
-  remove(index: number, options?: WriteOptions): void;
-  /** As on `ArrayHandle`. */
-  move(from: number, to: number, options?: WriteOptions): void;
+}
+
+/** `ArrayCommands` loosely typed, for `AnyFieldHandle`. */
+export interface LooseArrayCommands<T> {
+  /** As on `ArrayHandle`. Needs `arrays()`. */
+  push(this: T, item?: unknown, options?: WriteOptions): void;
+  /** As on `ArrayHandle`. Needs `arrays()`. */
+  insert(this: T, index: number, item?: unknown, options?: WriteOptions): void;
+  /** As on `ArrayHandle`. Needs `arrays()`. */
+  remove(this: T, index: number, options?: WriteOptions): void;
+  /** As on `ArrayHandle`. Needs `arrays()`. */
+  move(this: T, from: number, to: number, options?: WriteOptions): void;
 }
 
 /**

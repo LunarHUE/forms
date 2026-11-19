@@ -1,6 +1,8 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { ComponentProps } from "react";
 import {
+  Items,
+  useItems,
   createForms,
   type FieldApi,
   type FieldHandle,
@@ -26,6 +28,7 @@ import {
   useFormContext,
   useFormState,
 } from "./index.js";
+import { arrays } from "./plugins.js";
 
 // A schema type a schema plugin accepts, as in core's type tests. No schema library is needed.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -55,7 +58,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   );
 }
 
-const forms = createForms({ plugins: [fakePlugin], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [fakePlugin, arrays()], fields: { TextField, NumberField } });
 
 interface Address {
   street: string;
@@ -104,14 +107,14 @@ type DraftOrder = {
   channels: ("email" | "sms")[];
 };
 type Fields = { readonly TextField: typeof TextField; readonly NumberField: typeof NumberField };
-type Installed = readonly [typeof fakePlugin];
+type Installed = readonly [typeof fakePlugin, ReturnType<typeof arrays>];
 type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, Fields, Installed>;
 
 function OrderPage() {
   const form = useForm(order);
   expectTypeOf(form).toEqualTypeOf<OrderForm>();
-  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake">>();
-  expectTypeOf(form.store).toEqualTypeOf<FormStore<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, {}, "fake">>();
+  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake" | "arrays">>();
+  expectTypeOf(form.store).toEqualTypeOf<FormStore<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, {}, "fake" | "arrays">>();
   expectTypeOf(form.submit("send")).toEqualTypeOf<Promise<Submission<"save" | "send" | undefined, { id: string }>>>();
   // @ts-expect-error: not one of the intents
   void form.submit("delete");
@@ -126,7 +129,7 @@ function OrderPage() {
           <form.Field name="email">
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<string>();
-              expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
+              expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string, FormError, "fake" | "arrays">>();
               return <input {...inputProps(field, { type: "email" })} />;
             }}
           </form.Field>
@@ -138,12 +141,12 @@ function OrderPage() {
               return <input {...inputProps(field, { kind: "checkbox", value: "sms" })} />;
             }}
           </form.Field>
-          <form.Items name="lines">
+          <Items handle={form.root.at("lines")}>
             {(line) => {
-              expectTypeOf(line).toEqualTypeOf<ItemHandle<DraftLine, FormError, "fake">>();
+              expectTypeOf(line).toEqualTypeOf<ItemHandle<DraftLine, FormError, "fake" | "arrays">>();
               return <Line line={line} />;
             }}
-          </form.Items>
+          </Items>
           <SubmitButton />
           <button type="button" onClick={() => void owner.submit("send")}>
             Send
@@ -200,7 +203,7 @@ function WrongUsage() {
       {/* @ts-expect-error: neither name nor handle */}
       <form.Field>{() => null}</form.Field>
       {/* @ts-expect-error: billing is not an array */}
-      <form.Items name="billing">{() => null}</form.Items>
+      <Items handle={form.root.at("billing")}>{() => null}</Items>
       {/* @ts-expect-error: the component's own label prop is required */}
       <form.TextField name="customer" />
       {/* @ts-expect-error: customer is a string, NumberField edits numbers */}
@@ -343,7 +346,7 @@ function GeoFields(props: { readonly field: HandleOf<typeof GeoShape> }) {
   // The scope carries the shared plugins, so registered components that need them work in a fieldset.
 function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; readonly title: string }) {
   const scope = AddressShape.scope(props.field);
-  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<DraftAddress, FormError, "fake">>();
+  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<DraftAddress, FormError, "fake" | "arrays">>();
   return (
     <fieldset>
       <legend>{props.title}</legend>
@@ -394,7 +397,7 @@ function OrderWithFieldsets() {
           <AddressFields field={form.root.at("billing")} title="Billing" />
           <AddressFields field={form.root.at("shipping")} title="Shipping" />
           <billing.TextField name="zip" label="Billing zip" />
-          <form.Items name="stops">{(stop) => <AddressFields field={stop} title="Stop" />}</form.Items>
+          <Items handle={form.root.at("stops")}>{(stop) => <AddressFields field={stop} title="Stop" />}</Items>
           {/* @ts-expect-error: lines is an array, not an address */}
           <AddressFields field={form.root.at("lines")} title="Lines" />
           {/* @ts-expect-error: geo has numbers where an address has strings */}
@@ -428,8 +431,8 @@ const lineDialog = forms.define({ defaultValues: { item: "", qty: 0 } });
 function LineDialogBody() {
   const outer = useFormContext(order);
   const inner = useFormContext(lineDialog);
-  expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake">>();
-  expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }, FormError, "fake">>();
+  expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake" | "arrays">>();
+  expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }, FormError, "fake" | "arrays">>();
   return <inner.Field name="qty">{(field) => <input {...inputProps(field, { kind: "number", empty: 0 })} />}</inner.Field>;
 }
 
@@ -487,7 +490,7 @@ const seeded = forms.define((options: { readonly title: string }) => ({ defaultV
 function OptionForms() {
   const form = useForm(seeded, { title: "a" }, { id: "seeded" });
   expectTypeOf(form).toEqualTypeOf<FormOf<typeof seeded>>();
-  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ title: string }, FormError, "fake">>();
+  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ title: string }, FormError, "fake" | "arrays">>();
   expectTypeOf(useFormContext(seeded)).toEqualTypeOf<FormOf<typeof seeded>>();
   // @ts-expect-error: the options are required
   useForm(seeded);
@@ -529,7 +532,7 @@ describe("fieldsets and scopes", () => {
     expectTypeOf(OrderWithFieldsets).toBeFunction();
     expectTypeOf(PlainNumbers).toBeFunction();
     // A fieldset only types the shape: it has no hook and takes no options.
-    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields, "fake">>();
+    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields, "fake" | "arrays">>();
     // @ts-expect-error: scope takes the handle only
     AddressShape.scope(emptyHandle, { validate: false });
   });
@@ -631,7 +634,7 @@ const treeForm = forms.define<TreeNode>({ defaultValues: { name: "root", childre
 
 describe("recursive value types", () => {
   it("defines a form whose value holds itself", () => {
-    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
+    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "fake" | "arrays">>();
     useForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
   });
 });
@@ -686,5 +689,21 @@ describe("writing back a value read from a field object", () => {
   it("compiles for objects, arrays and array items", () => {
     expectTypeOf(WriteBack).toBeFunction();
     expectTypeOf(TagsField).toBeFunction();
+  });
+});
+
+const bareList = createForms().define({ defaultValues: { tags: ["a"] } });
+
+function BareList() {
+  const form = useForm(bareList);
+  // @ts-expect-error: Add arrays() to this form's plugins
+  useItems(form.root.at("tags"));
+  // @ts-expect-error: Add arrays() to this form's plugins
+  return <Items handle={form.root.at("tags")}>{() => null}</Items>;
+}
+
+describe("Items and useItems", () => {
+  it("need arrays()", () => {
+    expectTypeOf(BareList).toBeFunction();
   });
 });

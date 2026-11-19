@@ -6,6 +6,7 @@ import type { Attachment } from "../plugin.js";
 import { definePlugin, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
 import { testStore } from "./testing.js";
+import { arrays } from "./arrays.js";
 
 /** A plugin that records what each attach saw, and adds its config to each write. */
 const tagger = (seen: { path: Path; config: unknown }[] = []) =>
@@ -21,7 +22,7 @@ const tag = (config: string, path?: string) => ({ plugin: "tag", config, ...(pat
 describe("attach", () => {
   it("runs attach once per path, with the context's path", () => {
     const seen: { path: Path; config: unknown }[] = [];
-    const { store, errors } = testStore({ defaultValues: { a: { b: "" } }, plugins: [tagger(seen)] }, tag("!", "a.b"));
+    const { store, errors } = testStore({ defaultValues: { a: { b: "" } }, plugins: [arrays(), tagger(seen)] }, tag("!", "a.b"));
     expect(seen).toEqual([{ path: ["a", "b"], config: "!" }]);
     store.root.at("a").at("b").setValue("x");
     expect(store.getSnapshot(["a", "b"]).value).toBe("x!");
@@ -32,13 +33,13 @@ describe("attach", () => {
     const seen: { path: Path; config: unknown }[] = [];
     const part = tag("!");
     const pinned: Part<"tag", unknown> = { ...part, path: "a", "~of": part };
-    const { store } = testStore({ defaultValues: { a: "" }, plugins: [tagger(seen)] }, pinned);
+    const { store } = testStore({ defaultValues: { a: "" }, plugins: [arrays(), tagger(seen)] }, pinned);
     attach(store.root.at("a"), [part]);
     expect(seen).toEqual([{ path: ["a"], config: "!" }]);
   });
 
   it("walks a write above the path down to it, and leaves the rest of the write alone", () => {
-    const { store, errors } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [tagger()] }, tag("!", "a.b"));
+    const { store, errors } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [arrays(), tagger()] }, tag("!", "a.b"));
     store.root.setValue({ a: { b: "x", c: "y" } });
     expect(store.getSnapshot([]).value).toEqual({ a: { b: "x!", c: "y" } });
     expect(errors).toEqual([]);
@@ -49,13 +50,13 @@ describe("attach", () => {
       name: "tag",
       attach: (_ctx: PluginContext, _config: string) => ({ beforeWrite: (write) => (write.value === "no" ? refuse : write.value) }),
     });
-    const { store } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [refusing] }, tag("", "a.b"));
+    const { store } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [arrays(), refusing] }, tag("", "a.b"));
     store.root.at("a").setValue({ b: "no", c: "y" });
     expect(store.getSnapshot(["a"]).value).toEqual({ b: "", c: "" });
   });
 
   it("drops an attachment whose field is gone", () => {
-    const { store, errors } = testStore({ defaultValues: { rows: [{ name: "" }] }, plugins: [tagger()] });
+    const { store, errors } = testStore({ defaultValues: { rows: [{ name: "" }] }, plugins: [arrays(), tagger()] });
     const rows = store.root.at("rows");
     const [key] = rows.peek().keys;
     attach(rows.item(key!).at("name"), [tag("!")]);
@@ -66,11 +67,11 @@ describe("attach", () => {
   });
 
   it("throws plugins:missing for a part whose plugin the store lacks", () => {
-    const forms = createFormsCore();
+    const forms = createFormsCore({ plugins: [arrays(), arrays()] });
     // The cast skips the type error, to reach the runtime check.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     expect(() => forms.define({ defaultValues: { a: "" } }, tag("!") as never).createStore()).toThrow(/Add tag\(\) to this form's plugins/);
-    const store = createFormsCore({ plugins: [dirty()] }).define({ defaultValues: { a: "" } }).createStore();
+    const store = createFormsCore({ plugins: [arrays(), dirty()] }).define({ defaultValues: { a: "" } }).createStore();
     expect(() => attach(store.root, [tag("!")])).toThrow(/core:plugins:missing/);
   });
 });
@@ -81,7 +82,7 @@ describe("requires", () => {
   it("throws plugins:missing when a required plugin isn't there", () => {
     const autosave = definePlugin({ name: "autosave", requires: () => [counter], setup: () => ({}) });
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    expect(() => createFormsCore({ plugins: [autosave] as never }).define({ defaultValues: {} }).createStore()).toThrow(
+    expect(() => createFormsCore({ plugins: [arrays(), autosave] as never }).define({ defaultValues: {} }).createStore()).toThrow(
       /Add counter\(\) to this form's plugins: plugin "autosave" requires it/,
     );
   });
@@ -101,7 +102,7 @@ describe("requires", () => {
     const first = definePlugin({ name: "counter", setup: () => (order.push("counter"), { api: { count: 2 } }) });
     // `first` stands in for counter(), which the types can't see.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    createFormsCore({ plugins: [autosave, first] as never }).define({ defaultValues: {} }).createStore();
+    createFormsCore({ plugins: [arrays(), autosave, first] as never }).define({ defaultValues: {} }).createStore();
     expect(order).toEqual(["counter", "autosave"]);
     expect(count).toBe(2);
   });

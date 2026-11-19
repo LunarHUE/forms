@@ -134,8 +134,11 @@ export interface PluginBaseline {
  * parameter to set `M` and `F`: `setup(ctx: PluginContext<{ hidden: boolean }>)`.
  */
 export interface PluginContext<M = never, F = never, Q extends Plugins = readonly []> {
-  /** The store the plugin is installed on. */
-  readonly store: AnyFormStore<unknown>;
+  /**
+   * The store the plugin is installed on. Its handles have the members the
+   * plugins `requires` names give, such as `push` from `arrays()`.
+   */
+  readonly store: AnyFormStore<unknown, PluginNames<Q>>;
   /** The stable path the hooks attach at. `[]` in `setup`. */
   readonly path: Path;
   /** The APIs of the plugins `requires` names, by name. Their setup has run. */
@@ -343,6 +346,11 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~list"?: ListParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
+  /**
+   * Item keys and array commands, from `arrays()`. Internal. Typed as a bare
+   * object so the store's internal types stay out of the public declarations.
+   */
+  readonly "~arrays"?: object;
 }
 
 /** The reader of a plugin that keeps meta on fields. */

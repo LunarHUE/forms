@@ -7,7 +7,8 @@ import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
-import { createStoreCore, type StoreCore } from "./core.js";
+import type { BuildKeys } from "./baseline/keys.js";
+import { createStoreCore, type CreateArrays, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
@@ -48,7 +49,7 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
  * definition's types take them away when the form has no `dirty()`.
  */
 // oxlint-disable-next-line typescript/no-empty-object-type
-export type MadeStore<V, E, I, R> = FormStore<V, E, I, R, {}, "dirty">;
+export type MadeStore<V, E, I, R> = FormStore<V, E, I, R, {}, "dirty" | "arrays">;
 
 /** A form store with the parts it is made of, for tests and internal callers. */
 export interface FormInternals<V, E, I, R> {
@@ -74,11 +75,16 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
+  // Item keys that follow inserts, removes and moves come with `arrays()`.
+  // The slot is opaque in the public types. `arrays()` puts this tuple in it.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const arrays = plugins.find((plugin) => plugin["~arrays"])?.["~arrays"] as readonly [CreateArrays, BuildKeys] | undefined;
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
     // The core first calls this when something reads, after `baseline` below exists.
     dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
+    arrays: arrays?.[0],
   });
   // Only a store with hook plugins gets a host. The plugins bring its code
   // with them, so core neither carries nor runs it for a store without.
@@ -98,7 +104,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const core = (host?.core ?? raw) as StoreCore<E, I, R>;
   const context: FormContext<V, E, I, R> = { core, store: () => store };
-  const baseline = createBaseline(context, options, createDirty);
+  const baseline = createBaseline(context, options, createDirty, arrays?.[1]);
   const validation = createValidation(context, options);
   const submit = createSubmit(context, options, validation, host);
 
@@ -127,7 +133,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     get root() {
       // The runtime handle has every member, and the value type is the caller's.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return handles.root() as FieldHandle<V, E, "dirty">;
+      return handles.root() as FieldHandle<V, E, "dirty" | "arrays">;
     },
     subscribe: core.subscribe,
     getSnapshot: core.getSnapshot,

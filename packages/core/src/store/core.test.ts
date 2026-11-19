@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Path } from "../path.js";
+import { createArrays } from "./arrays.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { isContainer } from "./tree.js";
 
-const make = (initial: unknown) => createStoreCore({ id: "f", initial });
+const make = (initial: unknown) => createStoreCore({ id: "f", initial, arrays: createArrays });
 
 /** Counts listener calls per path. */
 function count(store: StoreCore, paths: Path[]) {
@@ -32,7 +33,7 @@ async function frozenAfterWrites(stub: () => void) {
   try {
     const fresh = await import("./core.js");
     const initial = { rows: [{ t: "a" }], meta: { n: 1 } };
-    const store = fresh.createStoreCore({ id: "f", initial });
+    const store = fresh.createStoreCore({ id: "f", initial, arrays: (await import("./arrays.js")).createArrays });
     const written = { t: "b", tags: [] };
     store.insert(["rows"], 1, written);
     store.set(["rows", "k0", "t"], "z");
@@ -673,12 +674,45 @@ describe("server flags of a field first read after a write", () => {
 
   it("asks the dirty option about the value the field started with", () => {
     const dirty = vi.fn<(path: Path, value: unknown) => boolean>((_path, value) => value !== "");
-    const store = createStoreCore({ id: "f", initial: { other: "", shipping: { street: "", city: "" } }, dirty });
+    const store = createStoreCore({ id: "f", initial: { other: "", shipping: { street: "", city: "" } }, dirty, arrays: createArrays });
     store.set(["shipping"], { street: "1 Main St", city: "" });
     store.started();
     store.set(["other"], "typed");
     expect(store.getServerSnapshot(["shipping", "street"]).dirty).toBe(true);
     expect(store.getServerSnapshot(["shipping", "city"]).dirty).toBe(false);
     expect(dirty).toHaveBeenCalledWith(["shipping", "street"], "1 Main St");
+  });
+});
+
+const bare = (initial: unknown) => createStoreCore({ id: "f", initial });
+
+describe("without arrays()", () => {
+  it("keys every array by position, the same on the server, with the same list while the length holds", () => {
+    const store = bare({ rows: [{ t: "a" }, { t: "b" }] });
+    const keys = keysAt(store, ["rows"]);
+    expect(keys).toEqual(["k0", "k1"]);
+    expect(store.getServerSnapshot(["rows"]).keys).toEqual(keys);
+    store.set(["rows", "k1", "t"], "z");
+    expect(keysAt(store, ["rows"])).toBe(keys);
+    expect(store.pathOf("rows.1.t")).toEqual(["rows", "k1", "t"]);
+    expect(store.itemSteps(["rows", "k1", "t"])).toEqual([false, true, false]);
+  });
+
+  it("throws on an array command", () => {
+    const store = bare({ rows: [] });
+    expect(() => store.insert(["rows"], 0, "a")).toThrow(/core:arrays:missing/);
+    expect(() => store.remove(["rows"], 0)).toThrow(/core:arrays:missing/);
+    expect(() => store.move(["rows"], 0, 1)).toThrow(/core:arrays:missing/);
+  });
+
+  it("blocks an item past the end after a shorter array is written, and lets it back when the array grows", () => {
+    // With arrays() the item is removed for good and the new third item gets a fresh key.
+    const store = bare({ rows: ["a", "b", "c"] });
+    expect(store.getSnapshot(["rows", "k2"]).value).toBe("c");
+    store.set(["rows"], ["a", "b"]);
+    expect(store.isLive(["rows", "k2"])).toBe(false);
+    store.set(["rows"], ["a", "b", "d"]);
+    expect(store.getSnapshot(["rows", "k2"]).value).toBe("d");
+    expect(keysAt(store, ["rows"])).toEqual(["k0", "k1", "k2"]);
   });
 });

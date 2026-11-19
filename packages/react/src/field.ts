@@ -11,7 +11,7 @@ import type {
   ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useSelected } from "./select.js";
 import { fieldSource, formSource, storeOf } from "./sources.js";
 
@@ -102,24 +102,6 @@ export interface ArrayHandleLike extends HandleLike {
   /** Returns the item handle for a stable key. */
   item(key: string): unknown;
 }
-
-const noKeys: readonly string[] = [];
-const keysOf = (snapshot: FieldSnapshot<unknown, unknown>): readonly string[] => snapshot.keys ?? noKeys;
-const sameKeys = (a: readonly string[], b: readonly string[]): boolean =>
-  a.length === b.length && a.every((key, index) => key === b[index]);
-
-/**
- * Returns the item handles of an array field, in their current order. The
- * component re-renders only when the item keys change: an item added,
- * removed or moved. An edit inside an item does not re-render it. The list
- * keeps its identity until the keys change, so it is safe as a dependency.
- */
-export const useItems = <H extends ArrayHandleLike>(handle: H): readonly ReturnType<H["item"]>[] => {
-  const keys = useSelected(fieldSource(handle), keysOf, sameKeys);
-  // `item` returns the handle typed for the array's items.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return useMemo(() => keys.map((key) => handle.item(key)), [handle, keys]) as ReturnType<H["item"]>[];
-};
 
 /** What `useValidator` needs from a handle. */
 export interface ValidatorHandleLike extends HandleLike {

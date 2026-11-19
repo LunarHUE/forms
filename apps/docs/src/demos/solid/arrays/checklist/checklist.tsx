@@ -1,8 +1,10 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
+import { Items, createForm, createForms } from "@lunarhue/forms-solid";
+import { arrays } from "@lunarhue/forms-solid/plugins";
 import { Show } from "solid-js";
 import { TextField } from "./TextField";
 
-const forms = createForms({ fields: { TextField } });
+// arrays() brings Items and the array commands: push, insert, remove, move.
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 
 // With no schema, `defaultValues` types the form.
 const checklist = forms.define({
@@ -22,7 +24,7 @@ export default function ChecklistForm() {
         <form {...formProps}>
           {/* Each row renders once per key. A move or a remove keeps
               the row's DOM, and `index` is a signal that follows it. */}
-          <form.Items name="tasks">
+          <Items handle={tasks}>
             {(task, index) => (
               <div>
                 <form.TextField handle={task.at("title")} label={`Task ${index() + 1}`} />
@@ -36,7 +38,7 @@ export default function ChecklistForm() {
                 </div>
               </div>
             )}
-          </form.Items>
+          </Items>
           <div>
             <button type="button" onClick={() => tasks.push({ title: "" })}>
               Add task

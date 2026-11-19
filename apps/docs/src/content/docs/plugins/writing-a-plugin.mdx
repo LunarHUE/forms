@@ -111,6 +111,10 @@ development. The
 plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
 APIs. To run after a plugin without needing it, name it in `after`.
 
+`ctx.store` is typed with the names in `requires` too. A plugin that adds
+rows with `push` requires `arrays`, and one that reads `dirty` requires
+`dirty`.
+
 ## Other plugins
 
 `ctx.installed` lists the store's plugins in the order their hooks run.

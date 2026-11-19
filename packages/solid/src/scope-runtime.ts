@@ -1,9 +1,8 @@
 import { type AnyFieldHandle, attach, type Part, type Validator, type ValidatorInput } from "@lunarhue/forms-core";
 import { merge, omit } from "#solid";
-import { createComponent, For, untrack, type Accessor } from "solid-js";
+import { createComponent, untrack } from "solid-js";
 import type { SolidElement } from "./element.js";
 import { createFieldApi } from "./field-api.js";
-import { createItemList } from "./items.js";
 import { problem } from "./problem.js";
 import { addValidator } from "./validator.js";
 
@@ -18,15 +17,8 @@ export type RuntimeComponent = (props: any) => SolidElement;
 /** A `fields` entry with its types erased: a component, or a field type from `defineField`. */
 export type RuntimeEntry = RuntimeComponent | { readonly component: RuntimeComponent; readonly parts: readonly Part[] };
 
-/** A scope with its types erased: `root`, `Field`, `Items`, and the registered components. */
+/** A scope with its types erased: `root`, `Field` and the registered components. */
 export type RuntimeScope = Record<string, unknown> & { readonly root: RuntimeHandle };
-
-/** `For` keyed by item identity: each item handle is its own key. */
-const ForEach: (props: {
-  readonly each: readonly unknown[];
-  readonly fallback?: SolidElement;
-  readonly children: (item: unknown, index: Accessor<number>) => SolidElement;
-}) => SolidElement = For;
 
 /** How a bound component names its field. */
 interface FieldTarget {
@@ -45,12 +37,6 @@ interface OneField extends FieldTarget {
 /** Props of the bound `Field`. */
 interface FieldProps extends OneField {
   readonly children: (field: object) => SolidElement;
-}
-
-/** Props of the bound `Items`. */
-interface ItemsProps extends FieldTarget {
-  readonly fallback?: SolidElement;
-  readonly children: (item: unknown, index: Accessor<number>) => SolidElement;
 }
 
 /** The field a bound component names, read once: `handle`, or `name` resolved from `root`. */
@@ -114,19 +100,6 @@ function buildScope(root: RuntimeHandle, fields: Readonly<Record<string, Runtime
       addPropValidator(handle, props);
       const field = createFieldApi(handle);
       return untrack(() => props.children(field));
-    },
-    // `scope.Items`: the items of an array field, keyed by their stable keys.
-    Items: (props: ItemsProps) => {
-      const items = createItemList(resolveField(root, props));
-      return createComponent(ForEach, {
-        get each() {
-          return items();
-        },
-        get fallback() {
-          return props.fallback;
-        },
-        children: (item: unknown, index: Accessor<number>) => props.children(item, index),
-      });
     },
   };
   for (const [name, entry] of Object.entries(fields)) {

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  Items,
   createForms,
   type FieldApi,
   type FormOf,
@@ -16,6 +17,7 @@ import {
   type ValidatorInput,
 } from "./index.js";
 import { type Commits, countListeners, type Listeners, settle, useCommits } from "./test/helpers.js";
+import { arrays } from "./plugins.js";
 
 const commits: Commits = new Map();
 beforeEach(() => commits.clear());
@@ -30,7 +32,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
   );
 }
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [arrays()], fields: { TextField } });
 const order = forms.define({
   defaultValues: { customer: "", email: "", lines: [{ item: "pen" }, { item: "ink" }] },
 });
@@ -43,7 +45,7 @@ function Line(props: { readonly item: LeafHandle<string>; readonly name: string 
 function Lines(props: { readonly form: FormOf<typeof order> }) {
   const { form } = props;
   return (
-    <form.Items name="lines">
+    <Items handle={form.root.at("lines")}>
       {(line, index) => {
         return (
           <>
@@ -52,11 +54,11 @@ function Lines(props: { readonly form: FormOf<typeof order> }) {
           </>
         );
       }}
-    </form.Items>
+    </Items>
   );
 }
 
-// Commits once per render of form.Items' children, since Items renders it fresh each time.
+// Commits once per render of Items' children, since Items renders it fresh each time.
 function ItemsProbe() {
   useCommits(commits, "items");
   return null;
@@ -93,7 +95,7 @@ describe("re-render isolation", () => {
   });
 
   it("a selector that returns the same value causes no re-render", () => {
-    const profile = createForms().define({ defaultValues: { name: "", age: 1 } });
+    const profile = createForms({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "", age: 1 } });
     const holder: { form?: FormOf<typeof profile> } = {};
     function Empty() {
       const form = useForm(profile);
@@ -121,7 +123,7 @@ describe("re-render isolation", () => {
 
 describe("useItems", () => {
   it("keeps its list while the keys stay, and follows push", () => {
-    const list = createForms().define({ defaultValues: { tags: ["a", "b"] } });
+    const list = createForms({ plugins: [arrays(), arrays()] }).define({ defaultValues: { tags: ["a", "b"] } });
     const holder: { form?: FormOf<typeof list> } = {};
     const lists: (readonly unknown[])[] = [];
     function Tags() {
@@ -151,7 +153,7 @@ describe("useItems", () => {
 
 const toError = (message: string | undefined) => (message === undefined ? undefined : { message });
 type Check = (value: string) => string | undefined;
-const signup = createForms().define({ defaultValues: { name: "" } });
+const signup = createForms({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "" } });
 
 function Name(props: { readonly validator: Check; readonly debounce?: number }) {
   const form = useForm(signup);
@@ -235,7 +237,7 @@ describe("StrictMode lifecycle", () => {
   });
 
   it("leaves no form listeners after unmount", () => {
-    const status = createForms().define({ defaultValues: { name: "" } });
+    const status = createForms({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "" } });
     let live: Listeners | undefined;
     function Status() {
       const form = useForm(status);

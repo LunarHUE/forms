@@ -142,6 +142,21 @@ Reading `dirty` on such a form is a type error too, but at runtime it gives
 `false` and throws nothing. So when a Save button that waits for `dirty` never
 enables, first check that the form has `dirty()`.
 
+<a id="core:arrays:missing"></a>
+
+### `arrays:missing`
+
+> This form changed the length or order of an array, but it has no `arrays()`. Add `arrays()` from "@lunarhue/forms-core/plugins" to `plugins`.
+
+Thrown in development only. Something called `push`, `insert`, `remove` or
+`move` on an array of a form whose plugins have no `arrays()`. TypeScript
+already rejects those calls, so this reaches code without types or code that
+cast the handle. Add `arrays()` from `<adapter>/plugins` to `plugins`, on
+`createForms` or on the definition. In production the commands do nothing.
+
+`setValue` on the array still works without `arrays()`. The Arrays page
+says how rows behave then.
+
 <a id="core:submit:unseen"></a>
 
 ### `submit:unseen`

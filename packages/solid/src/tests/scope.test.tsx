@@ -1,8 +1,9 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps } from "../index.js";
+import { Items, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps } from "../index.js";
 import { get, mount, settle, typeText } from "./dom.js";
+import { arrays } from "../plugins.js";
 
 const bodies = { text: 0, number: 0, address: 0 };
 
@@ -26,7 +27,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   );
 }
 
-const forms = createForms({ plugins: [valibot()], fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [valibot(), arrays()], fields: { TextField, NumberField } });
 
 const AddressSchema = v.object({
   street: v.string(),
@@ -79,14 +80,14 @@ function mountOrder() {
             <f.NumberField handle={f.root.at("qty")} label="Qty" />
             <AddressFields field={f.root.at("billing")} title="Billing" />
             <AddressFields field={f.root.at("shipping")} title="Shipping" />
-            <f.Items name="rows">
+            <Items handle={f.root.at("rows")}>
               {(row, index) => (
                 <div>
                   <f.NumberField handle={row.at("qty")} label={`Row qty`} />
                   <AddressFields field={row.at("address")} title={`Row ${index()}`} />
                 </div>
               )}
-            </f.Items>
+            </Items>
           </form>
         )}
       </f.Form>

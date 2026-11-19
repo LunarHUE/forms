@@ -3,8 +3,8 @@ import { type ReactNode, StrictMode, Suspense, use } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
-import { dirty, ruled, rules } from "./plugins.js";
+import { Items, createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
+import { arrays, dirty, ruled, rules } from "./plugins.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -22,7 +22,7 @@ interface Order {
   lines: { item: string }[];
 }
 const initial: Order = { customer: "Ada", plan: "free", lines: [{ item: "pen" }, { item: "ink" }] };
-const order = createForms({ plugins: [dirty()], fields: { TextField } }).define({ defaultValues: initial });
+const order = createForms({ plugins: [dirty(), arrays()], fields: { TextField } }).define({ defaultValues: initial });
 
 function Plan() {
   const form = useFormContext(order);
@@ -49,7 +49,7 @@ function Order() {
         <form {...props}>
           <form.TextField name="customer" label="Customer" />
           <Plan />
-          <form.Items name="lines">{(line) => <form.TextField handle={line.at("item")} label="Item" />}</form.Items>
+          <Items handle={form.root.at("lines")}>{(line) => <form.TextField handle={line.at("item")} label="Item" />}</Items>
           <Status />
         </form>
       )}
@@ -115,7 +115,7 @@ interface Trip {
   title: string;
   stops: { place: string; nights: number }[];
 }
-const counted = createForms({ fields: { CountedText, CountedNumber } });
+const counted = createForms({ plugins: [arrays()], fields: { CountedText, CountedNumber } });
 const tour: Trip = { title: "Tour", stops: [{ place: "Oslo", nights: 2 }] };
 const trip = counted.define({ defaultValues: tour });
 
@@ -136,7 +136,7 @@ function TripForm() {
       <form.Field name="title" select={(snapshot) => snapshot.value}>
         {(value) => <Counted name="Field select">{value}</Counted>}
       </form.Field>
-      <form.Items name="stops">
+      <Items handle={form.root.at("stops")}>
         {(stop) => {
           const scope = counted.scope(stop);
           return (
@@ -146,7 +146,7 @@ function TripForm() {
             </Counted>
           );
         }}
-      </form.Items>
+      </Items>
     </form>
   );
 }

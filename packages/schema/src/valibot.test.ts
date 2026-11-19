@@ -3,6 +3,7 @@ import type { Path } from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
+import { arrays } from "@lunarhue/forms-core/plugins";
 
 const defaultValue = (schema: ValibotSchema) => valibot().schema.defaultValue(schema);
 const itemValue = (schema: ValibotSchema, path: Path) => valibot().schema.itemValue(schema, path);
@@ -187,7 +188,7 @@ describe("the plugin", () => {
 });
 
 describe("with core", () => {
-  const core = createFormsCore({ plugins: [valibot()] });
+  const core = createFormsCore({ plugins: [arrays(), valibot()] });
 
   const profile = v.object({
     name: v.pipe(v.string(), v.minLength(1, "Name required")),

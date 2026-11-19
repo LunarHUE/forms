@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FormError, Show } from "../errors.js";
 import type { Path } from "../path.js";
+import { createArrays } from "./arrays.js";
 import { createStoreCore, type StoreCore, type StoreCoreOptions } from "./core.js";
 
 type Options = Omit<StoreCoreOptions, "id" | "initial">;
 
-const make = (initial: unknown, options: Options = {}) => createStoreCore({ id: "f", initial, ...options });
+const make = (initial: unknown, options: Options = {}) => createStoreCore({ id: "f", initial, arrays: createArrays, ...options });
 
 const err = (message: string): FormError => ({ message });
 

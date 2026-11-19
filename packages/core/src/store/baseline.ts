@@ -2,7 +2,7 @@ import type { ResetOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
 import type { PluginBaseline } from "../plugin.js";
 import type { Change } from "../store.js";
-import { buildKeys, indexKeys, indexOfItem, keysOf, locate, type KeysFor, type KeyTrie } from "./baseline/keys.js";
+import { type BuildKeys, indexKeys, indexOfItem, keysOf, locate, type KeysFor, type KeyTrie } from "./baseline/keys.js";
 import type { FormContext } from "./context.js";
 import type { CreateDirty, DirtyOptions } from "./dirty.js";
 import { none } from "./entries.js";
@@ -64,12 +64,15 @@ const pairing = ({ value, keys }: { value: unknown; keys: KeyTrie | undefined })
 
 /**
  * Makes the baseline. It starts as the initial value with positional item
- * keys. `createDirty` is the dirty tracking `dirty()` brings, when installed.
+ * keys. `createDirty` is the dirty tracking `dirty()` brings, and
+ * `buildKeys` the key trie code `arrays()` brings, when installed.
  */
 export function createBaseline<V, E, I, R>(
   context: FormContext<V, E, I, R>,
   options: BaselineOptions<V>,
   createDirty?: CreateDirty,
+  // Without `arrays()` every key is positional, so the baseline needs no key trie.
+  buildKeys: BuildKeys = () => undefined,
 ): Baseline {
   const { core } = context;
   const { initial } = options;

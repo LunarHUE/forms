@@ -8,8 +8,6 @@ import type {
   FormError,
   HandleTypes,
   HasChoice,
-  ItemHandle,
-  ItemOf,
   Nested,
   Needs,
   Part,
@@ -20,10 +18,10 @@ import type {
   WithChoice,
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
-import type { ArrayHandleLike, HandleLike, IsEqual, SnapshotOf } from "./field.js";
+import type { HandleLike, IsEqual, SnapshotOf } from "./field.js";
 import type { FieldRef } from "./input.js";
 import type { FieldPieces } from "./pieces.js";
-import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
+import type { FieldPath, ValueAt } from "./path.js";
 
 /** The handle members a field object carries as commands. The rest are on `handle`. */
 type CommandsOf<V, E, Installed extends string> = Omit<
@@ -175,33 +173,6 @@ export interface FieldByHandle<H extends HandleLike, T> {
 export interface BoundField<V, E, Installed extends string = never> {
   <H extends HandleLike, T = FieldApiOf<H>>(props: FieldByHandle<H, T>): ReactElement;
   <N extends FieldPath<V>, T = ExactFieldApi<ValueAt<V, N>, E, Installed>>(props: FieldByName<V, E, N, T, Installed>): ReactElement;
-}
-
-/** Props of a bound `Items` naming its array by path. */
-export interface ItemsByName<V, E, N extends string, Installed extends string = never> {
-  /** A dotted path, relative to the scope, to an array field. */
-  readonly name: N;
-  readonly handle?: never;
-  /** Renders one item. Each result is keyed by the item's stable key. */
-  readonly children: (item: ItemHandle<ItemOf<ValueAt<V, N>>, E, Installed>, index: number) => ReactNode;
-}
-
-/** Props of a bound `Items` given an array handle. */
-export interface ItemsByHandle<H extends ArrayHandleLike> {
-  readonly handle: H;
-  readonly name?: never;
-  /** Renders one item. Each result is keyed by the item's stable key. */
-  readonly children: (item: ReturnType<H["item"]>, index: number) => ReactNode;
-}
-
-/**
- * `scope.Items`: renders one child per item of an array field, keyed by the
- * item's stable key. It re-renders when items are added, removed or moved,
- * not when a value inside an item changes.
- */
-export interface BoundItems<V, E, Installed extends string = never> {
-  <N extends ArrayPath<V>>(props: ItemsByName<V, E, N, Installed>): ReactElement;
-  <H extends ArrayHandleLike>(props: ItemsByHandle<H>): ReactElement;
 }
 
 /** The field components of a `createForms` call that registers none. */
@@ -401,12 +372,10 @@ export interface ScopeMembers<V, E, Installed extends string = never> {
   readonly root: FieldHandle<V, E, Installed>;
   /** Renders one field of this scope. */
   readonly Field: BoundField<V, E, Installed>;
-  /** Renders the items of an array field of this scope. */
-  readonly Items: BoundItems<V, E, Installed>;
 }
 
 /**
- * The bound components rooted at one object handle: `Field`, `Items` and
+ * The bound components rooted at one object handle: `Field` and
  * every registered field component, with `name` paths relative to `root`.
  * The form is the scope at its root plus the submit members. `Installed`
  * is the names of the form's plugins, see `ExactFieldApi`.

@@ -1,6 +1,6 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
-import { createForms, defineField, useForm } from "@lunarhue/forms-react";
-import { baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-react/plugins";
+import { Items, createForms, defineField, useForm } from "@lunarhue/forms-react";
+import { arrays, baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-react/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { TextField, TextInput } from "./input.js";
@@ -19,7 +19,7 @@ const listeners = new Set<() => void>();
 const PhoneField = defineField(TextField, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
 const forms = createForms({
-  plugins: [valibot(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), mask(), rules()],
+  plugins: [valibot(), arrays(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), mask(), rules()],
   fields: { TextField, PhoneField },
 });
 const Address = forms.fieldset(Order.entries.address);
@@ -57,9 +57,9 @@ export function App() {
           <form.Field name="note">{(note) => (rules.meta(note).hidden ? null : <TextInput field={note} />)}</form.Field>
           <address.TextField name="street" label="Street" />
           <address.TextField name="city" label="City" />
-          <form.Items name="lines">
+          <Items handle={form.root.at("lines")}>
             {(line) => <form.TextField handle={line.at("item")} label="Item" />}
-          </form.Items>
+          </Items>
           <button type="button" onClick={() => form.plugins.history.undo()}>
             Undo
           </button>

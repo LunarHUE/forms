@@ -2,6 +2,7 @@ import { renderToString } from "./solid.js";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
+import { arrays } from "../plugins.js";
 import { createDisabledErrors, createField, createForm, createForms, createItems } from "../index.js";
 import { App, DeliveryApp, deliveryHtml, PhoneApp, phoneHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
@@ -24,7 +25,7 @@ describe("server rendering", () => {
   });
 
   it("reads the server snapshot, not a value written during the render", () => {
-    const Profile = createForms({ plugins: [valibot()] }).define({
+    const Profile = createForms({ plugins: [valibot(), arrays()] }).define({
       schema: v.object({ name: v.string(), tags: v.array(v.string()) }),
       defaultValues: { name: "initial", tags: ["a"] },
     });

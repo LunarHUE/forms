@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm } from "./index.js";
+import { Items, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm } from "./index.js";
+import { arrays } from "./plugins.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
   return (
@@ -21,7 +22,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   );
 }
 
-const forms = createForms({ fields: { TextField, NumberField } });
+const forms = createForms({ plugins: [arrays()], fields: { TextField, NumberField } });
 
 interface Geo {
   lat: number | undefined;
@@ -68,14 +69,14 @@ function Trip() {
     <form.Form>
       <AddressFields field={form.root.at("billing")} title="Billing" />
       <AddressFields field={form.root.at("shipping")} title="Shipping" />
-      <form.Items name="stops">
+      <Items handle={form.root.at("stops")}>
         {(stop, index) => (
           <div data-testid="stop">
             <AddressFields field={stop} title={`Stop ${stop.key}`} />
             <input aria-label={`note ${stop.key}`} defaultValue="" data-index={index} />
           </div>
         )}
-      </form.Items>
+      </Items>
     </form.Form>
   );
 }

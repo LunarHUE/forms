@@ -24,6 +24,7 @@ import type {
   Submission,
 } from "./index.js";
 import type { HasSchemaPlugin } from "./plugin.js";
+import { arrays } from "./plugins/arrays.js";
 
 // A schema type a plugin accepts, and one no plugin accepts.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -93,12 +94,12 @@ describe("defaults case 1: schema with a schema plugin", () => {
   });
 
   it("drafts array items, so push takes a draft item", () => {
-    const store = core.define({ schema: rowsSchema }).createStore();
+    const store = core.define({ schema: rowsSchema }).createStore(undefined, { plugins: [arrays()] });
     const rows = store.root.at("rows");
     rows.push();
     rows.push({ title: "", qty: undefined });
-    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }, FormError, "fake">>();
-    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake">>();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }, FormError, "fake" | "arrays">>();
+    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake" | "arrays">>();
   });
 
   it("types validators, flags and ctx.input with the draft, and onSubmit's value with the output", () => {
@@ -412,7 +413,7 @@ describe("defaults case 3: literals in defaultValues widen", () => {
         none: readonly [];
       }>
     >();
-    const store = form.createStore();
+    const store = form.createStore(undefined, { plugins: [arrays()] });
     store.root.at("rows").push({ title: "Tea", qty: 2 });
     store.root.at("address").at("lines").push("3rd floor");
   });
@@ -477,7 +478,7 @@ describe("defaults case 3: recursive value types", () => {
   it("defines a form whose value holds itself", () => {
     const form = createFormsCore().define<TreeNode>({ defaultValues: { name: "root", children: [] } });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<TreeNode>>();
-    form.createStore().root.at("children").push({ name: "leaf", children: [] });
+    form.createStore(undefined, { plugins: [arrays()] }).root.at("children").push({ name: "leaf", children: [] });
   });
 
   it("defines a form from a value whose items hold each other", () => {

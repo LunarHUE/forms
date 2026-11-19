@@ -10,7 +10,6 @@ export type {
   BoundChoiceComponent,
   BoundField,
   BoundFieldComponent,
-  BoundItems,
   FieldComponents,
   Fieldset,
   FieldType,
@@ -31,7 +30,9 @@ export type {
   SolidForms,
   ValidateProp,
 } from "./forms.js";
-export { createField, createItems, createValidator } from "./field.js";
+export { createField, createValidator } from "./field.js";
+export { createItems, Items } from "./items.js";
+export type { ItemsProps } from "./items.js";
 export type {
   ExactFieldApi,
   FieldApi,

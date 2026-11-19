@@ -5,6 +5,7 @@ import { definePlugin } from "../plugins.js";
 import { type BindOptions, bind } from "./bind.js";
 import { dirty } from "./dirty.js";
 import type { Resolve } from "./rebase.js";
+import { arrays } from "./arrays.js";
 
 /** A store the app owns, with a spy on what the binding sets. */
 interface Outside<T> {
@@ -52,7 +53,7 @@ interface Profile {
 }
 
 const defaults: Profile = { name: "form", email: "form@x", tags: [] };
-const profile = createFormsCore({ plugins: [dirty()] }).define({ defaultValues: defaults });
+const profile = createFormsCore({ plugins: [arrays(), dirty()] }).define({ defaultValues: defaults });
 
 /** A store bound to `box` and listened to, as a mounted form is. */
 function bound(box: Outside<Profile>, options: Partial<BindOptions<Profile>> = {}) {
@@ -127,7 +128,7 @@ describe("bind", () => {
     // The outside store merges what it is given into a new object, as zustand does.
     type Extended = Profile & { extra?: number };
     const box = outside<Extended>({ ...defaults, extra: 1 }, (state, value) => ({ ...state, ...value }));
-    const store = createFormsCore()
+    const store = createFormsCore({ plugins: [arrays(), arrays()] })
       .define<Extended>({ defaultValues: defaults })
       .createStore(undefined, { plugins: [bind(box.options)] });
     store.subscribeForm(() => {});
@@ -250,7 +251,7 @@ describe("bind", () => {
 
   it("throws when a form has two bindings", () => {
     const box = outside<Profile>({ ...defaults });
-    const twice = createFormsCore().define({ defaultValues: defaults, plugins: [bind(box.options)] });
+    const twice = createFormsCore({ plugins: [arrays(), arrays()] }).define({ defaultValues: defaults, plugins: [bind(box.options)] });
     expect(() => twice.createStore(undefined, { plugins: [bind(box.options)] })).toThrow('Two plugins are named "bind".');
   });
 

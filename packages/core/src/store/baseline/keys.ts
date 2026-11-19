@@ -71,7 +71,13 @@ export function locate(root: unknown, trie: KeyTrie | undefined, path: Path): { 
   return { value, keys };
 }
 
-/** The key trie for `value` at `path`, taking each array's keys from `keysFor`. Undefined when it has no arrays. */
+/** Builds a key trie. See `buildKeys`. */
+export type BuildKeys = (path: Path, value: unknown, keysFor: KeysFor) => KeyTrie | undefined;
+
+/**
+ * The key trie for `value` at `path`, taking each array's keys from
+ * `keysFor`. Undefined when every key is positional. `arrays()` brings it.
+ */
 export function buildKeys(path: Path, value: unknown, keysFor: KeysFor): KeyTrie | undefined {
   let children: Map<string, KeyTrie> | undefined;
   const add = (seg: string, child: unknown) => {

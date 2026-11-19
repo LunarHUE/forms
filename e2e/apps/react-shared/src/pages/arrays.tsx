@@ -1,8 +1,9 @@
 import { arraysScenario as scenario } from "@lunarhue/forms-e2e/contract";
-import { useField, useForm } from "@lunarhue/forms-react";
+import { Items, useField, useForm } from "@lunarhue/forms-react";
+import { arrays } from "@lunarhue/forms-react/plugins";
 import { forms, Probe, serverId, Status, SubmitButton } from "../parts.js";
 
-const team = forms.define(scenario.definition);
+const team = forms.define({ ...scenario.definition, plugins: [arrays()] });
 const { labels } = scenario;
 
 export function ArraysPage() {
@@ -15,7 +16,7 @@ export function ArraysPage() {
         {(formProps) => (
           <form {...formProps}>
             <ol>
-              <form.Items name="members">
+              <Items handle={form.root.at("members")}>
                 {(member, index) => (
                   <li>
                     <form.TextField handle={member.at("name")} label={labels.member(index)} />
@@ -47,7 +48,7 @@ export function ArraysPage() {
                     </button>
                   </li>
                 )}
-              </form.Items>
+              </Items>
             </ol>
             <button type="button" onClick={() => members.push(scenario.emptyMember())}>
               {labels.add}

@@ -5,6 +5,7 @@ import type { Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { arrays } from "../plugins/arrays.js";
 
 // Core declares no timer globals, so the tests declare the one they use.
 declare function setTimeout(run: () => void, ms: number): unknown;
@@ -20,7 +21,7 @@ type Options<R> = Omit<FormStoreOptions<Value, FormError, Intent, R>, "id" | "in
 const initial: Value = { name: "ada", rows: [{ title: "a" }, { title: "b" }] };
 
 const make = <R = unknown>(options: Options<R> = {}, value: Value = initial) =>
-  createFormInternals<Value, FormError, Intent, R>({ id: "f", initial: value, ...options });
+  createFormInternals<Value, FormError, Intent, R>({ id: "f", initial: value, plugins: [arrays()], ...options });
 
 const err = (message: string): FormError => ({ message });
 const required = (value: unknown) => (value === "" ? err("Required") : undefined);

@@ -70,7 +70,6 @@ export type FocusOnInvalid<E = FormError> = boolean | ((target: FocusTarget<E>) 
 /** The names the form object uses itself, which a registered field component can't take. */
 export type ReservedName =
   | "Field"
-  | "Items"
   | "Form"
   | "State"
   | "store"

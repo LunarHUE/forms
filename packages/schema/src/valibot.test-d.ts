@@ -8,6 +8,7 @@ import {
   type SchemaDefinition,
   type StandardSchemaV1,
 } from "@lunarhue/forms-core";
+import { arrays } from "@lunarhue/forms-core/plugins";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
@@ -77,10 +78,11 @@ describe("valibot()", () => {
       }>
     >();
     expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "valibot">>();
-    store.root.at("lines").push({ sku: "", price: undefined });
-    store.root.at("channels").push("sms");
+    const listed = core.define({ schema: order }).createStore(undefined, { plugins: [arrays()] });
+    listed.root.at("lines").push({ sku: "", price: undefined });
+    listed.root.at("channels").push("sms");
     // @ts-expect-error: the schema plugin has no empty channel to add
-    store.root.at("channels").push();
+    listed.root.at("channels").push();
   });
 
   it("still requires defaultValues for a schema of another vendor", () => {

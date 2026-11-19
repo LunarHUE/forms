@@ -1,7 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForm, createForms, defineField, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
-import { digits, mask, masked, ruled, rules } from "../plugins.js";
+import { Items, createForm, createForms, defineField, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
+import { arrays, digits, mask, masked, ruled, rules } from "../plugins.js";
 import { version } from "./solid.js";
 
 /** The markup of the Solid version the tests run on. Hydration keys, and the ids `createUniqueId` gives, differ by version. */
@@ -19,7 +19,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
   );
 }
 
-const forms = createForms({ plugins: [valibot()], fields: { TextField } });
+const forms = createForms({ plugins: [valibot(), arrays()], fields: { TextField } });
 const Order = forms.define({
   schema: v.object({ customer: v.string(), rows: v.array(v.object({ title: v.string() })) }),
   defaultValues: { customer: "Ada", rows: [{ title: "first" }, { title: "second" }] },
@@ -37,7 +37,7 @@ export function App() {
       {(props, owner) => (
         <form {...props} data-submits={typeof owner.submit}>
           <form.TextField name="customer" label="Customer" />
-          <form.Items name="rows">{(row) => <form.TextField handle={row.at("title")} label="Title" />}</form.Items>
+          <Items handle={form.root.at("rows")}>{(row) => <form.TextField handle={row.at("title")} label="Title" />}</Items>
           <Status />
         </form>
       )}

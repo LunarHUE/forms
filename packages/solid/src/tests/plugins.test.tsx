@@ -2,8 +2,9 @@ import { flush } from "./solid.js";
 import type { PluginContext } from "@lunarhue/forms-core";
 import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
+import { Items, createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
+import { arrays } from "../plugins.js";
 
 // Shared: stores each written string's length as the field's meta.
 const chars = definePlugin({
@@ -30,7 +31,7 @@ const upper = definePlugin({
   },
 });
 
-const forms = createForms({ plugins: [chars] });
+const forms = createForms({ plugins: [arrays(), chars] });
 const Profile = forms.define({ defaultValues: { name: "" }, plugins: [upper] });
 
 function Name() {
@@ -70,7 +71,7 @@ describe("plugins", () => {
   });
 });
 
-const Order = createForms({ plugins: [rebase()] }).define({ defaultValues: { name: "a", qty: 1 } });
+const Order = createForms({ plugins: [arrays(), rebase()] }).define({ defaultValues: { name: "a", qty: 1 } });
 
 interface OrderPageProps {
   readonly fresh: { readonly name: string; readonly qty: number };
@@ -101,7 +102,7 @@ describe("the rebase plugin", () => {
 });
 
 const undoHistory = history();
-const Note = createForms({ plugins: [undoHistory] }).define({ defaultValues: { text: "" } });
+const Note = createForms({ plugins: [arrays(), undoHistory] }).define({ defaultValues: { text: "" } });
 
 function NotePage() {
   const form = createForm(Note);
@@ -137,15 +138,15 @@ describe("the history plugin", () => {
 /** A sku input whose field type upper-cases what it holds. */
 const SkuField = defineField((props: { readonly field: FieldApi<string> }) => <input {...inputProps(props.field)} />, masked({ clean: upperCase }));
 
-const Lines = createForms({ plugins: [dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
+const Lines = createForms({ plugins: [arrays(), dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
 
 function LinesPage() {
   const form = createForm(Lines);
   return (
     <>
-      <form.Items name="lines">
+      <Items handle={form.root.at("lines")}>
         {(row) => <form.SkuField handle={row.at("sku")} />}
-      </form.Items>
+      </Items>
       <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
         add
       </button>
@@ -175,7 +176,7 @@ describe("mask through the adapter", () => {
   });
 });
 
-const Settings = createForms({ plugins: [dirty()] }).define({
+const Settings = createForms({ plugins: [arrays(), dirty()] }).define({
   defaultValues: { name: "" },
   plugins: [baselineOnSubmit()],
   onSubmit: async () => "saved",
@@ -227,7 +228,7 @@ const captcha = definePlugin({
 describe("a plugin that refuses a submit through the adapter", () => {
   it("ends the submit invalid, skips onSubmit and shows the plugin's form error", async () => {
     const onSubmit = vi.fn<() => void>();
-    const Checked = createForms().define({ defaultValues: { name: "Ada" }, plugins: [captcha], onSubmit });
+    const Checked = createForms({ plugins: [arrays(), arrays()] }).define({ defaultValues: { name: "Ada" }, plugins: [captcha], onSubmit });
     const { host } = mount(() => {
       const form = createForm(Checked);
       const root = createField(form.root);

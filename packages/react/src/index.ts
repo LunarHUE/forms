@@ -26,7 +26,6 @@ export type {
   BoundChoiceComponent,
   BoundField,
   BoundFieldComponent,
-  BoundItems,
   FieldApi,
   FieldApiOf,
   FieldComponentMap,
@@ -43,7 +42,9 @@ export type {
   ValidateProp,
 } from "./scope.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
-export { useField, useFormState, useItems, useValidator } from "./field.js";
+export { useField, useFormState, useValidator } from "./field.js";
+export { Items, useItems } from "./items.js";
+export type { ItemsProps } from "./items.js";
 export type {
   HandleLike,
   IsEqual,

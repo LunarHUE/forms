@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { history } from "./history.js";
 import { testStore } from "./testing.js";
+import { arrays } from "./arrays.js";
 
 const contact = () => ({ phone: "", code: "" });
 
 describe("history", () => {
   it("undoes and redoes user edits a task at a time", () => {
     const undoHistory = history();
-    const { store, flush, errors } = testStore({ defaultValues: { name: "", tags: ["a", "b"] }, plugins: [undoHistory] });
+    const { store, flush, errors } = testStore({ defaultValues: { name: "", tags: ["a", "b"] }, plugins: [arrays(), undoHistory] });
     const api = store.plugins.history;
     store.root.at("name").setValue("A");
     flush();
@@ -30,7 +31,7 @@ describe("history", () => {
   });
 
   it("replays array steps as array commands, so items keep their keys and state", () => {
-    const { store, flush, errors } = testStore({ defaultValues: { rows: [{ title: "a" }, { title: "b" }, { title: "c" }] }, plugins: [history()] });
+    const { store, flush, errors } = testStore({ defaultValues: { rows: [{ title: "a" }, { title: "b" }, { title: "c" }] }, plugins: [arrays(), history()] });
     const api = store.plugins.history;
     const rows = store.root.at("rows");
     const keys = rows.peek().keys;
@@ -57,7 +58,7 @@ describe("history", () => {
 
   it("forgets everything on reset", () => {
     const undoHistory = history();
-    const { store, flush, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
+    const { store, flush, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
     store.root.at("phone").setValue("1");
     flush();
     store.reset();
@@ -69,7 +70,7 @@ describe("history", () => {
 
   it("has its form meta before any step, the same object on every read", () => {
     const undoHistory = history();
-    const { store, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
+    const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
     const meta = undoHistory.formMeta(store.getFormSnapshot());
     expect(meta).toEqual({ canUndo: false, canRedo: false });
     // A selector that returns it stays stable, so React doesn't render again.
@@ -80,7 +81,7 @@ describe("history", () => {
 
   it("keeps canUndo and canRedo in its form meta, written only when one changes", async () => {
     const undoHistory = history(2);
-    const { store, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
+    const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
     const flags = () => undoHistory.formMeta(store.getFormSnapshot());
     const writes: unknown[] = [flags()];
     store.subscribeForm(() => {
@@ -121,7 +122,7 @@ describe("history", () => {
 
   it("sets its flags in the same notification as the undo", () => {
     const undoHistory = history();
-    const { store, flush, errors } = testStore({ defaultValues: contact(), plugins: [undoHistory] });
+    const { store, flush, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
     store.root.at("phone").setValue("1");
     flush();
     const seen: unknown[] = [];
@@ -132,7 +133,7 @@ describe("history", () => {
   });
 
   it("records only user edits, as the deferred records show", () => {
-    const { store, records, flush, errors } = testStore({ defaultValues: contact(), plugins: [history()] });
+    const { store, records, flush, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), history()] });
     store.root.at("phone").setValue("1");
     expect(records.deferred).toEqual([]);
     flush();
