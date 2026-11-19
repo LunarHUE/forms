@@ -25,7 +25,6 @@ export interface Choice {
 /** True for a file that holds no code: docs, Markdown, changesets and issue templates. */
 export function isDocs(file: string): boolean {
   return (
-    file.startsWith("docs/") ||
     file.startsWith(".changeset/") ||
     file.startsWith(".github/ISSUE_TEMPLATE/") ||
     file.endsWith(".md") ||

@@ -32,7 +32,7 @@ Each has its own entry point, so a plugin you don't import costs no bytes.
 | `./plugins/bind` | `bind()`: copies the value to a store you own and back |
 
 Write your own with `definePlugin` from `./plugins`. The rules are in
-[docs/plugins.md](https://github.com/LunarHUE/forms/blob/main/docs/plugins.md).
+[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin).
 
 ## More
 

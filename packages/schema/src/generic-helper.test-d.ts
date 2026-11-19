@@ -1,5 +1,6 @@
-// The snippets in docs/plugins.md under "TS2353 from `define` in a function
-// generic over the schema". Keep the two in step.
+// The snippets in apps/docs/src/content/docs/plugins/writing-a-plugin.mdx
+// under "TS2353 from `define` in a function generic over the schema". Keep
+// the two in step.
 import { createFormsCore, type FormError, type FormStore, type StandardSchemaV1 } from "@lunarhue/forms-core";
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
