@@ -39,6 +39,9 @@ export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>>;
  */
 export type IsEqual<T> = (previous: T, next: T) => boolean;
 
+/** Selects the whole snapshot. */
+export const whole = <S>(snapshot: S): S => snapshot;
+
 /**
  * Reads a field's snapshot and re-renders when it changes. It reads through
  * `useSyncExternalStore` on the handle's store, with the store's server
@@ -48,16 +51,10 @@ export type IsEqual<T> = (previous: T, next: T) => boolean;
  * when that changes by `isEqual`. `select` may be an inline function. It must
  * return the same value, by `isEqual`, for the same snapshot.
  */
-export interface UseField {
+export const useField: {
   <H extends HandleLike>(handle: H): SnapshotOf<H>;
   <H extends HandleLike, T>(handle: H, select: (snapshot: SnapshotOf<H>) => T, isEqual?: IsEqual<T>): T;
-}
-
-/** Selects the whole snapshot. */
-export const whole = <S>(snapshot: S): S => snapshot;
-
-/** See `UseField`. */
-export const useField: UseField = <H extends HandleLike, T>(
+} = <H extends HandleLike, T>(
   handle: H,
   select?: (snapshot: SnapshotOf<H>) => T,
   isEqual?: IsEqual<T>,
@@ -79,17 +76,14 @@ export type FormStateSource<I, R> = Pick<
  * `useForm` returned, or any store, such as `handle.store`. With `select` it
  * narrows the same way `useField` does.
  */
-export interface UseFormState {
+export const useFormState: {
   <I, R>(form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> }): FormSnapshot<I, R>;
   <I, R, T>(
     form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> },
     select: (snapshot: FormSnapshot<I, R>) => T,
     isEqual?: IsEqual<T>,
   ): T;
-}
-
-/** See `UseFormState`. */
-export const useFormState: UseFormState = <I, R, T>(
+} = <I, R, T>(
   form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> },
   select?: (snapshot: FormSnapshot<I, R>) => T,
   isEqual?: IsEqual<T>,
@@ -106,21 +100,18 @@ export interface ArrayHandleLike extends HandleLike {
   item(key: string): unknown;
 }
 
+const noKeys: readonly string[] = [];
+const keysOf = (snapshot: FieldSnapshot<unknown, unknown>): readonly string[] => snapshot.keys ?? noKeys;
+const sameKeys = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((key, index) => key === b[index]);
+
 /**
  * Returns the item handles of an array field, in their current order. The
  * component re-renders only when the item keys change: an item added,
  * removed or moved. An edit inside an item does not re-render it. The list
  * keeps its identity until the keys change, so it is safe as a dependency.
  */
-export type UseItems = <H extends ArrayHandleLike>(handle: H) => readonly ReturnType<H["item"]>[];
-
-const noKeys: readonly string[] = [];
-const keysOf = (snapshot: FieldSnapshot<unknown, unknown>): readonly string[] => snapshot.keys ?? noKeys;
-const sameKeys = (a: readonly string[], b: readonly string[]): boolean =>
-  a.length === b.length && a.every((key, index) => key === b[index]);
-
-/** See `UseItems`. */
-export const useItems: UseItems = <H extends ArrayHandleLike>(handle: H) => {
+export const useItems = <H extends ArrayHandleLike>(handle: H): readonly ReturnType<H["item"]>[] => {
   const keys = useSelected(fieldSource(handle), keysOf, sameKeys);
   // `item` returns the handle typed for the array's items.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -132,22 +123,6 @@ export interface ValidatorHandleLike extends HandleLike {
   /** Adds a validator and returns the function that removes it. */
   registerValidator(validator: never): () => void;
 }
-
-/**
- * Adds a validator to a field while the component is mounted, and removes it
- * and its errors on unmount. Pass `undefined`, `null` or `false` to add none,
- * so a validator can be conditional without breaking the rules of hooks.
- *
- * A validator function or options object may be inline. The adapter
- * registers once and calls the latest function on each run. It registers
- * again when the handle changes, when a schema is a different object, when
- * a function becomes a schema or the other way round, or when `debounce`,
- * `on` or `recheckOnSubmit` change.
- */
-export type UseValidator = <H extends ValidatorHandleLike>(
-  handle: H,
-  validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
-) => void;
 
 /** A validator input as the runtime reads it. */
 type AnyValidatorInput = ValidatorInput<unknown, unknown> | undefined | null | false;
@@ -173,8 +148,21 @@ function functionOf(input: AnyValidatorInput): Validator<unknown, unknown> | und
   return typeof check === "function" ? check : undefined;
 }
 
-/** See `UseValidator`. */
-export const useValidator: UseValidator = (handle, validator) => {
+/**
+ * Adds a validator to a field while the component is mounted, and removes it
+ * and its errors on unmount. Pass `undefined`, `null` or `false` to add none,
+ * so a validator can be conditional without breaking the rules of hooks.
+ *
+ * A validator function or options object may be inline. The adapter
+ * registers once and calls the latest function on each run. It registers
+ * again when the handle changes, when a schema is a different object, when
+ * a function becomes a schema or the other way round, or when `debounce`,
+ * `on` or `recheckOnSubmit` change.
+ */
+export const useValidator: <H extends ValidatorHandleLike>(
+  handle: H,
+  validator: ValidatorInput<ValueOf<H>, ErrorOf<H>> | undefined | null | false,
+) => void = (handle, validator) => {
   // The validator was checked against the handle's types, which the runtime doesn't need.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const input = validator as AnyValidatorInput;
