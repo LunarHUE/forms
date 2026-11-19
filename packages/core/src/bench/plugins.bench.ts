@@ -1,5 +1,6 @@
 import { test } from "vitest";
-import { type AnyHookPlugin, createFormsCore, type When } from "../index.js";
+import { createFormsCore, type Plugins } from "../index.js";
+import type { When } from "../plugin.js";
 import { history } from "../plugins/history.js";
 import { mask, upper } from "../plugins/mask.js";
 import { persist } from "../plugins/persist.js";
@@ -24,7 +25,7 @@ const storage = {
 // Item keys are made by the store, so this reads the first one from a store of the same shape.
 const firstKey = createFormsCore().define({ defaultValues: { rows: [{ name: "" }] } }).createStore().root.at("rows").peek().keys[0];
 
-const cases: readonly (readonly [label: string, plugins: readonly AnyHookPlugin[]])[] = [
+const cases: readonly (readonly [label: string, plugins: Plugins])[] = [
   ["zero plugins", []],
   ["one no-op beforeWrite", [noopBefore("before")]],
   ["one deferred no-op observer", [noopObserver("watch", "deferred")]],

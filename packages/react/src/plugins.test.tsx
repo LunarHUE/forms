@@ -7,6 +7,7 @@ import { createForms, type FieldApi, type FormOf, inputProps, useForm, useFormSt
 // Shared: stores each written string's length as the field's meta.
 const chars = definePlugin({
   name: "chars",
+  initialMeta: 0,
   setup: (ctx: PluginContext<number>) => ({
     onWrite(records) {
       for (const record of records) if (record.type === "value") ctx.setMeta(record.path, String(record.after).length);
@@ -17,6 +18,7 @@ const chars = definePlugin({
 // The definition's own: upper-cases every value and counts the writes on the form.
 const upper = definePlugin({
   name: "writes",
+  initialFormMeta: 0,
   setup(ctx: PluginContext<never, number>) {
     let writes = 0;
     return {
@@ -32,7 +34,7 @@ function TextField(props: { readonly field: FieldApi<string> }) {
   return (
     <>
       <input aria-label="name" {...inputProps(field)} />
-      <output>{chars.meta(field) ?? "none"}</output>
+      <output>{chars.meta(field)}</output>
     </>
   );
 }
@@ -42,7 +44,7 @@ const profile = forms.define({ defaultValues: { name: "" }, plugins: [upper] });
 
 function Profile() {
   const form = useForm(profile);
-  const writes = useFormState(form, (snapshot) => upper.formMeta(snapshot) ?? 0);
+  const writes = useFormState(form, (snapshot) => upper.formMeta(snapshot));
   return (
     <>
       <form.TextField name="name" />
@@ -60,7 +62,7 @@ describe("plugins", () => {
     const { container } = render(<Profile />);
     const output = container.querySelector("output");
     const writes = container.querySelector("p");
-    expect(output?.textContent).toBe("none");
+    expect(output?.textContent).toBe("0");
     expect(writes?.textContent).toBe("0");
 
     fireEvent.change(screen.getByLabelText("name"), { target: { value: "ada" } });

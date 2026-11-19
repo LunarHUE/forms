@@ -1,11 +1,11 @@
-import type { FieldSnapshot, FieldSnapshotBase } from "../snapshot.js";
+import type { DirtyMember, FieldSnapshot, FieldSnapshotBase } from "../snapshot.js";
 import { freeze } from "./freeze.js";
 
-/** A field snapshot as the store core makes it. */
-export type Snapshot<E = unknown> = FieldSnapshot<unknown, E>;
+/** A field snapshot as the store core makes it. It has `dirty` with or without `dirty()`, so its shape is the same in every form. */
+export type Snapshot<E = unknown> = FieldSnapshot<unknown, E, "dirty">;
 
 /** The members of a field snapshot that come from per-field state rather than the value. */
-export type FieldState<E> = Omit<FieldSnapshotBase<unknown, E>, "value" | "name">;
+export type FieldState<E> = Omit<FieldSnapshotBase<unknown, E> & DirtyMember, "value" | "name">;
 
 /** The one empty list every snapshot uses. */
 export const none: readonly never[] = freeze([]);

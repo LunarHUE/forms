@@ -7,6 +7,7 @@ import type {
   FormStore,
   HandleTypes,
   Path,
+  PluginsOf,
   ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
@@ -30,8 +31,8 @@ export interface HandleLike {
   readonly "~types"?: HandleTypes<unknown, unknown>;
 }
 
-/** The snapshot type of a handle type. */
-export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>>;
+/** The snapshot type of a handle type. It has `dirty` when the handle's form has `dirty()`. */
+export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>, PluginsOf<H>>;
 
 /**
  * Compares two selected values. Return true to keep the previous one and
@@ -65,9 +66,9 @@ export const useField: {
   return useSelected(fieldSource(handle), pick, isEqual);
 };
 
-/** What `useFormState` needs from a store. Every `FormStore` fits. */
-export type FormStateSource<I, R> = Pick<
-  FormStore<unknown, never, I, R>,
+/** What `useFormState` needs from a store. Every `FormStore` fits. `Installed` is the names of its plugins. */
+export type FormStateSource<I, R, Installed extends string = never> = Pick<
+  FormStore<unknown, never, I, R, {}, Installed>,
   "subscribeForm" | "getFormSnapshot" | "getServerFormSnapshot"
 >;
 
@@ -77,10 +78,12 @@ export type FormStateSource<I, R> = Pick<
  * narrows the same way `useField` does.
  */
 export const useFormState: {
-  <I, R>(form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> }): FormSnapshot<I, R>;
-  <I, R, T>(
-    form: FormStateSource<I, R> | { readonly store: FormStateSource<I, R> },
-    select: (snapshot: FormSnapshot<I, R>) => T,
+  <I, R, Installed extends string = never>(
+    form: FormStateSource<I, R, Installed> | { readonly store: FormStateSource<I, R, Installed> },
+  ): FormSnapshot<I, R, Installed>;
+  <I, R, T, Installed extends string = never>(
+    form: FormStateSource<I, R, Installed> | { readonly store: FormStateSource<I, R, Installed> },
+    select: (snapshot: FormSnapshot<I, R, Installed>) => T,
     isEqual?: IsEqual<T>,
   ): T;
 } = <I, R, T>(

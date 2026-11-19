@@ -2,13 +2,14 @@ import type { Flags } from "../definition.js";
 import type { FormError, Show } from "../errors.js";
 import type { FieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
-import type { AnyHookPlugin, AnyPlugin, PluginErrorHandler } from "../plugin.js";
+import type { AnyPlugin, PluginErrorHandler } from "../plugin.js";
 import { problem } from "../problem.js";
 import type { FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
 import { createStoreCore, type StoreCore } from "./core.js";
 import { createHandles } from "./handles.js";
+import type { HookedPlugin } from "./plugins.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
 import { createValidation } from "./validation.js";
@@ -40,9 +41,17 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   readonly onPluginError?: PluginErrorHandler | undefined;
 }
 
+/**
+ * A store as core makes it. It has `changes` and its snapshots have `dirty`
+ * with or without `dirty()`, so its shape is the same in every form. The
+ * definition's types take them away when the form has no `dirty()`.
+ */
+// oxlint-disable-next-line typescript/no-empty-object-type
+export type MadeStore<V, E, I, R> = FormStore<V, E, I, R, {}, "dirty">;
+
 /** A form store with the parts it is made of, for tests and internal callers. */
 export interface FormInternals<V, E, I, R> {
-  readonly store: FormStore<V, E, I, R>;
+  readonly store: MadeStore<V, E, I, R>;
   readonly core: StoreCore<E, I, R>;
   readonly baseline: Baseline;
   readonly validation: Validation<E>;
@@ -62,7 +71,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   const options = { ...given, initial: initial as V };
   // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
   // option, so nothing is dirty and nothing is compared.
-  const createDirty = plugins.find((plugin) => plugin.dirty)?.dirty;
+  const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
   // The core reads its own options: id, initial, disabled, readOnly and show.
   const raw = createStoreCore<E, I, R>({
     ...options,
@@ -71,7 +80,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   });
   // Only a store with hook plugins gets a host. The plugins bring its code
   // with them, so core neither carries nor runs it for a store without.
-  const hooked = plugins.filter((plugin): plugin is AnyHookPlugin => plugin.setup !== undefined);
+  const hooked = plugins.filter((plugin): plugin is HookedPlugin => plugin.setup !== undefined);
   const createHost = hooked[0]?.["~host"];
   const host = createHost?.(raw, hooked, options.onPluginError);
   // Each copy of core has its own host and its own `refuse`, so plugins from
@@ -107,14 +116,12 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     itemValue: options.itemValue ?? (() => undefined),
   });
 
-  // Development only: `changes()` without `dirty()` warns once per store.
-  let warnedUntracked = false;
-  const store: FormStore<V, E, I, R> = {
+  const store: MadeStore<V, E, I, R> = {
     id: core.id,
     get root() {
       // The runtime handle has every member, and the value type is the caller's.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return handles.root() as FieldHandle<V, E>;
+      return handles.root() as FieldHandle<V, E, "dirty">;
     },
     subscribe: core.subscribe,
     getSnapshot: core.getSnapshot,
@@ -131,12 +138,11 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     reset: (resetOptions) => reset([], resetOptions),
     registerValidator: validation.register,
     fieldAt: handles.fieldAt,
+    // Without `dirty()` the types have no `changes`. Development throws for callers without types.
     changes:
       typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !createDirty
-        ? (path) => {
-            if (!warnedUntracked) console.warn(problem("dirty:untracked"));
-            warnedUntracked = true;
-            return baseline.changes(path);
+        ? () => {
+            throw new Error(problem("dirty:missing"));
           }
         : baseline.changes,
     firstInvalid: submit.firstInvalid,
@@ -150,6 +156,6 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
 /** Makes a form store. `define(...).createStore(...)` calls this. */
 export function createFormStore<V, E = FormError, I = undefined, R = unknown, O = V>(
   options: FormStoreOptions<V, E, I, R, O>,
-): FormStore<V, E, I, R> {
+): MadeStore<V, E, I, R> {
   return createFormInternals(options).store;
 }

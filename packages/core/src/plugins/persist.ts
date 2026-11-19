@@ -1,4 +1,4 @@
-import type { HookPlugin } from "../plugin.js";
+import type { Plugin } from "../plugin.js";
 import { definePlugin } from "../plugins.js";
 
 /** The part of `Storage` that `persist` uses. `localStorage` and `sessionStorage` fit. */
@@ -23,7 +23,7 @@ declare const localStorage: StorageLike | undefined;
  * blocked or full, never breaks the form, and a saved value that doesn't
  * parse is removed and the form starts from its defaults.
  */
-export function persist(key: string, storage?: StorageLike): HookPlugin<undefined, "persist"> {
+export function persist(key: string, storage?: StorageLike): Plugin<undefined, "persist"> {
   return definePlugin({
     name: "persist",
     setup(ctx) {

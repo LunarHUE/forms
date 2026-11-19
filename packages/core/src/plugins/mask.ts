@@ -1,5 +1,5 @@
 import type { Path } from "../path.js";
-import type { FieldDisplay, HookPlugin, PluginContext } from "../plugin.js";
+import type { FieldDisplay, Plugin, PluginContext } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { replaceText } from "./caret.js";
 
@@ -76,7 +76,7 @@ function cleanBelow(value: unknown, input: unknown, rest: readonly string[], cle
  * adapters' text inputs show the display text and keep the caret in place.
  * When two masks give one field a display, the one that runs first wins.
  */
-export function mask(fields: Readonly<Record<string, Mask | MaskField>>, options: MaskOptions = {}): HookPlugin<undefined, string, FieldDisplay> {
+export function mask(fields: Readonly<Record<string, Mask | MaskField>>, options: MaskOptions = {}): Plugin<undefined, string, FieldDisplay | undefined> {
   const list = Object.entries(fields).map(([name, field]) => {
     const names = name.split(".");
     if (typeof field === "function") return [names, field] as const;
@@ -101,7 +101,8 @@ export function mask(fields: Readonly<Record<string, Mask | MaskField>>, options
     name: options.name ?? "mask",
     ...(options.after && { after: options.after }),
     initial: (value) => run([], value, value),
-    setup(ctx: PluginContext<FieldDisplay>) {
+    initialMeta: undefined,
+    setup(ctx: PluginContext<FieldDisplay | undefined>) {
       // Sets the display meta on each field `names` matches below `path`.
       const show = (names: readonly string[], shown: FieldDisplay, path: Path): void => {
         const seg = names[path.length];

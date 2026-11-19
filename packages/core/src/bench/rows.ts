@@ -1,6 +1,7 @@
 import { createFormsCore } from "../index.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import { defineSchemaPlugin } from "../plugins.js";
+import { definePlugin } from "../plugins.js";
+import type { SchemaAdapter } from "../schema-adapter.js";
 
 // The row benchmark from solid-form, on the plain store: a form with `count`
 // array rows and one listener per row on that row's name errors, as a list of
@@ -35,11 +36,12 @@ export const schema: StandardSchemaV1<Rows> = {
 };
 
 /** The schema plugin for `schema`. Every benchmark form gives complete defaultValues, so its defaults are never read. */
-export const benchSchemas = defineSchemaPlugin<StandardSchemaV1<Rows>>({
+const adapter: SchemaAdapter<StandardSchemaV1<Rows>> = {
   vendor: "bench",
   defaultValue: () => ({ rows: [] }),
   itemValue: () => undefined,
-});
+};
+export const benchSchemas = definePlugin({ name: "bench", schema: adapter });
 
 // The old form ran its schema on every write, so this one validates on input.
 const Form = createFormsCore({ plugins: [benchSchemas], validate: "input" }).define((count: number) => ({

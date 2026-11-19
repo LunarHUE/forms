@@ -1,14 +1,17 @@
-import type { AnyFormStore, FieldSnapshot, FormSnapshot, Path } from "@lunarhue/forms-core";
+import type { FieldSnapshot, FormStore, FormSnapshot, Path } from "@lunarhue/forms-core";
 import { restartFlash } from "./flash.js";
 import { compactValue, formatErrors, formatSubmission, isPlainObject } from "./format.js";
 import { normalDelayMs, type ServerSettings, slowDelayMs } from "./settings.js";
 
 /**
- * Any form store, whatever its value, error, intent and result types. The
- * inspector only reads snapshots and calls commands that take no typed
- * arguments, so every store fits.
+ * A form store with `dirty()`, whatever its value, error, intent and result
+ * types. The inspector only reads snapshots and calls commands that take no
+ * typed arguments, so every such store fits. It shows `dirty` and
+ * `changes()`, which need `dirty()`.
  */
-export type InspectableStore = AnyFormStore<unknown>;
+// `any` lets a store of every intent, result and plugin APIs fit.
+// oxlint-disable-next-line typescript/no-explicit-any
+export type InspectableStore<V = unknown, E = unknown> = FormStore<V, E, any, any, any, "dirty">;
 
 /** Options for `mountInspector`. */
 export interface InspectorOptions {
@@ -27,7 +30,7 @@ export interface InspectorOptions {
   readonly logLimit?: number;
 }
 
-type Snapshot = FieldSnapshot<unknown, unknown>;
+type Snapshot = FieldSnapshot<unknown, unknown, "dirty">;
 
 /** The boolean members of a field snapshot, in table order. */
 const flagColumns = ["touched", "edited", "dirty", "validating", "disabled", "readOnly", "invalid"] as const;
@@ -103,7 +106,7 @@ function childPaths(path: Path, snapshot: Snapshot): Path[] {
  * components render. It writes to the store only when one of its controls
  * is used. Call it in the browser; importing this module touches no DOM.
  */
-export function mountInspector(target: HTMLElement, store: InspectableStore, options: InspectorOptions = {}): () => void {
+export function mountInspector<V, E>(target: HTMLElement, store: InspectableStore<V, E>, options: InspectorOptions = {}): () => void {
   const doc = target.ownerDocument;
   const logLimit = options.logLimit ?? 200;
   const cleanups: (() => void)[] = [];
@@ -145,7 +148,7 @@ export function mountInspector(target: HTMLElement, store: InspectableStore, opt
   const stateSection = section("Form state");
   stateSection.append(stateList);
 
-  const showForm = (form: FormSnapshot<unknown>, flash = true) => {
+  const showForm = (form: FormSnapshot<unknown, unknown, "dirty">, flash = true) => {
     for (const member of formMembers) {
       const text = member === "submission" ? formatSubmission(form.submission) : String(form[member]);
       setText(stateCells[member], text, flash);
@@ -326,7 +329,7 @@ export function mountInspector(target: HTMLElement, store: InspectableStore, opt
   );
   if ("invalidValue" in options) {
     const { invalidValue } = options;
-    commands.append(button("Fill with invalid data", () => store.root.setValue(invalidValue, { replace: true })));
+    commands.append(button("Fill with invalid data", () => store.fieldAt([])?.setValue(invalidValue, { replace: true })));
   }
   controls.append(commands);
 

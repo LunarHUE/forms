@@ -8,6 +8,7 @@ import type {
   FormStore,
   HandleTypes,
   Path,
+  PluginsOf,
   ValidatorInput,
   ValueOf,
 } from "@lunarhue/forms-core";
@@ -33,22 +34,30 @@ export interface HandleLike {
   readonly "~types"?: HandleTypes<unknown, unknown>;
 }
 
-/** The snapshot type of a handle type. */
-export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>>;
+/** The snapshot type of a handle type. It has `dirty` when the handle's form has `dirty()`. */
+export type SnapshotOf<H> = FieldSnapshot<ValueOf<H>, ErrorOf<H>, PluginsOf<H>>;
 
-/** The phantom that carries a field's value and error types on a field object. It never exists at runtime. */
-export interface FieldTypes<V, E> {
+/**
+ * The phantom that carries a field's value, error and plugin types on a
+ * field object. It never exists at runtime.
+ */
+export interface FieldTypes<V, E, Installed extends string = never> {
   /** The field's value type. */
   readonly value: V;
   /** The form's error type. */
   readonly error: E;
+  /** The names of the form's plugins, as a parameter, so a field of a form with more plugins fits where fewer are named. */
+  readonly plugins?: (name: Installed) => void;
 }
 
 /** The handle members a field object leaves out: state reads, the store, and type phantoms. */
 type HiddenHandleMembers = "peek" | "store" | "registerValidator" | "~types" | "~children";
 
 /** The commands of the handle for a value of type `V`. */
-export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHandleMembers>;
+export type FieldCommands<V, E = FormError, Installed extends string = never> = Omit<
+  FieldHandle<V, E, Installed>,
+  HiddenHandleMembers
+>;
 
 /**
  * One field whose value type is exactly `V`, as one object. `Field`,
@@ -70,11 +79,14 @@ export type FieldCommands<V, E = FormError> = Omit<FieldHandle<V, E>, HiddenHand
  * Don't destructure the snapshot members or `text`: a destructured member is
  * read once. The commands, `handle`, `errorId` and the other pieces never
  * change, so destructuring those is fine.
+ *
+ * `Installed` is the names of the form's plugins. Members a plugin adds,
+ * such as `dirty` from `dirty()`, are there only when it is among them.
  */
-export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
-  FieldCommands<V, E> & {
+export type ExactFieldApi<V, E = FormError, Installed extends string = never> = FieldSnapshot<V, E, Installed> &
+  FieldCommands<V, E, Installed> & {
     /** The field's handle. */
-    readonly handle: FieldHandle<V, E>;
+    readonly handle: FieldHandle<V, E, Installed>;
     /** The id for the element that renders this field's errors. See `errorId`. */
     readonly errorId: string;
     /** See `FieldPieces.text`. Reactive. */
@@ -86,7 +98,7 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     /** See `FieldPieces.ref`. */
     readonly ref: FieldPieces["ref"];
     /** Type information only, always undefined at runtime. */
-    readonly "~field"?: FieldTypes<V, E>;
+    readonly "~field"?: FieldTypes<V, E, Installed>;
   };
 
 /**
@@ -107,10 +119,14 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
  * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
  * props. The component then fits any field of string options, and each use
  * checks the options against the named field. See `Choice`.
+ *
+ * A component that reads a plugin's members names the plugin in
+ * `Installed`: `FieldApi<string, FormError, "dirty">` has `dirty`, and fits
+ * only fields of forms with `dirty()`.
  */
-export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
+export type FieldApi<T, E = FormError, Installed extends string = never> = ExactFieldApi<Draft<T>, E, Installed> & {
   /** Type information only: the `T` the component was written for. */
-  readonly "~fits"?: FieldTypes<T, E>;
+  readonly "~fits"?: FieldTypes<T, E, Installed>;
 };
 
 /**
@@ -122,7 +138,7 @@ export type FieldApi<T, E = FormError> = ExactFieldApi<Draft<T>, E> & {
  * current snapshot without tracking. On the server, and in the browser while
  * hydrating, it reads the store's server snapshot, so the markup matches.
  */
-export const createField: <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>> =
+export const createField: <H extends HandleLike>(handle: H) => ExactFieldApi<ValueOf<H>, ErrorOf<H>, PluginsOf<H>> =
   // The runtime object has the members `ExactFieldApi` names for the handle's kind.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   createFieldApi as never;
@@ -130,8 +146,9 @@ export const createField: <H extends HandleLike>(handle: H) => ExactFieldApi<Val
 /**
  * The form snapshot as reactive reads: every member of `FormSnapshot`, each
  * a getter over one signal that mirrors the store's form snapshot.
+ * `Installed` is the names of the form's plugins: `dirty` needs `dirty()`.
  */
-export type FormState<I, R> = FormSnapshot<I, R>;
+export type FormState<I, R, Installed extends string = never> = FormSnapshot<I, R, Installed>;
 
 /** What `createItems` needs from an array handle. Array handles and loose handles fit. */
 export interface ArrayHandleLike extends HandleLike {

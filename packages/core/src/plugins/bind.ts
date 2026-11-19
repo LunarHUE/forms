@@ -1,4 +1,4 @@
-import type { HookPlugin, WriteRecord } from "../plugin.js";
+import type { Plugin, WriteRecord } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
@@ -33,7 +33,7 @@ export interface BindOptions<T> {
 }
 
 /** The plugin `bind` returns. `T` is the outside value's type. */
-export interface BindPlugin<T> extends HookPlugin<undefined, "bind"> {
+export interface BindPlugin<T> extends Plugin<undefined, "bind"> {
   /** Type information only, always undefined at runtime: lets a form check that its value type is `T`. */
   readonly "~value"?: (value: T) => T;
 }

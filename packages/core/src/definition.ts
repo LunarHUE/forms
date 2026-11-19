@@ -1,6 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type { HasSchemaPlugin, IfDirty, PluginApis, PluginErrorHandler, Plugins, PluginsFor } from "./plugin.js";
+import type { HasSchemaPlugin, Needs, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
@@ -69,7 +69,7 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * one through `next`. It needs `dirty()` in `plugins`. Without it it is a
    * type error.
    */
-  readonly equals?: IfDirty<P, Equals>;
+  readonly equals?: Needs<PluginNames<P>, "dirty", Equals>;
   /**
    * Called when a plugin hook throws, with the plugin's name. The write and
    * the other plugins carry on. Defaults to throwing the error on a later
@@ -110,7 +110,7 @@ export interface DefinitionOptions<V, O, E, I, R, P extends Plugins = []> {
   /** When errors show. Defaults to the shared setting. */
   readonly show?: Show;
   /** The dirty comparison, asked before the shared one. It needs `dirty()`. Without it it is a type error. */
-  readonly equals?: IfDirty<P, Equals>;
+  readonly equals?: Needs<PluginNames<P>, "dirty", Equals>;
   /** Fields that start disabled. */
   readonly disabled?: Flags<V>;
   /** Fields that start read-only. */
@@ -206,7 +206,7 @@ export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O 
   createStore<const X extends Plugins = []>(
     options: O,
     instance?: StoreInstance<X & PluginsFor<V>>,
-  ): FormStore<V, E, I, R, PluginApis<Combined<P, X>>>;
+  ): FormStore<V, E, I, R, PluginApis<Combined<P, X>>, PluginNames<Combined<P, X>>>;
 }
 
 /**

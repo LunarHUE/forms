@@ -4,7 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
-import { rules } from "./plugins.js";
+import { dirty, rules } from "./plugins.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -22,7 +22,7 @@ interface Order {
   lines: { item: string }[];
 }
 const initial: Order = { customer: "Ada", plan: "free", lines: [{ item: "pen" }, { item: "ink" }] };
-const order = createForms({ fields: { TextField } }).define({ defaultValues: initial });
+const order = createForms({ plugins: [dirty()], fields: { TextField } }).define({ defaultValues: initial });
 
 function Plan() {
   const form = useFormContext(order);
@@ -36,9 +36,9 @@ function Plan() {
 }
 
 function Status() {
-  const form = useFormContext();
-  const dirty = useFormState(form, (snapshot) => snapshot.dirty);
-  return <p>{dirty ? "dirty" : "clean"}</p>;
+  const form = useFormContext(order);
+  const changed = useFormState(form, (snapshot) => snapshot.dirty);
+  return <p>{changed ? "dirty" : "clean"}</p>;
 }
 
 function Order() {

@@ -67,7 +67,7 @@ function makeApp(adapter: Adapter, ids: boolean) {
   }
 
   function Status() {
-    const form = adapter.useFormContext();
+    const form = adapter.useFormContext(order);
     const dirty = adapter.useFormState(form, (snapshot) => snapshot.dirty);
     useCommits(`${form.id} status`);
     return <p>{dirty ? "dirty" : "clean"}</p>;

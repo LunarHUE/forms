@@ -13,7 +13,9 @@ import type {
   FormStore,
   IntentArgs,
   PluginApis,
+  PluginNames,
   Plugins,
+  PluginsOf,
   PluginsFor,
   SchemaValue,
   StandardSchemaV1,
@@ -177,7 +179,7 @@ export type FormComponent<T> = (props: FormComponentProps<T>) => ReactElement;
 /** The form's own members, on top of the scope at its root. `P` is every plugin the form has. */
 export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields, P extends Plugins = []> {
   /** The core store. Every handle's `store` is this object. */
-  readonly store: FormStore<V, E, I, R, PluginApis<P>>;
+  readonly store: FormStore<V, E, I, R, PluginApis<P>, PluginNames<P>>;
   /**
    * The API of each installed plugin that has one, by plugin name, from the
    * shared list and the definition's: `form.plugins.history.undo()`. The
@@ -199,7 +201,7 @@ export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields,
   /** The headless provider. See `FormComponent`. */
   readonly Form: FormComponent<FormInstance<V, E, I, R, F, P>>;
   /** Renders a selection of the form snapshot. See `FormStateComponent`. */
-  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F, P>>;
+  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F, P>, PluginNames<P>>;
 }
 
 /**
@@ -216,7 +218,7 @@ export type FormInstance<
   R = unknown,
   F extends FieldComponentMap = NoFields,
   P extends Plugins = [],
-> = Scope<V, E, F> & FormMembers<V, E, I, R, F, P>;
+> = Scope<V, E, F, PluginNames<P>> & FormMembers<V, E, I, R, F, P>;
 
 /**
  * A form of unknown value, intent and result type, as the generic context
@@ -267,10 +269,10 @@ export interface ReactFormDefinition<
  */
 export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
 
-/** Props for `form.State`, where `T` is the form that owns it. */
-export interface FormStateProps<I, R, S, T> {
+/** Props for `form.State`, where `T` is the form that owns it and `Installed` the names of its plugins. */
+export interface FormStateProps<I, R, S, T, Installed extends string = never> {
   /** Picks what to render from the form snapshot. It may be an inline function, as `useFormState`'s `select`. */
-  readonly select: (snapshot: FormSnapshot<I, R>) => S;
+  readonly select: (snapshot: FormSnapshot<I, R, Installed>) => S;
   /** Compares two selected values. Return true to skip the re-render. Defaults to `Object.is`. */
   readonly isEqual?: IsEqual<S>;
   /** Renders the selected value. Gets the form too. */
@@ -283,7 +285,9 @@ export interface FormStateProps<I, R, S, T> {
  * children re-render, and only when the selected value changes by
  * `isEqual`. It needs no `form.Form` above.
  */
-export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>) => ReactElement;
+export type FormStateComponent<I, R, T, Installed extends string = never> = <S>(
+  props: FormStateProps<I, R, S, T, Installed>,
+) => ReactElement;
 
 /** What `forms.scope` needs: an object handle. */
 export interface ObjectHandleLike extends HandleLike {
@@ -313,7 +317,7 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    * state, so it can be called anywhere, render included, and needs no
    * `form.Form` above.
    */
-  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F>;
+  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F, PluginsOf<H>>;
   /**
    * Makes a reusable shape from a schema. The shape is the schema's value
    * type as `define` would type it: the `Draft` of its input when an

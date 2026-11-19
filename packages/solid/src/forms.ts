@@ -19,8 +19,10 @@ import type {
   ItemOf,
   ObjectHandle,
   PluginApis,
+  PluginNames,
   Plugins,
   PluginsFor,
+  PluginsOf,
   SchemaValue,
   StandardSchemaV1,
   Submission,
@@ -124,11 +126,11 @@ export type ValidateProp<V, E> = ValidatorInput<V, E> | undefined | null | false
  * input with `field.inputProps`, or read one thing about a field, such as an
  * error count or a derived label, from that one member.
  */
-interface FieldPropsBase<V, E> {
+interface FieldPropsBase<V, E, Installed extends string = never> {
   /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
   readonly validate?: ValidateProp<V, E>;
   /** Renders the field. Runs once. */
-  readonly children: (field: ExactFieldApi<V, E>) => SolidElement;
+  readonly children: (field: ExactFieldApi<V, E, Installed>) => SolidElement;
 }
 
 /**
@@ -138,11 +140,13 @@ interface FieldPropsBase<V, E> {
  * the error of the last signature only, so the `name` signature, the common
  * one, comes last.
  */
-export interface BoundField<V, E = FormError> {
+export interface BoundField<V, E = FormError, Installed extends string = never> {
   <H extends HandleLike>(
-    props: { readonly handle: H; readonly name?: never } & FieldPropsBase<ValueOf<H>, ErrorOf<H>>,
+    props: { readonly handle: H; readonly name?: never } & FieldPropsBase<ValueOf<H>, ErrorOf<H>, PluginsOf<H>>,
   ): SolidElement;
-  <N extends FieldPath<V>>(props: { readonly name: N; readonly handle?: never } & FieldPropsBase<ValueAt<V, N>, E>): SolidElement;
+  <N extends FieldPath<V>>(
+    props: { readonly name: N; readonly handle?: never } & FieldPropsBase<ValueAt<V, N>, E, Installed>,
+  ): SolidElement;
 }
 
 /** Props `Items` takes besides `name` or `handle`. */
@@ -162,9 +166,9 @@ interface ItemsPropsBase<Item> {
  * `handle`. `item` is the item handle: render its fields with
  * `<scope.Field handle={item.at("qty")}>`.
  */
-export interface BoundItems<V, E = FormError> {
+export interface BoundItems<V, E = FormError, Installed extends string = never> {
   <P extends ArrayPath<V>>(
-    props: { readonly name: P; readonly handle?: never } & ItemsPropsBase<ItemHandle<ItemOf<ValueAt<V, P>>, E>>,
+    props: { readonly name: P; readonly handle?: never } & ItemsPropsBase<ItemHandle<ItemOf<ValueAt<V, P>>, E, Installed>>,
   ): SolidElement;
   <H extends ArrayHandleLike>(props: { readonly handle: H; readonly name?: never } & ItemsPropsBase<ReturnType<H["item"]>>): SolidElement;
 }
@@ -228,15 +232,21 @@ export type FieldValueOf<C> =
 /** The error type a registered component's `field` prop asks for. */
 export type FieldErrorOf<C> = FieldPropOf<C> extends { readonly "~field"?: FieldTypes<unknown, infer E> } ? E : never;
 
+/** The plugins a registered component's `field` prop names, as `FieldApi<T, E, "dirty">` does. */
+type FieldPluginsOf<C> = FieldPropOf<C> extends { readonly "~field"?: FieldTypes<unknown, unknown, infer N extends string> } ? N : never;
+
 /**
  * The handles a registered component takes. A `FieldApi<T>` component takes
  * a handle of `Draft<T>` or of `T`. An `ExactFieldApi<V>` component takes a
- * handle of `V` only.
+ * handle of `V` only. Either takes only handles of forms with the plugins
+ * its field names.
  */
 export type ComponentHandle<C> =
   TakesDraft<C> extends true
-    ? FieldHandle<Draft<FieldValueOf<C>>, FieldErrorOf<C>> | FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>
-    : FieldHandle<FieldValueOf<C>, FieldErrorOf<C>>;
+    ?
+        | FieldHandle<Draft<FieldValueOf<C>>, FieldErrorOf<C>, FieldPluginsOf<C>>
+        | FieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>
+    : FieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>;
 
 /** A registered component's own props: all of them except `field`. */
 export type OwnProps<C> = Omit<PropsOf<C>, "field">;
@@ -249,13 +259,15 @@ export type OwnProps<C> = Omit<PropsOf<C>, "field">;
  * field, the `Draft<number>` a schema form holds, and a plain form's
  * `number` field (see `FieldApi` for why that side is loose), but not a
  * `string` one. An object field may have more keys than the component's
- * type names.
+ * type names. `Installed` is the names of the form's plugins.
  */
-export type FitsComponent<V, E, C> = [FieldHandle<V, E>] extends [ComponentHandle<C>] ? true : false;
+export type FitsComponent<V, E, C, Installed extends string = never> = [FieldHandle<V, E, Installed>] extends [ComponentHandle<C>]
+  ? true
+  : false;
 
 /** The names in `V` whose fields fit registered component `C`. */
-export type FitPath<V, E, C> = {
-  [P in FieldPath<V>]: FitsComponent<ValueAt<V, P>, E, C> extends true ? P : never;
+export type FitPath<V, E, C, Installed extends string = never> = {
+  [P in FieldPath<V>]: FitsComponent<ValueAt<V, P>, E, C, Installed> extends true ? P : never;
 }[FieldPath<V>];
 
 /**
@@ -272,7 +284,7 @@ export type FitPath<V, E, C> = {
  * error type extends it, and its `setErrors` then takes the narrower type.
  * So the component can set errors that lack the form's extra members.
  */
-export interface BoundFieldComponent<V, E, C> {
+export interface BoundFieldComponent<V, E, C, Installed extends string = never> {
   <H extends ComponentHandle<C>>(
     props: {
       readonly handle: H;
@@ -281,7 +293,7 @@ export interface BoundFieldComponent<V, E, C> {
       readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
     } & OwnProps<C>,
   ): SolidElement;
-  <N extends FitPath<V, E, C>>(
+  <N extends FitPath<V, E, C, Installed>>(
     props: {
       readonly name: N;
       readonly handle?: never;
@@ -302,10 +314,12 @@ export type ChoiceFieldOf<C> =
  * The names in `V` whose fields fit registered component `C`, whose
  * `FieldApi` is written with `Choice`. See `ChoiceHandle`.
  */
-export type ChoicePath<V, E, C> =
+export type ChoicePath<V, E, C, Installed extends string = never> =
   FieldPath<V> extends infer P
     ? P extends string
-      ? [FieldHandle<ValueAt<V, P>, E>] extends [ChoiceHandle<ChoiceFieldOf<C>, ValueAt<V, P>, FieldErrorOf<C>>]
+      ? [FieldHandle<ValueAt<V, P>, E, Installed>] extends [
+          ChoiceHandle<ChoiceFieldOf<C>, ValueAt<V, P>, FieldErrorOf<C>, FieldPluginsOf<C>>,
+        ]
         ? P
         : never
       : never
@@ -321,16 +335,16 @@ export type ChoicePath<V, E, C> =
  * that signature too, as not assignable to `never`. `validate` works as on
  * `BoundFieldComponent`.
  */
-export interface BoundChoiceComponent<V, E, C> {
+export interface BoundChoiceComponent<V, E, C, Installed extends string = never> {
   <H extends HandleLike>(
     props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueOf<H>>> & {
-      readonly handle: H & ChoiceHandle<ChoiceFieldOf<C>, ValueOf<H>, FieldErrorOf<C>>;
+      readonly handle: H & ChoiceHandle<ChoiceFieldOf<C>, ValueOf<H>, FieldErrorOf<C>, FieldPluginsOf<C>>;
       readonly name?: never;
       /** A validator added while this component is mounted. See `ValidateProp` for the mounted-only rule. */
       readonly validate?: ValidateProp<ValueOf<H>, ErrorOf<H>>;
     },
   ): SolidElement;
-  <N extends ChoicePath<V, E, C>>(
+  <N extends ChoicePath<V, E, C, Installed>>(
     props: WithChoice<OwnProps<C>, ChoiceValue<ChoiceFieldOf<C>, ValueAt<V, N>>> & {
       readonly name: N;
       readonly handle?: never;
@@ -343,34 +357,42 @@ export interface BoundChoiceComponent<V, E, C> {
 /**
  * The registered components, bound to a scope of value `V`. A component
  * whose `FieldApi` is written with `Choice` is bound as
- * `BoundChoiceComponent`, every other one as `BoundFieldComponent`.
+ * `BoundChoiceComponent`, every other one as `BoundFieldComponent`. A
+ * component whose field names plugins, as `FieldApi<T, E, "dirty">` does,
+ * takes only fields of forms that have them. `Installed` is the scope's.
  */
-export type BoundFieldComponents<V, E, F extends FieldComponents> = {
+export type BoundFieldComponents<V, E, F extends FieldComponents, Installed extends string = never> = {
   readonly [K in keyof F]: [ChoiceFieldOf<F[K]>] extends [never]
-    ? BoundFieldComponent<V, E, F[K]>
-    : BoundChoiceComponent<V, E, F[K]>;
+    ? BoundFieldComponent<V, E, F[K], Installed>
+    : BoundChoiceComponent<V, E, F[K], Installed>;
 };
 
 /** The members every scope has. */
-export interface ScopeMembers<V, E> {
+export interface ScopeMembers<V, E, Installed extends string = never> {
   /** The handle the scope is rooted at. Names are relative to it. */
-  readonly root: FieldHandle<V, E>;
+  readonly root: FieldHandle<V, E, Installed>;
   /** Renders one field of the scope. */
-  readonly Field: BoundField<V, E>;
+  readonly Field: BoundField<V, E, Installed>;
   /** Renders the items of an array field of the scope. */
-  readonly Items: BoundItems<V, E>;
+  readonly Items: BoundItems<V, E, Installed>;
 }
 
 /**
  * The bound components rooted at an object handle: `Field`, `Items` and
  * every registered field component, with names relative to `root`.
+ * `Installed` is the names of the form's plugins, see `ExactFieldApi`.
  */
-export type Scope<V, E = FormError, F extends FieldComponents = NoFieldComponents> = ScopeMembers<V, E> & BoundFieldComponents<V, E, F>;
+export type Scope<V, E = FormError, F extends FieldComponents = NoFieldComponents, Installed extends string = never> = ScopeMembers<
+  V,
+  E,
+  Installed
+> &
+  BoundFieldComponents<V, E, F, Installed>;
 
 /** What a form has beyond its root scope. `P` is every plugin the form has. */
 export interface FormMembers<V, E, I, R, F extends FieldComponents = NoFieldComponents, P extends Plugins = []> {
   /** The core store. Every handle's `store` is this object. */
-  readonly store: FormStore<V, E, I, R, PluginApis<P>>;
+  readonly store: FormStore<V, E, I, R, PluginApis<P>, PluginNames<P>>;
   /**
    * The API of each installed plugin that has one, by plugin name, from the
    * shared list and the definition's: `form.plugins.history.undo()`. The
@@ -388,7 +410,7 @@ export interface FormMembers<V, E, I, R, F extends FieldComponents = NoFieldComp
    * subscribe. There is no `form.State` as in React: reading
    * `form.state.submitting` in JSX already updates only that spot.
    */
-  readonly state: FormState<I, R>;
+  readonly state: FormState<I, R, PluginNames<P>>;
   /** The props for the `<form>` element, the same object `Form` passes to its child first. */
   readonly formProps: FormElementProps;
   /**
@@ -419,7 +441,7 @@ export type SolidForm<
   R = unknown,
   F extends FieldComponents = NoFieldComponents,
   P extends Plugins = [],
-> = Scope<V, E, F> & FormMembers<V, E, I, R, F, P>;
+> = Scope<V, E, F, PluginNames<P>> & FormMembers<V, E, I, R, F, P>;
 
 /**
  * A form with its value, intent and result types unknown, as the generic
@@ -580,7 +602,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
    * scope object, and so the same component functions, every time for the
    * same handle. It needs no context. Call it in a component body.
    */
-  scope<S>(handle: ObjectHandle<S, E>): Scope<S, E, F>;
+  scope<S, Installed extends string = never>(handle: ObjectHandle<S, E, Installed>): Scope<S, E, F, Installed>;
   /** Defines a fieldset shape. Neither form takes options or registers anything. */
   readonly fieldset: {
     /** The shape from a type, with no schema: `forms.fieldset<Address>()`. */

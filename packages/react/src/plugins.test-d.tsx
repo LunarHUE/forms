@@ -1,4 +1,4 @@
-import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
+import type { FormError, Plugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
@@ -9,7 +9,7 @@ import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, t
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
-declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
+declare const fakePlugin: Plugin<undefined, "fake", never, never, FakeSchema<unknown>>;
 declare const profileSchema: FakeSchema<{ name: string }>;
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {

@@ -4,7 +4,8 @@ import { createFormsCore } from "../forms-core.js";
 import { dirty } from "../plugins/dirty.js";
 import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import { defineSchemaPlugin } from "../plugins.js";
+import { definePlugin } from "../plugins.js";
+import type { SchemaAdapter } from "../schema-adapter.js";
 
 interface Contact {
   name: string;
@@ -123,11 +124,12 @@ describe("a form with no plugins", () => {
 describe("plugins on the definition", () => {
   it("bring the schema defaults for that form alone", () => {
     const forms = createFormsCore();
-    const vendor = defineSchemaPlugin<StandardSchemaV1<{ city: string }>>({
+    const adapter: SchemaAdapter<StandardSchemaV1<{ city: string }>> = {
       vendor: "city",
       defaultValue: () => ({ city: "Paris" }),
       itemValue: () => undefined,
-    });
+    };
+    const vendor = definePlugin({ name: "city", schema: adapter });
     const schema: StandardSchemaV1<{ city: string }> = {
       // The store passes the form value, which has this shape.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -190,7 +192,8 @@ describe("a form with a schema plugin", () => {
         },
       },
     };
-    const digits = defineSchemaPlugin<typeof schema>({ vendor: "digits", defaultValue: () => ({ age: "" }), itemValue: () => undefined });
+    const adapter: SchemaAdapter<typeof schema> = { vendor: "digits", defaultValue: () => ({ age: "" }), itemValue: () => undefined };
+    const digits = definePlugin({ name: "digits", schema: adapter });
     const onSubmit = vi.fn<(value: { age: number }) => void>();
     const store = createFormsCore({ plugins: [digits] })
       .define({ schema, validate: { fields: { age: (value) => (value === "0" ? err("Not zero") : undefined) } }, onSubmit })

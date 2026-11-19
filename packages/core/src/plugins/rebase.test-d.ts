@@ -1,4 +1,4 @@
-import type { AnyFieldHandle, FormStore, HookPlugin, ObjectHandle } from "@lunarhue/forms-core";
+import type { AnyFieldHandle, FormStore, ObjectHandle, Plugin } from "@lunarhue/forms-core";
 import { type Rebase, rebase, type RebaseLeaf, type RebaseResult } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
@@ -22,7 +22,7 @@ describe("rebase", () => {
   });
 
   it("is a plugin whose API is on store.plugins.rebase", () => {
-    expectTypeOf(rebase()).toEqualTypeOf<HookPlugin<Rebase, "rebase">>();
+    expectTypeOf(rebase()).toEqualTypeOf<Plugin<Rebase, "rebase">>();
     const forms = createFormsCore({ plugins: [rebase()] });
     const order = forms.define({ defaultValues: { name: "", qty: 1 } }).createStore();
     expectTypeOf(order.plugins).toEqualTypeOf<{ readonly rebase: Rebase }>();

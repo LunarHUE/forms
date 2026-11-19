@@ -1,5 +1,5 @@
 import type { FieldPath, Path } from "../path.js";
-import type { HookPlugin, PluginContext } from "../plugin.js";
+import type { Plugin, PluginContext } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
 import type { IsUnknown } from "../value.js";
 
@@ -35,7 +35,7 @@ export interface RulesNeedValueType {
 export type RuleFields<V> = IsUnknown<V> extends true ? RulesNeedValueType : { readonly [P in FieldPath<V>]?: Rule<V> };
 
 /** The plugin `rules` returns. `V` is the value type its rules take. */
-export interface RulesPlugin<V> extends HookPlugin<undefined, "rules", RulesMeta, unknown, never> {
+export interface RulesPlugin<V> extends Plugin<undefined, "rules", RulesMeta> {
   /**
    * Type information only, always undefined at runtime. It lets a form check
    * that its value fits `V`, since the rules get the form's value as a `V`.

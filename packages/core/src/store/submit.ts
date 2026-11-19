@@ -1,6 +1,6 @@
 import type { SubmitContext } from "../definition.js";
 import type { ErrorMap } from "../errors.js";
-import type { AnyFieldHandle } from "../handle.js";
+import type { Handle } from "./handles.js";
 import type { Submission } from "../snapshot.js";
 import type { DisabledInvalid, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
@@ -28,7 +28,7 @@ export interface Submit<E, I, R> {
   /** As `FormStore.setErrors`. */
   setErrors(this: void, errors: ErrorMap<E>): void;
   /** As `FormStore.firstInvalid`. */
-  firstInvalid(this: void): AnyFieldHandle<E> | undefined;
+  firstInvalid(this: void): Handle<E> | undefined;
   /** As `FormStore.disabledInvalid`. */
   disabledInvalid(this: void): DisabledInvalid<E>[];
   /** Called when the whole form is reset, inside the reset's batch, to abort a running submit. */

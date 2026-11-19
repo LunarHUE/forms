@@ -17,7 +17,7 @@ import {
   type LeafHandle,
   type ObjectHandle,
   type ReactFormDefinition,
-  type SchemaPlugin,
+  type Plugin,
   type StandardSchemaV1,
   type Submission,
   type UnknownForm,
@@ -31,7 +31,7 @@ import {
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
-declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
+declare const fakePlugin: Plugin<undefined, "fake", never, never, FakeSchema<unknown>>;
 
 // The app's own field components, registered once in createForms.
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string; readonly placeholder?: string }) {
@@ -110,8 +110,8 @@ type OrderForm = FormInstance<DraftOrder, FormError, "save" | "send" | undefined
 function OrderPage() {
   const form = useForm(order);
   expectTypeOf(form).toEqualTypeOf<OrderForm>();
-  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<DraftOrder>>();
-  expectTypeOf(form.store).toEqualTypeOf<FormStore<DraftOrder, FormError, "save" | "send" | undefined, { id: string }>>();
+  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake">>();
+  expectTypeOf(form.store).toEqualTypeOf<FormStore<DraftOrder, FormError, "save" | "send" | undefined, { id: string }, {}, "fake">>();
   expectTypeOf(form.submit("send")).toEqualTypeOf<Promise<Submission<"save" | "send" | undefined, { id: string }>>>();
   // @ts-expect-error: not one of the intents
   void form.submit("delete");
@@ -126,7 +126,7 @@ function OrderPage() {
           <form.Field name="email">
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<string>();
-              expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string>>();
+              expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
               return <input {...inputProps(field, { type: "email" })} />;
             }}
           </form.Field>
@@ -140,7 +140,7 @@ function OrderPage() {
           </form.Field>
           <form.Items name="lines">
             {(line) => {
-              expectTypeOf(line).toEqualTypeOf<ItemHandle<DraftLine>>();
+              expectTypeOf(line).toEqualTypeOf<ItemHandle<DraftLine, FormError, "fake">>();
               return <Line line={line} />;
             }}
           </form.Items>
@@ -427,8 +427,8 @@ const lineDialog = forms.define({ defaultValues: { item: "", qty: 0 } });
 function LineDialogBody() {
   const outer = useFormContext(order);
   const inner = useFormContext(lineDialog);
-  expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder>>();
-  expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }>>();
+  expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake">>();
+  expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }, FormError, "fake">>();
   return <inner.Field name="qty">{(field) => <input {...inputProps(field, { kind: "number", empty: 0 })} />}</inner.Field>;
 }
 
@@ -458,9 +458,11 @@ function GenericSubmit() {
 
 function GenericReset() {
   const form = useFormContext();
-  const dirty = useFormState(form, (snapshot) => snapshot.dirty);
+  const count = useFormState(form, (snapshot) => snapshot.submitCount);
+  // @ts-expect-error: a form of unknown plugins may have no dirty()
+  useFormState(form, (snapshot) => snapshot.dirty);
   return (
-    <button type="button" disabled={!dirty} onClick={() => form.store.reset()}>
+    <button type="button" disabled={count === 0} onClick={() => form.store.reset()}>
       Reset
     </button>
   );
@@ -473,7 +475,7 @@ function GenericStatus() {
   expectTypeOf(state.submission.status).toEqualTypeOf<"idle" | "submitting" | "invalid" | "succeeded" | "failed">();
   return (
     <p>
-      {[state.valid, state.validating, state.dirty, state.submitting, state.submitCount, disabled.length].join(" ")}
+      {[state.valid, state.validating, state.submitting, state.submitCount, disabled.length].join(" ")}
     </p>
   );
 }
@@ -484,7 +486,7 @@ const seeded = forms.define((options: { readonly title: string }) => ({ defaultV
 function OptionForms() {
   const form = useForm(seeded, { title: "a" }, { id: "seeded" });
   expectTypeOf(form).toEqualTypeOf<FormOf<typeof seeded>>();
-  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ title: string }>>();
+  expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ title: string }, FormError, "fake">>();
   expectTypeOf(useFormContext(seeded)).toEqualTypeOf<FormOf<typeof seeded>>();
   // @ts-expect-error: the options are required
   useForm(seeded);
@@ -566,7 +568,7 @@ function SaveState() {
       </form.State>
       {/* @ts-expect-error: the form snapshot has no such member */}
       <form.State select={(snapshot) => snapshot.missing}>{() => null}</form.State>
-      <form.State select={(snapshot) => snapshot.dirty}>
+      <form.State select={(snapshot) => snapshot.valid}>
         {/* @ts-expect-error: children must be a render function */}
         <p />
       </form.State>
@@ -628,7 +630,7 @@ const treeForm = forms.define<TreeNode>({ defaultValues: { name: "root", childre
 
 describe("recursive value types", () => {
   it("defines a form whose value holds itself", () => {
-    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string>>();
+    expectTypeOf(useForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
     useForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
   });
 });

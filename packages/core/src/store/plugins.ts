@@ -1,5 +1,5 @@
 import type {
-  AnyHookPlugin,
+  AnyPlugin,
   PluginBaseline,
   PluginContext,
   PluginErrorHandler,
@@ -34,8 +34,11 @@ const rethrowLater: PluginErrorHandler = (error) => {
   });
 };
 
+/** A plugin with `setup`, which the host runs. */
+export type HookedPlugin = AnyPlugin & Required<Pick<AnyPlugin, "setup">>;
+
 /** Makes the plugin host of one store. */
-export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly AnyHookPlugin[], report?: PluginErrorHandler) => PluginHost;
+export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly HookedPlugin[], report?: PluginErrorHandler) => PluginHost;
 
 /** The plugin host of one store. Only a store with plugins has one. */
 export interface PluginHost {
@@ -69,7 +72,7 @@ export const hosts: WeakMap<object, PluginHost> = new WeakMap();
 
 /** One installed plugin. */
 interface Entry {
-  readonly plugin: AnyHookPlugin;
+  readonly plugin: HookedPlugin;
   /** The cause its `ctx.write` writes get unless it asks for `"rebase"`. */
   readonly cause: WriteCause;
   hooks: PluginHooks<unknown>;
@@ -78,16 +81,16 @@ interface Entry {
 }
 
 /** The plugins in run order: install order, except that each one comes after the names in its `after`. */
-function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
-  const byName = new Map<string, AnyHookPlugin>();
+function order(plugins: readonly HookedPlugin[]): HookedPlugin[] {
+  const byName = new Map<string, HookedPlugin>();
   for (const plugin of plugins) {
     if (byName.has(plugin.name)) throw new Error(problem("plugins:name", plugin.name));
     byName.set(plugin.name, plugin);
   }
-  const ordered: AnyHookPlugin[] = [];
+  const ordered: HookedPlugin[] = [];
   // False while a plugin's `after` list is being visited, true once the plugin is placed.
-  const placed = new Map<AnyHookPlugin, boolean>();
-  const visit = (plugin: AnyHookPlugin) => {
+  const placed = new Map<HookedPlugin, boolean>();
+  const visit = (plugin: HookedPlugin) => {
     const state = placed.get(plugin);
     if (state) return;
     if (state === false) throw new Error(problem("plugins:cycle", plugin.name));
@@ -110,7 +113,7 @@ function order(plugins: readonly AnyHookPlugin[]): AnyHookPlugin[] {
  */
 export function createPluginHost(
   raw: StoreCore<unknown, unknown>,
-  plugins: readonly AnyHookPlugin[],
+  plugins: readonly HookedPlugin[],
   report: PluginErrorHandler = rethrowLater,
 ): PluginHost {
   const entries: Entry[] = [];

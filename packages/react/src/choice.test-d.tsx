@@ -5,7 +5,7 @@ import {
   createForms,
   type FieldApi,
   inputProps,
-  type SchemaPlugin,
+  type Plugin,
   type StandardSchemaV1,
   useForm,
   type ValueOf,
@@ -14,7 +14,7 @@ import {
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
   readonly fake: true;
 }
-declare const fakePlugin: SchemaPlugin<FakeSchema<unknown>>;
+declare const fakePlugin: Plugin<undefined, "fake", never, never, FakeSchema<unknown>>;
 
 interface Option<T> {
   readonly value: T;

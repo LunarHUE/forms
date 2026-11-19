@@ -7,9 +7,10 @@ import type {
   StoreInstance,
   Combined,
   DefineConfig,
+  Equals,
 } from "./definition.js";
 import type { FormError } from "./errors.js";
-import type { PluginApis, Plugins } from "./plugin.js";
+import type { PluginApis, PluginNames, Plugins } from "./plugin.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { problem } from "./problem.js";
@@ -80,7 +81,9 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
       // The error type is erased here. The contract ties `mapError`'s return type to the store's `E`.
       mapError: config.mapError,
       show: definition.show ?? config.show,
-      sharedEquals: config.equals,
+      // Without `dirty()` the types allow no `equals`, so it is an `Equals` or undefined.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      sharedEquals: config.equals as Equals | undefined,
       plugins,
       onPluginError: config.onPluginError,
     };
@@ -110,7 +113,8 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
           E,
           I,
           R,
-          PluginApis<Combined<P, D>>
+          PluginApis<Combined<P, D>>,
+          PluginNames<Combined<P, D>>
         >;
       },
     };

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  type AnyHookPlugin,
+  type Plugins,
   createFormsCore,
   type Equals,
   type PluginBaseline,
@@ -28,7 +28,7 @@ const rethrow: PluginErrorHandler = (error) => {
 };
 
 /** A store with `plugins` on its definition. Plugin errors throw unless `onPluginError` says otherwise. */
-const make = <V, const D extends readonly AnyHookPlugin[]>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
+const make = <V, const D extends Plugins>(defaultValues: V, plugins: D, onPluginError: PluginErrorHandler = rethrow) =>
   createFormsCore({ onPluginError, plugins: [dirty()] }).define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }).createStore();
 
 /** A plugin that records every `onWrite` delivery it gets. */
@@ -42,6 +42,7 @@ const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
 const metaAtSetup = (name: string, value: number) =>
   definePlugin({
     name,
+    initialMeta: 0,
     setup: (ctx) => {
       ctx.setMeta(["phone"], value);
       return {};
@@ -140,7 +141,9 @@ describe("install", () => {
     make(contact(), [one, two]);
     expect(warn).not.toHaveBeenCalled();
     // Another copy's plugin carries that copy's host.
-    const copy = { ...two, "~host": (...args: Parameters<(typeof two)["~host"]>) => two["~host"](...args) };
+    const host = two["~host"];
+    if (!host) throw new Error("definePlugin gives every plugin a host");
+    const copy = { ...two, "~host": (...args: Parameters<typeof host>) => host(...args) };
     make(contact(), [one, copy]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringMatching(
@@ -453,6 +456,8 @@ describe("isolation", () => {
     const seenByB: unknown[] = [];
     const a = definePlugin({
       name: "a",
+      initialMeta: "",
+      initialFormMeta: "",
       setup: (ctx) => ({
         onWrite() {
           ctx.setMeta(["phone"], "seen");
@@ -596,7 +601,7 @@ describe("isolation", () => {
   });
 
   it("fires the path's listeners when meta changes, and not when it is set to the same value", () => {
-    const meta = definePlugin({ name: "m", setup: (ctx) => ({ api: { set: (value: number) => ctx.setMeta(["phone"], value) } }) });
+    const meta = definePlugin({ name: "m", initialMeta: 0, setup: (ctx) => ({ api: { set: (value: number) => ctx.setMeta(["phone"], value) } }) });
     const store = make(contact(), [meta]);
     const runs = vi.fn<() => void>();
     store.subscribe(["phone"], runs);
@@ -758,6 +763,7 @@ describe("reset and submit", () => {
     const seen: unknown[] = [];
     const watch = definePlugin({
       name: "watch",
+      initialFormMeta: "",
       setup: (ctx) => ({
         onReset(path) {
           seen.push({ path, value: ctx.store.getSnapshot([]).value });
@@ -921,6 +927,7 @@ describe("setup and server rendering", () => {
   /** A plugin that writes the street and sets form meta in its setup. */
   const writesAtSetup = definePlugin({
     name: "form",
+    initialFormMeta: false,
     setup: (ctx) => {
       ctx.write(() => ctx.store.root.at("shipping").at("street").setValue("1 Main St", { edited: false }));
       ctx.setFormMeta(true);

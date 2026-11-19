@@ -1,4 +1,13 @@
-import { createFormsCore, type FormStore, type HasSchemaPlugin, type LeafHandle, type StandardSchemaV1 } from "@lunarhue/forms-core";
+import {
+  createFormsCore,
+  type FormError,
+  type FormStore,
+  type LeafHandle,
+  type NoSchemaPlugin,
+  type Plugins,
+  type SchemaDefinition,
+  type StandardSchemaV1,
+} from "@lunarhue/forms-core";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import { z } from "zod";
@@ -7,6 +16,13 @@ import { valibot } from "./valibot.js";
 import { zod, type ZodSchema } from "./zod.js";
 
 type Installed = readonly [ReturnType<typeof zod>];
+
+/** Whether a schema plugin in `P` accepts `S`, read off whether `define` still requires defaultValues. */
+/** A store of a form with `zod()`. */
+type ZodStore<V> = FormStore<V, FormError, undefined, unknown, {}, "zod">;
+
+type HasSchemaPlugin<S extends StandardSchemaV1, P extends Plugins> =
+  SchemaDefinition<S, P, FormError, undefined, unknown> extends NoSchemaPlugin<S> ? false : true;
 
 const user = z.object({ name: z.string(), age: z.string().transform(Number) });
 const mini = zm.object({ name: zm.string(), tags: zm.array(zm.string()) });
@@ -29,7 +45,7 @@ describe("zod()", () => {
   it("makes defaultValues optional for a zod schema", () => {
     const core = createFormsCore({ plugins: [zod()] });
     const store = core.define({ schema: user }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
+    expectTypeOf(store).toEqualTypeOf<ZodStore<{ name: string; age: string }>>();
     core.define({ schema: mini });
     core.define({ schema: user, defaultValues: { name: "Ada" } });
     core.define({
@@ -56,7 +72,7 @@ describe("zod()", () => {
     });
     const store = core.define({ schema: order }).createStore();
     expectTypeOf(store).toEqualTypeOf<
-      FormStore<{
+      ZodStore<{
         title: string;
         qty: number | undefined;
         kind: "a" | "b" | undefined;
@@ -66,7 +82,7 @@ describe("zod()", () => {
         auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
       }>
     >();
-    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "zod">>();
     store.root.at("lines").push({ sku: "", price: undefined });
     store.root.at("channels").push("sms");
     // @ts-expect-error: the schema plugin has no empty channel to add
@@ -78,14 +94,14 @@ describe("zod()", () => {
     // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: fromValibot });
     const store = core.define({ schema: fromValibot, defaultValues: { name: "" } }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(store).toEqualTypeOf<ZodStore<{ name: string }>>();
     expectTypeOf<HasSchemaPlugin<typeof fromValibot, Installed>>().toEqualTypeOf<false>();
   });
 
   it("makes defaultValues optional for both vendors when both schema plugins are installed", () => {
     const core = createFormsCore({ plugins: [zod(), valibot()] });
-    expectTypeOf(core.define({ schema: user }).createStore()).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
-    expectTypeOf(core.define({ schema: fromValibot }).createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(core.define({ schema: user }).createStore()).toEqualTypeOf<FormStore<{ name: string; age: string }, FormError, undefined, unknown, {}, "zod" | "valibot">>();
+    expectTypeOf(core.define({ schema: fromValibot }).createStore()).toEqualTypeOf<FormStore<{ name: string }, FormError, undefined, unknown, {}, "zod" | "valibot">>();
     // @ts-expect-error: no installed schema plugin accepts this schema
     core.define({ schema: other });
   });

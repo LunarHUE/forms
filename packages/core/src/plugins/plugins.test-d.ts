@@ -1,4 +1,4 @@
-import type { FieldSnapshot, HookPlugin, PluginContext } from "@lunarhue/forms-core";
+import type { FieldSnapshot, Plugin, PluginContext } from "@lunarhue/forms-core";
 import { definePlugin, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
@@ -12,6 +12,8 @@ interface UploadFormMeta {
 
 const upload = definePlugin({
   name: "upload",
+  initialMeta: { progress: 0 },
+  initialFormMeta: { pending: 0 },
   setup(ctx: PluginContext<UploadMeta, UploadFormMeta>) {
     ctx.setMeta(["file"], { progress: 1 });
     // @ts-expect-error The field slot holds `{ progress }`.
@@ -26,73 +28,50 @@ const upload = definePlugin({
 const required = (value: string) => (value ? undefined : { message: "Required" });
 
 describe("plugin types", () => {
-  it("types the meta readers from setup's context", () => {
-    expectTypeOf(upload).toEqualTypeOf<HookPlugin<undefined, "upload", UploadMeta, UploadFormMeta>>();
+  it("types the meta readers from the context and the starting values", () => {
+    expectTypeOf(upload).toEqualTypeOf<Plugin<undefined, "upload", UploadMeta, UploadFormMeta>>();
     const store = createFormsCore().define({ defaultValues: { file: "" }, plugins: [upload] }).createStore();
-    expectTypeOf(upload.meta(store.getSnapshot(["file"]))).toEqualTypeOf<UploadMeta | undefined>();
-    expectTypeOf(upload.formMeta(store.getFormSnapshot())).toEqualTypeOf<UploadFormMeta | undefined>();
+    expectTypeOf(upload.meta(store.getSnapshot(["file"]))).toEqualTypeOf<UploadMeta>();
+    expectTypeOf(upload.formMeta(store.getFormSnapshot())).toEqualTypeOf<UploadFormMeta>();
+    expectTypeOf(history().formMeta({})).toEqualTypeOf<HistoryMeta>();
     // The snapshots keep meta untyped, so no plugin needs a global declaration.
     expectTypeOf<FieldSnapshot<string>["meta"]>().toEqualTypeOf<Readonly<Record<string, unknown>> | undefined>();
   });
 
-  it("drops undefined from formMeta when the definition gives initialFormMeta", () => {
-    const queue = definePlugin({
-      name: "queue",
-      initialFormMeta: { pending: 0 },
-      setup(ctx: PluginContext<UploadMeta, UploadFormMeta>) {
-        ctx.setFormMeta({ pending: 1 });
-        return {};
-      },
-    });
-    expectTypeOf(queue.formMeta({})).toEqualTypeOf<UploadFormMeta>();
-    // Field meta has no starting value, so it can still be undefined.
-    expectTypeOf(queue.meta({})).toEqualTypeOf<UploadMeta | undefined>();
-    expectTypeOf(queue).toEqualTypeOf<HookPlugin<undefined, "queue", UploadMeta, UploadFormMeta, undefined, never>>();
-    expectTypeOf(history().formMeta({})).toEqualTypeOf<HistoryMeta>();
+  it("needs a starting value for each meta slot the plugin keeps", () => {
+    // @ts-expect-error initialMeta is missing.
     definePlugin({
-      name: "wrong",
-      // @ts-expect-error The form slot holds `{ pending }`.
-      initialFormMeta: { progress: 0 },
+      name: "field",
+      setup: (_ctx: PluginContext<UploadMeta>) => ({}),
+    });
+    // @ts-expect-error initialFormMeta is missing.
+    definePlugin({
+      name: "form",
+      initialMeta: { progress: 0 },
       setup: (_ctx: PluginContext<UploadMeta, UploadFormMeta>) => ({}),
     });
-  });
-
-  it("drops undefined from meta when the definition gives initialMeta", () => {
-    const progress = definePlugin({
-      name: "progress",
-      initialMeta: { progress: 0 },
-      setup(ctx: PluginContext<UploadMeta, UploadFormMeta>) {
-        ctx.setMeta(["file"], { progress: 1 });
-        return {};
-      },
-    });
-    expectTypeOf(progress.meta({})).toEqualTypeOf<UploadMeta>();
-    expectTypeOf(progress.formMeta({})).toEqualTypeOf<UploadFormMeta | undefined>();
-    const both = definePlugin({
-      name: "both",
-      initialMeta: { progress: 0 },
-      initialFormMeta: { pending: 0 },
-      setup: (_ctx: PluginContext<UploadMeta, UploadFormMeta>) => ({}),
-    });
-    expectTypeOf(both).toEqualTypeOf<HookPlugin<undefined, "both", UploadMeta, UploadFormMeta, never, never>>();
     definePlugin({
       name: "wrong",
       // @ts-expect-error The field slot holds `{ progress }`.
       initialMeta: { pending: 0 },
+      initialFormMeta: { pending: 0 },
       setup: (_ctx: PluginContext<UploadMeta, UploadFormMeta>) => ({}),
     });
+    const counter = definePlugin({ name: "counter", initialMeta: 0, setup: (ctx) => ({ api: { set: (n: number) => ctx.setMeta(["a"], n) } }) });
+    expectTypeOf(counter.meta({})).toEqualTypeOf<number>();
   });
 
-  it("leaves meta unknown when setup's context isn't annotated", () => {
+  it("gives a plugin with no starting value no meta", () => {
     const free = definePlugin({
       name: "free",
       setup(ctx) {
+        // @ts-expect-error The plugin keeps no meta.
         ctx.setMeta(["a"], 1);
-        ctx.setMeta(["a"], "anything");
         return {};
       },
     });
-    expectTypeOf(free.meta({})).toBeUnknown();
+    expectTypeOf(free).not.toHaveProperty("meta");
+    expectTypeOf(free).not.toHaveProperty("formMeta");
   });
 
   it('lets ctx.write claim "rebase" and no other cause', () => {

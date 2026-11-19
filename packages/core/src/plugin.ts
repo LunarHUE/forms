@@ -1,8 +1,8 @@
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { Submission } from "./snapshot.js";
-import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { AnyFormStore } from "./store.js";
+import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
 import type { CreateTiming } from "./store/timing.js";
@@ -79,15 +79,7 @@ export interface Write {
   readonly cause: WriteCause;
 }
 
-/**
- * When `onWrite` runs.
- * - `"sync"`: once at the end of the outermost batch, before listeners run,
- *   with that batch's records.
- * - `"deferred"`: once per task, on a microtask, with every record since the
- *   last delivery.
- * - `"idle"`: after paint, on a background task, with every record since the
- *   last delivery.
- */
+/** When `onWrite` runs. See `PluginHooks.when`. Internal. */
 export type When = "sync" | "deferred" | "idle";
 
 /** Called when a plugin hook throws, with the plugin's name. The write and the other plugins carry on. */
@@ -134,12 +126,12 @@ export interface PluginBaseline {
 }
 
 /**
- * What a hook plugin's `setup` gets. Each plugin gets its own, once per
- * store. `M` is the plugin's meta on a field and `F` its meta on the form.
- * Annotate `setup`'s parameter to set them:
+ * What a plugin's `setup` gets. Each plugin gets its own, once per store.
+ * `M` is the plugin's meta on a field and `F` its meta on the form, `never`
+ * when it keeps none. Annotate `setup`'s parameter to set them:
  * `setup(ctx: PluginContext<{ hidden: boolean }>)`.
  */
-export interface PluginContext<M = unknown, F = unknown> {
+export interface PluginContext<M = never, F = never> {
   /** The store the plugin is installed on. */
   readonly store: AnyFormStore<unknown>;
   /**
@@ -183,7 +175,15 @@ export interface PluginHooks<A = undefined> {
   beforeWrite?(write: Write): unknown;
   /** Gets committed writes at the time `when` names. */
   onWrite?(records: readonly WriteRecord[]): void;
-  /** When `onWrite` runs. Defaults to `"sync"`. */
+  /**
+   * When `onWrite` runs. Defaults to `"sync"`.
+   * - `"sync"`: once at the end of the outermost batch, before listeners
+   *   run, with that batch's records.
+   * - `"deferred"`: once per task, on a microtask, with every record since
+   *   the last delivery.
+   * - `"idle"`: after paint, on a background task, with every record since
+   *   the last delivery.
+   */
   readonly when?: When;
   /** Runs inside a reset's batch, after the values went back, with the reset field's stable path. */
   onReset?(path: Path): void;
@@ -220,32 +220,6 @@ export interface PluginHooks<A = undefined> {
   readonly api?: A;
 }
 
-/** What `definePlugin` takes. */
-export interface PluginDefinition<A = undefined, N extends string = string, M = unknown, F = unknown> {
-  /** Unique among a store's hook plugins. It names the meta slot, the write cause and the API's key. */
-  readonly name: N;
-  /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
-  readonly after?: readonly string[];
-  /**
-   * Runs once per store, when the store is made, and returns the plugin's
-   * hooks. What it writes is part of the store's starting state: the server
-   * snapshot shows it and no plugin gets a record of it. It runs on the
-   * server too, so it must not read the browser. Do that in `onActive`.
-   */
-  setup(ctx: PluginContext<M, F>): PluginHooks<A>;
-  /** Gives the form's starting value. See `Plugin.initial`. */
-  initial?(value: unknown): unknown;
-  /**
-   * The plugin's meta on a field before it sets any there. The `meta`
-   * reader returns it until then, on the server and in the browser alike,
-   * so the reader's type has no `undefined`. Every field shares it, so a
-   * frozen object keeps a selector that returns it stable.
-   */
-  readonly initialMeta?: M;
-  /** The plugin's form meta before it sets any. The `formMeta` reader returns it as `meta` returns `initialMeta`. */
-  readonly initialFormMeta?: F;
-}
-
 /** The parts of a text input or textarea a `FieldDisplay` edits. Every `HTMLInputElement` and `HTMLTextAreaElement` fits. */
 export interface TextControl {
   value: string;
@@ -275,30 +249,27 @@ export interface FieldDisplay {
   readonly edit?: (input: TextControl, value: unknown, event: object) => void;
 }
 
+
 /** Anything with plugin meta: a field or form snapshot, or an adapter's field object. */
-export interface MetaSource {
+interface MetaHolder {
   readonly meta?: Readonly<Record<string, unknown>> | undefined;
 }
 
 /**
- * What goes in a `plugins` list. A plugin can bring any of three things,
- * and every member but `name` is optional:
- * - hooks into writes, reset and submit, with meta and an API, from
- *   `definePlugin` in `@lunarhue/forms-core/plugins` (see `HookPlugin`);
- * - a schema adapter, which gives its library's schemas default values, so
- *   their forms need no `defaultValues` (see `SchemaPlugin`);
- * - dirty tracking, which `dirty()` from `@lunarhue/forms-core/plugins`
- *   brings.
- *
- * The host and dirty tracking come with the plugin, so a store whose
- * plugins bring neither never loads their code.
+ * What every plugin has. `Plugin` adds the meta readers. Every member but
+ * `name` is optional, and the store runs what is there. Internal.
  */
-export interface Plugin<A = undefined, N extends string = string, M = unknown, F = unknown> {
-  /** The plugin's name. A hook plugin's must be unique among the store's hook plugins. */
+export interface PluginMembers<A, N extends string, M, F, S extends StandardSchemaV1> {
+  /** Unique among a store's plugins that have `setup`. It names the meta slot, the write cause and the API's key. */
   readonly name: N;
-  /** A hook plugin's: the plugins it runs after, by name. */
+  /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
   readonly after?: readonly string[];
-  /** A hook plugin's: runs once per store and returns its hooks. */
+  /**
+   * Runs once per store, when the store is made, and returns the plugin's
+   * hooks. What it writes is part of the store's starting state: the server
+   * snapshot shows it and no plugin gets a record of it. It runs on the
+   * server too, so it must not read the browser. Do that in `onActive`.
+   */
   setup?(ctx: PluginContext<M, F>): PluginHooks<A>;
   /**
    * Gives the form's starting value. It runs before the store is made, with
@@ -309,51 +280,65 @@ export interface Plugin<A = undefined, N extends string = string, M = unknown, F
    * last one that returns a value wins.
    */
   initial?(value: unknown): unknown;
-  /** A hook plugin's: makes the store's plugin host. Internal. */
+  /**
+   * A schema adapter, which gives the default values of its library's
+   * schemas of type `S`, so their forms need no `defaultValues`. A plugin
+   * with one is a schema plugin, such as `zod()`.
+   */
+  readonly schema?: SchemaAdapter<S>;
+  /** Makes the store's plugin host. Internal. */
   readonly "~host"?: CreateHost;
-  /** A hook plugin's: makes the host's `deferred` and `idle` timings. Internal. */
+  /** Makes the host's `deferred` and `idle` timings. Internal. */
   readonly "~timing"?: CreateTiming;
-  /** A hook plugin's: reads its meta from a field. */
-  meta?(source: MetaSource): M | undefined;
-  /** A hook plugin's: reads its meta from the form snapshot. */
-  formMeta?(source: MetaSource): F | undefined;
-  /** A schema plugin's: the adapter that gives its schemas' default values. */
-  readonly schema?: SchemaAdapter<never>;
   /** Dirty tracking, from `dirty()`. Internal. */
-  readonly dirty?: CreateDirty;
+  readonly "~dirty"?: CreateDirty;
+}
+
+/** The reader of a plugin that keeps meta on fields. */
+interface MetaReader<M> {
+  /**
+   * Reads this plugin's meta from a field snapshot or a field object, as
+   * `rules.meta(field).hidden`. Before the plugin sets any it returns the
+   * plugin's `initialMeta`.
+   */
+  meta(source: MetaHolder): M;
+}
+
+/** The reader of a plugin that keeps meta on the form. */
+interface FormMetaReader<F> {
+  /** Reads this plugin's meta from the form snapshot. Before the plugin sets any it returns the plugin's `initialFormMeta`. */
+  formMeta(source: MetaHolder): F;
 }
 
 /**
- * A plugin with hooks, as `definePlugin` makes it. `A` is its API, `N` its
- * name, `M` its meta on a field and `F` its meta on the form. `MU` and `FU`
- * are what `meta` and `formMeta` return where the plugin has set nothing:
- * `undefined`, or `never` when the definition gave `initialMeta` or
- * `initialFormMeta`, since the reader returns that instead.
+ * What goes in a `plugins` list, as `definePlugin` makes it. `A` is its
+ * API, `N` its name, `M` its meta on a field, `F` its meta on the form and
+ * `S` the schemas its schema adapter takes. A plugin with field meta has a
+ * `meta` reader and one with form meta a `formMeta` reader. `never` means
+ * it has none of that.
+ *
+ * A plugin can bring hooks into writes, reset and submit (`setup`), a
+ * starting value (`initial`), and a schema adapter (`schema`). Make one
+ * with `definePlugin`.
  */
-export interface HookPlugin<A = undefined, N extends string = string, M = unknown, F = unknown, MU extends undefined = undefined, FU extends undefined = undefined>
-  extends Plugin<A, N, M, F> {
-  setup(ctx: PluginContext<M, F>): PluginHooks<A>;
-  readonly "~host": CreateHost;
-  /** Reads this plugin's meta from a field snapshot or a field object, as `rules.meta(field).hidden`. */
-  meta(source: MetaSource): M | MU;
-  /** Reads this plugin's meta from the form snapshot. */
-  formMeta(source: MetaSource): F | FU;
-}
+export type Plugin<A = undefined, N extends string = string, M = never, F = never, S extends StandardSchemaV1 = never> = PluginMembers<
+  A,
+  N,
+  M,
+  F,
+  S
+> &
+  ([M] extends [never] ? unknown : MetaReader<M>) &
+  ([F] extends [never] ? unknown : FormMetaReader<F>) &
+  ([S] extends [never] ? unknown : { readonly schema: SchemaAdapter<S> });
 
-/** A plugin that brings a schema adapter for schemas of type `S`. */
-export interface SchemaPlugin<S extends StandardSchemaV1 = StandardSchemaV1, N extends string = string> extends Plugin<undefined, N> {
-  readonly schema: SchemaAdapter<S>;
-}
-
-/** The plugin `dirty()` returns: dirty tracking. */
-export interface DirtyPlugin extends Plugin<undefined, "dirty"> {
-  readonly dirty: CreateDirty;
-}
-
-/** A plugin of any kind, API, name and meta. */
-// `any` lets a plugin of every `A`, `N`, `M` and `F` fit, whatever their variance.
+/** A plugin of any kind, API, name and meta. Internal. */
+// `any` lets a plugin of every `A`, `M`, `F` and `S` fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
-export type AnyPlugin = Plugin<any, any, any, any>;
+export type AnyPlugin = PluginMembers<any, string, any, any, any>;
+
+/** A list of plugins, as `createFormsCore({ plugins })` takes it. */
+export type Plugins = readonly AnyPlugin[];
 
 /**
  * Plugins that fit a form of value type `V`. A plugin that names the value
@@ -363,51 +348,61 @@ export type AnyPlugin = Plugin<any, any, any, any>;
  */
 export type PluginsFor<V> = readonly (AnyPlugin & { readonly "~value"?: (value: V) => V })[];
 
-/** A hook plugin of any API, name and meta. */
-// oxlint-disable-next-line typescript/no-explicit-any
-export type AnyHookPlugin = HookPlugin<any, any, any, any, any, any>;
+/**
+ * The names of the plugins in `P`, as a union. A plugin whose name is a
+ * plain `string`, not a literal, adds nothing.
+ */
+export type PluginNames<P extends Plugins> = P[number] extends infer T
+  ? T extends { readonly name: infer N extends string }
+    ? string extends N
+      ? never
+      : N
+    : never
+  : never;
 
-/** A list of plugins, as `createFormsCore({ plugins })` takes it. */
-export type Plugins = readonly AnyPlugin[];
-
-/** True when a plugin in `P` brings dirty tracking. */
-export type HasDirty<P extends Plugins> = [Extract<P[number], { readonly dirty: CreateDirty }>] extends [never] ? false : true;
-
-/** The schema types the schema plugins in `P` accept. */
+/** The schema types the schema plugins in `P` accept. Internal. */
 export type PluginSchemas<P extends Plugins> =
-  P[number] extends infer T ? (T extends { readonly schema: SchemaAdapter<infer S> } ? S : never) : never;
+  P[number] extends infer T ? (T extends { readonly schema?: SchemaAdapter<infer S> } ? S : never) : never;
 
-/** True when a schema plugin in `P` accepts schema type `S`. */
+/** True when a schema plugin in `P` accepts schema type `S`. Internal. */
 export type HasSchemaPlugin<S, P extends Plugins> = [S] extends [never]
   ? false
   : [S] extends [PluginSchemas<P>]
     ? true
     : false;
 
-/** The name `T` has on `form.plugins`: its name when it is a hook plugin with an API, else never. */
+/** The name `T` has on `form.plugins`: its name when it has an API, else never. */
 type ApiName<T> =
   // oxlint-disable-next-line typescript/no-explicit-any
-  T extends HookPlugin<infer A, infer N, any, any, any, any> ? ([A] extends [undefined] ? never : N) : never;
+  T extends PluginMembers<infer A, infer N, any, any, any> ? ([A] extends [undefined] ? never : N) : never;
 
-/** The API of hook plugin `T`. */
+/** The API of plugin `T`. */
 // oxlint-disable-next-line typescript/no-explicit-any
-type ApiOf<T> = T extends HookPlugin<infer A, string, any, any, any, any> ? A : never;
+type ApiOf<T> = T extends PluginMembers<infer A, string, any, any, any> ? A : never;
 
-/** The APIs of the hook plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
+/** The APIs of the plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
 export type PluginApis<P extends Plugins> = { readonly [T in P[number] as ApiName<T>]: ApiOf<T> };
 
-/**
- * What `equals` becomes when no plugin brings dirty tracking, which is the
- * only thing that runs it. The compiler names the missing property, which
- * says what to install.
- */
-export interface EqualsNeedsDirty {
-  readonly "Add dirty() to plugins to use equals": never;
-}
+/** What `Needs` gives when plugins are missing. Each key names one to add. */
+type AddPlugins<N extends string> = { readonly [K in N as `Add ${K}() to this form's plugins`]: never };
 
 /**
- * `T` when a plugin in `P` brings dirty tracking. Otherwise `T` marked as
- * needing it, so a value is a type error whose message names what to
- * install, while `undefined` in `T` stays allowed.
+ * `T` when every plugin named in `N` is among `Installed`, the names of a
+ * form's plugins (see `PluginNames`). Otherwise a type with one key per
+ * missing plugin, such as `"Add dirty() to this form's plugins"`, so a value
+ * given for it is a type error that names what to install. A definition's
+ * `equals` is typed `Needs<Installed, "dirty", Equals>`.
  */
-export type IfDirty<P extends Plugins, T> = HasDirty<P> extends true ? T : (NonNullable<T> & EqualsNeedsDirty) | Extract<T, undefined>;
+export type Needs<Installed extends string, N extends string, T> = [Exclude<N, Installed>] extends [never]
+  ? T
+  : AddPlugins<Exclude<N, Installed>>;
+
+/**
+ * The members of `T` when plugin `N` is among `Installed`, and none when it
+ * isn't. Reading one of them without the plugin is then a type error, and
+ * a type with more plugins stays assignable to one with fewer. Internal.
+ */
+// A conditional type here would make TypeScript measure the types it sits in
+// as invariant in `Installed`. Indexing a mapped type keeps them
+// contravariant, as the members say they are.
+export type Gate<Installed extends string, N extends string, T> = Pick<T, { readonly [K in N]: keyof T }[N & Installed]>;

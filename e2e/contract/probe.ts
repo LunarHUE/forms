@@ -42,6 +42,12 @@ type Sources = Readonly<Record<string, ProbeSource>>;
 const isObject = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+/**
+ * Reads `dirty`, which the types give only to forms with `dirty()`. Pages
+ * without it still report one, and it is `false` there at runtime.
+ */
+const dirtyOf = (snapshot: object): boolean => "dirty" in snapshot && snapshot.dirty === true;
+
 const messages = (errors: readonly { readonly message: string }[]): string[] => errors.map((error) => error.message);
 
 /** Reads the whole form, and returns the stable path of every field it visited. */
@@ -58,7 +64,7 @@ export function readProbe(store: AnyFormStore, sources: Sources = {}): { state: 
       shown: messages(snapshot.shownErrors),
       touched: snapshot.touched,
       edited: snapshot.edited,
-      dirty: snapshot.dirty,
+      dirty: dirtyOf(snapshot),
       validating: snapshot.validating,
       disabled: snapshot.disabled,
       readOnly: snapshot.readOnly,
@@ -79,7 +85,7 @@ export function readProbe(store: AnyFormStore, sources: Sources = {}): { state: 
     form: {
       valid: form.valid,
       validating: form.validating,
-      dirty: form.dirty,
+      dirty: dirtyOf(form),
       submitting: form.submitting,
       submitCount: form.submitCount,
       submission:

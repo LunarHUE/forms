@@ -75,7 +75,7 @@
     {
       "name": "./plugins, plugin authoring",
       "path": "dist/esm/plugins/index.js",
-      "import": "{ definePlugin, defineSchemaPlugin, flushPlugins, refuse }",
+      "import": "{ definePlugin, flushPlugins, refuse }",
       "limit": "2.05 kB"
     },
     {

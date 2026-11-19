@@ -1,27 +1,48 @@
-import type { HookPlugin, MetaSource, PluginDefinition } from "../plugin.js";
+import type { Plugin, PluginContext, PluginHooks } from "../plugin.js";
+import type { SchemaAdapter } from "../schema-adapter.js";
+import type { StandardSchemaV1 } from "../standard-schema.js";
 import { createPluginHost } from "./plugins.js";
 
-/** What a reader returns where the plugin has set nothing, given the definition's starting value `I`. */
-export type Unset<I> = undefined extends I ? undefined : never;
+/**
+ * What `definePlugin` takes. Its members are `Plugin`'s, and a plugin that
+ * keeps meta gives the meta's starting value too.
+ */
+export type PluginDefinition<A, N extends string, M, F, S extends StandardSchemaV1> = {
+  /** Unique among a store's plugins that have `setup`. It names the meta slot, the write cause and the API's key. */
+  readonly name: N;
+  /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
+  readonly after?: readonly string[];
+  /** Runs once per store and returns the plugin's hooks. See `Plugin`. */
+  setup?(ctx: PluginContext<M, F>): PluginHooks<A>;
+  /** Gives the form's starting value. See `Plugin`. */
+  initial?(value: unknown): unknown;
+  /** A schema adapter for the schemas of one library. See `Plugin`. */
+  readonly schema?: SchemaAdapter<S>;
+  /**
+   * The plugin's meta on a field before it sets any there. The `meta`
+   * reader returns it until then, on the server and in the browser alike.
+   * Every field shares it, so a frozen object keeps a selector that returns
+   * it stable. Required when the plugin keeps field meta.
+   */
+  readonly initialMeta?: M;
+  /** The plugin's form meta before it sets any. The `formMeta` reader returns it until then. Required when the plugin keeps form meta. */
+  readonly initialFormMeta?: F;
+} & ([M] extends [never] ? unknown : { readonly initialMeta: M }) &
+  ([F] extends [never] ? unknown : { readonly initialFormMeta: F });
 
 /**
- * Makes a hook plugin without the `deferred` and `idle` timings, for the
+ * Makes a plugin without the `deferred` and `idle` timings, for the
  * built-in plugins whose `onWrite` is `sync` or absent. `definePlugin` adds
  * the timings to it.
  */
-export function defineHooks<
-  A = undefined,
-  N extends string = string,
-  M = unknown,
-  F = unknown,
-  MI extends M | undefined = undefined,
-  FI extends F | undefined = undefined,
->(
-  definition: PluginDefinition<A, N, M, F> & { readonly initialMeta?: MI; readonly initialFormMeta?: FI },
-): HookPlugin<A, N, M, F, Unset<MI>, Unset<FI>> {
-  const { name } = definition;
+export function defineHooks<A = undefined, N extends string = string, M = never, F = never, S extends StandardSchemaV1 = never>(
+  definition: PluginDefinition<A, N, M, F, S>,
+): Plugin<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>> {
+  const { name, initialMeta, initialFormMeta } = definition;
   // The host writes each plugin's meta under its name, with the type its context took.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const reader = (start: unknown) => (source: MetaSource) => (source.meta?.[name] ?? start) as never;
-  return { ...definition, "~host": createPluginHost, meta: reader(definition.initialMeta), formMeta: reader(definition.initialFormMeta) };
+  const reader = (start: unknown) => (source: { readonly meta?: Readonly<Record<string, unknown>> | undefined }) => (source.meta?.[name] ?? start) as never;
+  // The readers are there for every plugin. `Plugin` types them only where the plugin keeps meta.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return { ...definition, "~host": createPluginHost, meta: reader(initialMeta), formMeta: reader(initialFormMeta) } as never;
 }

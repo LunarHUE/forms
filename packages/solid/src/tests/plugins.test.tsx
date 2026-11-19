@@ -8,6 +8,7 @@ import { get, getAs, mount, settle, typeText } from "./dom.js";
 // Shared: stores each written string's length as the field's meta.
 const chars = definePlugin({
   name: "chars",
+  initialMeta: 0,
   setup: (ctx: PluginContext<number>) => ({
     onWrite(records) {
       for (const record of records) if (record.type === "value") ctx.setMeta(record.path, String(record.after).length);
@@ -18,6 +19,7 @@ const chars = definePlugin({
 // The definition's own: upper-cases every value and counts the writes on the form.
 const upper = definePlugin({
   name: "writes",
+  initialFormMeta: 0,
   setup(ctx: PluginContext<never, number>) {
     let writes = 0;
     return {
@@ -38,8 +40,8 @@ function Name() {
       {(field) => (
         <>
           <input {...inputProps(field)} />
-          <output>{chars.meta(field) ?? "none"}</output>
-          <p>{upper.formMeta(form.state) ?? 0}</p>
+          <output>{chars.meta(field)}</output>
+          <p>{upper.formMeta(form.state)}</p>
           <button type="button" onClick={() => form.plugins.writes.count()}>
             count
           </button>
@@ -56,8 +58,8 @@ describe("plugins", () => {
     const input = get(host, "input");
     const output = getAs(host, "output", HTMLOutputElement);
     const writes = getAs(host, "p", HTMLParagraphElement);
-    // The field object was made before any meta existed.
-    expect(output.textContent).toBe("none");
+    // The field object was made before any meta existed, so it shows the starting value.
+    expect(output.textContent).toBe("0");
     expect(writes.textContent).toBe("0");
 
     typeText(input, "ada");

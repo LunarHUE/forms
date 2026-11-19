@@ -2,9 +2,9 @@ import {
   createFormsCore,
   type FormError,
   type FormStore,
-  type HasSchemaPlugin,
   type LeafHandle,
   type NoSchemaPlugin,
+  type Plugins,
   type SchemaDefinition,
   type StandardSchemaV1,
 } from "@lunarhue/forms-core";
@@ -13,6 +13,13 @@ import { describe, expectTypeOf, it } from "vitest";
 import { valibot, type ValibotSchema } from "./valibot.js";
 
 type Installed = readonly [ReturnType<typeof valibot>];
+
+/** Whether a schema plugin in `P` accepts `S`, read off whether `define` still requires defaultValues. */
+/** A store of a form with `valibot()`. */
+type ValibotStore<V> = FormStore<V, FormError, undefined, unknown, {}, "valibot">;
+
+type HasSchemaPlugin<S extends StandardSchemaV1, P extends Plugins> =
+  SchemaDefinition<S, P, FormError, undefined, unknown> extends NoSchemaPlugin<S> ? false : true;
 
 const user = v.object({ name: v.string(), age: v.pipe(v.string(), v.transform(Number)) });
 const userAsync = v.objectAsync({ name: v.pipeAsync(v.string(), v.checkAsync(async () => true)) });
@@ -32,7 +39,7 @@ describe("valibot()", () => {
   it("makes defaultValues optional for a valibot schema", () => {
     const core = createFormsCore({ plugins: [valibot()] });
     const store = core.define({ schema: user }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string; age: string }>>();
+    expectTypeOf(store).toEqualTypeOf<ValibotStore<{ name: string; age: string }>>();
     core.define({ schema: userAsync });
     core.define({ schema: user, defaultValues: { name: "Ada" } });
     core.define({
@@ -59,7 +66,7 @@ describe("valibot()", () => {
     });
     const store = core.define({ schema: order }).createStore();
     expectTypeOf(store).toEqualTypeOf<
-      FormStore<{
+      ValibotStore<{
         title: string;
         qty: number | undefined;
         kind: "a" | "b" | undefined;
@@ -69,7 +76,7 @@ describe("valibot()", () => {
         auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
       }>
     >();
-    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "valibot">>();
     store.root.at("lines").push({ sku: "", price: undefined });
     store.root.at("channels").push("sms");
     // @ts-expect-error: the schema plugin has no empty channel to add
@@ -81,7 +88,7 @@ describe("valibot()", () => {
     // @ts-expect-error: no installed schema plugin accepts this schema, so defaultValues is required
     core.define({ schema: other });
     const store = core.define({ schema: other, defaultValues: { name: "" } }).createStore();
-    expectTypeOf(store).toEqualTypeOf<FormStore<{ name: string }>>();
+    expectTypeOf(store).toEqualTypeOf<ValibotStore<{ name: string }>>();
     expectTypeOf<HasSchemaPlugin<typeof other, Installed>>().toEqualTypeOf<false>();
   });
 

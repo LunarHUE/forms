@@ -20,7 +20,7 @@ export type Code =
   | "plugins:copies"
   | "schema:defaults"
   | "rebase:store"
-  | "dirty:untracked"
+  | "dirty:missing"
   | "submit:unseen";
 
 /**
@@ -42,8 +42,8 @@ export function problem(code: Code, value = ""): string {
       "plugins:copies": () => "This store's plugins come from two copies of @lunarhue/forms-core. Install one copy.",
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
-      "dirty:untracked": () =>
-        'This form called `changes()`, but no plugin tracks dirty state, so `changes()` is always empty and `dirty` is always false. Add `dirty()` from "@lunarhue/forms-core/plugins" to `plugins`.',
+"dirty:missing": () =>
+        'This form called `changes()`, but it has no `dirty()`, so nothing tracks what changed. Add `dirty()` from "@lunarhue/forms-core/plugins" to `plugins`.',
       "submit:unseen": (where) =>
         `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
     };

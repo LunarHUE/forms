@@ -27,9 +27,9 @@ function OrderCustomer() {
   return <form.Field name="customer">{(field) => <span data-order={form.id}>{field.value}</span>}</form.Field>;
 }
 
-// A reusable part for any form: it knows no definition.
+// A reusable part for any form of `forms`: it knows no definition.
 function Controls() {
-  const form = useFormContext();
+  const form = useFormContext(forms);
   return (
     <p data-controls={form.id}>
       <button type="button" data-submit onClick={() => void form.submit()} />
