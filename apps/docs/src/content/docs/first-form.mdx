@@ -1,9 +1,216 @@
 ---
 title: Your first form
-description: Build a form with one field, validation and a submit handler.
+description: Build a sign-up form with two fields, Zod validation and a submit handler.
 section: start
 order: 3
 navTitle: First form
 ---
 
-Placeholder. The real page arrives with the start pages.
+import Install from "@/components/mdx/Install.astro";
+
+This is the form you'll end up with. Submit it empty to see the errors.
+
+<Demo name="first-form/sign-up" />
+
+You need the adapter, the schema package and Zod. See [Install](install) for the details.
+
+<Install adapter packages="@lunarhue/forms-schema zod" />
+
+## Write a field component
+
+A field component is your own component with a `field` prop. The library doesn't ship inputs, so this is where your markup and styles go.
+
+```tsx title="TextField.tsx" framework=react
+import type { FieldApi } from "@lunarhue/forms-react";
+
+interface TextFieldProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+export function TextField({ field, label }: TextFieldProps) {
+  return (
+    <div>
+      <label htmlFor={field.id}>{label}</label>
+      <input {...field.inputProps()} />
+      <ul id={field.errorId}>
+        {field.shownErrors.map((error) => (
+          <li key={error.message}>{error.message}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+```tsx title="TextField.tsx" framework=solid
+import type { FieldApi } from "@lunarhue/forms-solid";
+import { For } from "solid-js";
+
+interface TextFieldProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+export function TextField(props: TextFieldProps) {
+  return (
+    <div>
+      <label for={props.field.id}>{props.label}</label>
+      <input {...props.field.inputProps()} />
+      <ul id={props.field.errorId}>
+        <For each={props.field.shownErrors}>
+          {(error) => <li>{error.message}</li>}
+        </For>
+      </ul>
+    </div>
+  );
+}
+```
+
+<Only framework="solid">
+
+Read the field through `props` rather than destructuring it, or it stops updating.
+
+</Only>
+
+`inputProps()` returns the value, the change and blur handlers, and the aria attributes that point at `field.errorId`. `shownErrors` stays empty until the user leaves the field or submits.
+
+## Register it
+
+`createForms` takes the plugins and the field components every form in your app shares. Make one and import it where you need it.
+
+```ts title="forms.ts" framework=react
+import { createForms } from "@lunarhue/forms-react";
+import { zod } from "@lunarhue/forms-schema/zod";
+import { TextField } from "./TextField";
+
+export const forms = createForms({
+  plugins: [zod()],
+  fields: { TextField },
+});
+```
+
+```ts title="forms.ts" framework=solid
+import { createForms } from "@lunarhue/forms-solid";
+import { zod } from "@lunarhue/forms-schema/zod";
+import { TextField } from "./TextField";
+
+export const forms = createForms({
+  plugins: [zod()],
+  fields: { TextField },
+});
+```
+
+The `zod()` plugin lets a form take a Zod schema. Every form defined from `forms` gets `form.TextField`.
+
+## Define the form
+
+```ts title="sign-up.tsx"
+import { z } from "zod";
+import { forms } from "./forms";
+
+const SignUp = z.object({
+  name: z.string().min(1, "Enter your name."),
+  email: z.email("Enter a valid email."),
+});
+
+const signUp = forms.define({
+  schema: SignUp,
+  onSubmit: (value) => `Signed up ${value.name}.`,
+});
+```
+
+The schema validates the form and gives it its types. It also sets the starting values, so both fields start as empty strings and you don't write `defaultValues`. `onSubmit` runs only when the schema passes, and gets the parsed value.
+
+## Render it
+
+```tsx title="sign-up.tsx" framework=react
+import { useForm } from "@lunarhue/forms-react";
+
+export default function SignUpForm() {
+  const form = useForm(signUp);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.TextField name="name" label="Name" />
+          <form.TextField name="email" label="Email" />
+          <button type="submit">Sign up</button>
+        </form>
+      )}
+    </form.Form>
+  );
+}
+```
+
+```tsx title="sign-up.tsx" framework=solid
+import { createForm } from "@lunarhue/forms-solid";
+
+export default function SignUpForm() {
+  const form = createForm(signUp);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.TextField name="name" label="Name" />
+          <form.TextField name="email" label="Email" />
+          <button type="submit">Sign up</button>
+        </form>
+      )}
+    </form.Form>
+  );
+}
+```
+
+<Only framework="react">
+
+`useForm` creates the form for this component.
+
+</Only>
+
+<Only framework="solid">
+
+`createForm` creates the form for this component.
+
+</Only>
+
+`form.TextField` is the component you registered, bound to the field you name. The compiler checks `name` against the schema, so `name="emial"` is a type error. `formProps` hands your `<form>` its submit handler and turns off the browser's own validation.
+
+## Show the result
+
+Whatever `onSubmit` returns becomes `submission.result`. Read it from the form's state:
+
+```tsx framework=react
+<form.State select={(state) => state.submission}>
+  {(submission) => (
+    <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>
+  )}
+</form.State>
+```
+
+```tsx framework=solid
+<p role="status">
+  <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+    {(submission) => submission().result}
+  </Show>
+</p>
+```
+
+<Only framework="react">
+
+`form.State` re-renders only its children, and only when the selected value changes.
+
+</Only>
+
+<Only framework="solid">
+
+`form.state` is reactive, so only this text updates.
+
+</Only>
+
+A submission is `idle`, `submitting`, `invalid`, `failed` or `succeeded`. If `onSubmit` throws, the status is `failed` and `error` holds what it threw.
+
+## Next
+
+- [Fields](concepts/fields) covers what a field component gets.
+- [Validation](plugins/validation) covers schemas and validators.
