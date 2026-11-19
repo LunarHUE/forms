@@ -1,11 +1,12 @@
 // Runs the end-to-end suite. Run with bun from the repo root:
 //
-//   bun run e2e                                 every framework
-//   bun run e2e:changed                         frameworks touched since origin/main
+//   bun run e2e                                 every framework major
+//   bun run e2e:changed                         majors touched since origin/main
 //   bun run e2e:changed --base <ref>            ... since another ref
-//   bun run e2e:changed --framework solid       only the frameworks named
+//   bun run e2e:changed --framework react18     only the majors named
+//   bun run e2e:changed --newest                only the newest major of each framework
 //   bun run e2e:changed --dry-run               print the choice, run nothing
-//   bun run e2e -- --grep "arrays"              anything after -- goes to Playwright
+//   bun run e2e -- -- --grep "arrays"           anything after -- goes to Playwright
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -20,13 +21,14 @@ const root = dirname(suite);
 interface Args {
   all: boolean;
   named: string[];
+  newest: boolean;
   base: string;
   dryRun: boolean;
   playwright: string[];
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { all: false, named: [], base: "origin/main", dryRun: false, playwright: [] };
+  const args: Args = { all: false, named: [], newest: false, base: "origin/main", dryRun: false, playwright: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? "";
     const value = (): string => {
@@ -41,6 +43,7 @@ function parseArgs(argv: readonly string[]): Args {
     }
     if (arg === "--all") args.all = true;
     else if (arg === "--dry-run") args.dryRun = true;
+    else if (arg === "--newest") args.newest = true;
     else if (arg === "--framework") args.named.push(value());
     else if (arg.startsWith("--framework=")) args.named.push(arg.slice("--framework=".length));
     else if (arg === "--base") args.base = value();
@@ -91,8 +94,19 @@ function choose(args: Args): Choice {
   return { frameworks: choice.frameworks, reasons: [`${changed.length} files changed since ${args.base}.`, ...choice.reasons] };
 }
 
+/** Keeps the newest major of each framework when `--newest` asks for it. */
+function newestOnly(choice: Choice): Choice {
+  const dropped = choice.frameworks.filter((name) => !frameworks.some((entry) => entry.name === name && entry.newest));
+  if (dropped.length === 0) return choice;
+  return {
+    frameworks: choice.frameworks.filter((name) => !dropped.includes(name)),
+    reasons: [...choice.reasons, `Not the newest major, so left out by --newest: ${dropped.join(", ")}.`],
+  };
+}
+
 const args = parseArgs(process.argv.slice(2));
-const choice = choose(args);
+const chosen = choose(args);
+const choice = args.newest ? newestOnly(chosen) : chosen;
 for (const reason of choice.reasons) console.log(reason);
 console.log(choice.frameworks.length === 0 ? "Nothing to run." : `Running: ${choice.frameworks.join(", ")}.`);
 if (args.dryRun || choice.frameworks.length === 0) process.exit(0);
