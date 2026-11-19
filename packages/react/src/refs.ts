@@ -46,6 +46,18 @@ function firstElement(key: object): HTMLElement | undefined {
   return first;
 }
 
+/**
+ * The focused element when it is an element recorded for `key` or sits
+ * inside one. A primitive that hands back only a value still leaves the
+ * caret there, so a display edit can place it.
+ */
+export function focusedElement(key: object): Element | undefined {
+  const active = typeof document === "undefined" ? null : document.activeElement;
+  if (active === null) return undefined;
+  for (const element of elements.get(key) ?? []) if (element.contains(active)) return active;
+  return undefined;
+}
+
 /** Applies `focusOnInvalid` after a submit that ended invalid. */
 export function focusInvalid<E>(store: AnyFormStore<E>, focus: FocusOnInvalid<E>): void {
   if (focus === false) return;

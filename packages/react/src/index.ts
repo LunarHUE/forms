@@ -72,7 +72,8 @@ export type {
   UseValidator,
   ValidatorHandleLike,
 } from "./field.js";
-export { errorId, useFieldRef, useInputProps } from "./input.js";
+export { errorId, inputProps, useFieldRef, useInputProps } from "./input.js";
+export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
   CheckboxGroupInputProps,
@@ -81,7 +82,9 @@ export type {
   CheckboxInputProps,
   EmptyOption,
   ErrorId,
+  FieldObjectLike,
   FieldRef,
+  InputProps,
   NoOptionsArgs,
   InputHandleLike,
   InputOptionsFor,

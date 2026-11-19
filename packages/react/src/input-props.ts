@@ -1,6 +1,7 @@
 import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
 import { displayOf } from "./display.js";
+import { asText, textOf } from "./pieces.js";
 import { type BaseInputProps, errorId, type FieldRef } from "./input.js";
 import { type NumberText, setNumberText } from "./number-text.js";
 import { refFor } from "./refs.js";
@@ -55,16 +56,6 @@ function kindOf(options: AnyInputOptions | undefined): Kind {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return kind as Kind;
 }
-
-/** The text a text input shows: the field's display text when a plugin gives one, else the value. */
-function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
-  const shown = displayOf(meta);
-  return shown ? shown.display(value) : asText(value);
-}
-
-/** Shows `null` and `undefined` as `""`. */
-const asText = (value: unknown): string =>
-  typeof value === "string" || typeof value === "number" || typeof value === "boolean" || typeof value === "bigint" ? String(value) : "";
 
 /** The text of a number field, or the text the user typed while the field still holds what it wrote. */
 function numberShown(value: unknown, text: NumberText | undefined): string {
@@ -177,9 +168,9 @@ function buildProps(
     case "select":
       return { ...base, value: asText(value), "aria-readonly": ariaReadOnly, onChange };
     case "textarea":
-      return { ...base, value: textOf(snapshot), readOnly, onChange };
+      return { ...base, value: textOf(snapshot, undefined), readOnly, onChange };
     default:
-      return { ...base, type: option ?? "text", value: textOf(snapshot), readOnly, onChange };
+      return { ...base, type: option ?? "text", value: textOf(snapshot, undefined), readOnly, onChange };
   }
 }
 

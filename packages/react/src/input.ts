@@ -1,6 +1,6 @@
-import { errorId as coreErrorId, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
+import { errorId as coreErrorId, type HandleTypes, type ItemOf, type ShapeOf, type ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import { fieldViewSource } from "./field-api.js";
+import { fieldViewSource, viewOf } from "./field-api.js";
 import { type HandleLike, whole } from "./field.js";
 import { type AnyInputOptions, inputPropsFor } from "./input-props.js";
 import { refFor } from "./refs.js";
@@ -236,6 +236,33 @@ export const useInputProps: UseInputProps = (handle: InputHandleLike, options?: 
   // The props match the options by kind, which the overloads check against the value type.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return inputPropsFor(handle, snapshot, text, options) as never;
+};
+
+/** What `inputProps` needs from a field object. Every field object fits. */
+export interface FieldObjectLike {
+  readonly handle: { readonly id: string };
+  /** Type information only. */
+  readonly "~types"?: HandleTypes<unknown, unknown>;
+}
+
+/**
+ * Returns the props that bind one element to a field object, as
+ * `useInputProps` does for a handle. It is a plain function, not a hook, so
+ * it can be called anywhere the field object is, and a form that never calls
+ * it doesn't ship it.
+ */
+export interface InputProps {
+  <F extends FieldObjectLike, const O extends InputOptionsFor<ValueOf<F>>>(field: F, options: O): InputPropsFor<O>;
+  <F extends FieldObjectLike>(field: F, ...options: NoOptionsArgs<ValueOf<F>>): TextInputProps;
+}
+
+/** See `InputProps`. */
+export const inputProps: InputProps = (field: FieldObjectLike, options?: AnyInputOptions) => {
+  const view = viewOf(field);
+  if (view === undefined) throw new TypeError("inputProps takes the field object that Field or a registered component gives");
+  // The props match the options by kind, which the overloads check against the value type.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return inputPropsFor(field.handle, view.snapshot, view.text, options) as never;
 };
 
 /**

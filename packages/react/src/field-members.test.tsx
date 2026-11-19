@@ -53,6 +53,10 @@ const commonMembers = {
   setValue: true,
   handle: true,
   errorId: true,
+  text: true,
+  setText: true,
+  setNumberText: true,
+  ref: true,
   inputProps: true,
   "~types": false,
 } as const;

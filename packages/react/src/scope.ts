@@ -17,7 +17,8 @@ import type {
 } from "@lunarhue/forms-core";
 import type { JSXElementConstructor, ReactElement, ReactNode } from "react";
 import type { ArrayHandleLike, HandleLike, IsEqual, SnapshotOf } from "./field.js";
-import type { InputOptionsFor, InputPropsFor, NoOptionsArgs, TextInputProps } from "./input.js";
+import type { FieldRef, InputOptionsFor, InputPropsFor, NoOptionsArgs, TextInputProps } from "./input.js";
+import type { FieldPieces } from "./pieces.js";
 import type { ArrayPath, FieldPath, ValueAt } from "./path.js";
 
 /** `inputProps` on a field: `useInputProps` with the handle filled in. */
@@ -51,6 +52,17 @@ export type ExactFieldApi<V, E = FormError> = FieldSnapshot<V, E> &
     readonly path: Path;
     /** `errorId(handle)`, for the element that shows the errors. */
     readonly errorId: string;
+    /**
+     * The text an element shows: the number text the user is typing, else
+     * the display text a plugin such as a mask gives, else the value.
+     */
+    readonly text: string;
+    /** See `FieldPieces.setText`. */
+    readonly setText: FieldPieces["setText"];
+    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
+    readonly setNumberText: (text: string, empty?: V) => void;
+    /** See `FieldPieces.ref`. */
+    readonly ref: FieldRef;
     /** Input props for this field, checked by kind as `useInputProps` checks them. */
     readonly inputProps: InputPropsMethod<V>;
     /** Type information only. It lets `ValueOf` and `ErrorOf` read a field object. */
