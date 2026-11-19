@@ -120,17 +120,6 @@
         "default": "./dist/cjs/plugins/rules.js"
       }
     },
-    "./plugins/validation": {
-      "@lunarhue/source": "./src/plugins/validation.ts",
-      "import": {
-        "types": "./dist/esm/plugins/validation.d.ts",
-        "default": "./dist/esm/plugins/validation.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugins/validation.d.ts",
-        "default": "./dist/cjs/plugins/validation.js"
-      }
-    },
     "./package.json": "./package.json"
   },
   "dependencies": {
@@ -164,7 +153,7 @@
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "10.8 kB"
+      "limit": "12.7 kB"
     },
     {
       "name": "react + valibot()",
@@ -180,7 +169,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/dirty.js": "{ dirty }"
       },
-      "limit": "11.05 kB"
+      "limit": "13.3 kB"
     },
     {
       "name": "react, everything on",

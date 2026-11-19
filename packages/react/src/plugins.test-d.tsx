@@ -1,7 +1,6 @@
 import type { FormError, SchemaPlugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin } from "./plugins.js";
 import { dirty } from "./plugins/dirty.js";
-import { validation } from "./plugins/validation.js";
 import { describe, expectTypeOf, it } from "vitest";
 import { createForms, type FieldApi, type FormOf, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
 
@@ -21,52 +20,8 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 const required = (value: string) => (value ? undefined : { message: "Required" });
 const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: (): number => 0 } }) });
 
-describe("with no runner", () => {
-  const forms = createForms({ plugins: [counter], fields: { TextField } });
-  const profile = forms.define({ defaultValues: { name: "" } });
-
-  function Page() {
-    const form = useForm(profile);
-    const scope = forms.scope(form.root);
-    return (
-      <>
-        {/* @ts-expect-error: no plugin brings the runner */}
-        <form.Field name="name" validate={required}>
-          {(field) => field.value}
-        </form.Field>
-        {/* @ts-expect-error: no plugin brings the runner */}
-        <form.TextField name="name" label="Name" validate={required} />
-        {/* @ts-expect-error: no plugin brings the runner */}
-        <scope.TextField name="name" label="Name" validate={required} />
-        {/* @ts-expect-error: no plugin brings the runner */}
-        <scope.Field name="name" validate={required}>
-          {(field) => field.value}
-        </scope.Field>
-        <form.TextField name="name" label="Name" validate={false} />
-        <form.TextField name="name" label="Name" />
-      </>
-    );
-  }
-
-  it("rejects a schema and validate in define", () => {
-    // @ts-expect-error: no plugin brings the runner that runs the schema
-    forms.define({ schema: profileSchema, defaultValues: { name: "" } });
-    // @ts-expect-error: no plugin brings the runner
-    forms.define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
-    expectTypeOf(forms).toHaveProperty("define");
-  });
-
-  it("rejects the validate prop on Field, bound and scope components", () => {
-    expectTypeOf(Page).toBeFunction();
-  });
-
-  it("still has the plugin APIs", () => {
-    expectTypeOf<FormOf<typeof profile>["plugins"]>().toEqualTypeOf<{ readonly counter: { count: () => number } }>();
-  });
-});
-
-describe("with validation()", () => {
-  const forms = createForms({ plugins: [validation()], fields: { TextField } });
+describe("with no plugins", () => {
+  const forms = createForms({ fields: { TextField } });
   const profile = forms.define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
 
   function Page() {
@@ -111,7 +66,7 @@ describe("with a schema plugin", () => {
 
 describe("plugins on the definition", () => {
   const forms = createForms({ fields: { TextField } });
-  const checked = forms.define({ defaultValues: { name: "" }, plugins: [validation(), counter] });
+  const checked = forms.define({ defaultValues: { name: "" }, plugins: [counter], validate: { fields: { name: required } } });
   const plain = forms.define({ defaultValues: { name: "" } });
 
   function Page() {
@@ -120,7 +75,6 @@ describe("plugins on the definition", () => {
     return (
       <>
         <form.TextField name="name" label="Name" validate={required} />
-        {/* @ts-expect-error: this form's plugins bring no runner */}
         <other.TextField name="name" label="Name" validate={required} />
       </>
     );
@@ -142,7 +96,7 @@ describe("plugins on the definition", () => {
 });
 
 describe("useFormContext(forms)", () => {
-  const forms = createForms({ plugins: [validation(), counter], fields: { TextField } });
+  const forms = createForms({ plugins: [counter], fields: { TextField } });
   const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) });
   forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
 
@@ -171,6 +125,6 @@ describe("useFormContext(forms)", () => {
   it("types the shared plugins, the validate prop and the registered fields", () => {
     expectTypeOf(Shared).toBeFunction();
     expectTypeOf(useFormContext(forms)).toEqualTypeOf<FormOf<typeof forms>>();
-    expectTypeOf<FormOf<typeof forms>>().toEqualTypeOf<UnknownForm<[ReturnType<typeof validation>, typeof counter], FormError, { readonly TextField: typeof TextField }>>();
+    expectTypeOf<FormOf<typeof forms>>().toEqualTypeOf<UnknownForm<[typeof counter], FormError, { readonly TextField: typeof TextField }>>();
   });
 });

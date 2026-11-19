@@ -216,7 +216,7 @@ export type FormInstance<
   R = unknown,
   F extends FieldComponentMap = NoFields,
   P extends Plugins = [],
-> = Scope<V, E, F, P> & FormMembers<V, E, I, R, F, P>;
+> = Scope<V, E, F> & FormMembers<V, E, I, R, F, P>;
 
 /**
  * A form of unknown value, intent and result type, as the generic context
@@ -362,7 +362,7 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    * state, so it can be called anywhere, render included, and needs no
    * `form.Form` above.
    */
-  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F, P>;
+  scope<H extends ObjectHandleLike>(handle: H): Scope<ValueOf<H>, ErrorOf<H>, F>;
   /**
    * Makes a reusable shape from a schema. The shape is the schema's value
    * type as `define` would type it: the `Draft` of its input when an
@@ -370,9 +370,9 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    * schema only types the shape. It is never run, since the form's own
    * schema validates.
    */
-  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F, P>;
+  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F>;
   /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
-  fieldset<V>(): Fieldset<V, E, F, P>;
+  fieldset<V>(): Fieldset<V, E, F>;
 }
 
 /**

@@ -137,7 +137,7 @@ const GeoShape = forms.fieldset<Geo>();
 
 function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
   const scope = GeoShape.scope(props.field);
-  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields, Installed>>();
+  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields>>();
   return (
     <>
       <scope.NumberField name="lat" label="Latitude" />
@@ -598,7 +598,7 @@ describe("scopes and fieldsets", () => {
   it("makes a scope for any object handle, with names relative to it", () => {
     const form = createForm(Signup);
     const billing = forms.scope(form.root.at("billing"));
-    expectTypeOf(billing).toEqualTypeOf<Scope<Address, FormError, Fields, Installed>>();
+    expectTypeOf(billing).toEqualTypeOf<Scope<Address, FormError, Fields>>();
     void (<billing.TextField name="city" label="City" />);
     void (<billing.Field name="geo.lng">{(field) => <span>{field.value}</span>}</billing.Field>);
     // @ts-expect-error: names are relative to the scope
@@ -612,7 +612,7 @@ describe("scopes and fieldsets", () => {
     expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
     // A fieldset only types the scope: `scope` takes the handle and nothing else.
     expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: FieldHandle<Address>]>();
-    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields, Installed>>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields>>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {
