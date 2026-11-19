@@ -63,9 +63,14 @@ export interface FormInternals<V, E, I, R> {
 export function createFormInternals<V, E = FormError, I = undefined, R = unknown, O = V>(
   given: FormStoreOptions<V, E, I, R, O>,
 ): FormInternals<V, E, I, R> {
-  const options = given;
-  const plugins = options.plugins ?? [];
-  const parts = options.parts ?? [];
+  const plugins = given.plugins ?? [];
+  const parts = given.parts ?? [];
+  let initial: unknown = given.initial;
+  // Each plugin can replace the starting value, so the last one that does wins.
+  for (const plugin of plugins) initial = plugin.initial?.(initial) ?? initial;
+  // A plugin's starting value is one the form's value type allows, as a write's is.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const options = { ...given, initial: initial as V };
   // Dirty tracking comes with `dirty()`. Without it the core gets no `dirty`
   // option, so nothing is dirty and nothing is compared.
   const createDirty = plugins.find((plugin) => plugin["~dirty"])?.["~dirty"];
@@ -80,8 +85,10 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   const hooked = plugins.filter((plugin) => plugin.setup !== undefined || plugin.attach !== undefined);
   const createHost = hooked[0]?.["~host"];
   const host = createHost?.(raw, plugins, options.onPluginError);
-  // A part's plugin is missing, as the types say when there are types.
-  if (!host && parts[0]) throw new Error(problem("plugins:missing", parts[0].plugin));
+  // A part's plugin is missing. The types catch it, so production doesn't check again.
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !host && parts[0]) {
+    throw new Error(problem("plugins:missing", parts[0].plugin));
+  }
   // Each copy of core has its own host and its own `refuse`, so plugins from
   // two copies don't work together. Development only: production drops it.
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && hooked.some((plugin) => plugin["~host"] !== createHost)) {

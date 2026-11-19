@@ -1,14 +1,15 @@
 import type { Plugin, PluginContext, PluginHooks, RequiredPlugins, Requirements } from "../plugin.js";
 import type { SchemaAdapter } from "../schema-adapter.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { CreateParts } from "./parts.js";
+import type { CreateParts, ListParts } from "./parts.js";
 import { createPluginHost } from "./plugins.js";
 import type { CreateTiming } from "./timing.js";
 
-/** The optional host code a plugin carries: the `deferred` and `idle` timings, and attaching parts. */
+/** The optional host code a plugin carries: the `deferred` and `idle` timings, attaching parts and listing them. */
 export interface HostCode {
   readonly "~timing"?: CreateTiming;
   readonly "~parts"?: CreateParts;
+  readonly "~list"?: ListParts;
 }
 
 /**
@@ -26,6 +27,8 @@ export type PluginDefinition<A, N extends string, M, F, S extends StandardSchema
   setup?(ctx: PluginContext<M, F, RequiredPlugins<R>>): PluginHooks<A>;
   /** Runs once per path a part of this plugin attaches at and returns the hooks there. See `Plugin`. */
   attach?(ctx: PluginContext<M, F, RequiredPlugins<R>>, config: never): PluginHooks<never>;
+  /** Gives the form's starting value. See `Plugin`. */
+  initial?(value: unknown): unknown;
   /** A schema adapter for the schemas of one library. See `Plugin`. */
   readonly schema?: SchemaAdapter<S>;
   /**
@@ -43,8 +46,8 @@ export type PluginDefinition<A, N extends string, M, F, S extends StandardSchema
 /**
  * Makes a plugin that carries only the host code in `code`, for the
  * built-in plugins. Each passes what it uses: `createTiming` for a
- * `deferred` or `idle` `onWrite`, `createParts` for `attach`.
- * `definePlugin` passes both.
+ * `deferred` or `idle` `onWrite`, `createParts` for `attach`, `listParts`
+ * for `ctx.attachments`. `definePlugin` passes all three.
  */
 export function defineHooks<
   A = undefined,

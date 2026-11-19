@@ -1079,7 +1079,7 @@ describe("revalidation", () => {
 
 /** A plugin that starts the form from `value`, and pushes the value it was given to `seen`. */
 const starts = (name: string, value: Contact | undefined, seen?: unknown[]) =>
-  definePlugin({ name, setup: () => ({ initial: (given) => (seen?.push(given), value ?? given) }) });
+  definePlugin({ name, initial: (given) => (seen?.push(given), value), setup: () => ({}) });
 
 describe("initial", () => {
   it("starts the store, its baseline and its server snapshot from the value, with no record", () => {

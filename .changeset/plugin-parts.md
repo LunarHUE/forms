@@ -44,7 +44,7 @@ For plugin authors:
 - `definePlugin` takes `attach(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. Write a typed constructor for the parts, as `(config): Part<"mask", string> => ({ plugin: "mask", config })`.
 - `requires: () => [dirty]` names plugins a plugin needs. The form must install them, or it is a type error. The plugin's hooks run after theirs, and `ctx.plugins` holds their APIs.
 - `ctx.installed` lists the store's plugins in hook order, and `ctx.attachments(path)` the parts attached at a path and above.
-- The plugin-level `initial` is now an `initial` hook returned from `setup` or `attach`. From `setup` it gets the form's starting value, and from `attach` the value at the part's path.
+- `attach` can return an `initial` hook, which gets the value at the part's path when the part attaches and returns the value to keep there.
 - `FieldDisplay` meta is gone. Return `display` and `edit` hooks from `attach` instead.
 - What `attach` writes makes no write records. A value `initial` cleans moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
 

@@ -116,14 +116,13 @@ describe("plugin types", () => {
     expectTypeOf(autosave.name).toEqualTypeOf<"autosave">();
   });
 
-  it("takes initial, display and edit hooks", () => {
+  it("takes initial on a plugin definition, and display and edit hooks", () => {
     const start = definePlugin({
       name: "start",
-      setup: () => ({ initial: (value) => value, display: (value) => String(value), edit: (input) => input.setSelectionRange(0, 0) }),
+      initial: () => ({ name: "a" }),
+      setup: () => ({ display: (value) => String(value), edit: (input) => input.setSelectionRange(0, 0) }),
     });
-    expectTypeOf(start.name).toEqualTypeOf<"start">();
-    // @ts-expect-error a plugin-level `initial` is gone: return it from setup
-    definePlugin({ name: "old", initial: () => ({}), setup: () => ({}) });
+    expectTypeOf<(typeof start)["initial"]>().toEqualTypeOf<((value: unknown) => unknown) | undefined>();
   });
 
   it("types attach's config from its parameter, and parts need their plugin", () => {

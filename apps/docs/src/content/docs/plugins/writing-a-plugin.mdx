@@ -32,7 +32,7 @@ store's starting state:
   written to, as on the server, starts no timer.
 - It doesn't move the baseline. A value written in setup is dirty against the
   defaults. To start from a value without making the form dirty, use
-  the [`initial`](#starting-values) hook.
+  [`initial`](#starting-values).
 
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
@@ -285,23 +285,32 @@ passes the keys each array had when the value was sent.
 
 ## Starting values
 
-The `initial` hook cleans a value when the hooks arrive. From `setup` it gets
-the form's starting value and returns the value to start from:
+A plugin can give the form its starting value with `initial`. It runs before
+the store is made, gets the value the store would start from, and returns the
+value to start from instead, or undefined to keep it:
 
 ```ts
 // Starts the form from a value the server and the client both have.
-const startFrom = (value: Profile) => definePlugin({ name: "start", setup: () => ({ initial: () => value }) });
+const startFrom = (value: Profile) => definePlugin({ name: "start", initial: () => value, setup: () => ({}) });
 ```
 
-From `attach` it gets the value at the part's path, which is how `mask`
-cleans a field's starting value. The store keeps the returned value with no
-write record, and the baseline moves with it while the field isn't dirty, so
-the form doesn't start dirty. When several plugins have `initial`, each gets
-the value the one before returned, so the last one in hook order wins.
+The store, its baseline and its server snapshot all start from that value.
+Nothing is written, so the form isn't dirty and no plugin sees a record. When
+several plugins have `initial`, each gets the value the one before returned,
+so the last one in the list wins.
 
-A value that differs between server and client, such as one read from
-browser storage, makes hydration fail. Read those in `onActive` and write
-them with `ctx.write`, as `persist` does.
+The value replaces the store's starting value whole. It isn't merged with a
+schema plugin's defaults the way `defaultValues` is, though `initial` gets
+those merged defaults and can merge into them itself. A value that differs
+between server and client, such as one read from browser storage, makes
+hydration fail. Read those in `onActive` and write them with `ctx.write`, as
+`persist` does.
+
+`attach` can return an `initial` hook too. It gets the value at the part's
+path when the part attaches and returns the value to keep there, which is how
+`mask` cleans a field's starting value. The store keeps it with no write
+record, and the baseline moves with it while the field isn't dirty, so the
+form doesn't start dirty.
 
 ## Third party
 

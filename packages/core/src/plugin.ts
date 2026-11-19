@@ -5,7 +5,7 @@ import type { AnyFormStore } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
-import type { CreateParts } from "./store/parts.js";
+import type { CreateParts, ListParts } from "./store/parts.js";
 import type { CreateTiming } from "./store/timing.js";
 
 /**
@@ -241,11 +241,10 @@ export interface PluginHooks<A = undefined> {
    */
   onActive?(): (() => void) | undefined;
   /**
-   * Cleans the value at the hook's path when the hooks attach, and returns
-   * the value to keep. From `setup` it gets the form's starting value. A
-   * value it changes is written with no record, and the baseline moves with
-   * it while the field isn't dirty, so a cleaned starting value doesn't make
-   * the field dirty.
+   * From `attach` only. Cleans the value at the part's path when it
+   * attaches, and returns the value to keep. A value it changes is written
+   * with no record, and the baseline moves with it while the field isn't
+   * dirty, so a cleaned starting value doesn't make the field dirty.
    */
   initial?(value: unknown): unknown;
   /**
@@ -300,6 +299,15 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
    * read its name.
    */
   readonly requires?: () => Requirements;
+  /**
+   * Gives the form's starting value. It runs before the store is made, with
+   * the value the store would start from, and returns the value to start
+   * from instead, or undefined to keep it. The store, its baseline and its
+   * server snapshot all start there, and no write is recorded. When several
+   * plugins have it, each gets the value the one before returned, so the
+   * last one that returns a value wins.
+   */
+  initial?(value: unknown): unknown;
   /** Type information only: the plugins `requires` names. */
   readonly "~requires"?: Q;
   /**
@@ -331,6 +339,8 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~timing"?: CreateTiming;
   /** Attaches parts and runs the hooks they make. Internal. */
   readonly "~parts"?: CreateParts;
+  /** Lists the parts for `ctx.attachments`. Internal. */
+  readonly "~list"?: ListParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
 }
