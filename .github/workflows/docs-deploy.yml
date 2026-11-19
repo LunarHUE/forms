@@ -50,13 +50,30 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-      - run: bun install --frozen-lockfile
-      - working-directory: apps/docs
+      # Until the Cloudflare secrets are set, skip the deploy with a notice
+      # instead of failing every run.
+      - id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID isn't set, so the docs aren't deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.ready == 'true'
+        run: bun install --frozen-lockfile
+      - if: steps.secrets.outputs.ready == 'true'
+        working-directory: apps/docs
         run: bun run build
 
       # Pages names a preview after its branch: lowercase letters, digits and
       # dashes. main is the production branch.
       - id: branch
+        if: steps.secrets.outputs.ready == 'true'
         env:
           REF: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
         run: |
@@ -64,6 +81,7 @@ jobs:
           echo "name=$branch" >> "$GITHUB_OUTPUT"
 
       - id: deploy
+        if: steps.secrets.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -71,7 +89,8 @@ jobs:
           wranglerVersion: "4.165.0"
           command: pages deploy apps/docs/dist --project-name=lunarhue-forms-docs --branch=${{ steps.branch.outputs.name }}
 
-      - env:
+      - if: steps.secrets.outputs.ready == 'true'
+        env:
           URL: ${{ steps.deploy.outputs.deployment-url }}
           ALIAS: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
         run: |
