@@ -1,5 +1,0 @@
-{
-  "main": "../../dist/cjs/plugins/bind.js",
-  "module": "../../dist/esm/plugins/bind.js",
-  "types": "../../dist/cjs/plugins/bind.d.ts"
-}

@@ -11,6 +11,6 @@ it("leaves dirty tracking out of the main entry", async () => {
   expect(core.createFormsCore().define({ defaultValues: { a: "" } }).createStore().root.peek().value).toEqual({ a: "" });
 });
 
-it("fails an import that loads dirty tracking, as the dirty entry does", async () => {
-  await expect(import("./plugins/dirty.js")).rejects.toThrow(/mock/);
+it("fails an import that loads dirty tracking, as the plugins entry does", async () => {
+  await expect(import("./plugins/index.js")).rejects.toThrow(/mock/);
 });

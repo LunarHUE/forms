@@ -14,7 +14,7 @@ declare global {
 
 const manifest = Object.values(import.meta.glob("../package.json", { query: "?raw", import: "default", eager: true }))[0] ?? "{}";
 
-/** The source file of each entry in package.json, as `./plugins/mask.ts`, read from its `@lunarhue/source` condition. */
+/** The source file of each entry in package.json, as `./plugins/index.ts`, read from its `@lunarhue/source` condition. */
 function entrySources(): string[] {
   const parsed: unknown = JSON.parse(manifest);
   const exports: unknown = typeof parsed === "object" && parsed !== null && "exports" in parsed ? parsed.exports : {};
@@ -28,9 +28,7 @@ function entrySources(): string[] {
 }
 
 it("finds every entry in package.json", () => {
-  expect(entrySources()).toContain("./index.ts");
-  expect(entrySources()).toContain("./plugins/testing.ts");
-  expect(entrySources().length).toBeGreaterThan(9);
+  expect(entrySources()).toEqual(["./index.ts", "./plugins/index.ts", "./plugins/testing.ts"]);
 });
 
 it.each(entrySources().filter((source) => source !== "./plugins/testing.ts"))("leaves the testing helper out of %s", async (source) => {
