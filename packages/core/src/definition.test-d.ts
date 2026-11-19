@@ -238,8 +238,9 @@ describe("entries that aren't plugins", () => {
   const dev = Math.random() > 0.5;
 
   it("are allowed in every plugin list", () => {
-    const core = createFormsCore({ plugins: [dirty(), false, null, undefined] });
-    core.define({ defaultValues: { name: "" }, plugins: [dev && history(), null] });
+    const shared = createFormsCore({ plugins: [dirty(), false, null, undefined] });
+    const store = shared.define({ defaultValues: { name: "" }, plugins: [dev && history(), null] }).createStore();
+    expectTypeOf(store.plugins).toEqualTypeOf<{}>();
   });
 
   it("count a plugin that may be missing as not installed", () => {

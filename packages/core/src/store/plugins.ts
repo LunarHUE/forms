@@ -407,7 +407,7 @@ export function createPluginHost(
       path: at.path,
       plugins: apis,
       installed,
-      attachments: (path) => list?.(attached, path) ?? [],
+      attachments: (path) => listParts?.(attached, path) ?? [],
       setMeta: (path, value) => later(at, () => raw.setMeta(name, value, path)),
       setFormMeta: (value) => later(at, () => raw.setMeta(name, value)),
       // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
@@ -462,7 +462,7 @@ export function createPluginHost(
   const createParts = plugins.find((plugin) => plugin["~parts"])?.["~parts"];
   let kit: PartsKit<Attached> | undefined;
   // What `ctx.attachments` returns, from the first plugin that brings it.
-  const list = plugins.find((plugin) => plugin["~list"])?.["~list"];
+  const listParts = plugins.find((plugin) => plugin["~list"])?.["~list"];
 
   const attach = (base: Path, parts: readonly Part[], now?: boolean) => {
     if (kit) kit.attach(base, parts, now);

@@ -406,7 +406,7 @@ type NoPlugin = false | null | undefined;
 export type Plugins = readonly (AnyPlugin | NoPlugin)[];
 
 /** The entries of `P` that are always a plugin, as a union. Internal. */
-type Installed<P extends Plugins> = { readonly [K in keyof P]: [Extract<P[K], NoPlugin>] extends [never] ? P[K] : never }[number];
+type Present<P extends Plugins> = { readonly [K in keyof P]: [Extract<P[K], NoPlugin>] extends [never] ? P[K] : never }[number];
 
 /**
  * Plugins that fit a form of value type `V`. A plugin that names the value
@@ -419,7 +419,7 @@ export type PluginsFor<V> = readonly ((AnyPlugin & { readonly "~value"?: (value:
  * The names of the plugins in `P`, as a union. A plugin whose name is a
  * plain `string`, not a literal, adds nothing.
  */
-export type PluginNames<P extends Plugins> = Installed<P> extends infer T
+export type PluginNames<P extends Plugins> = Present<P> extends infer T
   ? T extends { readonly name: infer N extends string }
     ? string extends N
       ? never
@@ -429,7 +429,7 @@ export type PluginNames<P extends Plugins> = Installed<P> extends infer T
 
 /** The schema types the schema plugins in `P` accept. Internal. */
 export type PluginSchemas<P extends Plugins> =
-  Installed<P> extends infer T ? (T extends { readonly schema?: SchemaAdapter<infer S> } ? S : never) : never;
+  Present<P> extends infer T ? (T extends { readonly schema?: SchemaAdapter<infer S> } ? S : never) : never;
 
 /** True when a schema plugin in `P` accepts schema type `S`. Internal. */
 export type HasSchemaPlugin<S, P extends Plugins> = [S] extends [never]
@@ -448,7 +448,7 @@ type ApiName<T> =
 type ApiOf<T> = T extends PluginMembers<infer A, string, any, any, any, any> ? A : never;
 
 /** The APIs of the plugins in `P` that have one, by plugin name: what `form.plugins` holds. */
-export type PluginApis<P extends Plugins> = { readonly [T in Installed<P> as ApiName<T>]: ApiOf<T> };
+export type PluginApis<P extends Plugins> = { readonly [T in Present<P> as ApiName<T>]: ApiOf<T> };
 
 /** What `Needs` gives when plugins are missing. Each key names one to add, and `By` what uses it. */
 type AddPlugins<N extends string, By extends string> = {
@@ -502,7 +502,7 @@ export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<
  * export const masked = (config: MaskConfig): Part<"mask", string> => ({ plugin: "mask", config });
  * ```
  *
- * The parts go on a field type (`field(PhoneInput, masked(...))`), a
+ * The parts go on a field type (`defineField(PhoneInput, masked(...))`), a
  * fieldset (`forms.fieldset(Billing, ruled(...))`), or after a definition's
  * config (`define(config, ruled(...))`). The plugin must be in the form's
  * plugins: a part doesn't install it.
