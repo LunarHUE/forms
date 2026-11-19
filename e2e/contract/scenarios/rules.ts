@@ -1,4 +1,4 @@
-import { rules } from "@lunarhue/forms-core/plugins";
+import { ruled, rules } from "@lunarhue/forms-core/plugins";
 import { scenario } from "../scenario.js";
 
 export interface Delivery {
@@ -11,7 +11,7 @@ export interface Delivery {
 }
 
 /** Picking up disables the whole address. The message shows only for a gift. */
-const deliveryRules = rules<Delivery>({
+const deliveryRules = ruled<Delivery>({
   address: (value) => ({ disabled: value.pickup }),
   message: (value) => ({ hidden: !value.gift }),
 });
@@ -41,6 +41,7 @@ export const rulesScenario = {
   }),
   labels,
   submit: { idle: "Order", busy: "Ordering..." },
+  /** Pass after `definition` to `define`. */
   deliveryRules,
   definition: {
     // The loaded order is a pickup, so the address starts disabled.
@@ -53,7 +54,7 @@ export const rulesScenario = {
       message: "",
     },
     readOnly: { reference: true, insured: true },
-    plugins: [deliveryRules] as const,
+    plugins: [rules()] as const,
     onSubmit: (value: Delivery) => (value.pickup ? "Ordered for pickup." : `Ordered to ${value.address.city}.`),
   },
 };

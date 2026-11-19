@@ -1,5 +1,6 @@
 import {
   countRender,
+  phoneMask,
   type ProbeSource,
   sharedPlugins,
   startProbe,
@@ -10,6 +11,7 @@ import {
 import {
   type AnyFormStore,
   createForms,
+  field as fieldType,
   type FieldApi,
   type FormError,
   inputProps,
@@ -107,8 +109,8 @@ function Checkbox({ field, label }: FieldProps<boolean>) {
   );
 }
 
-/** A phone input. The mask's display shows the digits the store holds as a formatted number. */
-function PhoneField({ field, label }: FieldProps<string>) {
+/** A phone input. `PhoneField` below adds the mask that formats the digits the store holds. */
+function PhoneInput({ field, label }: FieldProps<string>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
@@ -118,6 +120,8 @@ function PhoneField({ field, label }: FieldProps<string>) {
     </div>
   );
 }
+
+const PhoneField = fieldType(PhoneInput, phoneMask);
 
 /** The app's one `createForms`. Every page defines its form with it. */
 export const forms = createForms({

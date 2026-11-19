@@ -1,9 +1,10 @@
 import { rulesScenario as scenario } from "@lunarhue/forms-e2e/contract";
 import { createField, createForm } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
+import { rules } from "@lunarhue/forms-solid/plugins";
 import { forms, Probe, Status, SubmitButton } from "../parts.js";
 
-const delivery = forms.define(scenario.definition);
+const delivery = forms.define(scenario.definition, scenario.deliveryRules);
 const { labels } = scenario;
 
 export function RulesPage() {
@@ -23,7 +24,7 @@ export function RulesPage() {
               <form.TextField name="address.city" label={labels.city} />
             </fieldset>
             <form.Checkbox name="gift" label={labels.gift} />
-            <Show when={!scenario.deliveryRules.meta(message).hidden}>
+            <Show when={!rules.meta(message).hidden}>
               <form.TextField name="message" label={labels.message} />
             </Show>
             <SubmitButton {...scenario.submit} />
