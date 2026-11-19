@@ -177,37 +177,34 @@ const Survey = forms.define({ defaultValues: { name: "Ada", tags: ["b"], plan: "
 
 describe("ref", () => {
   it("puts the field's state back in a native control that differs, as after a browser restore", () => {
-    createRoot((dispose) => {
+    const name = inputWith("text", "Grace");
+    const [a, b] = ["a", "b"].map((value) => inputWith("checkbox", value));
+    const [free, pro] = ["free", "pro"].map((value) => inputWith("radio", value));
+    const agree = inputWith("checkbox");
+    const select = document.createElement("select");
+    select.append(new Option("Small", "s"), new Option("Large", "l"));
+    if (!a || !b || !free || !pro) throw new Error("No boxes.");
+    a.checked = true;
+    free.checked = true;
+    // Solid 1 puts the state back in an effect, which runs once the root's function returns.
+    const dispose = createRoot((disposeRoot) => {
       const form = createForm(Survey);
-      const name = inputWith("text", "Grace");
       createField(form.root.at("name")).ref(name);
-      expect(name.value).toBe("Ada");
-
       const tags = createField(form.root.at("tags"));
-      const [a, b] = ["a", "b"].map((value) => inputWith("checkbox", value));
-      if (!a || !b) throw new Error("No boxes.");
-      a.checked = true;
       tags.ref(a);
       tags.ref(b);
-      expect([a.checked, b.checked]).toEqual([false, true]);
-
       const plan = createField(form.root.at("plan"));
-      const [free, pro] = ["free", "pro"].map((value) => inputWith("radio", value));
-      if (!free || !pro) throw new Error("No radios.");
-      free.checked = true;
       plan.ref(free);
       plan.ref(pro);
-      expect([free.checked, pro.checked]).toEqual([false, true]);
-
-      const agree = inputWith("checkbox");
       createField(form.root.at("agree")).ref(agree);
-      expect(agree.checked).toBe(true);
-
-      const select = document.createElement("select");
-      select.append(new Option("Small", "s"), new Option("Large", "l"));
       createField(form.root.at("size")).ref(select);
-      expect(select.value).toBe("l");
-      dispose();
+      return disposeRoot;
     });
+    expect(name.value).toBe("Ada");
+    expect([a.checked, b.checked]).toEqual([false, true]);
+    expect([free.checked, pro.checked]).toEqual([false, true]);
+    expect(agree.checked).toBe(true);
+    expect(select.value).toBe("l");
+    dispose();
   });
 });

@@ -1,7 +1,6 @@
-import { hydrate } from "@solidjs/web";
-import { flush } from "solid-js";
+import { flush, hydrate } from "./solid.js";
 import { expect, it, vi } from "vitest";
-import { App, DeliveryApp, deliveryHtml, PhoneApp, phoneHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
+import { App, appId, DeliveryApp, deliveryHtml, PhoneApp, phoneHtml, serverHtml, ShippingApp, shippingHtml } from "./ssr-app.js";
 
 /** Installs the `_$HY` global that `generateHydrationScript()` puts in a server page. */
 function installHydrationGlobal(): void {
@@ -25,7 +24,7 @@ it("hydrates the server markup, keeps its nodes and ids, and then updates", asyn
   const inputs = [...host.querySelectorAll("input")];
   expect(inputs).toEqual(serverInputs);
   inputs.forEach((input, index) => expect(input).toBe(serverInputs[index]));
-  expect(inputs.map((input) => input.id)).toEqual(["0--customer", "0--rows--k0--title", "0--rows--k1--title"]);
+  expect(inputs.map((input) => input.id)).toEqual([`${appId}--customer`, `${appId}--rows--k0--title`, `${appId}--rows--k1--title`]);
 
   const [customer] = inputs;
   if (!customer) throw new Error("No customer input.");
@@ -37,6 +36,8 @@ it("hydrates the server markup, keeps its nodes and ids, and then updates", asyn
   expect(host.querySelector("output")?.textContent).toBe("succeeded");
   expect(customer.value).toBe("Grace");
   dispose();
+  // Solid 1.9 looks up hydration keys in the whole document, so no markup stays behind.
+  host.remove();
 });
 
 it("shows the form's value in an input the browser filled back in before hydration", () => {
@@ -111,4 +112,5 @@ it("hydrates what field types and fieldsets attached, and keeps showing it", () 
   expect(host.querySelector<HTMLInputElement>("[aria-label=fax]")?.value).toBe("(555) 9");
   expect(host.querySelector("[aria-label=street]")).toBeNull();
   dispose();
+  host.remove();
 });
