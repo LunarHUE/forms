@@ -1,4 +1,6 @@
-import { createComponent, createContext, untrack, useContext, type Element as SolidElement } from "solid-js";
+import { isRenderFunction, providerOf } from "#solid";
+import { createComponent, createContext, untrack, useContext } from "solid-js";
+import type { SolidElement } from "./element.js";
 import { problem } from "./problem.js";
 
 /** A form object with its types erased, as context holds it. */
@@ -12,6 +14,7 @@ interface FormNode {
 
 /** The one context every `form.Form` provides. `null` is its default, so reading it with no provider above doesn't throw. */
 const formContext = createContext<FormNode | null>(null);
+const FormProvider = providerOf(formContext);
 
 /** The definition each form was made from. */
 export const madeFrom = new WeakMap<RuntimeForm, object>();
@@ -44,11 +47,11 @@ export type FormChildren = ((formProps: unknown, form: RuntimeForm) => SolidElem
  * form. Plain children render as they are.
  */
 export function provideForm(form: RuntimeForm, props: { readonly children: FormChildren }): SolidElement {
-  return createComponent(formContext, {
+  return createComponent(FormProvider, {
     value: { form, parent: useContext(formContext) },
     get children() {
       const children = props.children;
-      if (typeof children === "function") return untrack(() => children(form.formProps, form));
+      if (isRenderFunction(children)) return untrack(() => children(form.formProps, form));
       return children;
     },
   });

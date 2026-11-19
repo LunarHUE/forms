@@ -1,0 +1,11 @@
+{
+  "name": "@lunarhue/forms-solid-compat-1.8",
+  "private": true,
+  "description": "Solid 1.8 for the Solid adapter's ./v1 tests. It has a package of its own so solid-js/web and the JSX preset resolve this Solid, not the workspace's Solid 2.",
+  "dependencies": {
+    "@babel/core": "catalog:solid18",
+    "@babel/preset-typescript": "catalog:solid18",
+    "babel-preset-solid": "catalog:solid18",
+    "solid-js": "catalog:solid18"
+  }
+}

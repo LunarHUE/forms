@@ -1,6 +1,6 @@
+import { flush, render } from "./solid.js";
 import type { FormStore } from "@lunarhue/forms-core";
-import { render } from "@solidjs/web";
-import { flush, type Element as SolidElement } from "solid-js";
+import type { SolidElement } from "../element.js";
 import { afterEach, beforeEach, vi } from "vitest";
 
 /** Each mounted tree, disposed after the test. */

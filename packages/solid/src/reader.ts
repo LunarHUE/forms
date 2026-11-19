@@ -1,6 +1,6 @@
 import type { FieldSnapshot, FormSnapshot, FormStore, Path } from "@lunarhue/forms-core";
-import { isServer } from "@solidjs/web";
-import { createSignal, getOwner, isHydrating, onCleanup } from "solid-js";
+import { createSignal, isHydrating, isServer } from "#solid";
+import { getOwner, onCleanup } from "solid-js";
 
 /**
  * Mirrors one store snapshot in one Solid signal, subscribed for the life of

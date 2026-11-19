@@ -13,7 +13,7 @@ Undo, masks, schema libraries and the rest are plugins you install.
 
 ```sh
 npm install @lunarhue/forms-react    # React 16.8 and later
-npm install @lunarhue/forms-solid    # Solid 2
+npm install @lunarhue/forms-solid    # Solid 2, or Solid 1.8+ from ./v1
 ```
 
 The adapter brings the core and the plugins that need no other library. Add
@@ -22,6 +22,33 @@ these when you want them:
 ```sh
 npm install @lunarhue/forms-schema zod    # or valibot
 npm install @lunarhue/forms-bind          # Zustand or a Solid signal
+```
+
+On Solid 1, import the adapter from `@lunarhue/forms-solid/v1`. It has the
+same functions and types as the main entry, built against `solid-js` 1.8 and
+later, so this form works on either major once you change the import:
+
+```tsx
+import { createForm, createForms, inputProps } from "@lunarhue/forms-solid/v1";
+import { render } from "solid-js/web";
+
+const signUp = createForms().define({
+  defaultValues: { name: "" },
+  onSubmit: (value) => `Signed up ${value.name}.`,
+});
+
+function SignUp() {
+  const form = createForm(signUp);
+  return (
+    <form {...form.formProps}>
+      <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
+      <button type="submit">Sign up</button>
+      <p>{form.state.submission.status}</p>
+    </form>
+  );
+}
+
+render(() => <SignUp />, document.getElementById("app")!);
 ```
 
 ## What it looks like
@@ -183,7 +210,7 @@ no `zod()` in the list.
 | ------------------------ | ------------------------------------------------ |
 | `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
 | `@lunarhue/forms-react`  | React adapter, React 16.8 and later              |
-| `@lunarhue/forms-solid`  | Solid adapter, Solid 2                           |
+| `@lunarhue/forms-solid`  | Solid adapter, Solid 2, and Solid 1 from `./v1`  |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
 | `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
 

@@ -1,5 +1,6 @@
+import { flush } from "./solid.js";
 import type { PluginContext } from "@lunarhue/forms-core";
-import { createMemo, createRoot, flush } from "solid-js";
+import { createMemo, createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
 import { createField, createForm, createForms, type ExactFieldApi, type FieldApi, type FormOf, inputProps } from "../index.js";
 import { definePlugin } from "../plugins.js";

@@ -1,6 +1,7 @@
+import { createEffect, flush } from "../tests/solid.js";
 import { createFormsCore, type AnyFormStore, type FieldSnapshot, type Path } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
-import { createEffect, createRoot, createSignal, flush, onCleanup } from "solid-js";
+import { createRoot, createSignal, onCleanup } from "solid-js";
 import { createField } from "../field.js";
 import * as v from "valibot";
 
@@ -30,7 +31,7 @@ function fieldSignal(store: AnyFormStore, path: Path): () => FieldSnapshot<unkno
 export type RowBridge = "signal" | "adapter";
 
 export function rowsForm(count: number, bridge: RowBridge = "signal") {
-  return createRoot((dispose) => {
+  const form = createRoot((dispose) => {
     const store = Form.createStore(count, { id: "bench" });
     const list = store.root.at("rows");
     const runs = { errors: 0 };
@@ -46,13 +47,15 @@ export function rowsForm(count: number, bridge: RowBridge = "signal") {
       }
       createEffect(errorCount, () => void runs.errors++);
     }
-    flush();
-    runs.errors = 0;
     const [firstKey] = list.peek().keys;
     if (firstKey === undefined) throw new Error("The benchmark needs at least one row.");
     const first = list.item(firstKey).at("name");
     return { store, first, runs, dispose };
   });
+  // Solid 1 runs the effects once the root's function returns, so the count starts here.
+  flush();
+  form.runs.errors = 0;
+  return form;
 }
 
 /** One keystroke on the first row's name, then the effects settle. */
