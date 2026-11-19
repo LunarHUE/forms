@@ -1,5 +1,6 @@
 import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
@@ -31,6 +32,7 @@ export default defineConfig({
     solid({ include: ["**/src/demos/solid/**"] }),
   ],
   vite: {
+    plugins: [tailwindcss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: {
       resolve: { conditions: [sourceCondition, ...defaultServerConditions] },
