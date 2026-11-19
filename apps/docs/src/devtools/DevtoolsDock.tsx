@@ -171,7 +171,7 @@ function Tabs({ tab, onTab }: { tab: Tab | null; onTab: (tab: Tab) => void }) {
           type="button"
           aria-pressed={tab === item.id}
           onClick={() => onTab(item.id)}
-          className="h-7 rounded-md px-2.5 text-devtools-muted outline-none hover:text-devtools-foreground focus-visible:ring-2 focus-visible:ring-ring/60 aria-pressed:bg-white/10 aria-pressed:text-devtools-foreground"
+          className="h-7 rounded-md px-2.5 font-sans text-[13px] text-devtools-muted outline-none hover:text-devtools-foreground focus-visible:ring-2 focus-visible:ring-ring/60 aria-pressed:bg-white/10 aria-pressed:text-devtools-foreground"
         >
           {item.label}
         </button>
