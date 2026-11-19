@@ -387,7 +387,7 @@ describe("errors in production", () => {
     return null;
   }
 
-  it("are a short code and a link", () => {
+  it("are a short code", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("NODE_ENV", "production");
     try {
@@ -401,7 +401,7 @@ describe("errors in production", () => {
       );
       expect(shown).toEqual(
         ["context:form", "context:definition", "context:forms", "form:definition"].map((code) =>
-          expect.stringMatching(new RegExp(`^@lunarhue/forms-react: ${code} https://\\S+#react:${code}$`)),
+          expect.stringMatching(new RegExp(`^@lunarhue/forms-react: ${code}$`)),
         ),
       );
     } finally {
