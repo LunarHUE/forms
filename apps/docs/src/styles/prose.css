@@ -113,6 +113,10 @@
    * and, from 640px up, stays on one line. In a two-column table it
    * takes 40% so the descriptions line up from table to table. A header row
    * with no text is left out.
+   *
+   * Below 640px a two-column table stacks: each name on its own line with
+   * its description under it, so a long name breaks only if it can't fit
+   * the width. A wider table keeps its columns and scrolls sideways.
    */
   .prose > :where(table) {
     width: 100%;
@@ -152,6 +156,40 @@
   }
   .prose > :where(table) :where(thead):not(:has(th:not(:empty))) {
     display: none;
+  }
+  @media (max-width: 639.98px) {
+    .prose > :where(table):not(:has(:is(td, th):nth-child(3))) {
+      display: block;
+      border-bottom: 1px solid var(--border);
+      & :where(thead) {
+        display: none;
+      }
+      & :where(tbody, tr, td) {
+        display: block;
+      }
+      & :where(tr) {
+        border-top: 1px solid var(--border);
+        padding-block: 0.625rem;
+      }
+      & :where(td) {
+        border: 0;
+        padding: 0;
+      }
+      & :where(td):first-child {
+        width: auto;
+        overflow-wrap: break-word;
+      }
+      & :where(td + td) {
+        margin-top: 0.25rem;
+      }
+    }
+    .prose > :where(table):has(:is(td, th):nth-child(3)) {
+      display: block;
+      overflow-x: auto;
+      & :where(td):first-child {
+        white-space: nowrap;
+      }
+    }
   }
 
   /*
