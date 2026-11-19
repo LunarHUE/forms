@@ -11,8 +11,12 @@ import { currentFramework, loadPagefind, search, type PageHit, type SearchHit } 
 
 declare global {
   interface Window {
-    /** Set by Search.astro's inline script: an open request not handled yet. */
-    formsSearch?: { pending: boolean };
+    /**
+     * Shared with Search.astro's inline script. `pending`: an open request
+     * not handled yet. `open`: the palette is open. `typed`: keys typed since
+     * the request, for the input to take, or null when nothing is waiting.
+     */
+    formsSearch?: { pending: boolean; open: boolean; typed: string | null };
   }
 }
 
@@ -63,10 +67,14 @@ export function SearchPalette() {
   const isOpen = useRef(false);
   useEffect(() => {
     isOpen.current = open;
+    const state = window.formsSearch;
+    if (!state) return;
+    state.open = open;
+    if (!open) state.typed = null;
   }, [open]);
 
   useEffect(() => {
-    const state = (window.formsSearch ??= { pending: false });
+    const state = (window.formsSearch ??= { pending: false, open: false, typed: null });
     const handle = () => {
       if (!state.pending) return;
       state.pending = false;
@@ -112,6 +120,15 @@ export function SearchPalette() {
       );
   }, [query, framework, status]);
 
+  // Keys typed between Ctrl K and the input getting focus go into the query.
+  const takeTyped = () => {
+    const state = window.formsSearch;
+    const typed = state?.typed;
+    if (!state || typed == null) return;
+    state.typed = null;
+    if (typed) setQuery((current) => current + typed);
+  };
+
   const go = (url: string) => {
     // A link to a heading on the current page only scrolls, so close first.
     setOpen(false);
@@ -150,6 +167,9 @@ export function SearchPalette() {
           <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-3.5">
             <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
             <CommandPrimitive.Input
+              data-search-input
+              autoFocus
+              onFocus={takeTyped}
               value={query}
               onValueChange={setQuery}
               placeholder={`Search ${label} docs`}
