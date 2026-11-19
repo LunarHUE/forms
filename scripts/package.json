@@ -4,10 +4,18 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@lunarhue/forms-react": "workspace:*",
+    "@lunarhue/forms-schema": "workspace:*",
+    "@lunarhue/forms-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "solid-js": "catalog:",
+    "valibot": "catalog:",
     "vitest": "catalog:"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p fixtures/react && tsc -p fixtures/solid"
   }
 }

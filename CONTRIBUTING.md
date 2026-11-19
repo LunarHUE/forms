@@ -30,6 +30,11 @@ bun run check:package
 bun run size
 ```
 
+`typecheck` also writes declarations for the fixtures in `scripts/fixtures`,
+which export forms, definitions and fieldsets with inferred types the way an
+app does. If an adapter stops exporting a type those inferred types name, it
+fails with TS2883 ("cannot be named").
+
 The browser suite is separate. It runs the same specs against every adapter.
 
 ```sh
