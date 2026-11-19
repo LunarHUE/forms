@@ -3,10 +3,12 @@ import type { GetStaticPaths } from "astro";
 import { render } from "astro:content";
 
 import { mdxComponents } from "@/components/mdx";
+import Article from "@/components/page/Article.astro";
 import Layout from "@/layouts/Layout.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
-import { alternates, pagination, sidebar } from "@/lib/nav";
+import { headingsFor } from "@/lib/mdx/framework-blocks";
+import { alternates, pagination, SECTION_LABELS, sidebar } from "@/lib/nav";
 import { docHref } from "@/lib/routes";
 import { VERSIONS } from "@/lib/versions";
 
@@ -50,8 +52,8 @@ interface Props {
 }
 
 const { entry, framework, version, sidebar: groups, previous, next, alternates: others } = Astro.props;
-const { Content } = await render(entry);
-const { title, description } = entry.data;
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+const { title, description, section } = entry.data;
 ---
 
 <Layout title={`${title} · ${frameworkLabel(framework)}`} description={description} framework={framework}>
@@ -75,13 +77,16 @@ const { title, description } = entry.data;
   </nav>
   <main>
     <p>{frameworkLabel(framework)} {version}</p>
-    <h1>{title}</h1>
-    <p>{description}</p>
-    <Content components={mdxComponents} />
-    <nav aria-label="Pagination">
-      {previous && <a href={previous.href} rel="prev">Previous: {previous.label}</a>}
-      {next && <a href={next.href} rel="next">Next: {next.label}</a>}
-    </nav>
+    <Article
+      title={title}
+      description={description}
+      breadcrumb={[{ label: SECTION_LABELS[section] }, { label: title }]}
+      headings={headingsFor(framework, headings, remarkPluginFrontmatter)}
+      previous={previous}
+      next={next}
+    >
+      <Content components={mdxComponents} />
+    </Article>
     <nav aria-label="Frameworks">
       <ul>
         {

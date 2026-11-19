@@ -2,35 +2,36 @@
 import { render } from "astro:content";
 
 import { mdxComponents } from "@/components/mdx";
+import Article from "@/components/page/Article.astro";
+import type { TocItem } from "@/components/page/toc-list";
 import Layout from "@/layouts/Layout.astro";
 import { getErrors } from "@/lib/content";
 import { errorAnchors } from "@/lib/errors";
-import { errorsHref } from "@/lib/routes";
 
-// Bare markup until the page frame replaces it.
 const entry = await getErrors();
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 const { title, description } = entry.data;
-const anchors = errorAnchors(entry.body ?? "");
+
+// "On this page": each package's heading, then its codes, which link to the
+// `<a id="package:code">` anchors rather than the code headings' own slugs.
+// The package headings are "## Core" and so on, whose slug is the package name.
+const toc: TocItem[] = [];
+const seen = new Set<string>();
+for (const anchor of errorAnchors(entry.body ?? "")) {
+  if (!seen.has(anchor.package)) {
+    seen.add(anchor.package);
+    const heading = headings.find((candidate) => candidate.depth === 2 && candidate.slug === anchor.package);
+    if (!heading) throw new Error(`errors.mdx: no "## " heading with the slug "${anchor.package}"`);
+    toc.push({ depth: 2, slug: heading.slug, text: heading.text });
+  }
+  toc.push({ depth: 3, slug: anchor.id, text: anchor.code });
+}
 ---
 
 <Layout title={title} description={description}>
   <main>
-    <h1>{title}</h1>
-    <p>{description}</p>
-    <nav aria-label="Error codes">
-      <ul>
-        {
-          anchors.map((anchor) => (
-            <li>
-              <a href={errorsHref(anchor.id)}>
-                {anchor.package} <code>{anchor.code}</code>
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
-    <Content components={mdxComponents} />
+    <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc}>
+      <Content components={mdxComponents} />
+    </Article>
   </main>
 </Layout>
