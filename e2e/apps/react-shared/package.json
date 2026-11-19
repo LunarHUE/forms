@@ -1,0 +1,21 @@
+{
+  "name": "@lunarhue/forms-e2e-react-shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The React app's pages and parts, shared by every React major. Each major's package in e2e/apps/react<major> builds it against its own React.",
+  "exports": {
+    "./app": "./src/app.tsx"
+  },
+  "dependencies": {
+    "@lunarhue/forms-e2e": "workspace:*",
+    "@lunarhue/forms-react": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
