@@ -36,17 +36,19 @@ which export forms, definitions and fieldsets with inferred types the way an
 app does. If an adapter stops exporting a type those inferred types name, it
 fails with TS2883 ("cannot be named").
 
-The browser suite is separate. It runs the same specs against every adapter.
+The browser suite is separate. It runs the same specs against every adapter,
+once for each major of its framework that the adapter supports.
 
 ```sh
-bun run e2e:changed   # the adapters your change can reach
-bun run e2e           # every adapter
+bun run e2e:changed   # the majors your change can reach
+bun run e2e           # every major
 ```
 
-CI runs `e2e:changed` on a pull request and the full suite on `main`, in
-Chromium, Firefox and WebKit, one job per browser. Only `e2e (chromium)` must
-pass to merge. A red Firefox or WebKit job still deserves a look before you
-ask for review. The full suite also runs in all three once a week.
+CI runs `e2e:changed` on a pull request and the full suite on `main`, one job
+per browser. Chromium runs every major, and only `e2e (chromium)` must pass
+to merge. Firefox and WebKit run the newest major of each framework (React
+19, Solid 2). A red Firefox or WebKit job still deserves a look before you
+ask for review. Once a week every major runs in all three.
 [e2e/README.md](e2e/README.md) explains how the suite is laid out and how it
 picks.
 
@@ -167,8 +169,9 @@ has the rules.
 ## Adapters
 
 An adapter is done when it passes the `e2e` suite. Add an app under
-`e2e/apps/<framework>`, add the framework to `e2e/contract/frameworks.ts`,
-and make every spec pass. Open an issue before you start one, since it is a
+`e2e/apps/<framework>` and one package per supported major beside it, add
+each major to `e2e/contract/frameworks.ts`, and make every spec pass.
+[e2e/README.md](e2e/README.md) has the steps. Open an issue before you start one, since it is a
 lot of work to throw away.
 
 ## Security
