@@ -19,7 +19,6 @@ import type { Validation } from "./runner.js";
 import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 import { type HostLink, hosts } from "./hosts.js";
-import { related } from "./tree.js";
 
 // Core has no DOM or node types, so this declares the globals the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
@@ -186,19 +185,14 @@ export function createPluginHost(
     }
   };
 
-  // True while `at`'s path names a live field. Hooks at a path that is gone are dropped.
-  const live = (at: Attached): boolean => {
-    const { part, path } = at;
-    if (!part || raw.isLive(path)) return true;
-    attached.splice(attached.indexOf(at), 1);
-    kit?.forget(at);
-    return false;
-  };
+  // False for hooks whose field is gone, which the parts code drops, and
+  // with `path`, for hooks a write, reset or submit there doesn't reach.
+  const live = (at: Attached, path?: Path): boolean => !kit || kit.live(at, path);
 
   const deliver = (observers: readonly Attached[], list: readonly WriteRecord[]) => {
     const frozen = freeze(list);
     for (const at of observers) {
-      const mine = at.path.length === 0 ? frozen : frozen.filter((record) => related(record.path, at.path));
+      const mine = kit ? kit.records(at, frozen) : frozen;
       if (mine.length > 0 && live(at)) call(at, () => at.hooks.onWrite?.(mine), undefined);
     }
   };
@@ -313,23 +307,21 @@ export function createPluginHost(
   const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
 
   /**
-   * Runs `input` through each `beforeWrite` that the write at `path`
-   * reaches. Hooks at or above `path` get the write as it is. Hooks below it
-   * get the part of the value at their path. Returns the value to write, or
-   * `refuse`.
+   * Runs `input` through each `beforeWrite` the write at `path` reaches.
+   * Hooks at or above `path` get the write as it is, and the parts code
+   * gives hooks below it their part. Returns the value to write, or `refuse`.
    */
-  const transform = (path: Path, input: unknown, before: unknown): unknown => {
+  const transform = (path: Path, input: unknown, was: unknown): unknown => {
     let value = input;
     // A copy, as a hook can attach more.
     for (const at of attached.slice()) {
       const { hooks } = at;
-      if (!hooks.beforeWrite || !related(at.path, path) || !live(at)) continue;
-      if (at.path.length <= path.length) {
-        const write = freeze({ path, input, value, before, cause });
+      if (!hooks.beforeWrite || !live(at, path)) continue;
+      // Only a part is below the root, and parts come with the parts code.
+      if (at.path.length > path.length) value = kit?.down(at, path, input, value, was, cause);
+      else {
+        const write = freeze({ path, input, value, before: was, cause });
         value = call(at, () => hooks.beforeWrite?.(write), value);
-      } else if (kit) {
-        value = kit.down(at, path, input, value, before, cause);
-        if (value === refuse) return refuse;
       }
       if (value === refuse) break;
     }
@@ -473,7 +465,7 @@ export function createPluginHost(
 
   // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
   const each = (fn: (hooks: PluginHooks<unknown>) => void, path: Path = []) => {
-    for (const at of attached.slice()) if (related(at.path, path) && live(at)) call(at, () => fn(at.hooks), undefined);
+    for (const at of attached.slice()) if (live(at, path)) call(at, () => fn(at.hooks), undefined);
   };
 
   const host: PluginHost = {
@@ -486,28 +478,7 @@ export function createPluginHost(
       validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
-      kit = createParts?.({
-        raw,
-        attached,
-        baseline,
-        paths,
-        add(path, part) {
-          const entry = entries.get(part.plugin);
-          if (!entry?.plugin.attach) {
-            // The types catch a missing plugin, so production skips the part.
-            if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", part.plugin));
-            return;
-          }
-          const { plugin } = entry;
-          // `attach` takes the config its part constructor typed.
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
-        },
-        quietly,
-        listened: () => listeners > 0,
-        later,
-        call,
-      });
+      kit = createParts?.({ raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call });
       // Setup's writes wait until every plugin's setup has run. They are the
       // store's starting state, so the server snapshot shows them.
       quietly(() => {
