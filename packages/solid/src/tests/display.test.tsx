@@ -1,21 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createInputProps, type FormOf } from "../index.js";
-import { digits, mask, upper } from "../plugins.js";
+import { createForm, createForms, createInputProps, type FieldApi, field as fieldType, type FormOf } from "../index.js";
+import { digits, mask, type MaskConfig, masked, upper } from "../plugins.js";
 import { choose, getAs, mount, settle } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
 
-const forms = createForms();
-const Contact = forms.define({
-  defaultValues: { phone: "5551234", zip: "ab1", notes: "12", code: "1" },
-  plugins: [
-    mask({
-      phone: { clean: digits, display: formatPhone },
-      zip: upper,
-      notes: { clean: digits, display: (value) => `#${value}` },
-      code: { clean: digits, display: (value) => `code ${value}` },
-    }),
-  ],
-});
+/** A string field component, only for its field type. */
+const Text = (_props: { readonly field: FieldApi<string> }) => null;
+/** A mask pinned at `name`, as a field type that may not render pins it on the definition. */
+const masking = <K extends string>(name: K, config: MaskConfig) => fieldType(Text, masked(config)).at(name);
+
+const forms = createForms({ plugins: [mask()] });
+const Contact = forms.define(
+  { defaultValues: { phone: "5551234", zip: "ab1", notes: "12", code: "1" } },
+  masking("phone", { clean: digits, display: formatPhone }),
+  masking("zip", { clean: upper }),
+  masking("notes", { clean: digits, display: (value) => `#${value}` }),
+  masking("code", { clean: digits, display: (value) => `code ${value}` }),
+);
 type ContactForm = FormOf<typeof Contact>;
 
 /** Mounts the contact form and returns it with its controls. */
@@ -165,15 +166,13 @@ describe("display", () => {
 });
 
 describe("two masks on one field", () => {
-  const Twice = forms.define({
-    defaultValues: { phone: "5551234" },
-    plugins: [
-      mask({ phone: { clean: digits, display: formatPhone } }),
-      mask({ phone: { clean: digits, display: (text) => `other ${text}` } }, { name: "other" }),
-    ],
-  });
+  const Twice = forms.define(
+    { defaultValues: { phone: "5551234" } },
+    masking("phone", { clean: digits, display: formatPhone }),
+    masking("phone", { clean: digits, display: (text) => `other ${text}` }),
+  );
 
-  it("shows the display of the mask that runs first", async () => {
+  it("shows the display of the part that attaches first", async () => {
     const { host } = mount(() => {
       const form = createForm(Twice);
       return <input aria-label="phone" {...createInputProps(form.root.at("phone"))} />;

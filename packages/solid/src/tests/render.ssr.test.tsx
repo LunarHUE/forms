@@ -10,7 +10,7 @@ describe("server rendering", () => {
     expect(renderToString(() => <App />)).toBe(serverHtml);
   });
 
-  it("renders the display text a mask gives a field", () => {
+  it("renders what field types and fieldsets attached: a mask's display text and a hidden field", () => {
     expect(renderToString(() => <PhoneApp />)).toBe(phoneHtml);
     expect(phoneHtml).toContain('value="(555) 123-4"');
   });

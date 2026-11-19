@@ -1,7 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
-import { createForm, createForms, createInputProps, inputProps, useFormContext, type FieldApi } from "../index.js";
-import { digits, mask, rules } from "../plugins.js";
+import { createForm, createForms, field, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
+import { digits, mask, masked, ruled, rules } from "../plugins.js";
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
   return (
@@ -57,7 +57,7 @@ interface Shipping {
 }
 
 /** Disables `street` and hides `note` from the start, so the server must render both that way. */
-const shippingRules = rules<Shipping>({
+const shippingRules = ruled<Shipping>({
   street: (value) => ({ disabled: value.sameAsBilling }),
   note: (value) => ({ hidden: !value.gift }),
 });
@@ -71,15 +71,15 @@ interface RuledTextProps {
 function RuledText(props: RuledTextProps) {
   return (
     <>
-      {shippingRules.meta(props.field).hidden ? null : <input aria-label={props.label} {...inputProps(props.field)} />}
+      {rules.meta(props.field).hidden ? null : <input aria-label={props.label} {...inputProps(props.field)} />}
     </>
   );
 }
 
-const Shipment = createForms({ fields: { RuledText } }).define({
-  defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "" },
-  plugins: [shippingRules],
-});
+const Shipment = createForms({ fields: { RuledText } }).define(
+  { defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "" }, plugins: [rules()] },
+  shippingRules,
+);
 
 export function ShippingApp() {
   const form = createForm(Shipment, { id: "shipping" });
@@ -112,10 +112,10 @@ function LabeledText(props: LabeledTextProps) {
   return <input aria-label={props.label} {...inputProps(props.field)} />;
 }
 
-const Deliveries = createForms({ fields: { LabeledText } }).define({
-  defaultValues: { sameAsBilling: true, note: "", shipping: { street: "1 Main St" } },
-  plugins: [rules<Delivery>({ shipping: (value) => ({ disabled: value.sameAsBilling }) })],
-});
+const Deliveries = createForms({ fields: { LabeledText } }).define(
+  { defaultValues: { sameAsBilling: true, note: "", shipping: { street: "1 Main St" } }, plugins: [rules()] },
+  ruled<Delivery>({ shipping: (value) => ({ disabled: value.sameAsBilling }) }),
+);
 
 /** Writes `note` before `shipping.street` is first read, so the street's server snapshot is built after a change. */
 export function DeliveryApp() {
@@ -140,16 +140,49 @@ export function formatPhone(value: string): string {
   return value;
 }
 
-const Contact = createForms().define({
-  defaultValues: { phone: "555 1234" },
-  plugins: [mask({ phone: { clean: digits, display: formatPhone } })],
-});
-
-/** A phone input whose mask gives it display text, so the server must render that text. */
-export function PhoneApp() {
-  const form = createForm(Contact);
-  return <input aria-label="phone" {...createInputProps(form.root.at("phone"), { type: "tel" })} />;
+/** A phone input. Its field type's mask gives it display text, so the server must render that text. */
+function PhoneInput(props: { readonly field: FieldApi<string>; readonly label: string }) {
+  return <input aria-label={props.label} {...inputProps(props.field, { type: "tel" })} />;
 }
 
-/** `PhoneApp`'s markup, as `renderToString` returns it. */
-export const phoneHtml = '<input _hk=1 aria-label="phone" value="(555) 123-4" type="tel" id="0--phone" name="phone" />';
+const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+
+/** A text input that renders nothing while `rules` hides its field. */
+function StreetInput(props: { readonly field: FieldApi<string> }) {
+  return <>{rules.meta(props.field).hidden ? null : <input aria-label="street" {...inputProps(props.field)} />}</>;
+}
+
+const contactForms = createForms({ plugins: [mask(), rules()], fields: { PhoneField, StreetInput } });
+
+const AddressShape = contactForms.fieldset<{ same: boolean; street: string }, "rules">(
+  ruled({ street: (address) => ({ hidden: address.same }) }),
+);
+
+/** A fieldset whose rule hides the street while `same` is set. */
+function AddressFields(props: { readonly handle: HandleOf<typeof AddressShape> }) {
+  const scope = AddressShape.scope(props.handle);
+  return <scope.StreetInput name="street" />;
+}
+
+const Contact = contactForms.define({ defaultValues: { phone: "555 1234", fax: "555-9", billing: { same: true, street: "1 Main St" } } });
+
+/**
+ * Renders two phones through their field type and an address fieldset. Each
+ * attaches its parts on the server before its HTML is made, the second
+ * phone after the first one's reader exists.
+ */
+export function PhoneApp() {
+  const form = createForm(Contact);
+  return (
+    <>
+      <form.PhoneField name="phone" label="phone" />
+      <form.PhoneField name="fax" label="fax" />
+      <AddressFields handle={form.root.at("billing")} />
+    </>
+  );
+}
+
+/** `PhoneApp`'s markup, as `renderToString` returns it: both phones shown formatted, and the street hidden. */
+export const phoneHtml =
+  '<input _hk=1 aria-label="phone" value="(555) 123-4" type="tel" id="0--phone" name="phone" />' +
+  '<input _hk=2 aria-label="fax" value="(555) 9" type="tel" id="0--fax" name="fax" />';

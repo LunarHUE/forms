@@ -5,6 +5,7 @@ import type {
   Combined,
   DefineConfig,
   DefinedValue,
+  DefineParts,
   DisabledInvalid,
   Draft,
   ErrorOf,
@@ -17,7 +18,10 @@ import type {
   IntentArgs,
   ItemHandle,
   ItemOf,
+  Needs,
+  Nested,
   ObjectHandle,
+  Part,
   PluginApis,
   PluginNames,
   Plugins,
@@ -178,8 +182,33 @@ export interface BoundItems<V, E = FormError, Installed extends string = never> 
 // oxlint-disable-next-line typescript/no-explicit-any
 export type AnyComponent = (props: any) => SolidElement;
 
-/** The field components an app registers, by the name they get on every scope. */
-export type FieldComponents = Readonly<Record<string, AnyComponent>>;
+/**
+ * A field component with the parts every field it renders gets, made by
+ * `field`. `C` is the component and `N` the plugins its parts need.
+ */
+export interface FieldType<C extends AnyComponent = AnyComponent, N extends string = string> {
+  /** The component, rendered as it is. */
+  readonly component: C;
+  /** What attaches at each field the component renders, the first time it renders it. */
+  readonly parts: readonly Part[];
+  /** Type information only: the plugins the parts need. */
+  readonly "~needs"?: N;
+  /**
+   * The parts pinned at the dotted name `name`, for `define` to attach when
+   * the store is made: `forms.define(config, PhoneField.at("phone"))`. Use
+   * it for a field that may not render before its value matters.
+   */
+  at<K extends string>(name: K): readonly Part<N, Nested<K, PartValueOf<C>>>[];
+}
+
+/** The field components an app registers, by the name they get on every scope: plain components or `field(...)` results. */
+export type FieldComponents = Readonly<Record<string, AnyComponent | FieldType>>;
+
+/** The component of a `fields` entry. */
+export type ComponentOf<T> = T extends FieldType<infer C> ? C : T;
+
+/** The plugins a `fields` entry's parts need. */
+export type NeedsOf<T> = T extends FieldType<AnyComponent, infer N> ? N : never;
 
 /** No registered field components. */
 // An object type with no keys is the point here: a form with no registered components gets no extra members.
@@ -207,8 +236,8 @@ export type ReservedName =
  */
 export type ReservedProp = "validate";
 
-/** The props of a component. */
-export type PropsOf<C> = C extends (props: infer P) => unknown ? P : never;
+/** The props of a component, or of a `field(...)` entry's component. */
+export type PropsOf<C> = ComponentOf<C> extends (props: infer P) => unknown ? P : never;
 
 /** The field object type a registered component's `field` prop asks for. */
 type FieldPropOf<C> = PropsOf<C> extends { readonly field: infer A } ? A : never;
@@ -250,6 +279,9 @@ export type ComponentHandle<C> =
 
 /** A registered component's own props: all of them except `field`. */
 export type OwnProps<C> = Omit<PropsOf<C>, "field">;
+
+/** The values a registered component's field accepts, as a part for it must fit them. */
+export type PartValueOf<C> = ValueOf<ComponentHandle<C>>;
 
 /**
  * True when a field of value `V` and error `E` fits registered component
@@ -362,9 +394,12 @@ export interface BoundChoiceComponent<V, E, C, Installed extends string = never>
  * takes only fields of forms that have them. `Installed` is the scope's.
  */
 export type BoundFieldComponents<V, E, F extends FieldComponents, Installed extends string = never> = {
-  readonly [K in keyof F]: [ChoiceFieldOf<F[K]>] extends [never]
-    ? BoundFieldComponent<V, E, F[K], Installed>
-    : BoundChoiceComponent<V, E, F[K], Installed>;
+  readonly [K in keyof F]: Needs<
+    Installed,
+    NeedsOf<F[K]> | FieldPluginsOf<F[K]>,
+    [ChoiceFieldOf<F[K]>] extends [never] ? BoundFieldComponent<V, E, F[K], Installed> : BoundChoiceComponent<V, E, F[K], Installed>,
+    K & string
+  >;
 };
 
 /** The members every scope has. */
@@ -527,23 +562,33 @@ export const createForm: <V, E, I, R, O, F extends FieldComponents, P extends Pl
   createFormRuntime as never;
 
 /**
- * A reusable value shape, not tied to one form: a token with the shape type
- * and `scope`. It is for type safety only. It registers no validator: the
- * form's own schema validates. An app's fieldset is an ordinary component
- * that takes a handle prop typed `HandleOf<typeof Shape>` and calls
- * `Shape.scope` in its body.
+ * A reusable value shape, not tied to one form: a token with the shape type,
+ * `scope`, and the parts that travel with it, such as `ruled(...)`. It
+ * registers no validator: the form's own schema validates. An app's
+ * fieldset is an ordinary component that takes a handle prop typed
+ * `HandleOf<typeof Shape>` and calls `Shape.scope` in its body.
+ *
+ * `Installed` is the shared plugins of the `createForms` call, and `N` the
+ * plugins the parts need. A handle fits only when its form has `N`.
  */
-export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents> {
+export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents, Installed extends string = never, N extends string = never> {
   /** Type information only, always undefined at runtime. */
-  readonly "~shape"?: FieldTypes<V, E>;
+  readonly "~shape"?: FieldTypes<V, E, N>;
   /**
    * Returns the scope rooted at `handle`, the same object `forms.scope`
    * returns, typed to the shape. Call it in a component body. The fieldset
    * component reads its handle once, as everything in a Solid component
    * body is read: to move it to another handle, render it again under
-   * `<Show when={handle} keyed>`.
+   * `<Show when={handle} keyed>`. The first call for a handle attaches the
+   * parts at it.
    */
-  scope(handle: FieldHandle<V, E>): Scope<V, E, F>;
+  scope(handle: FieldHandle<V, E, N>): Scope<V, E, F, Installed | N>;
+  /**
+   * The parts pinned at the dotted name `name`, for `define` to attach when
+   * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
+   * for a fieldset that may not render before its rules matter.
+   */
+  at<K extends string>(name: K): readonly Part<N, Nested<K, V>>[];
 }
 
 /**
@@ -552,7 +597,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldC
  * different type, even a wider or narrower one, does not. This is core's
  * handle assignability.
  */
-export type HandleOf<T> = T extends { readonly "~shape"?: FieldTypes<infer V, infer E> } ? FieldHandle<V, E> : never;
+export type HandleOf<T> = T extends { readonly "~shape"?: FieldTypes<infer V, infer E, infer N> } ? FieldHandle<V, E, N> : never;
 
 /**
  * `F` when every registered component has a `field` prop of a `FieldApi`
@@ -595,6 +640,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
   /** Defines a form. See core's `FormsCore.define`. Its own `plugins` join the shared ones. */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    ...parts: readonly DefineParts<V, S, Combined<P, D>>[]
   ): SolidFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**
    * Returns the scope rooted at an object handle of any form made from
@@ -603,16 +649,23 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
    * same handle. It needs no context. Call it in a component body.
    */
   scope<S, Installed extends string = never>(handle: ObjectHandle<S, E, Installed>): Scope<S, E, F, Installed>;
-  /** Defines a fieldset shape. Neither form takes options or registers anything. */
+  /** Defines a fieldset shape, with parts that attach where its scope is taken. Neither form registers anything. */
   readonly fieldset: {
-    /** The shape from a type, with no schema: `forms.fieldset<Address>()`. */
-    <V>(): Fieldset<V, E, F>;
+    /**
+     * The shape from a type, with no schema: `forms.fieldset<Address>()`.
+     * With parts, name their plugins too:
+     * `forms.fieldset<Address, "rules">(ruled(...))`.
+     */
+    <V, N extends string = never>(...parts: readonly Part<N, V>[]): Fieldset<V, E, F, PluginNames<P>, N>;
     /**
      * The shape from a schema: the `Draft` of its input when an installed
      * schema plugin accepts it, as `define` types it, and the input itself
      * otherwise. The schema only gives the type.
      */
-    <S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F>;
+    <S extends StandardSchemaV1, N extends string = never>(
+      schema: S,
+      ...parts: readonly Part<N, SchemaValue<S, P>>[]
+    ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   };
 }
 

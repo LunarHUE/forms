@@ -1,8 +1,8 @@
 import type { PluginContext } from "@lunarhue/forms-core";
-import { baselineOnSubmit, definePlugin, dirty, history, mask, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
+import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
 import { flush } from "solid-js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { createField, createForm, createForms, type FormOf, inputProps } from "../index.js";
+import { createField, createForm, createForms, type FieldApi, field as fieldType, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 
 // Shared: stores each written string's length as the field's meta.
@@ -134,17 +134,17 @@ describe("the history plugin", () => {
   });
 });
 
-const Lines = createForms({ plugins: [dirty()] }).define({
-  defaultValues: { lines: [{ sku: "ab-1" }] },
-  plugins: [mask({ "lines.*.sku": upperCase })],
-});
+/** A sku input whose field type upper-cases what it holds. */
+const SkuField = fieldType((props: { readonly field: FieldApi<string> }) => <input {...inputProps(props.field)} />, masked({ clean: upperCase }));
+
+const Lines = createForms({ plugins: [dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
 
 function LinesPage() {
   const form = createForm(Lines);
   return (
     <>
       <form.Items name="lines">
-        {(row) => <form.Field handle={row.at("sku")}>{(field) => <input {...inputProps(field)} />}</form.Field>}
+        {(row) => <form.SkuField handle={row.at("sku")} />}
       </form.Items>
       <button type="button" onClick={() => form.root.at("lines").push({ sku: "cd-2" })}>
         add

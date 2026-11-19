@@ -138,7 +138,7 @@ const GeoShape = forms.fieldset<Geo>();
 
 function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
   const scope = GeoShape.scope(props.field);
-  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields>>();
+  expectTypeOf(scope).toEqualTypeOf<Scope<Geo, FormError, Fields, "valibot">>();
   return (
     <>
       <scope.NumberField name="lat" label="Latitude" />
@@ -149,7 +149,7 @@ function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
 
 function AddressFields(props: { field: HandleOf<typeof AddressShape>; title: string }) {
   const scope = AddressShape.scope(props.field);
-  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<Address>>();
+  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<Address, FormError, "valibot">>();
   return (
     <fieldset>
       <legend>{props.title}</legend>
@@ -611,9 +611,9 @@ describe("scopes and fieldsets", () => {
   it("types the fieldset prop from the shape", () => {
     expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<Address>>();
     expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
-    // A fieldset only types the scope: `scope` takes the handle and nothing else.
+    // A fieldset types the scope, with the shared plugins: `scope` takes the handle and nothing else.
     expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: FieldHandle<Address>]>();
-    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields>>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields, "valibot">>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {
