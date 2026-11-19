@@ -44,7 +44,7 @@ interface Registration {
   /** The runs by field path key. */
   readonly runs: Map<string, Run>;
   /** Set by submit and `validate()` on the root: runs made after that start armed. */
-  armedAll: boolean;
+  armedAll?: boolean;
 }
 
 /** One registration on one concrete field. */
@@ -55,21 +55,21 @@ interface Run {
   /** Runs on every touching write once set. */
   armed: boolean;
   /** Before it is armed, the subtrees blurred below it. A run writes errors only inside them. */
-  scopes: Map<string, Path> | undefined;
+  scopes?: Map<string, Path> | undefined;
   /** True once it ran while armed. A reset at or below its field clears it. */
-  ran: boolean;
-  thrown: boolean;
-  timer: unknown;
+  ran?: boolean;
+  thrown?: boolean;
+  timer?: unknown;
   /** The latest call, whose result is the one that lands. */
-  call: Call | undefined;
+  call?: Call | undefined;
   /** True while the latest call's promise is pending. */
-  inflight: boolean;
+  inflight?: boolean;
   /** True while this run has the field's validating mark. */
-  marked: boolean;
+  marked?: boolean;
   /** The fields this run put errors on, to clear on its next run. */
   readonly written: Map<string, Path>;
   waiters: (() => void)[];
-  removed: boolean;
+  removed?: boolean;
 }
 
 /** One call of a check. Its abort controller is made the first time the check reads `signal`. */
@@ -122,7 +122,6 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       timing: spec.on ?? formTiming,
       reaches: spec.kind === "form" || spec.schema,
       runs: new Map(),
-      armedAll: false,
     };
   };
 
@@ -135,17 +134,9 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         reg,
         path: Object.freeze(path.map(String)),
         key,
-        armed: reg.armedAll,
-        scopes: undefined,
-        ran: false,
-        thrown: false,
-        timer: undefined,
-        call: undefined,
-        inflight: false,
-        marked: false,
+        armed: !!reg.armedAll,
         written: new Map(),
         waiters: [],
-        removed: false,
       };
       reg.runs.set(key, run);
       const at = slotAt(runsAt, run.path, true);
