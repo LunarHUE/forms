@@ -4,6 +4,7 @@ import type {
   Combined,
   DefineConfig,
   DefinedValue,
+  DefineParts,
   DisabledInvalid,
   ErrorOf,
   FormDefinition,
@@ -12,6 +13,7 @@ import type {
   FormSnapshot,
   FormStore,
   IntentArgs,
+  Part,
   PluginApis,
   PluginNames,
   Plugins,
@@ -22,13 +24,14 @@ import type {
   Submission,
   ValueOf,
 } from "@lunarhue/forms-core";
-import { createFormsCore } from "@lunarhue/forms-core";
+import { attach, createFormsCore } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
+import { pin } from "./field-type.js";
 import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, PropsOf, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
 import { formSource, storeOf } from "./sources.js";
@@ -309,6 +312,7 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
     config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    ...parts: readonly DefineParts<V, S, Combined<P, D>>[]
   ): ReactFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**
    * Returns the scope rooted at an object handle of any form made here.
@@ -323,11 +327,19 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    * type as `define` would type it: the `Draft` of its input when an
    * installed schema plugin accepts the schema, its input otherwise. The
    * schema only types the shape. It is never run, since the form's own
-   * schema validates.
+   * schema validates. Parts after the schema, such as `ruled(...)`, attach
+   * where the fieldset's scope is taken.
    */
-  fieldset<S extends StandardSchemaV1>(schema: S): Fieldset<SchemaValue<S, P>, E, F>;
-  /** Makes a reusable shape from a type, with no schema: `forms.fieldset<Address>()`. */
-  fieldset<V>(): Fieldset<V, E, F>;
+  fieldset<S extends StandardSchemaV1, N extends string = never>(
+    schema: S,
+    ...parts: readonly Part<N, SchemaValue<S, P>>[]
+  ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
+  /**
+   * Makes a reusable shape from a type, with no schema:
+   * `forms.fieldset<Address>()`. With parts, name their plugins too:
+   * `forms.fieldset<Address, "rules">(ruled(...))`.
+   */
+  fieldset<V, N extends string = never>(...parts: readonly Part<N, V>[]): Fieldset<V, E, F, PluginNames<P>, N>;
 }
 
 /** A form as the runtime builds it. */
@@ -389,7 +401,7 @@ function makeForm(store: AnyFormStore<unknown>, scope: AnyScope, focus: FocusOnI
 
 /** Core's `define` as the runtime calls it, with every type erased. */
 interface LooseCore {
-  define(config: unknown): {
+  define(config: unknown, ...parts: readonly Part[]): {
     createStore(options: unknown, instance?: { readonly id: string; readonly plugins: Plugins | undefined }): AnyFormStore<unknown>;
   };
 }
@@ -413,8 +425,8 @@ export const createForms: <const P extends Plugins = [], E = FormError, F extend
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const defaultFocus = (options.focusOnInvalid ?? true) as FocusOnInvalid<unknown>;
 
-  const define = (config: unknown) => {
-    const definition = core.define(config);
+  const define = (config: unknown, ...parts: readonly Part[]) => {
+    const definition = core.define(config, ...parts);
     const takesOptions = typeof config === "function";
     makers.set(definition, (args, generatedId) => {
       // `useForm` takes the definition's options first only when the definition is a function.
@@ -431,7 +443,20 @@ export const createForms: <const P extends Plugins = [], E = FormError, F extend
     return definition;
   };
 
-  const forms = { define, scope, fieldset: () => ({ scope }) };
+  // A fieldset's first argument is its schema, or its first part when it has no schema.
+  const fieldset = (first?: object, ...rest: readonly Part[]) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
+    return {
+      scope(handle: AnyScope["root"]) {
+        if (parts.length > 0) attach(handle, parts);
+        return scope(handle);
+      },
+      at: (name: string) => pin(parts, name),
+    };
+  };
+
+  const forms = { define, scope, fieldset };
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return forms as never;
 };

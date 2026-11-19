@@ -10,6 +10,9 @@ import type {
   HasChoice,
   ItemHandle,
   ItemOf,
+  Nested,
+  Needs,
+  Part,
   Path,
   PluginsOf,
   ValidatorInput,
@@ -209,17 +212,45 @@ export type NoFields = Record<never, never>;
 /** Any component an app can register as a field component. */
 export type FieldComponentType = JSXElementConstructor<never>;
 
-/** The app's field components by the name they get on every scope. */
-export type FieldComponentMap = Readonly<Record<string, FieldComponentType>>;
+/**
+ * A field component with the parts every field it renders gets, made by
+ * `field`. `C` is the component and `N` the plugins its parts need.
+ */
+export interface FieldType<C extends FieldComponentType = FieldComponentType, N extends string = string> {
+  /** The component, rendered as it is. */
+  readonly component: C;
+  /** What attaches at each field the component renders, the first time it renders it. */
+  readonly parts: readonly Part[];
+  /** Type information only: the plugins the parts need. */
+  readonly "~needs"?: N;
+  /**
+   * The parts pinned at the dotted name `name`, for `define` to attach when
+   * the store is made: `forms.define(config, PhoneField.at("phone"))`. Use
+   * it for a field that may not render before its value matters.
+   */
+  at<K extends string>(name: K): readonly Part<N, Nested<K, FieldValueOf<C>>>[];
+}
 
-/** The props of a registered component. */
-export type PropsOf<C extends FieldComponentType> = C extends JSXElementConstructor<infer P> ? P : never;
+/** The app's field components by the name they get on every scope: plain components or `field(...)` results. */
+export type FieldComponentMap = Readonly<Record<string, FieldComponentType | FieldType>>;
+
+/** The component of a `fields` entry. */
+export type ComponentOf<T> = T extends FieldType<infer C> ? C : T extends FieldComponentType ? T : never;
+
+/** The plugins a `fields` entry's parts need. */
+export type NeedsOf<T> = T extends FieldType<FieldComponentType, infer N> ? N : never;
+
+/** The props of a registered component, or of a `field(...)` entry's component. */
+export type PropsOf<C> = ComponentOf<C> extends JSXElementConstructor<infer P> ? P : never;
 
 /** The `field` prop type of a registered component. */
-export type FieldPropOf<C extends FieldComponentType> = PropsOf<C> extends { readonly field: infer A } ? A : never;
+export type FieldPropOf<C> = PropsOf<C> extends { readonly field: infer A } ? A : never;
 
 /** A registered component's own props: everything but `field`. */
-export type OwnPropsOf<C extends FieldComponentType> = Omit<PropsOf<C>, "field">;
+export type OwnPropsOf<C> = Omit<PropsOf<C>, "field">;
+
+/** The values a component's field accepts, as a part for it must fit them. */
+export type FieldValueOf<C> = AcceptedValues<FieldPropOf<C>> extends { readonly value: infer T } ? T : never;
 
 /**
  * The value types a registered component's field accepts, each wrapped as
@@ -352,11 +383,16 @@ export interface BoundChoiceComponent<V, E, T, O, Installed extends string = nev
  * type. So it can set errors that lack the form's extra members.
  */
 export type BoundFieldComponents<V, E, F extends FieldComponentMap, Installed extends string = never> = {
-  readonly [K in keyof F]: [E] extends [ErrorOf<FieldPropOf<F[K]>>]
-    ? [ChoiceFieldOf<FieldPropOf<F[K]>>] extends [never]
-      ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, Installed, PluginsOf<FieldPropOf<F[K]>>>
-      : BoundChoiceComponent<V, E, ChoiceFieldOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, Installed, PluginsOf<FieldPropOf<F[K]>>>
-    : never;
+  readonly [K in keyof F]: Needs<
+    Installed,
+    NeedsOf<F[K]> | PluginsOf<FieldPropOf<F[K]>>,
+    [E] extends [ErrorOf<FieldPropOf<F[K]>>]
+      ? [ChoiceFieldOf<FieldPropOf<F[K]>>] extends [never]
+        ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, Installed, PluginsOf<FieldPropOf<F[K]>>>
+        : BoundChoiceComponent<V, E, ChoiceFieldOf<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>, Installed, PluginsOf<FieldPropOf<F[K]>>>
+      : never,
+    K & string
+  >;
 };
 
 /** The members every scope has besides the registered components. */
@@ -384,19 +420,30 @@ export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Inst
 
 /**
  * A reusable shape for a part of a form, made by `forms.fieldset(schema)` or
- * `forms.fieldset<V>()`. It is for type safety only: it registers no
- * validator, since the form's own schema validates. It is a token, not a
- * component: the app writes an ordinary component that takes a
- * `HandleOf<typeof token>` prop and calls `scope` in its body.
+ * `forms.fieldset<V>()`, with the parts that travel with it, such as
+ * `ruled(...)`. It registers no validator, since the form's own schema
+ * validates. It is a token, not a component: the app writes an ordinary
+ * component that takes a `HandleOf<typeof token>` prop and calls `scope` in
+ * its body.
+ *
+ * `Installed` is the shared plugins of the `createForms` call, and `N` the
+ * plugins the parts need. A handle fits only when its form has `N`.
  */
-export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields> {
+export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never, N extends string = never> {
   /** Type information only. Read it with `HandleOf`. */
-  readonly "~types"?: HandleTypes<V, E>;
+  readonly "~types"?: HandleTypes<V, E, N>;
   /**
    * Returns the scope of `handle`, the same object `forms.scope` returns,
-   * typed to the shape. A cached lookup, not a hook.
+   * typed to the shape. The first call for a handle attaches the parts at
+   * it. A cached lookup, not a hook.
    */
-  scope(handle: FieldHandle<V, E>): Scope<V, E, F>;
+  scope(handle: FieldHandle<V, E, N>): Scope<V, E, F, Installed | N>;
+  /**
+   * The parts pinned at the dotted name `name`, for `define` to attach when
+   * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
+   * for a fieldset that may not render before its rules matter.
+   */
+  at<K extends string>(name: K): readonly Part<N, Nested<K, V>>[];
 }
 
 /**
@@ -404,6 +451,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
  * it is assignable to it, the rule core's handles follow: the same leaves,
  * and objects with at least the keys the shape has. So a handle of a wider
  * object, an item handle, or a handle from another form of the same
- * `createForms` fits, and a handle with a leaf of another type does not.
+ * `createForms` fits, and a handle with a leaf of another type does not. A
+ * fieldset with parts takes handles of forms that have their plugins.
  */
-export type HandleOf<T> = FieldHandle<ValueOf<T>, ErrorOf<T>>;
+export type HandleOf<T> = FieldHandle<ValueOf<T>, ErrorOf<T>, PluginsOf<T>>;

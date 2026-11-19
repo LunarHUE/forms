@@ -340,9 +340,10 @@ function GeoFields(props: { readonly field: HandleOf<typeof GeoShape> }) {
   );
 }
 
+  // The scope carries the shared plugins, so registered components that need them work in a fieldset.
 function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; readonly title: string }) {
   const scope = AddressShape.scope(props.field);
-  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<DraftAddress>>();
+  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<DraftAddress, FormError, "fake">>();
   return (
     <fieldset>
       <legend>{props.title}</legend>
@@ -528,7 +529,7 @@ describe("fieldsets and scopes", () => {
     expectTypeOf(OrderWithFieldsets).toBeFunction();
     expectTypeOf(PlainNumbers).toBeFunction();
     // A fieldset only types the shape: it has no hook and takes no options.
-    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields>>();
+    expectTypeOf(AddressShape).toEqualTypeOf<Fieldset<DraftAddress, FormError, Fields, "fake">>();
     // @ts-expect-error: scope takes the handle only
     AddressShape.scope(emptyHandle, { validate: false });
   });

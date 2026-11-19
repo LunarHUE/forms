@@ -172,7 +172,7 @@ interface Shipping {
 
 /** A form whose `rules` disable `street` and hide `note` from the start, on one copy of the adapter. */
 function makeShipping(adapter: Adapter) {
-  const shippingRules = adapter.rules<Shipping>({
+  const shippingRules = adapter.ruled<Shipping>({
     street: (value) => ({ disabled: value.sameAsBilling }),
     note: (value) => ({ hidden: !value.gift }),
   });
@@ -184,14 +184,17 @@ function makeShipping(adapter: Adapter) {
 
   function RuledText({ field, label }: RuledTextProps) {
     useCommits(label);
-    if (shippingRules.meta(field).hidden) return null;
+    if (adapter.rules.meta(field).hidden) return null;
     return <input aria-label={label} {...inputProps(field)} />;
   }
 
-  const shipping = adapter.createForms({ fields: { RuledText } }).define({
-    defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
-    plugins: [shippingRules],
-  });
+  const shipping = adapter.createForms({ fields: { RuledText } }).define(
+    {
+      defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
+      plugins: [adapter.rules()],
+    },
+    shippingRules,
+  );
 
   return function ShippingForm() {
     const form = adapter.useForm(shipping, { id: "shipping" });

@@ -4,7 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
-import { dirty, rules } from "./plugins.js";
+import { dirty, ruled, rules } from "./plugins.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
 function TextField(props: { readonly field: FieldApi<string>; readonly label: string }) {
@@ -178,7 +178,7 @@ interface Shipping {
   city: string;
 }
 
-const shippingRules = rules<Shipping>({
+const shippingRules = ruled<Shipping>({
   street: (value) => ({ disabled: value.sameAsBilling }),
   note: (value) => ({ hidden: !value.gift }),
 });
@@ -193,14 +193,17 @@ interface RuledTextProps {
 /** A text input that renders nothing while `rules` hides its field. */
 function RuledText({ field, label }: RuledTextProps) {
   useCommits(ruledCommits, label);
-  if (shippingRules.meta(field).hidden) return null;
+  if (rules.meta(field).hidden) return null;
   return <input aria-label={label} {...inputProps(field)} />;
 }
 
-const shipping = createForms({ fields: { RuledText } }).define({
-  defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
-  plugins: [shippingRules],
-});
+const shipping = createForms({ fields: { RuledText } }).define(
+  {
+    defaultValues: { sameAsBilling: true, gift: false, street: "1 Main St", note: "", city: "Oslo" },
+    plugins: [rules()],
+  },
+  shippingRules,
+);
 
 function ShippingForm() {
   const form = useForm(shipping, { id: "shipping" });
@@ -241,12 +244,12 @@ interface Delivery {
   shipping: { street: string };
 }
 
-const deliveryRules = rules<Delivery>({ shipping: (value) => ({ disabled: value.sameAsBilling }) });
+const deliveryRules = ruled<Delivery>({ shipping: (value) => ({ disabled: value.sameAsBilling }) });
 
-const delivery = createForms({ fields: { TextField } }).define({
-  defaultValues: { sameAsBilling: true, note: "", shipping: { street: "1 Main St" } },
-  plugins: [deliveryRules],
-});
+const delivery = createForms({ fields: { TextField } }).define(
+  { defaultValues: { sameAsBilling: true, note: "", shipping: { street: "1 Main St" } }, plugins: [rules()] },
+  deliveryRules,
+);
 
 // Unset on the server. The client sets it to hold the boundary back until the test lets it go.
 let held: Promise<void> | undefined;
