@@ -6,7 +6,9 @@ order: 8
 ---
 
 Make a plugin with `definePlugin` from `@lunarhue/forms-core/plugins`. Its
-`setup` runs once per store and returns its hooks.
+`setup` runs once per store and returns hooks that see the whole form. Its
+`attach` runs once for each field a part of it is put on, and returns hooks
+for that field. A plugin can have either or both.
 
 Writes go through `ctx.write`, which runs after every plugin in the round has
 run. Their records have `cause: { plugin: name }`. A plugin that moves the
@@ -30,7 +32,7 @@ store's starting state:
   written to, as on the server, starts no timer.
 - It doesn't move the baseline. A value written in setup is dirty against the
   defaults. To start from a value without making the form dirty, use
-  [`initial`](#starting-values).
+  the [`initial`](#starting-values) hook.
 
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
@@ -38,10 +40,88 @@ that reads the browser or the environment, such as storage, goes in
 never listens, so it never runs there. [`persist`](persist) restores in
 `onActive`.
 
+## Parts
+
+A part is a plugin's config for one place. A field type, a fieldset or a
+definition carries it, and the plugin's `attach` gets it with the path it
+landed on. Write a typed constructor for your parts, so each one names the
+plugin and the values it fits:
+
+```ts
+import type { Part, PluginContext } from "@lunarhue/forms-core";
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+
+interface Limit {
+  readonly max: number;
+}
+
+export const limit = () =>
+  definePlugin({
+    name: "limit",
+    attach: (_ctx: PluginContext, { max }: Limit) => ({
+      beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
+    }),
+  });
+
+// Fits string fields only.
+export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit", config: { max } });
+```
+
+An app puts `limit()` in the form's plugins and `limited(...)` where it
+applies: `field(NoteInput, limited(140))` for every field a component
+renders, `forms.fieldset(Address, part)` for a fieldset, or
+`forms.define(config, part)` for the form. `Part<"limit", string>` makes two
+things type errors: a part on a field type whose value isn't a string, and a
+form that uses the field type without `limit()` in its plugins.
+
+`ctx.path` is the stable path the part attached at. The hooks `attach`
+returns get only the writes that reach that path. A write above it arrives
+walked down to the path, and a refuse there refuses the whole write. A write
+below it arrives as it is. When the field goes away, as when its array item
+is removed, its hooks go too.
+
+A field type's parts attach the first time it renders a field. A fieldset's
+attach the first time its scope is read, and a definition's when the store
+is made. Before the store has listeners, `attach` runs at once and what it
+writes is part of the starting state, as in setup. After that it runs on a
+microtask, so its writes don't land while a framework is rendering. Either
+way its writes make no records.
+
+## Plugins a plugin requires
+
+A plugin that calls another one's API names it in `requires`, as a factory
+or a plugin:
+
+```ts
+const autosave = () =>
+  definePlugin({
+    name: "autosave",
+    requires: () => [dirty],
+    setup(ctx) {
+      // ctx.plugins.dirty is typed.
+      return {};
+    },
+  });
+```
+
+`requires` doesn't install anything. A form whose plugins list lacks one is a
+type error, `Add dirty() to the plugins: autosave requires it`, and without
+types the store throws [`plugins:missing`](/errors#core:plugins:missing). The
+plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
+APIs. To run after a plugin without needing it, name it in `after`.
+
+## Other plugins
+
+`ctx.installed` lists the store's plugins in the order their hooks run.
+`ctx.attachments(path)` lists the parts attached at a path and above it, in
+hook order, each as `{ name, path }`. A plugin can read them to stay out of
+another's way, such as a formatter that does nothing where a mask is
+attached.
+
 ## Meta
 
 `ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field or
-on the form. Annotate `setup`'s parameter as `PluginContext<M, F>` to type
+on the form. Annotate the parameter of `setup` or `attach` as `PluginContext<M, F>` to type
 them, and read them back with the plugin's `meta` and `formMeta` readers.
 
 A plugin with meta gives its starting value as `initialMeta` for fields or
@@ -77,9 +157,8 @@ definePlugin({
 });
 ```
 
-Meta with no sensible start says so in its type. `mask` sets a display only on
-the fields it matches, so its meta is `FieldDisplay | undefined` and it starts
-from `initialMeta: undefined`.
+Meta with no sensible start says so in its type, as `M | undefined` with
+`initialMeta: undefined`.
 
 `definePlugin` returns a `Plugin<A, N, M, F>`: the API, the name, the field
 meta and the form meta. `history()` is a
@@ -88,8 +167,7 @@ meta and the form meta. `history()` is a
 ### Display text from a plugin
 
 A plugin can change what a field's text inputs show, as [`mask`](masks) does.
-Set meta on the field that fits `FieldDisplay` from `@lunarhue/forms-core`, an
-object with these members:
+Return these hooks from `attach`:
 
 - `display(value)`: the text to show for the stored value.
 - `edit(input, value, event)`, optional: the adapter calls it after each edit
@@ -97,11 +175,9 @@ object with these members:
   typed text and its caret, and `value` is the field's value now. Put the
   display text in `input` and place the caret.
 
-The adapters look through the field's meta for the first slot with a
-`display` function, so they don't import your plugin. Set it with
-`ctx.setMeta`. `initialMeta` isn't enough, since it never lands on the field.
-Make the object once and keep it, because selectors compare meta by identity.
-Set it in `setup` and it is in the server HTML.
+When several parts on one field give a `display`, the first in hook order
+wins. A display from a part that attaches before the store has listeners is
+in the server HTML.
 
 For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins`, or
 the same path under your adapter. It takes the input, the text to show, a
@@ -110,19 +186,17 @@ cleaner your `beforeWrite` runs, so the caret counts the characters the store
 keeps:
 
 ```ts
-import { replaceText } from "@lunarhue/forms-core/plugins";
+import { definePlugin, replaceText } from "@lunarhue/forms-core/plugins";
 
-const shown: FieldDisplay = {
-  display: (value) => formatCard(String(value ?? "")),
-  edit: (input, value, event) => replaceText(input, formatCard(String(value ?? "")), cleanCard, event),
-};
+const text = (value: unknown) => formatCard(String(value ?? ""));
 
 definePlugin({
   name: "card",
-  setup(ctx: PluginContext<FieldDisplay>) {
-    ctx.setMeta(["card"], shown);
-    return {};
-  },
+  attach: () => ({
+    beforeWrite: (write) => cleanCard(String(write.value ?? "")),
+    display: text,
+    edit: (input, value, event) => replaceText(input, text(value), cleanCard, event),
+  }),
 });
 ```
 
@@ -130,8 +204,9 @@ definePlugin({
 
 `beforeWrite` runs before each value write, in plugin order, and returns the
 value to write or `refuse` to stop it. A write of an object comes through
-once, at the object's path, so a plugin that cares about a field below walks
-down to it, as `mask` does.
+once, at the object's path. Hooks from `setup` see it there. Hooks from
+`attach` get it walked down to their path, so `mask` cleans a phone field
+when a reset writes the whole form.
 
 A row that `push` or `insert` adds comes through as a write at the row's path,
 with `before` undefined. The row is already in the array by then, since the
@@ -210,26 +285,23 @@ passes the keys each array had when the value was sent.
 
 ## Starting values
 
-A plugin can give the form its starting value with `initial`. It runs before
-the store is made, gets the value the store would start from, and returns the
-value to start from instead, or undefined to keep it:
+The `initial` hook cleans a value when the hooks arrive. From `setup` it gets
+the form's starting value and returns the value to start from:
 
 ```ts
 // Starts the form from a value the server and the client both have.
-const startFrom = (value: Profile) => definePlugin({ name: "start", initial: () => value, setup: () => ({}) });
+const startFrom = (value: Profile) => definePlugin({ name: "start", setup: () => ({ initial: () => value }) });
 ```
 
-The store, its baseline and its server snapshot all start from that value.
-Nothing is written, so the form isn't dirty and no plugin sees a record. When
-several plugins have `initial`, each gets the value the one before returned,
-so the last one in the list wins.
+From `attach` it gets the value at the part's path, which is how `mask`
+cleans a field's starting value. The store keeps the returned value with no
+write record, and the baseline moves with it while the field isn't dirty, so
+the form doesn't start dirty. When several plugins have `initial`, each gets
+the value the one before returned, so the last one in hook order wins.
 
-The value replaces the store's starting value whole. It isn't merged with a
-schema plugin's defaults the way `defaultValues` is, though `initial` gets
-those merged defaults and can merge into them itself. A value that differs
-between server and client, such as one read from browser storage, makes
-hydration fail. Read those in `onActive` and write them with `ctx.write`, as
-`persist` does.
+A value that differs between server and client, such as one read from
+browser storage, makes hydration fail. Read those in `onActive` and write
+them with `ctx.write`, as `persist` does.
 
 ## Third party
 

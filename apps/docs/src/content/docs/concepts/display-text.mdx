@@ -31,10 +31,10 @@ or something else writes a different value, it shows the number again.
 ## Formatted fields
 
 A plugin can give a field display text: a function from the stored value to
-the text the input shows. The `mask` plugin does this with `display`:
+the text the input shows. A `masked` part does this with `display`:
 
 ```ts
-mask({ phone: { clean: digits, display: formatPhone } });
+const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
 ```
 
 The store holds `5551234567` and the input shows `(555) 123-4567`. Each
@@ -57,5 +57,5 @@ only in `field.text`, which `inputProps(field)` uses too. An input bound to
 write with `field.setText(text, event)`. See
 [Binding an element](./fields#binding-an-element).
 
-To give a field display text from your own plugin, set display meta on it.
-See [Writing a plugin](../plugins/writing-a-plugin).
+To give a field display text from your own plugin, return a `display` hook
+from its `attach`. See [Writing a plugin](../plugins/writing-a-plugin).

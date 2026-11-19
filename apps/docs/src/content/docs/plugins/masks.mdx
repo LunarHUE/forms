@@ -7,29 +7,30 @@ order: 3
 
 <Demo name="masks/contact" />
 
-`mask` takes a map from a field's path to a cleaner. Every value that reaches
-the field goes through it first, whether the user typed it, a reset wrote it
-or another plugin did. `digits` and `upper` are ready-made cleaners, and any
-function from value to value works:
+A mask cleans a field's value before the store takes it. Put `mask()` in the
+form's plugins, and a `masked(...)` part on the field type it cleans:
 
 ```ts
-mask({ phone: digits, "address.zip": upper, "lines.*.sku": upper });
+const PhoneField = field(PhoneInput, masked({ clean: digits, display: formatPhone }));
+
+const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 ```
 
-A `*` segment matches every array item or object key.
+Every field `<form.PhoneField>` renders gets the mask, and only those. Every
+value that reaches the field goes through `clean` first, whether the user
+typed it, a reset wrote it or another plugin did. `digits` and `upper` are
+ready-made cleaners, and any function from string to string works.
+
+`masked` fits string fields only, so `field(NumberInput, masked(...))` is a
+type error. So is a form that renders `PhoneField` without `mask()` in its
+plugins: the error reads `Add mask() to this form's plugins: PhoneField uses
+it`.
 
 ## Display text
 
-A cleaner changes what the store holds, not what the input shows. To show the
-value formatted, give the field `clean` and `display`:
-
-```ts
-mask({
-  phone: { clean: digits, display: formatPhone },
-});
-```
-
-The input shows `(555) 123-4567`. The store, `field.value` and `onSubmit` get
+A cleaner changes what the store holds, not what the input shows. Give the
+part a `display` to show the value formatted. With `formatPhone` above, the
+input shows `(555) 123-4567` and the store, `field.value` and `onSubmit` get
 `5551234567`.
 
 `display` gets the clean value and returns the text to show. A value that
@@ -40,6 +41,19 @@ checkbox, radio and select inputs ignore it.
 
 A plugin of your own can give a field display text too. See
 [Display text](../concepts/display-text).
+
+## Fields that haven't rendered
+
+A field type's parts attach the first time it renders a field, and the
+field's value is cleaned then. A value that matters before that, such as a
+field on a step the user hasn't reached, can be pinned on the definition:
+
+```ts
+const contact = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
+```
+
+The mask then attaches when the store is made. Rendering the field later
+doesn't attach it twice.
 
 ## Caret
 
@@ -55,19 +69,18 @@ in place.
 
 ## Two masks on one field
 
-Give each field its display in one mask. Two masks need different names,
-given as `mask(fields, { name: "card" })`. If both give a field a display,
-the one that runs first wins: the input shows its text and keeps the caret
-with its `clean`.
+A field type can carry more than one `masked` part. Each cleans in turn, in
+the order listed. If both give a display, the first one wins: the input shows
+its text and keeps the caret with its `clean`.
 
 ## What gets cleaned
 
 - A write above a field, such as `setValue` on `address`, a root replace from
-  `bind`, or a row that `push` or `insert` adds, is cleaned at each named
+  `bind`, or a row that `push` or `insert` adds, is cleaned at each masked
   field below it.
-- The starting value is cleaned, so the baseline is clean, the form doesn't
-  start dirty, and a reset leaves it clean. When another plugin sets the
-  starting value, as `bind` does, put `mask` after it in the list.
+- The field's value is cleaned when the part attaches, and so is its baseline
+  while the field isn't dirty, so the form doesn't start dirty and a reset
+  leaves it clean.
 - User edits, resets and other plugins' writes are cleaned. A value `persist`
   restores comes out clean.
 - Rebases aren't. The incoming value is the server's copy, and the baseline
