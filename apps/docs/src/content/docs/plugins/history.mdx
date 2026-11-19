@@ -24,7 +24,11 @@ const forms = createForms({ plugins: [undoHistory] });
 // In a component with a form of those forms.
 <form.State select={(state) => undoHistory.formMeta(state).canUndo}>
   {(canUndo) => (
-    <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
+    <button
+      type="button"
+      disabled={!canUndo}
+      onClick={() => form.plugins.history.undo()}
+    >
       Undo
     </button>
   )}
