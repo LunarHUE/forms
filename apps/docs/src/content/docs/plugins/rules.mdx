@@ -1,8 +1,79 @@
 ---
 title: Rules
-description: Derive one field's state from others.
+description: Disable or hide a field based on the rest of the form.
 section: plugins
 order: 4
 ---
 
-Placeholder. The real page arrives with the plugins pages.
+<Demo name="rules/delivery" />
+
+`rules` takes a map from a field's dotted name, the same name a `name` prop
+takes, to a rule. Each rule gets the whole form value and returns the field's
+`disabled` and `hidden` flags. A flag the rule leaves out stays as it is.
+
+```ts
+interface Order {
+  pickup: boolean;
+  gift: boolean;
+  street: string;
+  message: string;
+}
+
+const orderRules = rules<Order>({
+  street: (value) => ({ disabled: value.pickup }),
+  message: (value) => ({ hidden: !value.gift }),
+});
+
+const order = forms.define({ defaultValues, plugins: [orderRules] });
+```
+
+Rules run when the store is made and after every batch that writes a value,
+before listeners, so the flags change in the same render as the value.
+Disabling an object, such as `address`, disables every field below it.
+
+## Name the value type
+
+The compiler checks both ends. A name that isn't a field of `Order`, such as
+`"stret"`, is a type error, and so is putting `orderRules` on a form whose
+value isn't an `Order`. Leaving out the type is an error too, since there
+would be nothing to check the names against.
+
+`rules` can't take the type from the definition it sits in. TypeScript works
+out a call such as `rules({ ... })` before it knows the form's value type, even
+when the call is written inside `plugins`.
+
+A form may have fields `Order` doesn't name. Names go through objects only, so
+a rule can't name an array item. Give the array a rule, or the object around
+it.
+
+## Disabled and hidden
+
+`disabled` is a field flag, and `inputProps()` puts it on the input. `hidden`
+is the plugin's own meta, so your component reads it and decides what hiding
+means:
+
+```tsx framework=react
+function TextField({ field, label }: TextFieldProps) {
+  if (orderRules.meta(field).hidden) return null;
+  // ...
+}
+```
+
+```tsx framework=solid
+function TextField(props: TextFieldProps) {
+  return (
+    <Show when={!orderRules.meta(props.field).hidden}>
+      {/* ... */}
+    </Show>
+  );
+}
+```
+
+A field no rule hides reads `{ hidden: false }`, so the reader never returns
+undefined.
+
+## Server rendering
+
+What the rules set when the store is made is part of its starting state. A
+field a rule disables or hides renders that way on the server and hydrates
+with no second render.
