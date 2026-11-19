@@ -28,7 +28,8 @@
     "react-dom": "catalog:",
     "satteri": "0.11.7",
     "shiki": "4.6.0",
-    "solid-js": "catalog:"
+    "solid-js": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",
