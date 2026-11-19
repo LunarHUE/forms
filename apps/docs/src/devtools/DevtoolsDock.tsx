@@ -312,7 +312,7 @@ export function DevtoolsDock() {
         <SquareEqualIcon aria-hidden />
       </button>
       {/*
-        The sheet from components/ui/sheet blurs the page behind it, and the
+        The sheet from components/ui/sheet dims the page behind it, and the
         selected outline has to stay in view, so this is a non-modal dialog
         with the sheet's look.
       */}
