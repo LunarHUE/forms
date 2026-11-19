@@ -2,7 +2,6 @@
 export * from "@lunarhue/forms-core";
 export { createForms, useDisabledErrors, useForm, useFormContext } from "./forms.js";
 export type {
-  CheckedFields,
   CreateForms,
   FocusOnInvalid,
   FocusTarget,
@@ -16,44 +15,29 @@ export type {
   FormsOptions,
   FormStateComponent,
   FormStateProps,
-  ObjectHandleLike,
   ReactFormDefinition,
-  ReservedName,
-  ReservedProp,
   UnknownForm,
   UseDisabledErrors,
   UseForm,
-  UseFormArgs,
   UseFormContext,
   UseFormOptions,
 } from "./forms.js";
 export type {
-  AcceptedHandle,
-  AcceptedValues,
   BoundChoiceComponent,
   BoundField,
   BoundFieldComponent,
-  BoundFieldComponents,
   BoundItems,
-  ChoiceFieldOf,
   FieldApi,
   FieldApiOf,
-  FieldByHandle,
-  FieldByName,
   FieldComponentMap,
-  FieldComponentType,
   ExactFieldApi,
-  FieldPropOf,
   Fieldset,
   HandleOf,
   InputPropsMethod,
-  ItemsByHandle,
-  ItemsByName,
-  NameFitting,
-  NameFittingChoice,
   NoFields,
+  // Stays public: declarations inferred from a bound field component, as
+  // `typeof form.TextField`, name it as `OwnPropsOf<typeof TextField>`.
   OwnPropsOf,
-  PropsOf,
   Scope,
   ScopeMembers,
   ValidateProp,
@@ -61,8 +45,6 @@ export type {
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { useField, useFormState, useItems, useValidator } from "./field.js";
 export type {
-  ArrayHandleLike,
-  FormStateSource,
   HandleLike,
   IsEqual,
   SnapshotOf,
@@ -70,7 +52,6 @@ export type {
   UseFormState,
   UseItems,
   UseValidator,
-  ValidatorHandleLike,
 } from "./field.js";
 export { errorId, useFieldRef, useInputProps } from "./input.js";
 export type {
@@ -79,13 +60,8 @@ export type {
   CheckboxGroupOptions,
   CheckboxInputOptions,
   CheckboxInputProps,
-  EmptyOption,
   ErrorId,
   FieldRef,
-  NoOptionsArgs,
-  InputHandleLike,
-  InputOptionsFor,
-  InputPropsFor,
   NumberInputOptions,
   NumberInputProps,
   RadioInputOptions,
