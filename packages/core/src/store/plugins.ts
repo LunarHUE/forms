@@ -542,27 +542,31 @@ export function createPluginHost(
       }
       raw.started();
     },
-    attach(base, parts) {
-      const run = () => batch(() => attachAll(base, parts));
+    attach(base, parts, now) {
+      // What the parts write is the field's starting state, so it makes no records.
+      const run = () => {
+        quiet++;
+        try {
+          inHook++;
+          try {
+            attachAll(base, parts);
+          } finally {
+            inHook--;
+          }
+          batch(() => {});
+        } finally {
+          quiet--;
+        }
+      };
       // Once the store has listeners a framework is rendering it, and a write
-      // now would update other components mid-render. The parts attach just after.
-      if (listeners > 0) {
+      // now would update other components mid-render. The parts attach just
+      // after, unless the framework takes writes while it renders.
+      if (listeners > 0 && !now) {
         void Promise.resolve().then(run);
         return;
       }
-      // Before that, what they write is starting state, which the server renders too.
-      quiet++;
-      try {
-        inHook++;
-        try {
-          attachAll(base, parts);
-        } finally {
-          inHook--;
-        }
-        batch(() => {});
-      } finally {
-        quiet--;
-      }
+      run();
+      // The server renders this starting state too, so hydration starts from it.
       raw.started();
     },
     reset(path, run) {

@@ -4,7 +4,7 @@ import type { Part } from "../plugin.js";
 /** What `attach` and `flushPlugins` call on a store's plugin host. */
 export interface HostLink {
   /** Attaches `parts` at `path`. See `attach`. */
-  attach(path: Path, parts: readonly Part[]): void;
+  attach(path: Path, parts: readonly Part[], now?: boolean): void;
   /** Delivers waiting `deferred` and `idle` records now. */
   flush(): void;
 }
