@@ -1,0 +1,53 @@
+{
+  "versions": {
+    "@lunarhue/forms-react": "0.2.0",
+    "@tanstack/react-form": "1.33.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7",
+    "vite": "8.3.8"
+  },
+  "builds": {
+    "total": "Everything the page loads: React, react-dom, Zod, the form library and the app.",
+    "forms": "The form library and the app's own code. React, react-dom and Zod are external.",
+    "app": "The app's own code only. React, react-dom, Zod, @lunarhue/* and @tanstack/* are external."
+  },
+  "apps": {
+    "signup": {
+      "lunarhue": {
+        "total": {
+          "min": 257892,
+          "gzip": 81599,
+          "brotli": 70834
+        },
+        "forms": {
+          "min": 38201,
+          "gzip": 14231,
+          "brotli": 12931
+        },
+        "app": {
+          "min": 3667,
+          "gzip": 1574,
+          "brotli": 1371
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 293493,
+          "gzip": 86217,
+          "brotli": 74343
+        },
+        "forms": {
+          "min": 73935,
+          "gzip": 19000,
+          "brotli": 16816
+        },
+        "app": {
+          "min": 4821,
+          "gzip": 1983,
+          "brotli": 1748
+        }
+      }
+    }
+  }
+}

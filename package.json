@@ -85,6 +85,7 @@
     "check:consumer-types": "bun scripts/check-consumer-types.ts",
     "size": "bun run --filter './packages/*' size",
     "size:forms": "bun scripts/size-forms.ts",
+    "size:compare": "bun scripts/size-compare.ts",
     "bench": "vitest bench --run",
     "e2e": "bun e2e/run.ts --all",
     "e2e:changed": "bun e2e/run.ts",
