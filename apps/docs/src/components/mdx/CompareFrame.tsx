@@ -181,7 +181,7 @@ function AppFrame({ src, title, hidden }: AppFrameProps) {
 
   useEffect(() => {
     const frame = ref.current;
-    if (!frame) return;
+    if (!frame) return undefined;
     let observer: ResizeObserver | undefined;
     // Same origin, so the docs can read the app's height. A reload replaces
     // the document, so watch again after every load.
@@ -240,7 +240,7 @@ function CompareSizes({ builds, sizes, elementId }: CompareSizesProps) {
             panel: elementId("sizes"),
           }))}
           value={compression}
-          onChange={(value) => setCompression(value as Compression)}
+          onChange={(value) => setCompression(COMPRESSIONS.find((candidate) => candidate === value) ?? "gzip")}
           tabId={(value) => elementId(`size-${value}`)}
         />
       </div>
