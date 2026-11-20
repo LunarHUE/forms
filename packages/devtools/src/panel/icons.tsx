@@ -33,20 +33,28 @@ const paths = {
 export type IconName = keyof typeof paths;
 
 /** An icon, hidden from assistive technology: the button around it carries the label. */
-export const icon = (name: IconName, className?: string): JSX.Element => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" class={className}>
-    {paths[name].map((d) => (
-      <path d={d} />
-    ))}
-  </svg>
-);
+export function Icon({ name, class: className }: { readonly name: IconName; readonly class?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" class={className}>
+      {paths[name].map((d) => (
+        <path d={d} />
+      ))}
+    </svg>
+  );
+}
 
-/**
- * A button that shows only an icon. `label` names it for assistive
- * technology and is its tooltip, unless `props` has a `data-tip` of its own.
- */
-export const iconButton = (label: string, name: IconName, props: ButtonHTMLAttributes & { readonly "data-tip"?: string } = {}): JSX.Element => (
-  <button class="icon" data-tip={label} {...props} aria-label={label}>
-    {icon(name)}
-  </button>
-);
+export interface IconButtonProps extends Omit<ButtonHTMLAttributes, "icon" | "label"> {
+  /** Names the button for assistive technology, and is its tooltip unless `data-tip` says otherwise. */
+  readonly label: string;
+  readonly icon: IconName;
+  readonly "data-tip"?: string;
+}
+
+/** A button that shows only an icon. */
+export function IconButton({ label, icon, ...props }: IconButtonProps): JSX.Element {
+  return (
+    <button class="icon" data-tip={label} {...props} aria-label={label}>
+      <Icon name={icon} />
+    </button>
+  );
+}

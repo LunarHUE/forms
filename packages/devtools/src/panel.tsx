@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { render } from "preact";
+import { type JSX, render } from "preact";
 import type { Hook } from "./hook.js";
 import { App } from "./panel/app.js";
 import { css } from "./panel/styles.js";
@@ -32,13 +32,7 @@ export function mount(hook: Hook): () => void {
     found === version ? (
       <App hook={hook} host={host} />
     ) : (
-      <div class="root">
-        <div class="dock" data-corner="bottom-left">
-          <p class="bar notice surface" role="status">
-            {`Forms devtools: the page's devtools are version ${found} and this panel reads version ${version}. Install one version of @lunarhue/forms-devtools.`}
-          </p>
-        </div>
-      </div>
+      <VersionNotice found={found} />
     ),
     container,
   );
@@ -46,4 +40,22 @@ export function mount(hook: Hook): () => void {
     render(null, container);
     host.remove();
   };
+}
+
+interface VersionNoticeProps {
+  /** The version of the page's hook. */
+  readonly found: number;
+}
+
+/** What the panel shows in place of itself for a hook of another version. */
+function VersionNotice({ found }: VersionNoticeProps): JSX.Element {
+  return (
+    <div class="root">
+      <div class="dock" data-corner="bottom-left">
+        <p class="bar notice surface" role="status">
+          {`Forms devtools: the page's devtools are version ${found} and this panel reads version ${version}. Install one version of @lunarhue/forms-devtools.`}
+        </p>
+      </div>
+    </div>
+  );
 }

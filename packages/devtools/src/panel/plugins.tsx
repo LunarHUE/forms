@@ -1,7 +1,7 @@
 /** @jsxImportSource preact */
 import type { JSX } from "preact";
 import type { FormEntry } from "../hook.js";
-import { fact } from "./fields.js";
+import { Fact } from "./fields.js";
 import { useFrame } from "./frame.js";
 import { format } from "./values.js";
 
@@ -13,8 +13,12 @@ export function apiKeys(entry: FormEntry, name: string): string[] {
   return api !== null && typeof api === "object" ? Object.keys(api) : [];
 }
 
+export interface PluginsProps {
+  readonly entry: FormEntry;
+}
+
 /** The Plugins tab: every plugin on the form in the order their hooks run, with each one's form meta and API. */
-export function Plugins({ entry }: { readonly entry: FormEntry }): JSX.Element {
+export function Plugins({ entry }: PluginsProps): JSX.Element {
   const form = entry.store.getFormSnapshot();
   useFrame(() => [entry.store.getFormSnapshot()]);
   return (
@@ -29,8 +33,8 @@ export function Plugins({ entry }: { readonly entry: FormEntry }): JSX.Element {
               <strong>{plugin.name}</strong>
             </div>
             <div class="facts">
-              {fact("form meta", meta === undefined ? <span class="muted">none</span> : <pre>{format(meta)}</pre>)}
-              {fact("API", keys.length === 0 ? <span class="muted">none</span> : keys.join(", "))}
+              <Fact term="form meta">{meta === undefined ? <span class="muted">none</span> : <pre>{format(meta)}</pre>}</Fact>
+              <Fact term="API">{keys.length === 0 ? <span class="muted">none</span> : keys.join(", ")}</Fact>
             </div>
           </li>
         );

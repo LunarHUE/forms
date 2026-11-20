@@ -35,8 +35,12 @@ export function writeSummary(record: WriteRecord): string {
   }
 }
 
+export interface LogProps {
+  readonly entry: FormEntry;
+}
+
 /** The Log tab: the form's writes and submissions, newest first, with each write's cause. */
-export function Log({ entry }: { readonly entry: FormEntry }): JSX.Element {
+export function Log({ entry }: LogProps): JSX.Element {
   const items = logItems(entry);
   // Writes push onto the ring, and a submission's status changes in place.
   useFrame(() => [entry.writes.items.length, entry.writes.items[entry.writes.items.length - 1], ...entry.submissions.items.map((logged) => logged.status)]);

@@ -3,10 +3,10 @@ import type { Path } from "@lunarhue/forms-core";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
-import { fieldFacts } from "./fields.js";
+import { FieldFacts } from "./fields.js";
 import type { Listed } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { iconButton } from "./icons.js";
+import { IconButton } from "./icons.js";
 import { pathKey } from "./values.js";
 
 /** A field found on the page: its form, its stable path and the element the pointer is over. */
@@ -120,8 +120,12 @@ const rectOf = (element: Element) => {
   return [rect.left, rect.top, rect.width, rect.height] as const;
 };
 
+export interface OutlinesProps {
+  readonly elements: readonly Element[];
+}
+
 /** A solid outline over each element, following it as the page scrolls or reflows. */
-export function Outlines({ elements }: { readonly elements: readonly Element[] }): JSX.Element {
+export function Outlines({ elements }: OutlinesProps): JSX.Element {
   useFrame(() => elements.flatMap((element) => rectOf(element)));
   return (
     <>
@@ -168,9 +172,9 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
       <div class="detail-head">
         <strong class="truncate">{snapshot.name || "(form)"}</strong>
         <span class="muted truncate">{form.label}</span>
-        {onClose ? iconButton("Unpin the field card", "close", { class: "icon small", onClick: onClose }) : null}
+        {onClose ? <IconButton label="Unpin the field card" icon="close" class="icon small" onClick={onClose} /> : null}
       </div>
-      {fieldFacts(entry, path, snapshot)}
+      <FieldFacts entry={entry} path={path} snapshot={snapshot} />
     </section>
   );
 }

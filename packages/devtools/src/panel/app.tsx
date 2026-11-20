@@ -1,14 +1,14 @@
 /** @jsxImportSource preact */
 import type { Path } from "@lunarhue/forms-core";
-import type { JSX, TargetedMouseEvent } from "preact";
+import type { JSX, Ref, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { FormEntry, Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
 import { Bundle } from "./bundle.js";
-import { Fields } from "./fields.js";
+import { Fields, type FieldsProps } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { icon, iconButton } from "./icons.js";
+import { Icon, IconButton } from "./icons.js";
 import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
@@ -188,116 +188,38 @@ export function App({ hook, host }: AppProps): JSX.Element {
     hook.sync();
   };
 
-  const content = (open: Tab): JSX.Element => {
-    if (shown === undefined) return <p class="empty">No form with devtools() is mounted on this page.</p>;
-    if (open === "log") return <Log key={`${open}${shown.id}`} entry={shown.entry} />;
-    if (open === "plugins") return <Plugins key={`${open}${shown.id}`} entry={shown.entry} />;
-    if (open === "bundle") return <Bundle key={`${open}${shown.id}`} entry={shown.entry} />;
-    return (
-      <Fields
-        key={`${open}${shown.id}`}
-        entry={shown.entry}
-        expanded={current.expanded}
-        onToggle={(key) =>
-          updateView(({ expanded }) => {
-            const next = new Set(expanded);
-            if (!next.delete(key)) next.add(key);
-            return { expanded: next };
-          })
-        }
-        row={current.row}
-        onRow={(row) => updateView(() => ({ row }))}
-        filter={current.filter}
-        onFilter={(filter) => updateView(() => ({ filter }))}
-        invalidOnly={current.invalidOnly}
-        onInvalidOnly={(invalidOnly) => updateView(() => ({ invalidOnly }))}
-        onHover={shown.entry.adapter === undefined ? undefined : setRowHover}
-        onInspect={
-          shown.entry.adapter === undefined
-            ? undefined
-            : (path) => {
-                const handle = handleOf(shown, path);
-                (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
-                setRowHover(path);
-              }
-        }
-      />
-    );
+  const fields: FieldsState | undefined = shown && {
+    expanded: current.expanded,
+    onToggle: (key) =>
+      updateView(({ expanded }) => {
+        const next = new Set(expanded);
+        if (!next.delete(key)) next.add(key);
+        return { expanded: next };
+      }),
+    row: current.row,
+    onRow: (row) => updateView(() => ({ row })),
+    filter: current.filter,
+    onFilter: (filter) => updateView(() => ({ filter })),
+    invalidOnly: current.invalidOnly,
+    onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly })),
+    onHover: shown.entry.adapter === undefined ? undefined : setRowHover,
+    onInspect:
+      shown.entry.adapter === undefined
+        ? undefined
+        : (path) => {
+            const handle = handleOf(shown, path);
+            (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+            setRowHover(path);
+          },
   };
 
   const chip = (
-    <div class="chip">
-      <button
-        class="chip-main"
-        aria-haspopup="menu"
-        aria-expanded={menu?.kind === "forms" ? "true" : "false"}
-        aria-label={selected ? `Form ${selected.label}. Choose a form` : "Choose a form"}
-        onClick={(event: TargetedMouseEvent<HTMLElement>) => toggleMenu("forms", event)}
-      >
-        <span class={selected ? "swatch on" : "swatch"} aria-hidden="true" />
-        <span class={selected ? "truncate" : "truncate muted"}>{selected?.label ?? (forms.length === 0 ? "No forms" : "No form")}</span>
-        {selected ? null : icon("chevron")}
-      </button>
-      {/* The clear button takes the chevron's place. */}
-      {selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null}
-    </div>
+    <FormChip selected={selected} empty={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
   );
 
   const status = selected ? <SubmitStatus entry={selected.entry} /> : null;
 
-  const formsMenu = (
-    <div class="menu surface" role="menu" aria-label="Forms on this page" ref={menuRef} style={`left: ${menu?.left ?? 0}px`}>
-      <div class="menu-label">Forms on this page</div>
-      {forms.length === 0 ? (
-        <div class="menu-item muted">None yet</div>
-      ) : (
-        forms.map((form) => (
-          <button key={form.id} class="menu-item" role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => select(form.id)}>
-            <span class={form.id === selectedId ? "swatch on" : "swatch"} aria-hidden="true" />
-            <span class="truncate">{form.label}</span>
-            {form.id === selectedId ? icon("check", "check") : null}
-          </button>
-        ))
-      )}
-    </div>
-  );
-
-  const dockMenu = (
-    <div class="menu surface" role="menu" aria-label="Devtools menu" ref={menuRef} style={`left: ${menu?.left ?? 0}px`}>
-      <div class="menu-label">Dock position</div>
-      {corners.map((option) => (
-        <button key={option} class="menu-item" role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => move(option)}>
-          {cornerLabels[option]}
-          {option === corner ? icon("check", "check") : null}
-        </button>
-      ))}
-      {onDisable ? <div class="menu-separator" role="separator" /> : null}
-      {onDisable ? (
-        <button class="menu-item" role="menuitem" onClick={turnOff}>
-          {icon("off")}
-          Turn off devtools
-        </button>
-      ) : null}
-    </div>
-  );
-
-  const tabList = (active: Tab | null, onTab: (tab: Tab) => void) => (
-    <div class="tabs" role="tablist" aria-label="Devtools tabs">
-      {tabs.map((item) => (
-        <button key={item.id} class="tab" role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  const inspectButton = tracked
-    ? iconButton("Inspect fields on the page", "inspect", {
-        "aria-pressed": inspecting ? "true" : "false",
-        "data-tip": inspecting ? "Stop inspecting" : "Inspect fields. Or hold Alt",
-        onClick: () => setInspecting(!inspecting),
-      })
-    : null;
+  const inspectButton = tracked ? <InspectButton inspecting={inspecting} onToggle={() => setInspecting(!inspecting)} /> : null;
 
   // The elements of the field under the pointer, or of the hovered row.
   const card = hovered ?? pinned;
@@ -321,7 +243,12 @@ export function App({ hook, host }: AppProps): JSX.Element {
     </>
   );
 
-  const openMenu = menu?.kind === "dock" ? dockMenu : menu?.kind === "forms" ? formsMenu : null;
+  const openMenu =
+    menu?.kind === "dock" ? (
+      <DockMenu menuRef={menuRef} left={menu.left} corner={corner} onMove={move} onTurnOff={onDisable ? turnOff : undefined} />
+    ) : menu?.kind === "forms" ? (
+      <FormsMenu menuRef={menuRef} left={menu.left} forms={forms} selectedId={selectedId} onSelect={select} />
+    ) : null;
 
   if (phone) {
     const open = tab ?? "fields";
@@ -336,24 +263,26 @@ export function App({ hook, host }: AppProps): JSX.Element {
               {status}
               {inspectButton}
               <div class="end">
-                {onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null}
-                {iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })}
+                {onDisable ? <IconButton label="Turn off devtools" icon="off" onClick={turnOff} /> : null}
+                <IconButton label="Close the devtools" icon="close" onClick={() => setSheetOpen(false)} />
               </div>
               {openMenu}
             </div>
-            {tabList(open, setTab)}
+            <TabList active={open} onTab={setTab} />
             <section class="panel" aria-label={`Devtools ${open}`}>
-              {content(open)}
+              <TabContent tab={open} form={shown} fields={fields} />
             </section>
           </div>
         ) : (
-          iconButton("Open the forms devtools", "panel", {
-            class: "fab icon surface",
-            onClick: () => {
+          <IconButton
+            label="Open the forms devtools"
+            icon="panel"
+            class="fab icon surface"
+            onClick={() => {
               if (selected === undefined && shown) setSelectedId(shown.id);
               setSheetOpen(true);
-            },
-          })
+            }}
+          />
         )}
       </div>
     );
@@ -365,21 +294,23 @@ export function App({ hook, host }: AppProps): JSX.Element {
       <div class="dock" data-corner={corner}>
         {tab ? (
           <section class="panel surface" aria-label={`Devtools ${tab}`}>
-            {content(tab)}
+            <TabContent tab={tab} form={shown} fields={fields} />
           </section>
         ) : null}
         <div class="bar surface" role="toolbar" aria-label="Forms devtools" ref={menuButtons}>
-          {iconButton("Devtools menu", "panel", {
-            "aria-haspopup": "menu",
-            "aria-expanded": menu?.kind === "dock" ? "true" : "false",
-            "data-tip": "Dock position and turning off",
-            onClick: (event) => toggleMenu("dock", event),
-          })}
+          <IconButton
+            label="Devtools menu"
+            icon="panel"
+            aria-haspopup="menu"
+            aria-expanded={menu?.kind === "dock" ? "true" : "false"}
+            data-tip="Dock position and turning off"
+            onClick={(event) => toggleMenu("dock", event)}
+          />
           {chip}
           {status}
           <div class="divider" aria-hidden="true" />
           {inspectButton}
-          {tabList(tab, openTab)}
+          <TabList active={tab} onTab={openTab} />
           {openMenu}
         </div>
       </div>
@@ -387,8 +318,159 @@ export function App({ hook, host }: AppProps): JSX.Element {
   );
 }
 
+/** What the Fields tab takes besides the form. */
+type FieldsState = Omit<FieldsProps, "entry">;
+
+interface TabContentProps {
+  readonly tab: Tab;
+  /** The form the panel shows, if any. */
+  readonly form: Listed | undefined;
+  readonly fields: FieldsState | undefined;
+}
+
+/** The open tab's content for the shown form. */
+function TabContent({ tab, form, fields }: TabContentProps): JSX.Element {
+  if (form === undefined || fields === undefined) return <p class="empty">No form with devtools() is mounted on this page.</p>;
+  const key = `${tab}${form.id}`;
+  if (tab === "log") return <Log key={key} entry={form.entry} />;
+  if (tab === "plugins") return <Plugins key={key} entry={form.entry} />;
+  if (tab === "bundle") return <Bundle key={key} entry={form.entry} />;
+  return <Fields key={key} entry={form.entry} {...fields} />;
+}
+
+interface TabListProps {
+  readonly active: Tab | null;
+  readonly onTab: (tab: Tab) => void;
+}
+
+/** The row of tabs. */
+function TabList({ active, onTab }: TabListProps): JSX.Element {
+  return (
+    <div class="tabs" role="tablist" aria-label="Devtools tabs">
+      {tabs.map((item) => (
+        <button key={item.id} class="tab" role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface FormChipProps {
+  readonly selected: Listed | undefined;
+  /** True when the page has no forms. */
+  readonly empty: boolean;
+  readonly menuOpen: boolean;
+  readonly onMenu: (event: TargetedMouseEvent<HTMLElement>) => void;
+  readonly onClear: () => void;
+}
+
+/** The selected form's name, which opens the forms menu, and the button that clears the selection. */
+function FormChip({ selected, empty, menuOpen, onMenu, onClear }: FormChipProps): JSX.Element {
+  return (
+    <div class="chip">
+      <button
+        class="chip-main"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen ? "true" : "false"}
+        aria-label={selected ? `Form ${selected.label}. Choose a form` : "Choose a form"}
+        onClick={onMenu}
+      >
+        <span class={selected ? "swatch on" : "swatch"} aria-hidden="true" />
+        <span class={selected ? "truncate" : "truncate muted"}>{selected?.label ?? (empty ? "No forms" : "No form")}</span>
+        {selected ? null : <Icon name="chevron" />}
+      </button>
+      {/* The clear button takes the chevron's place. */}
+      {selected ? <IconButton label={`Clear selection ${selected.label}`} icon="close" class="icon small" data-tip="Clear selection" onClick={onClear} /> : null}
+    </div>
+  );
+}
+
+interface MenuProps {
+  readonly menuRef: Ref<HTMLDivElement>;
+  /** The menu's left edge: the left edge of the button that opened it. */
+  readonly left: number;
+}
+
+interface FormsMenuProps extends MenuProps {
+  readonly forms: readonly Listed[];
+  readonly selectedId: number | null;
+  readonly onSelect: (id: number) => void;
+}
+
+/** The menu of the forms on the page. */
+function FormsMenu({ menuRef, left, forms, selectedId, onSelect }: FormsMenuProps): JSX.Element {
+  return (
+    <div class="menu surface" role="menu" aria-label="Forms on this page" ref={menuRef} style={`left: ${left}px`}>
+      <div class="menu-label">Forms on this page</div>
+      {forms.length === 0 ? (
+        <div class="menu-item muted">None yet</div>
+      ) : (
+        forms.map((form) => (
+          <button key={form.id} class="menu-item" role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => onSelect(form.id)}>
+            <span class={form.id === selectedId ? "swatch on" : "swatch"} aria-hidden="true" />
+            <span class="truncate">{form.label}</span>
+            {form.id === selectedId ? <Icon name="check" class="check" /> : null}
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+interface DockMenuProps extends MenuProps {
+  readonly corner: Corner;
+  readonly onMove: (corner: Corner) => void;
+  /** Turns the devtools off. Unset when the form can't. */
+  readonly onTurnOff?: (() => void) | undefined;
+}
+
+/** The dock's menu: the corner it sits in, and turning the devtools off. */
+function DockMenu({ menuRef, left, corner, onMove, onTurnOff }: DockMenuProps): JSX.Element {
+  return (
+    <div class="menu surface" role="menu" aria-label="Devtools menu" ref={menuRef} style={`left: ${left}px`}>
+      <div class="menu-label">Dock position</div>
+      {corners.map((option) => (
+        <button key={option} class="menu-item" role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => onMove(option)}>
+          {cornerLabels[option]}
+          {option === corner ? <Icon name="check" class="check" /> : null}
+        </button>
+      ))}
+      {onTurnOff ? <div class="menu-separator" role="separator" /> : null}
+      {onTurnOff ? (
+        <button class="menu-item" role="menuitem" onClick={onTurnOff}>
+          <Icon name="off" />
+          Turn off devtools
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+interface InspectButtonProps {
+  readonly inspecting: boolean;
+  readonly onToggle: () => void;
+}
+
+/** The toggle that inspects fields on the page. */
+function InspectButton({ inspecting, onToggle }: InspectButtonProps): JSX.Element {
+  return (
+    <IconButton
+      label="Inspect fields on the page"
+      icon="inspect"
+      aria-pressed={inspecting ? "true" : "false"}
+      data-tip={inspecting ? "Stop inspecting" : "Inspect fields. Or hold Alt"}
+      onClick={onToggle}
+    />
+  );
+}
+
+interface SubmitStatusProps {
+  readonly entry: FormEntry;
+}
+
 /** The form's last submission, as `submit failed` and the like. Nothing before the first. */
-function SubmitStatus({ entry }: { readonly entry: FormEntry }): JSX.Element | null {
+function SubmitStatus({ entry }: SubmitStatusProps): JSX.Element | null {
   const last = () => entry.submissions.items[entry.submissions.items.length - 1]?.status;
   const status = last();
   useFrame(() => [last()]);
@@ -441,7 +523,7 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
             aria-pressed={form.id === selectedId ? "true" : "false"}
             onClick={() => onPick(form.id)}
           >
-            {icon("panel")}
+            <Icon name="panel" />
             <span class="truncate">{form.label}</span>
           </button>
         </div>
@@ -453,12 +535,16 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
 /** How long the pointer rests on a control before its tooltip shows. */
 const tipDelay = 400;
 
+interface TipProps {
+  readonly root: { readonly current: HTMLElement | null };
+}
+
 /**
  * The tooltip of the control with a `data-tip` under the pointer or with the
  * keyboard focus. It is fixed to the window, so a scrolling list or the
  * panel's edge never clips it.
  */
-function Tip({ root }: { readonly root: { readonly current: HTMLElement | null } }): JSX.Element | null {
+function Tip({ root }: TipProps): JSX.Element | null {
   const [shown, setShown] = useState<{ readonly text: string; readonly rect: DOMRect } | null>(null);
   useEffect(() => {
     const element = root.current;

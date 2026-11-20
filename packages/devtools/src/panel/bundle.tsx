@@ -71,8 +71,13 @@ function useReport(url: string | undefined): Load | undefined {
   return result;
 }
 
+interface SourceProps {
+  readonly url: string | undefined;
+  readonly result: Load | undefined;
+}
+
 /** Where the sizes come from, or why there are none. */
-function source(url: string | undefined, result: Load | undefined): JSX.Element {
+function Source({ url, result }: SourceProps): JSX.Element {
   if (url === undefined || result === undefined) {
     return (
       <p class="note">
@@ -94,18 +99,33 @@ function source(url: string | undefined, result: Load | undefined): JSX.Element 
 
 const sum = (items: readonly ({ readonly size: number | undefined } | undefined)[]) => items.reduce((total, item) => total + (item?.size ?? 0), 0);
 
+interface BarProps {
+  readonly label: string;
+  readonly size: number | undefined;
+  /** Its share of the row. */
+  readonly grow: number;
+  /** The report part it stands for: its kind and name, joined by a colon. */
+  readonly part?: string | undefined;
+}
+
 /** A bar of the graph, as wide as its share of its row. */
-const bar = (label: string, size: number | undefined, grow: number, part?: string) => (
-  <div
-    class="bar-part"
-    style={`flex-grow: ${grow}`}
-    data-part={part}
-    data-tip={size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}`}
-  >
-    <span class="truncate">{label}</span>
-    <span class="num">{size === undefined ? "–" : (size / 1000).toFixed(1)}</span>
-  </div>
-);
+function Bar({ label, size, grow, part }: BarProps): JSX.Element {
+  return (
+    <div
+      class="bar-part"
+      style={`flex-grow: ${grow}`}
+      data-part={part}
+      data-tip={size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}`}
+    >
+      <span class="truncate">{label}</span>
+      <span class="num">{size === undefined ? "–" : (size / 1000).toFixed(1)}</span>
+    </div>
+  );
+}
+
+export interface BundleProps {
+  readonly entry: FormEntry;
+}
 
 /**
  * The Bundle tab: a graph of the bytes the forms packages add, core, the
@@ -114,7 +134,7 @@ const bar = (label: string, size: number | undefined, grow: number, part?: strin
  * a bundler plugin's report; until one measured the build, the bars are
  * even and show no sizes.
  */
-export function Bundle({ entry }: { readonly entry: FormEntry }): JSX.Element {
+export function Bundle({ entry }: BundleProps): JSX.Element {
   const url = sizesUrl();
   const result = useReport(url);
   const report = result?.state === "done" ? result.report : undefined;
@@ -132,7 +152,7 @@ export function Bundle({ entry }: { readonly entry: FormEntry }): JSX.Element {
   const start = (100 * ((top[0] ?? 0) + (top[1] ?? 0))) / ((top[0] ?? 0) + (top[1] ?? 0) + pluginsWeight || 1);
   return (
     <div class="bundle scroll">
-      {source(url, result)}
+      <Source url={url} result={result} />
       <div class="graph" aria-label="Bundle">
         <div class="graph-head">
           <span class="muted">forms packages</span>
@@ -143,20 +163,24 @@ export function Bundle({ entry }: { readonly entry: FormEntry }): JSX.Element {
             </span>
           ) : null}
         </div>
-        <div class="bar-row">{bar("minified", report ? total : undefined, 1)}</div>
+        <div class="bar-row"><Bar label="minified" size={report ? total : undefined} grow={1} /></div>
         <div class="bar-row">
-          {core ? bar("core", core.size, top[0] ?? 1, `core:${core.row.name ?? ""}`) : null}
-          {adapter ? bar(adapter.row.name ?? "adapter", adapter.size, top[1] ?? 1, `adapter:${adapter.row.name ?? ""}`) : null}
-          {shipped.length > 0 ? bar("plugins", report ? pluginBytes : undefined, pluginsWeight) : null}
+          {core ? <Bar label="core" size={core.size} grow={top[0] ?? 1} part={`core:${core.row.name ?? ""}`} /> : null}
+          {adapter ? <Bar label={adapter.row.name ?? "adapter"} size={adapter.size} grow={top[1] ?? 1} part={`adapter:${adapter.row.name ?? ""}`} /> : null}
+          {shipped.length > 0 ? <Bar label="plugins" size={report ? pluginBytes : undefined} grow={pluginsWeight} /> : null}
         </div>
-        {shipped.length > 0
-          ? [
-              <svg class="wedge" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-                <path d={`M${start} 0H100V10H0z`} />
-              </svg>,
-              <div class="bar-row">{shipped.map(({ row, size }) => bar(row.name ?? "", size, weigh(size)))}</div>,
-            ]
-          : null}
+        {shipped.length > 0 ? (
+          <>
+            <svg class="wedge" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+              <path d={`M${start} 0H100V10H0z`} />
+            </svg>
+            <div class="bar-row">
+              {shipped.map(({ row, size }) => (
+                <Bar label={row.name ?? ""} size={size} grow={weigh(size)} />
+              ))}
+            </div>
+          </>
+        ) : null}
       </div>
       <ol class="runs" aria-label="Run order">
         <li class="runs-head muted">Run order</li>
