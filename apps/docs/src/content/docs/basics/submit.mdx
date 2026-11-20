@@ -15,7 +15,7 @@ tracks the submit while it runs. Try `taken@example.com` in the demo.
 
 ```ts
 const account = forms.define({
-  schema: Account,
+  defaultValues: { name: "", email: "" },
   onSubmit: async (value, { store, signal }) => {
     const response = await fetch("/api/account", {
       method: "PUT",
@@ -27,9 +27,9 @@ const account = forms.define({
 });
 ```
 
-`value` is the schema's output. Without a schema it is a copy of the form's
-value, which you may change without touching the form. The second argument
-has:
+`value` is a copy of the form's value, which you may change without touching
+the form. With a [schema](./schema-validation) it is the schema's output.
+The second argument has:
 
 - `store`, the form's store, for `setErrors` and the rest.
 - `signal`, which aborts when the form is reset while the submit runs.
@@ -215,7 +215,7 @@ intent. Annotate `ctx.intent` to type it:
 
 ```ts
 const post = forms.define({
-  schema: Post,
+  defaultValues: { title: "", body: "" },
   onSubmit: (value, ctx: { intent: "draft" | "publish" }) => save(value, ctx.intent),
 });
 ```
