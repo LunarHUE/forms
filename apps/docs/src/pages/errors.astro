@@ -8,10 +8,22 @@ import Shell from "@/components/shell/Shell.astro";
 import { getErrors } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS } from "@/lib/frameworks";
 import { errorAnchors } from "@/lib/errors";
+import { lastCommitDate } from "@/lib/git";
+import { markdownHref } from "@/lib/pages";
+import { ERRORS_HREF } from "@/lib/routes";
+import { docData, type PageMeta } from "@/lib/seo";
 
 const entry = await getErrors();
 const { Content, headings } = await render(entry);
 const { title, description } = entry.data;
+const lastUpdated = entry.filePath ? lastCommitDate(entry.filePath) : undefined;
+const markdown = markdownHref(ERRORS_HREF);
+const meta: PageMeta = {
+  markdown,
+  type: "article",
+  modified: lastUpdated,
+  structuredData: docData({ title, description, href: ERRORS_HREF, section: "Reference", modified: lastUpdated }),
+};
 
 // "On this page": each package's heading, then its codes, which link to the
 // `<a id="package:code">` anchors rather than the code headings' own slugs.
@@ -29,11 +41,11 @@ for (const anchor of errorAnchors(entry.body ?? "")) {
 }
 ---
 
-<Shell title={title} description={description} currentSlug="errors">
+<Shell title={title} description={description} meta={meta} currentSlug="errors">
   <main data-pagefind-body data-pagefind-meta="section:Reference">
     {/* Search lists the errors page for every framework. Pagefind takes one value per element. */}
     {AVAILABLE_FRAMEWORKS.map((framework) => <span data-pagefind-filter="framework[data-value]" data-value={framework} />)}
-    <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc}>
+    <Article title={title} description={description} breadcrumb={[{ label: "Reference" }, { label: "Errors" }]} headings={toc} markdown={markdown} lastUpdated={lastUpdated}>
       <Content components={mdxComponents} />
     </Article>
   </main>

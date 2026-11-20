@@ -21,10 +21,16 @@
  *
  * `headings` are the page's own (depth 2 and 3 are kept); the title comes
  * first in the list and links to the H1 (`#top`).
+ *
+ * With `markdown` the header gets the "Copy page" button. With `lastUpdated`
+ * the content ends with the date the page's source last changed.
  */
 import type { NavItem } from "@/lib/nav";
 
+import { absoluteUrl } from "@/lib/site";
+
 import Breadcrumb, { type Crumb } from "./Breadcrumb.astro";
+import { CopyPage } from "./CopyPage";
 import MobileToc from "./MobileToc";
 import PrevNext from "./PrevNext.astro";
 import Toc from "./Toc";
@@ -41,9 +47,18 @@ interface Props {
   headings: readonly TocItem[];
   previous?: NavItem;
   next?: NavItem;
+  /** Path of the page's Markdown copy. */
+  markdown?: string;
+  lastUpdated?: Date;
 }
 
-const { title, description, breadcrumb, headings, previous, next } = Astro.props;
+const { title, description, breadcrumb, headings, previous, next, markdown, lastUpdated } = Astro.props;
+const updated = lastUpdated?.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
 const toc: TocItem[] = [
   { depth: 1, slug: TOP_ID, text: title },
   ...headings
@@ -68,14 +83,33 @@ const gutter = "px-4 sm:px-6 lg:px-8";
     <article class="w-full max-w-[720px] min-w-0 pt-7 pb-16 xl:pt-10">
       <Breadcrumb items={breadcrumb} class="mb-4 hidden xl:block" />
       <header>
-        <h1 id={TOP_ID} class="text-[2rem] leading-10 font-bold tracking-[-0.025em] sm:text-[2.375rem] sm:leading-[46px]">
-          {title}
-        </h1>
+        <div class="flex items-start gap-4">
+          <h1
+            id={TOP_ID}
+            class="min-w-0 flex-1 text-[2rem] leading-10 font-bold tracking-[-0.025em] sm:text-[2.375rem] sm:leading-[46px]"
+          >
+            {title}
+          </h1>
+          {
+            markdown && (
+              <div class="pt-1.5 sm:pt-2.5">
+                <CopyPage client:idle markdownHref={markdown} markdownUrl={absoluteUrl(markdown)} />
+              </div>
+            )
+          }
+        </div>
         <p class="mt-2 text-lg leading-7 text-muted-foreground sm:text-[1.1875rem] sm:leading-8">{description}</p>
       </header>
       <div class="prose mt-8">
         <slot />
       </div>
+      {
+        lastUpdated && (
+          <p data-pagefind-ignore class="mt-10 text-sm text-muted-foreground">
+            Last updated <time datetime={lastUpdated.toISOString()}>{updated}</time>
+          </p>
+        )
+      }
       <PrevNext previous={previous} next={next} />
     </article>
     <aside data-pagefind-ignore class="hidden w-[220px] shrink-0 pt-10 xl:block">

@@ -14,11 +14,11 @@
  * template in and unmounts the old island, which then hydrates from scratch.
  * See the README.
  */
+import { demoSources } from "@/lib/demo-sources";
 import { AVAILABLE_FRAMEWORKS, isFramework } from "@/lib/frameworks";
 import { highlight } from "@/lib/highlight";
 
 import { DemoFrame, type DemoFile } from "./DemoFrame";
-import { hideDevtools } from "./demo/devtools";
 import { demoId } from "./demo/ids";
 import "@/styles/demo.css";
 
@@ -27,14 +27,7 @@ interface Props {
   name: string;
 }
 
-const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-});
-
 const { name } = Astro.props;
-const leaf = name.split("/").at(-1)!;
 const framework = Astro.params.framework;
 if (!framework || !isFramework(framework)) {
   throw new Error(`<Demo name="${name}"> needs a framework page, got ${Astro.url.pathname}.`);
@@ -43,14 +36,12 @@ if (!Astro.slots.has(framework)) {
   throw new Error(`<Demo name="${name}"> has no ${framework} slot. Is the demos MDX plugin registered?`);
 }
 
-const folder = `/src/demos/${framework}/${name}/`;
-const entry = `${leaf}.tsx`;
 const files: DemoFile[] = await Promise.all(
-  Object.entries(sources)
-    .filter(([path]) => path.startsWith(folder))
-    .map(([path, code]) => [path.slice(folder.length), hideDevtools(code).replace(/\n$/, "")] as const)
-    .toSorted(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a.localeCompare(b)))
-    .map(async ([file, code]) => ({ name: file, code, html: await highlight(code, file.split(".").at(-1)) })),
+  demoSources(framework, name).map(async ({ name: file, code }) => ({
+    name: file,
+    code,
+    html: await highlight(code, file.split(".").at(-1)),
+  })),
 );
 
 const id = demoId(Astro.request, name);
