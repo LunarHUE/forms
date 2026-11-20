@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
  *
  * Each group is a <details>, so it folds without any script. A rule runs down
  * the left of its items and the current page marks it in the accent. Shell
- * remembers which groups were folded (`data-nav-group`).
+ * remembers which groups were folded (`data-nav-group`) and moves the
+ * current-page mark after a client-side navigation.
  */
 interface NavTreeProps {
   groups: readonly NavGroup[];
@@ -46,13 +47,14 @@ export function NavTree({ groups, currentSlug, compact = false }: NavTreeProps) 
                   <a
                     href={item.href}
                     aria-current={current ? "page" : undefined}
+                    // Styled from aria-current, so Shell can move the mark on a
+                    // sidebar the client router kept from the last page.
                     className={cn(
-                      "-ml-px flex flex-1 items-center border-l-2 pl-3.5 text-sm outline-none",
+                      "-ml-px flex flex-1 items-center border-l-2 border-transparent pl-3.5 text-sm text-foreground/80 outline-none",
+                      "hover:not-aria-[current=page]:border-foreground/30 hover:not-aria-[current=page]:text-foreground",
+                      "aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-brand",
                       "focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                       compact ? "h-8" : "h-7.5",
-                      current
-                        ? "border-brand font-medium text-brand"
-                        : "border-transparent text-foreground/80 hover:border-foreground/30 hover:text-foreground",
                     )}
                   >
                     {item.label}

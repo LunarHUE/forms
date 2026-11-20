@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { ExternalLinkIcon, MenuIcon, XIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useLastFramework } from "@/components/hooks/store";
 import { Button } from "@/components/ui/button";
@@ -28,10 +29,17 @@ interface MobileNavProps {
 
 export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
   const last = useLastFramework();
+  const [open, setOpen] = useState(false);
+  // The drawer persists across client-side navigations; a link in it closes it.
+  useEffect(() => {
+    const close = () => setOpen(false);
+    document.addEventListener("astro:after-swap", close);
+    return () => document.removeEventListener("astro:after-swap", close);
+  }, []);
   const sidebar = pick(sidebars, last);
   if (!sidebar) return null;
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <Hint label="Open navigation">
         <SheetTrigger render={<Button variant="ghost" size="icon" />}>
           <MenuIcon className="size-5" />

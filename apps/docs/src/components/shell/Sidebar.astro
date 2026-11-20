@@ -16,6 +16,9 @@ interface Props extends SidebarData {
 }
 
 const { framework, version, items, groups, currentSlug, switchable = false } = Astro.props;
+// The client router keeps these from page to page while the nav is the same,
+// so the nav keeps its scroll and folds. The picker gets the new page's props.
+const persist = `${framework}-${version}${switchable ? "-all" : ""}`;
 ---
 
 <aside
@@ -24,9 +27,15 @@ const { framework, version, items, groups, currentSlug, switchable = false } = A
   data-sidebar-for={switchable ? framework : undefined}
 >
   <div class="px-4 pt-5 pb-3">
-    <FrameworkPicker client:idle items={items} framework={framework} version={version} />
+    <FrameworkPicker
+      client:idle
+      transition:persist={`picker-${persist}`}
+      items={items}
+      framework={framework}
+      version={version}
+    />
   </div>
-  <div data-sidebar-scroll class="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-8">
+  <div data-sidebar-scroll transition:persist={`sidebar-nav-${persist}`} class="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-8">
     <NavTree groups={groups} currentSlug={currentSlug} />
   </div>
 </aside>
