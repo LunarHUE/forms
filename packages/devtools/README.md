@@ -39,9 +39,13 @@ The panel docks in a corner of the page. Its menu moves it to another
 corner, which the browser remembers for the whole site. On a phone it's a
 button that opens a bottom sheet.
 
+- While the panel is on, a dashed outline marks each form on the page, with
+  the form's name on a tag above it. Click the tag to select the form. The
+  outline lets clicks through to the form.
 - The form chip lists the forms on the page by their store `id`, numbered
-  when two share one. Give each store an `id` to tell them apart.
-- Pick mode outlines each form on the page. Click one to inspect it.
+  when two share one. A form whose `id` the adapter made up, such as React's
+  `useId`, shows as `form 2` for the second form on the page. Give each store
+  an `id` to name it.
 - The Fields tab shows the value tree, with each field's flags (`dirty` only
   when the form has `dirty()`). Select a row to see its stable path, value
   against baseline, display text, errors by where they came from, the
@@ -57,9 +61,11 @@ button that opens a bottom sheet.
 - The inspect button, or holding Alt, shows a card with a field's facts for
   the input under the pointer. A radio group's radios all find their one
   field, and a custom input finds its field once it has the adapter's field
-  ref (`useFieldRef` in React, `fieldRef` in Solid). Click to pin the card
-  and select the field's row. The click never reaches the page. Escape ends
-  inspecting and unpins.
+  ref (`useFieldRef` in React, `fieldRef` in Solid). Hovering a field's
+  label counts as hovering the field. Click to pin the card and select the
+  field's row. The click never reaches the page, and inspecting stays on, so
+  the next click pins another field. Escape unpins the card; the inspect
+  button turns inspecting off.
 - Hovering a row of the Fields tab outlines the field's elements on the page.
 - The Bundle tab lists the parts the form uses: core, the adapter, then
   every plugin, third-party ones too. Sizes come from your production build,
