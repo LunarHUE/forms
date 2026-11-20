@@ -37,6 +37,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: write # the release pull request's docs comment
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -153,3 +154,44 @@ jobs:
             echo ""
             echo "Deployed to production: $URL"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Updates the docs comment docs-deploy.yml left on the Version Packages
+      # pull request, or adds one. That is the newest merged one whose merge
+      # commit is in this tag's history; without one, it skips the comment.
+      # A failed comment doesn't fail the deploy.
+      - if: steps.release.outputs.deploy == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          URL: ${{ steps.production.outputs.deployment-url }}
+          # CHANNEL_URLS.release in apps/docs/src/lib/site.ts.
+          PRODUCTION_URL: https://forms.lunarhue.dev
+        run: |
+          pr=""
+          while read -r number merge; do
+            if [ -n "$merge" ] && git merge-base --is-ancestor "$merge" HEAD 2>/dev/null; then
+              pr=$number
+              break
+            fi
+          done < <(gh api "repos/$GITHUB_REPOSITORY/pulls?state=closed&head=$GITHUB_REPOSITORY_OWNER:changeset-release/main&sort=created&direction=desc&per_page=30" \
+            --jq '.[] | select(.merged_at != null) | "\(.number) \(.merge_commit_sha)"')
+          if [ -z "$pr" ]; then
+            echo "::notice::No merged release pull request leads to $TAG, so there is no comment to update."
+            exit 0
+          fi
+          marker="<!-- docs-deploy -->"
+          body="$marker
+          **Docs for this release** are live: version ${TAG##*@}.
+
+          | | |
+          | --- | --- |
+          | Production | $PRODUCTION_URL |
+          | This deployment | $URL |"
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$pr/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | sed -n 1p)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$pr/comments" -f body="$body" > /dev/null
+          fi
