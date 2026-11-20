@@ -35,7 +35,7 @@ test.describe("phone", () => {
 
   test("the drawer opens and closes", async ({ page }) => {
     await page.goto("/react/plugins/masks");
-    await hydrated(page, 'astro-island:has([data-slot="sheet-trigger"])');
+    await hydrated(page, 'astro-island:has([aria-label="Open navigation"])');
     const drawer = page.getByRole("dialog");
     await page.getByRole("button", { name: "Open navigation" }).click();
     await expect(drawer).toBeVisible();
