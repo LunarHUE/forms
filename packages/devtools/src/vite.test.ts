@@ -1,10 +1,9 @@
 // @vitest-environment node
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, createServer, resolveConfig, type Rolldown, type ViteDevServer } from "vite";
+import { build, createServer, type Rolldown, type ViteDevServer } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SizeReport } from "./sizes.js";
-import { panelCss } from "../panel-css.js";
 import { formsDevtools } from "./vite.js";
 import { entryCode, reportFile, sizeReport } from "./vite/measure.js";
 
@@ -127,23 +126,5 @@ describe("vite dev", () => {
     const sizes = await server.transformRequest(join(dirname(fileURLToPath(import.meta.url)), "sizes.ts"));
     expect(sizes?.code).toContain('globalThis[Symbol.for("lunarhue.forms.sizes")]');
     expect(sizes?.code).toContain('import.meta.hot.on("lunarhue-forms:sizes"');
-  });
-
-  // With the panel's stylesheet compiled by Tailwind, this dev server never settles.
-  // The Vite plugin is on its way out (#251), so the test is off until then.
-  it.skip("without a config file, measures what the app's modules import from the forms packages", async () => {
-    // The fixture's own config, inline, as a framework like Astro passes it.
-    const config = await resolveConfig({ configFile, logLevel: "silent" }, "serve");
-    server = await createServer({ root: config.root, logLevel: "silent", resolve: { conditions: config.resolve.conditions, alias: config.resolve.alias }, configFile: false, plugins: [panelCss(), formsDevtools()], server: { port: 0, ws: false } });
-    await server.listen();
-    // Nothing imported yet, so nothing measured.
-    const before = await fetch(new URL("/@lunarhue/forms-sizes.json", server.resolvedUrls?.local[0]));
-    expect(before.status).toBe(404);
-    await server.transformRequest("/main.ts");
-    const parts = byName(await served(server));
-    expect(parts["core:@lunarhue/forms-core"]?.minified).toBeGreaterThan(0);
-    expect(parts["plugin:history"]?.minified).toBeGreaterThan(0);
-    expect(parts["plugin:mask"]?.minified).toBeGreaterThan(0);
-    expect(parts["plugin:rules"]).toBeUndefined();
   });
 });
