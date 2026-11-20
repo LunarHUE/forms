@@ -356,6 +356,7 @@ any release, so don't copy them into your own code.
 | `branch(handle, snapshot, key, value)` | Narrows a handle to one member of a discriminated union. |
 | `invalidFields(store)` | Every field with an error, in form order, as `{ field, name, errors }`. The adapter hooks above wrap it. |
 | `subscribeInvalid(store, listener)` | Calls `listener` after a write that may change `invalidFields(store)`. Returns the function that unsubscribes. |
+| `errorsByKind(handle)` | The field's validation errors as `{ schema, form, field }` (an `ErrorsByKind<E>`), by the kind of validator that set them. Errors from `setErrors` aren't included. A read, not a subscription. |
 | `splitPath(path)` | `"items.0.name"` to `["items", 0, "name"]`. |
 | `fieldId(formId, path)` | The DOM id the adapters give a field. |
 | `optionId(id, option)` | The DOM id of one radio or checkbox in a group. |

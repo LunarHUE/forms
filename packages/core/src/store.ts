@@ -25,6 +25,20 @@ export interface InvalidField<E = FormError> {
   readonly errors: readonly E[];
 }
 
+/**
+ * A field's validation errors by the kind of validator that set them, as
+ * `errorsByKind` returns them. Each list keeps the order the snapshot's
+ * `errors` has. Errors from `setErrors` are the snapshot's `userErrors`.
+ */
+export interface ErrorsByKind<E = FormError> {
+  /** From the definition's `schema`. */
+  readonly schema: readonly E[];
+  /** From the definition's `validate.form`. */
+  readonly form: readonly E[];
+  /** From field validators: `validate.fields` and `registerValidator`. */
+  readonly field: readonly E[];
+}
+
 /** A disabled field with errors, as `disabledInvalid` lists it. The same shape as `InvalidField`. */
 export type DisabledInvalid<E = FormError> = InvalidField<E>;
 

@@ -12,6 +12,14 @@ import type { ChildValue, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeO
 export type ValidateTiming = "input" | "blur" | "submit";
 
 /**
+ * Where a validator came from: the definition's `schema`, its
+ * `validate.form`, or a field validator from `validate.fields` or
+ * `registerValidator`. A field validator that is a Standard Schema is still
+ * `"field"`.
+ */
+export type ValidatorKind = "schema" | "form" | "field";
+
+/**
  * What a validator returns. `undefined`, `null` or an empty list mean the
  * value passed. Anything else is one error or a list of errors.
  */

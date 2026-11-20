@@ -167,6 +167,8 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   itemSteps(path: Path, strict?: boolean): readonly boolean[] | undefined;
   /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
   invalidAt(path: Path): boolean;
+  /** The field's validation errors by owner, in no set order. Undefined when it has none. Makes no nodes. */
+  byOwner(path: Path): ReadonlyMap<string, readonly E[]> | undefined;
   /** The stable paths of the fields with an error of either kind, in value order. Visits every node. Makes no nodes. */
   invalid(): Path[];
   /**
@@ -1036,6 +1038,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const node = findNode(path);
       return node !== undefined && !node.dead && node.invalidCount > 0;
     },
+    byOwner: (path) => findNode(path)?.byOwner,
     invalid() {
       const paths: Path[] = [];
       const visit = (node: Node<E>) => {
