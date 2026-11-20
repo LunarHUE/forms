@@ -1,0 +1,59 @@
+import { createForms, useForm } from "@lunarhue/forms-react";
+import { TextInput } from "./TextInput";
+
+const forms = createForms();
+
+// Stands in for a request to your server. "ada" and "grace" are taken.
+function isTaken(name: string, signal: AbortSignal) {
+  return new Promise<boolean>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(["ada", "grace"].includes(name)), 600);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    });
+  });
+}
+
+const account = forms.define({
+  defaultValues: { username: "" },
+  validate: {
+    fields: {
+      username: {
+        // A newer run aborts this one's `signal` and drops its result.
+        validate: async (name, { signal }) =>
+          (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+        // Waits for a pause in typing. Submit skips the wait.
+        debounce: 400,
+        // Checks while the user types, not only after they leave the field.
+        on: "input",
+      },
+    },
+  },
+  // Shows the answer while the user is still in the field.
+  show: "always",
+  onSubmit: (value) => `Claimed ${value.username}.`,
+});
+
+export default function UsernameForm() {
+  const form = useForm(account);
+  return (
+    <form.Form>
+      {(formProps) => (
+        <form {...formProps}>
+          <form.Field name="username">
+            {(field) => (
+              <>
+                <TextInput field={field} label="Username" />
+                <p role="status">{field.validating ? "Checking..." : null}</p>
+              </>
+            )}
+          </form.Field>
+          <button type="submit">Claim</button>
+          <form.State select={(state) => state.submission}>
+            {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
+          </form.State>
+        </form>
+      )}
+    </form.Form>
+  );
+}

@@ -1,0 +1,89 @@
+---
+title: Typed names and handles
+description: Field names the compiler checks, and handles you can pass around.
+section: composition
+order: 2
+navTitle: Names and handles
+---
+
+Every `name` prop is checked against the form's value type. A typo, or a
+field the component can't edit, fails the build. For the parts of a form you
+pass around, use a handle: a typed object for one field.
+
+<Demo name="typed-paths/shipping" />
+
+## Names
+
+A name is a dotted path through the value, such as `"shipping.city"`. With
+the form above, a typo gets this:
+
+```tsx framework=react
+<form.TextField name="shipping.cty" label="City" />
+```
+
+```tsx framework=solid
+<form.TextField name="shipping.cty" label="City" />
+```
+
+```text
+error TS2769: No overload matches this call.
+  ...
+    Type '"shipping.cty"' is not assignable to type '"billing.street"
+    | "billing.city" | "shipping.street" | "shipping.city"'.
+    Did you mean '"shipping.city"'?
+```
+
+The list holds only the names `TextField` can edit. `shipping` is a name too,
+but its value is an object and `TextField` takes a `FieldApi<string>`, so it
+isn't offered.
+
+Names go through objects and stop at arrays. `tasks` names the array, but
+there is no `tasks.0.title`. Rows are reached through
+handles, see [Arrays](../plugins/arrays). A name has at most 8 segments.
+
+## Handles
+
+`form.root` is the handle of the whole value. `at(key)` returns a child's
+handle, typed from the value, and also catches typos:
+
+```ts
+const shipping = form.root.at("shipping"); // handle to { street, city }
+const city = shipping.at("city"); // handle to a string
+
+form.root.at("shiping");
+// Argument of type '"shiping"' is not assignable to parameter of type
+// '"billing" | "shipping"'.
+```
+
+A handle holds no state. It is the same object on every call, it carries the
+field's commands (`setValue`, `reset`, `validate`, `push` on arrays and so
+on), and `peek()` reads the current snapshot in event handlers. Pass one as
+`handle` instead of `name`:
+
+```tsx framework=react
+<form.TextField handle={form.root.at("shipping").at("city")} label="City" />
+```
+
+```tsx framework=solid
+<form.TextField handle={form.root.at("shipping").at("city")} label="City" />
+```
+
+<Only framework="react">
+
+To render something from a handle's state, read it with `useField(handle)`,
+or `useField(handle, select)` to re-render only when the selected part
+changes.
+
+</Only>
+
+<Only framework="solid">
+
+To render something from a handle's state, read it with
+`createField(handle)`. Its members are reactive.
+
+</Only>
+
+## Next
+
+A component that renders a whole part of a form, such as an address, takes a
+handle. [Fieldsets and scopes](./fieldsets) types it.

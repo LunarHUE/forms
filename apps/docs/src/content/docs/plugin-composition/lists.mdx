@@ -1,0 +1,73 @@
+---
+title: Reusable lists
+description: One list component for every array whose items share a shape.
+section: plugin-composition
+order: 4
+---
+
+A list component shared by many forms takes an array handle. Make it generic
+in the item, and it takes lists whose items carry more keys than it knows
+about. Both lists below use one component.
+
+<Demo name="lists/skills" />
+
+## A generic list
+
+Type the prop as `ArrayHandle<T[], FormError, "arrays">`, where `"arrays"`
+says it needs the [`arrays()`](../plugins/arrays) plugin. The component can't
+build the keys it doesn't know, so it takes a function that makes a full item:
+
+```tsx framework=react
+function NamedList<T extends Named>({
+  items,
+  create,
+}: {
+  items: ArrayHandle<T[], FormError, "arrays">;
+  create: (base: Named) => T;
+}) {
+  return (
+    <div>
+      <Items handle={items}>{(item) => <NameField field={item} />}</Items>
+      <button type="button" onClick={() => items.push(create({ id: Date.now(), name: "" }))}>
+        Add
+      </button>
+    </div>
+  );
+}
+
+<NamedList items={form.root.at("skills")} create={(base) => base} />;
+<NamedList items={form.root.at("languages")} create={(base) => ({ ...base, level: "basic" })} />;
+```
+
+```tsx framework=solid
+function NamedList<T extends Named>(props: {
+  items: ArrayHandle<T[], FormError, "arrays">;
+  create: (base: Named) => T;
+}) {
+  return (
+    <div>
+      <Items handle={props.items}>{(item) => <NameField field={item} />}</Items>
+      <button type="button" onClick={() => props.items.push(props.create({ id: Date.now(), name: "" }))}>
+        Add
+      </button>
+    </div>
+  );
+}
+
+<NamedList items={form.root.at("skills")} create={(base) => base} />;
+<NamedList items={form.root.at("languages")} create={(base) => ({ ...base, level: "basic" })} />;
+```
+
+## Each row
+
+A row's handle is generic too, so render it through a
+[generic fieldset](../composition/fieldsets#generic-fieldsets):
+
+```tsx
+const NamedFieldset = forms.fieldset<Named>();
+
+function NameField<T extends Named>(props: { field: HandleOf<typeof NamedFieldset, T> }) {
+  const scope = NamedFieldset.scope(props.field);
+  return <scope.TextField name="name" label="Name" />;
+}
+```

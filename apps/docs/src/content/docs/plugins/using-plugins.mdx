@@ -1,0 +1,61 @@
+---
+title: Using plugins
+description: Where plugins go, what they add, and the type error when one is missing.
+section: plugins
+order: 1
+---
+
+Everything in Basics and Composition is core: values, validation, submit,
+field components and fieldsets. The rest is plugins. Each one adds members to
+the form, such as `dirty` on every field or `form.plugins.history.undo()`,
+and a form that doesn't install it doesn't ship its code.
+
+## Where they go
+
+Every plugin goes in a `plugins` list: on `createForms` for every form, on a
+definition for its forms, or on one form.
+
+```ts
+const forms = createForms({ plugins: [dirty()] });
+
+const settings = forms.define({ defaultValues, plugins: [history()] });
+```
+
+```tsx framework=react
+const form = useForm(signUp, { plugins: [persist("sign-up")] });
+```
+
+```tsx framework=solid
+const form = createForm(signUp, { plugins: [persist("sign-up")] });
+```
+
+A form's own list is read once, when the form is made, and its plugins run
+after the others.
+
+## When one is missing
+
+Code that needs a plugin the form lacks fails to compile, and the error names
+the plugin to add:
+
+```text
+Add mask() to this form's plugins: PhoneField uses it
+```
+
+That covers a field type with a mask part, `push` on an array without
+`arrays()`, and `equals` without `dirty()`. In development, code without types
+that calls a missing plugin throws an error with a code such as
+[`dirty:missing`](/errors#core:dirty:missing).
+
+## Where they come from
+
+| Kind        | Needs another library | Import from                                         |
+| ----------- | --------------------- | --------------------------------------------------- |
+| First class | No                    | your adapter, `<adapter>/plugins`                   |
+| Third party | Yes                   | its package, such as `@lunarhue/forms-schema/zod`   |
+| Community   | Up to the author      | the author's package, named `forms-plugin-<name>`   |
+
+First-class plugins live in `@lunarhue/forms-core/plugins`, and each adapter
+re-exports them from its own `plugins` entry: `dirty`, `rebase`, `persist`,
+`history`, `arrays`, `mask` and `rules`. Each has a page in this section, as
+do the [schema plugins](./schemas). To make your own, see
+[Writing plugins](../writing-plugins/first-plugin).

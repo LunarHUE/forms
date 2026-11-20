@@ -1,0 +1,273 @@
+---
+title: Fields
+description: The field object, inputProps, number and optional inputs, and binding component libraries.
+section: basics
+order: 6
+---
+
+`form.Field` takes a field name and passes that field's object to its child.
+The object holds the field's state and commands, and `inputProps` turns it
+into the props an input needs. Type a number with a trailing `.` and watch
+the line under Age.
+
+<Demo name="fields/profile" />
+
+```tsx
+<form.Field name="age">
+  {(field) => <input {...inputProps(field, { kind: "number" })} />}
+</form.Field>
+```
+
+## The field object
+
+`FieldApi<T>` holds the field's current state, its commands, and the pieces
+that bind an element. A new object arrives with each change.
+
+| Member | What it is |
+| --- | --- |
+| `value` | The value the store holds. |
+| `name` | The dotted name with array indexes, such as `tasks.0.title`. |
+| `errors`, `shownErrors` | Every error, and the ones the `show` setting lets through now. |
+| `userErrors` | The errors set with `setErrors`. They come last in `errors`. |
+| `touched`, `edited`, `dirty` | Blurred once, changed by the user, different from the baseline. `dirty` needs the `dirty()` plugin. |
+| `invalid`, `validating` | Has any error, has a validator running. |
+| `disabled`, `readOnly` | Set on this field or one above it. |
+| `setValue`, `setTouched`, `setErrors`, `handleBlur`, `reset`, `validate` | The handle's commands. Arrays add `push`, `insert`, `remove` and `move`. |
+| `text`, `setText`, `setNumberText`, `ref` | The pieces for binding an element. See below. |
+| `handle` | The field's handle, to pass to another component or keep for later. |
+| `id`, `errorId` | Ids for the input and its error list. |
+
+## inputProps
+
+For plain HTML, `inputProps(field)` puts every piece on the element and
+adds the rest an `<input>` needs: `name`, `id`, `value`, the change and blur
+handlers, `ref`, `disabled`, `readOnly`, and `aria-invalid` and
+`aria-describedby` while errors show. It is a function, not a member, so a
+form that never calls it doesn't ship it. Pass options for other kinds of
+input. The compiler checks them against the field's value type.
+
+| Call | Element | Field type |
+| --- | --- | --- |
+| `inputProps(field)` or `inputProps(field, { type: "email" })` | `<input>` | string |
+| `inputProps(field, { kind: "textarea" })` | `<textarea>` | string |
+| `inputProps(field, { kind: "select" })` | `<select>` | string |
+| `inputProps(field, { kind: "number" })` or `{ kind: "range" }` | `<input type="number">` or `"range"` | number |
+| `inputProps(field, { kind: "checkbox" })` | `<input type="checkbox">` | boolean |
+| `inputProps(field, { kind: "checkbox", value })` | one box of a group | array of strings or numbers |
+| `inputProps(field, { kind: "radio", value })` | one radio | string, number or boolean |
+
+<Only framework="react">
+
+Number and select inputs take `empty`, the value an empty input writes. It
+defaults to `undefined` and is required when the field's type has no
+`undefined`.
+
+</Only>
+
+<Only framework="solid">
+
+Number inputs take `empty`, the value an empty input writes. It defaults to
+`undefined` and is required when the field's type has no `undefined`.
+
+</Only>
+
+<Only framework="react">
+
+A component given only a handle records its element with
+`useFieldRef(handle)` and gets the props from `useInputProps(handle)`.
+
+</Only>
+
+<Only framework="solid">
+
+A component given only a handle records its element with `fieldRef(handle)`
+and gets the props from `createInputProps(handle)`.
+
+</Only>
+
+## Number inputs
+
+A number field bound with `inputProps(field, { kind: "number" })`, or with
+`field.setNumberText`, holds a number, or `undefined` while the input is
+empty. Some text on the way to a number isn't one yet:
+
+| Typed | Input shows | Field holds |
+| --- | --- | --- |
+| `12.` | `12.` | `12` |
+| `-` | `-` | the value it held before |
+| nothing | nothing | `undefined`, or the `empty` option |
+
+`field.text` keeps the typed text while the field still holds the value that
+text wrote, so the caret and the `.` don't jump. Once the input loses focus,
+or something else writes a different value, it shows the number again.
+
+## Optional fields
+
+An optional field such as `nickname?: string` starts out `undefined`.
+`inputProps` shows `undefined` as an empty input, and a checkbox shows it
+unticked. Type the form with `define<T>()` to have optional keys, since
+`defaultValues` can't leave a key out and still name it:
+
+```ts
+interface Profile {
+  name: string;
+  nickname?: string;
+}
+
+const profile = forms.define<Profile>({ defaultValues: { name: "" } });
+```
+
+## Components that take a field
+
+The child of `form.Field` can hand the field to your own component. Type its
+prop as `FieldApi<T>`, where `T` is the value type it edits:
+
+```tsx framework=react
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
+
+function TextInput({ field, label }: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {label}
+      <input {...inputProps(field)} />
+    </label>
+  );
+}
+
+<form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>;
+```
+
+```tsx framework=solid
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
+
+function TextInput(props: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...inputProps(props.field)} />
+    </label>
+  );
+}
+
+<form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>;
+```
+
+<Only framework="solid">
+
+Read the field through `props.field`. Destructuring it reads each member once
+and the component stops updating.
+
+</Only>
+
+To skip the `form.Field` wrapper and get `<form.TextInput name="name" />` on
+every form, register the component. See
+[Reusable field components](../composition/field-components).
+
+## Binding an element
+
+Component libraries such as Base UI, Radix and React Aria own their labels,
+ids and aria, and take a value with a change callback. Give them the pieces
+of the field object and leave the rest to them:
+
+| Piece | What it does |
+| --- | --- |
+| `text` | The text to show: number text the user is typing, else the display text a plugin such as a mask gives, else the value. |
+| `setText(text, from?)` | Writes typed text. With a mask, it also puts the formatted text in the element and places the caret. `from` is the element or an event whose `target` is the element. Without it, the focused element `ref` recorded is used. |
+| `setNumberText(text, empty?)` | Writes text typed in a number field. `-` writes nothing yet, `12.` writes `12`, and empty text writes `empty`. |
+| `handleBlur` | Marks the field touched, runs blur validation, and drops typed number text. |
+| `ref` | Records the element, so an invalid submit can focus it. |
+
+Checkboxes, switches, selects and radio groups hold a value, not text, so
+bind `value` and `setValue`.
+
+<Only framework="react">
+
+The demo binds Base UI's `Field`, `Input` and `Checkbox`. Type `1.` in Boxes,
+submit it empty, and clear it.
+
+</Only>
+
+<Only framework="solid">
+
+The demo binds plain elements the same way a primitive library takes a
+field. Type `1.` in Boxes, submit it empty, and clear it.
+
+</Only>
+
+<Demo name="fields/primitives" />
+
+```tsx framework=react
+const { ref } = field;
+
+<Input
+  ref={ref}
+  value={field.text}
+  onValueChange={(text, details) => field.setText(text, details.event)}
+  onBlur={field.handleBlur}
+/>
+
+<Checkbox.Root ref={ref} checked={field.value} onCheckedChange={(checked) => field.setValue(checked)} />
+```
+
+<Only framework="react">
+
+Take `ref` out of the field before passing it. React Compiler's lint treats
+an object whose member is passed as `ref` as a ref, and flags every other
+read of `field` during render.
+
+</Only>
+
+```tsx framework=solid
+<input
+  ref={field.ref}
+  value={field.text}
+  onInput={(event) => field.setText(event.currentTarget.value, event)}
+  onBlur={field.handleBlur}
+/>
+
+<input type="checkbox" ref={field.ref} checked={field.value} onChange={(event) => field.setValue(event.currentTarget.checked)} />
+```
+
+A primitive bound this way shows a reset or a value `persist` restored, since
+it reads `text` or `value` on every change. A primitive that keeps its own
+text, such as Base UI's `NumberField`, needs `value` and its own change
+callback instead of `text`.
+
+<Only framework="react">
+
+A browser can fill inputs back in from before a reload, after the server
+markup arrives and before React hydrates. `ref` puts back what React
+rendered in a native input, textarea or select, so the input shows what the
+form holds. A primitive whose state lives in React, such as a Base UI
+checkbox, shows the form's value from its props.
+
+</Only>
+
+<Only framework="solid">
+
+A browser can fill inputs back in from before a reload, after the server
+markup arrives and before Solid hydrates. `ref` writes the field's state
+into a native input, textarea or select when they differ, so the input shows
+what the form holds.
+
+</Only>
+
+## Ids
+
+`field.id` is the form's id followed by the field's path. It stays the same
+for the life of the field, including when an array row moves, so it works as
+a DOM id and as a list key. The input gets it as `id`, so a
+`<label htmlFor={field.id}>` points at the input.
+
+<Only framework="react">
+
+The form's id comes from `useId`, so it matches between the server and the
+browser. React 16 and 17 have no `useId`: if you render on the server with
+them, pass `id` to `useForm`. See [`id:server`](/errors#react:id:server).
+
+</Only>
+
+`field.errorId` is the id for the element that lists the field's errors.
+`inputProps(field)` points `aria-describedby` at it while errors show, so
+screen readers read them with the input. A primitive library that renders
+its own error element points at that one instead.

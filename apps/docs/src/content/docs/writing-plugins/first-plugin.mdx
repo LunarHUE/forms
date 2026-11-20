@@ -1,0 +1,105 @@
+---
+title: Your first plugin
+description: definePlugin, setup hooks, and how a plugin writes to the form.
+section: writing-plugins
+order: 1
+navTitle: First plugin
+---
+
+When no plugin does what your forms need, write one. Say pasted text keeps
+arriving with doubled spaces. A plugin can collapse them in every string
+field, on every form that installs it. Type two spaces in a row below.
+
+<Demo name="first-plugin/note" />
+
+## definePlugin
+
+Make a plugin with `definePlugin`, from `@lunarhue/forms-core/plugins` or the
+same entry under your adapter. Wrap it in a function so each `createForms`
+call gets its own:
+
+```ts
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+
+export const collapseSpaces = () =>
+  definePlugin({
+    name: "collapseSpaces",
+    setup: () => ({
+      beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
+    }),
+  });
+
+const forms = createForms({ plugins: [collapseSpaces()] });
+```
+
+`setup` runs once per store and returns hooks that see the whole form. Here
+`beforeWrite` gets every value write and returns the value to store. A
+plugin can also have an `attach`, which runs once for each field a
+[part](./parts) of it is put on and returns hooks for that field. A plugin
+can have either or both.
+
+## Setup
+
+Setup runs when the store is made, before anything reads it, on the server
+and on the client. What it writes (values, flags and meta) is part of the
+store's starting state:
+
+- The server snapshot shows it, so the server HTML and the first client
+  render agree, and hydrating renders once. This is how [`rules`](../plugins/rules) puts
+  `disabled` and `hidden` in the server HTML.
+- It makes no write records, so no plugin's `onWrite` sees it and no
+  `deferred` or `idle` delivery is scheduled. A store that is made and never
+  written to, as on the server, starts no timer.
+- It doesn't move the baseline. A value written in setup is dirty against the
+  defaults. To start from a value without making the form dirty, use
+  [`initial`](./submit#starting-values).
+
+So setup must give the same result on the server and the client. Anything
+that reads the browser or the environment, such as storage, goes in
+`onActive`, which runs when the store gets its first listener. The server
+never listens, so it never runs there. [`persist`](../plugins/persist) restores in
+`onActive`.
+
+## Writes
+
+`beforeWrite` runs before each value write, in plugin order, and returns the
+value to write or `refuse` to stop it. A write of an object comes through
+once, at the object's path. Hooks from `setup` see it there. Hooks from
+`attach` get it walked down to their path, so `mask` cleans a phone field
+when a reset writes the whole form.
+
+A row that `push` or `insert` adds comes through as a write at the row's path,
+with `before` undefined. The row is already in the array by then, since the
+insert makes its key. Return a replacement row, or `refuse` to take the row
+out again. A form with no `beforeWrite` plugin skips all of this.
+
+Writes that aren't user edits rerun the validators that already run on the
+paths they change. A plugin that writes many paths in one `ctx.write` reruns
+each validator once, after the last write. A form validator over those paths
+runs once, and an async one isn't restarted.
+
+A plugin's own writes go through `ctx.write`, which runs after every plugin
+in the round has run. Their records have `cause: { plugin: name }`. A plugin that moves the
+baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pass
+`"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
+plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
+write to every plugin with its cause, and each plugin decides what to do with
+it. `mask`, for one, skips rebases.
+
+## Writes after an `await`
+
+Code after an `await` runs once the hook has returned, so the host can't tell
+its writes from the user's. A write made straight to the store there counts as
+a user edit: the field is marked edited and `history` makes an undo step from
+it. Write through `ctx.write`, and pass `edited: false` when the value isn't
+the user's:
+
+```ts
+async onSubmit() {
+  const token = await fetchToken();
+  // Wrong: a user edit, with an undo step.
+  ctx.store.root.at("token").setValue(token);
+  // Right: a plugin write, not marked edited.
+  ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
+}
+```

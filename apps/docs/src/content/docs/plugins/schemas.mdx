@@ -1,16 +1,20 @@
 ---
 title: Schemas
-description: Define a form from a Zod or Valibot schema, with its types and starting values.
+description: Plugins that let the form take more from your schema library, starting with default values.
 section: plugins
-order: 1
+order: 3
 ---
 
 import Install from "@/components/mdx/Install.astro";
 
-Validation is part of every form, and [Validation](../concepts/validation)
-covers it. A schema plugin adapts one schema library, so a definition can take
-`schema` from it. The schema checks the form and types it, and the plugin
-works out the form's starting values from it.
+A form already [validates with any schema](../basics/schema-validation), but
+core only sees what Standard Schema exposes: a validate function and types.
+Everything else the schema says stays inside it, so you write the shape a
+second time as `defaultValues`. A schema plugin knows its library and reads
+the schema itself. Today it gives the form its starting values. The demo has
+no `defaultValues` at all.
+
+<Demo name="schemas/sign-up" />
 
 ## Zod and Valibot
 
@@ -29,15 +33,14 @@ const forms = createForms({ plugins: [zod()] });
 
 const signUp = forms.define({
   schema: z.object({
-    username: z.string().min(3, "Use at least 3 characters."),
-    email: z.email("Enter a valid email."),
+    name: z.string().min(1, "Enter your name."),
+    age: z.number("Enter your age.").int().min(18, "You must be 18 or over."),
+    plan: z.enum(["free", "pro"]).default("free"),
+    newsletter: z.boolean(),
   }),
   onSubmit: (value) => value,
 });
 ```
-
-A Zod schema on a form with no `zod()` is a type error, and the message names
-`zod()`. The same goes for Valibot.
 
 ## Starting values
 
@@ -46,69 +49,24 @@ false, arrays empty, and a declared `.default()` wins. A number or an enum has
 no empty value, so it starts `undefined`. `defaultValues` is optional and
 overrides any part of what the schema gives.
 
-## Another library
+A schema from a library no installed plugin takes still validates. It just
+needs complete `defaultValues`, as in Basics.
 
-`definePlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin for
-any [Standard Schema](https://standardschema.dev) library when you give it a
-`name` and a `schema` adapter. Validation and types already go through
-Standard Schema, so the adapter only says which schemas it accepts and what
-values they start from. It has:
+## What comes next
 
-- `vendor`: the library's name, matched against `schema["~standard"].vendor`.
-- `defaultValue(schema)`: the value a form starts from when `defaultValues`
-  leaves it out.
-- `itemValue(schema, path)`: the value `push` or `insert` gives a new item of
-  the array at `path` when it gets none.
-
-```ts
-import type { SchemaAdapter } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { defaultOf, itemDefaultOf, type ArkSchema } from "./ark-defaults";
-
-const adapter: SchemaAdapter<ArkSchema> = {
-  vendor: "arktype",
-  defaultValue: (schema) => defaultOf(schema),
-  itemValue: (schema, path) => itemDefaultOf(schema, path),
-};
-
-export const ark = () => definePlugin({ name: "ark", schema: adapter });
-```
-
-With `ark()` in a form's plugins, `defaultValues` becomes optional for an
-`ArkSchema`. Without it, `defaultValues` is required and complete. `zod()` and
-`valibot()` are schema plugins of the same shape.
+The plugin is where more of the schema will reach the form. Constraints such
+as `min`, `max` and `maxLength` are planned, so an input can take its limits
+from the schema instead of repeating them as props.
 
 ## A helper generic over the schema
 
 A helper that takes any schema and returns a definition fails with TS2353
 when its type parameter is the schema type. Make it generic over the schema's
-values instead. [Writing a plugin](writing-a-plugin#ts2353-from-define-in-a-function-generic-over-the-schema)
+values instead. [Writing a plugin](../writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema)
 explains why and has both fixes.
 
-## Where plugins come from
+## Another library
 
-Every plugin goes in a `plugins` list: on `createForms` for every form, on a
-definition for its forms, or on one form.
-
-```tsx framework=react
-const form = useForm(signUp, { plugins: [persist("sign-up")] });
-```
-
-```tsx framework=solid
-const form = createForm(signUp, { plugins: [persist("sign-up")] });
-```
-
-A form's own list is read once, when the form is made, and its plugins run
-after the others.
-
-| Kind        | Needs another library | Import from                                         |
-| ----------- | --------------------- | --------------------------------------------------- |
-| First class | No                    | your adapter, `<adapter>/plugins`                   |
-| Third party | Yes                   | its package, such as `@lunarhue/forms-schema/zod`   |
-| Community   | Up to the author      | the author's package, named `forms-plugin-<name>`   |
-
-First-class plugins live in `@lunarhue/forms-core/plugins`, and each adapter
-re-exports them from its own `plugins` entry. Your bundler keeps only the ones
-you import. `history`, `mask`, `rules`, `persist`, `rebase` and `dirty` are first
-class, and each has a page in this section. To make your own, see
-[Writing a plugin](writing-a-plugin).
+A schema plugin for another Standard Schema library is a plugin with a
+`schema` adapter. See
+[Writing a plugin](../writing-plugins/schema-adapters).

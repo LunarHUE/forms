@@ -1,0 +1,46 @@
+---
+title: Parts on fieldsets
+description: Rules and other parts that travel with a fieldset to every form that uses it.
+section: plugin-composition
+order: 2
+navTitle: Fieldsets
+---
+
+A fieldset can carry parts too. The billing fieldset below brings its own
+rule: untick "Same as shipping" and the billing address appears.
+
+<Demo name="fieldset-parts/billing" />
+
+## Rules on a fieldset
+
+Pass parts after the schema, or after the type argument when there is no
+schema. With a type argument, name the plugins the parts need as the second
+one:
+
+```ts
+const BillingFieldset = forms.fieldset<Billing, "rules">(
+  ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }),
+);
+
+const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
+```
+
+A fieldset's rules get the fieldset's value, not the form's, and name fields
+below it. To write rules apart from the fieldset, name the value type:
+`ruled<Billing>({ ... })`.
+
+## Pinning with at()
+
+A fieldset's parts attach at each field it is used on, the first time its
+scope is read. A rule that matters before that, such as one on a step the
+user hasn't reached, can be pinned on the definition with `at`:
+
+```ts
+const order = forms.define({ defaultValues, onSubmit }, BillingFieldset.at("billing"));
+```
+
+They then attach when the store is made. Reading the scope later doesn't
+attach them twice.
+
+`at` takes a field name, so a typo is a type error. A field type has the same
+method for its parts: see [Parts on field components](./field-parts).

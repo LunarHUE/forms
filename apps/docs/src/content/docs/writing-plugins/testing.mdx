@@ -1,0 +1,155 @@
+---
+title: Testing and publishing
+description: Test a plugin against core and publish it as a package.
+section: writing-plugins
+order: 7
+navTitle: Testing and publishing
+---
+
+## Third party
+
+A plugin that needs another library lives in its own package in this repo,
+with one entry per library. The library is an optional peer dependency, so
+you install only the ones you use. Adapters don't re-export these.
+
+The schema plugins are in `@lunarhue/forms-schema`. They give their library's
+schemas default values. Every form validates on its own, so that is all they
+add. [Schema adapters](./schema-adapters) shows how to make one for another library.
+
+```ts
+import { valibot } from "@lunarhue/forms-schema/valibot";
+import { zod } from "@lunarhue/forms-schema/zod";
+```
+
+The bindings to state libraries are in `@lunarhue/forms-bind`. Each one
+returns `bind` set up for its library.
+
+<Only framework="react">
+
+```ts
+import { zustand } from "@lunarhue/forms-bind/zustand";
+
+// The whole state is the form value.
+const form = useForm(profile, { plugins: [zustand(useProfileStore)] });
+
+// One slice of it.
+zustand(useAppStore, { select: (state) => state.profile, update: (profile) => ({ profile }) });
+```
+
+`zustand` takes the hook `create` returns or a vanilla store. A form write
+merges the value into the state with `setState`, so bind the whole state only
+when the store has no actions. On a form's own `plugins`, the store's type
+must be the form's value type. On `createForms` and on a definition it isn't
+checked. [Zustand](../integrations/zustand) has the full example.
+
+</Only>
+
+<Only framework="solid">
+
+`signal` binds a Solid 2 signal. Pass the getter and setter `createSignal`
+returns:
+
+```ts
+import { signal } from "@lunarhue/forms-bind/solid";
+
+const [settings, setSettings] = createSignal({ displayName: "Ada", timezone: "Europe/London" });
+const form = createForm(settingsForm, { plugins: [signal(settings, setSettings)] });
+```
+
+A form write sets the signal. A change to the signal reaches the form when
+Solid runs its effects. The binding makes the effect that watches the signal
+in a root of its own when the form gets its first listener, and disposes it
+when the form loses its last, so you write no `createRoot` or `createEffect`.
+On the server no effect runs. On a form's own `plugins`, the signal's type must
+be the form's value type. On `createForms` and on a definition it isn't
+checked. [Solid signals](../integrations/solid-signals) has the full example.
+
+</Only>
+
+`@lunarhue/forms-schema` and `@lunarhue/forms-bind` take
+`@lunarhue/forms-core` as a peer dependency. A plugin runs on the core copy it
+was made with, so the app must have one copy of core. In development, a store
+whose plugins come from two copies logs a warning.
+
+## Community
+
+Anyone can publish a plugin. Name the package `forms-plugin-<name>` and build
+it with `definePlugin` from `@lunarhue/forms-core/plugins`. We may list
+community plugins, but a listing doesn't mean we reviewed the code.
+
+A plugin takes `@lunarhue/forms-core` as a peer dependency and never imports
+an adapter. Every adapter wraps the same core store, so a plugin written
+against core works under React, Solid and any adapter to come. One that
+imports `@lunarhue/forms-react` only works in React apps.
+
+```json
+{
+  "name": "forms-plugin-trim",
+  "peerDependencies": { "@lunarhue/forms-core": "^1.0.0" },
+  "devDependencies": { "@lunarhue/forms-core": "^1.0.0" }
+}
+```
+
+The dev dependency gives your own tests a copy of core.
+
+## Testing a plugin
+
+Test against core too, with `testStore` from
+`@lunarhue/forms-core/plugins/testing`. It makes a store from a form
+definition with your plugin in its `plugins`, records what each timing
+delivers, and collects what your hooks throw. It imports no test runner, so it
+works with Vitest, Jest, `node:test` or Bun's runner. Its entry is separate
+from the others, so it never ends up in an app bundle.
+
+```ts
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { testStore } from "@lunarhue/forms-core/plugins/testing";
+import { expect, it } from "vitest";
+
+// Trims the ends of every string written at `fields`.
+const trim = (...fields: string[]) =>
+  definePlugin({
+    name: "trim",
+    setup: () => ({
+      beforeWrite: (write) =>
+        typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value,
+    }),
+  });
+
+it("trims the fields it names", () => {
+  const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
+  store.root.at("name").setValue("  Ada ");
+  store.root.at("note").setValue(" hi ");
+  expect(store.root.peek().value).toEqual({ name: "Ada", note: " hi " });
+  expect(records.sync[0]).toMatchObject({ path: ["name"], after: "Ada", cause: "user" });
+  expect(errors).toEqual([]);
+});
+```
+
+`testStore` takes what `define` takes (`defaultValues` or a `schema`,
+`validate`, `onSubmit` and the rest) with the plugins under test in `plugins`.
+Put `dirty()` or a schema plugin there too when the test needs them.
+Validators work without one. It returns:
+
+- `store`: the store, typed as an app's would be, so `store.plugins.<name>`
+  has your plugin's API. Drive it as an app would. `store.root.at("name")`
+  writes, `store.submit()` runs `onSubmit` and `onSubmitted`, and
+  `store.reset()` or a field's `reset()` runs `onReset`.
+- `records`: the write records each timing delivered, as `records.sync`,
+  `records.deferred` and `records.idle`. Three recording plugins run after
+  yours to fill them. Empty one with `records.sync.length = 0`.
+- `errors`: what plugin hooks threw, as `{ plugin, error }`. Nothing is
+  rethrown, so end a test with `expect(errors).toEqual([])`.
+- `flush()`: delivers the waiting `deferred` and `idle` records now, with no
+  timers, real or fake. A `deferred` delivery also comes on its own after
+  `await Promise.resolve()`, as it does in an app.
+- `listen()`: gives the store a listener, as a mounted component does, so
+  `onActive` runs. Call the function it returns to remove the listener and
+  run the cleanup.
+- `server()`: the server snapshots, as `{ form, fields }`, with `fields` keyed
+  by each field's dotted name and the root under `""`. Setup must give the
+  same result on the server and the client, so check it with
+  `expect(testStore(config).server()).toEqual(testStore(config).server())`.
+
+`testStore` runs no framework. To see your plugin in a rendered form, test it
+there as well.

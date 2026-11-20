@@ -9,11 +9,12 @@ The core holds values, arrays, errors and submit state, and knows nothing about 
 
 Validation is built in. Undo, input masks, schema libraries and the rest are plugins, all imported from one `plugins` entry. Your bundle carries only the ones you import.
 
-Field names are typed. Define a form from a schema and every `name` you write is checked against it:
+Field names are typed. The form's value type comes from its starting values,
+and every `name` you write is checked against it:
 
 ```tsx framework=react
-const signUp = forms.define({
-  schema: z.object({ name: z.string(), email: z.email() }),
+const signUp = createForms().define({
+  defaultValues: { name: "", email: "" },
   onSubmit: (value) => save(value),
 });
 
@@ -23,9 +24,9 @@ function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
+          <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
           {/* Type error: "emial" is not a field of signUp. */}
-          <form.TextField name="emial" label="Email" />
+          <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
         </form>
       )}
     </form.Form>
@@ -34,8 +35,8 @@ function SignUpForm() {
 ```
 
 ```tsx framework=solid
-const signUp = forms.define({
-  schema: z.object({ name: z.string(), email: z.email() }),
+const signUp = createForms().define({
+  defaultValues: { name: "", email: "" },
   onSubmit: (value) => save(value),
 });
 
@@ -45,9 +46,9 @@ function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
+          <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
           {/* Type error: "emial" is not a field of signUp. */}
-          <form.TextField name="emial" label="Email" />
+          <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
         </form>
       )}
     </form.Form>
@@ -55,11 +56,9 @@ function SignUpForm() {
 }
 ```
 
-`TextField` is your own component. You register it once and every form gets it.
-
 ## Where to go next
 
 - [Install](install) the adapter.
-- Build [your first form](first-form), step by step.
-- Read about [fields](concepts/fields), [typed paths](concepts/typed-paths) and [validation](concepts/validation).
-- Browse the plugins, starting with [schemas](plugins/schemas).
+- Build [your first form](basics/first-form). The Basics pages after it use no plugins.
+- Make [reusable field components](composition/field-components) once the forms repeat themselves.
+- Add [plugins](plugins/using-plugins) for dirty tracking, undo, masks and the rest.

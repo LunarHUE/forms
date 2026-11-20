@@ -1,0 +1,17 @@
+import { createForms } from "@lunarhue/forms-react";
+import { z } from "zod";
+import { TextField } from "./TextField";
+
+// No plugins: the schemas below validate through Standard Schema.
+export const forms = createForms({ fields: { TextField } });
+
+export const Address = z.object({
+  street: z.string().min(1, "Enter a street."),
+  city: z.string().min(1, "Enter a city."),
+});
+
+export const Order = z.object({
+  name: z.string().min(1, "Enter your name."),
+  shipping: Address,
+  billing: Address,
+});

@@ -1,4 +1,4 @@
-// The snippets in apps/docs/src/content/docs/plugins/writing-a-plugin.mdx
+// The snippets in apps/docs/src/content/docs/writing-plugins/first-plugin.mdx
 // under "TS2353 from `define` in a function generic over the schema". Keep
 // the two in step.
 import { createFormsCore, type FormError, type FormStore, type StandardSchemaV1 } from "@lunarhue/forms-core";

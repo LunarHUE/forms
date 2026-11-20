@@ -1,0 +1,57 @@
+---
+title: Parts
+description: Plugin config for one field type, fieldset or definition, and the attach hooks that use it.
+section: writing-plugins
+order: 2
+---
+
+A plugin that applies everywhere is too blunt for most jobs. A length limit
+belongs on a note field, not on every string in the form. Parts carry a
+plugin's config to one place. Type past 20 characters below.
+
+<Demo name="parts/note" />
+
+A part is a plugin's config for one place. A field type, a fieldset or a
+definition carries it, and the plugin's `attach` gets it with the path it
+landed on. Write a typed constructor for your parts, so each one names the
+plugin and the values it fits:
+
+```ts
+import type { Part, PluginContext } from "@lunarhue/forms-core";
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+
+interface Limit {
+  readonly max: number;
+}
+
+export const limit = () =>
+  definePlugin({
+    name: "limit",
+    attach: (_ctx: PluginContext, { max }: Limit) => ({
+      beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
+    }),
+  });
+
+// Fits string fields only.
+export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit", config: { max } });
+```
+
+An app puts `limit()` in the form's plugins and `limited(...)` where it
+applies: `defineField(NoteInput, limited(140))` for every field a component
+renders, `forms.fieldset(Address, part)` for a fieldset, or
+`forms.define(config, part)` for the form. `Part<"limit", string>` makes two
+things type errors: a part on a field type whose value isn't a string, and a
+form that uses the field type without `limit()` in its plugins.
+
+`ctx.path` is the stable path the part attached at. The hooks `attach`
+returns get only the writes that reach that path. A write above it arrives
+walked down to the path, and a refuse there refuses the whole write. A write
+below it arrives as it is. When the field goes away, as when its array item
+is removed, its hooks go too.
+
+A field type's parts attach the first time it renders a field. A fieldset's
+attach the first time its scope is read, and a definition's when the store
+is made. Before the store has listeners, `attach` runs at once and what it
+writes is part of the starting state, as in setup. After that it runs on a
+microtask, so its writes don't land while a framework is rendering. Either
+way its writes make no records.

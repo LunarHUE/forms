@@ -2,8 +2,12 @@
 title: Masks
 description: Clean what a field stores, and choose what its input shows.
 section: plugins
-order: 3
+order: 8
 ---
+
+A phone number should be stored as digits but read as `(555) 123-4567`.
+`mask()` cleans what a field stores and chooses what its input shows. Type a
+phone number, then type in the middle of it.
 
 <Demo name="masks/contact" />
 
@@ -26,6 +30,10 @@ type error. So is a form that renders `PhoneField` without `mask()` in its
 plugins: the error reads `Add mask() to this form's plugins: PhoneField uses
 it`.
 
+A field type's parts attach the first time it renders a field. To attach
+one earlier, pin it on the definition. See
+[Parts on field components](../plugin-composition/field-parts).
+
 ## Display text
 
 A cleaner changes what the store holds, not what the input shows. Give the
@@ -39,21 +47,15 @@ the server and the browser both call it. Text inputs and textareas show the
 display text, on the server too, so the page hydrates with it. Number,
 checkbox, radio and select inputs ignore it.
 
+Everything except the input reads the stored value: `field.value`, the
+schema, `onSubmit`, `dirty`, history and persistence. The display text lives
+only in `field.text`, which `inputProps(field)` uses too. An input bound to
+`field.value` instead shows the stored value. To keep the caret in place,
+write with `field.setText(text, event)`. See
+[Binding an element](../basics/fields#binding-an-element).
+
 A plugin of your own can give a field display text too. See
-[Display text](../concepts/display-text).
-
-## Fields that haven't rendered
-
-A field type's parts attach the first time it renders a field, and the
-field's value is cleaned then. A value that matters before that, such as a
-field on a step the user hasn't reached, can be pinned on the definition:
-
-```ts
-const contact = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
-```
-
-The mask then attaches when the store is made. Rendering the field later
-doesn't attach it twice.
+[Writing a plugin](../writing-plugins/meta#display-text-from-a-plugin).
 
 ## Caret
 

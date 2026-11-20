@@ -270,7 +270,7 @@ adapter, so it works under React and Solid alike. If you publish one, call it
 `forms-plugin-<name>`.
 
 The full rules are in
-[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin), and
+[Writing a plugin](https://forms.lunarhue.dev/react/writing-plugins/first-plugin), and
 every error code is listed on [the errors page](https://forms.lunarhue.dev/errors).
 
 ## Contributing

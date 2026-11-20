@@ -2,8 +2,13 @@
 title: Dirty
 description: Know which fields the user changed, and get clean again after a save.
 section: plugins
-order: 7
+order: 2
 ---
+
+Which fields did the user change? A Save button that stays disabled until
+something changed, a "you have unsaved changes" prompt and a PATCH that sends
+only the changed fields all need that answer. `dirty()` gives it. Change a
+field, then change it back.
 
 <Demo name="dirty/profile" />
 
@@ -35,9 +40,8 @@ In development `changes()` throws
 [`dirty:missing`](/errors#core:dirty:missing). In production it returns an
 empty list.
 
-A component that reads `dirty` from a field it is given says so in its type,
-as `FieldApi<string, FormError, "dirty">`. It then fits only forms with
-`dirty()`.
+A component that reads `dirty` from a field it is given says so in its type.
+See [Components that need a plugin](../plugin-composition/components).
 
 Core keeps the baseline either way, so a reset still goes back to it, and
 `rebase` and `bind` still move it. [`rebase`](./rebase) then compares values

@@ -1,0 +1,86 @@
+---
+title: Meta and display text
+description: Give fields and the form state of your own, and change what an input shows.
+section: writing-plugins
+order: 3
+---
+
+`ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field or
+on the form. Annotate the parameter of `setup` or `attach` as `PluginContext<M, F>` to type
+them, and read them back with the plugin's `meta` and `formMeta` readers.
+
+A plugin with meta gives its starting value as `initialMeta` for fields or
+`initialFormMeta` for the form. Leaving it out is a type error. The reader
+returns it until the plugin sets its own, so a reader never returns undefined
+unless `undefined` is part of the meta type. The reader works it out from the
+snapshot alone, so the server and the first client render read the same value.
+`history` starts from `{ canUndo: false, canRedo: false }`:
+
+```ts
+definePlugin({
+  name: "history",
+  initialFormMeta: { canUndo: false, canRedo: false },
+  setup(ctx: PluginContext<never, HistoryMeta>) {
+    // ...
+  },
+});
+```
+
+Every field shares the one `initialMeta` value. Freeze it and keep it in one
+place, so a selector that returns it gets the same object each time. `rules`
+starts every field as shown:
+
+```ts
+const shown: RulesMeta = Object.freeze({ hidden: false });
+
+definePlugin({
+  name: "rules",
+  initialMeta: shown,
+  setup(ctx: PluginContext<RulesMeta>) {
+    // ...
+  },
+});
+```
+
+Meta with no sensible start says so in its type, as `M | undefined` with
+`initialMeta: undefined`.
+
+`definePlugin` returns a `Plugin<A, N, M, F>`: the API, the name, the field
+meta and the form meta. `history()` is a
+`Plugin<HistoryApi, "history", never, HistoryMeta>`.
+
+## Display text from a plugin
+
+A plugin can change what a field's text inputs show, as [`mask`](../plugins/masks) does.
+Return these hooks from `attach`:
+
+- `display(value)`: the text to show for the stored value.
+- `edit(input, value, event)`, optional: the adapter calls it after each edit
+  in the input, once the typed text went to the store. `input` still holds the
+  typed text and its caret, and `value` is the field's value now. Put the
+  display text in `input` and place the caret.
+
+When several parts on one field give a `display`, the first in hook order
+wins. A display from a part that attaches before the store has listeners is
+in the server HTML.
+
+For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins`, or
+the same path under your adapter. It takes the input, the text to show, a
+cleaner and the input event, and keeps the caret the way `mask` does. Pass the
+cleaner your `beforeWrite` runs, so the caret counts the characters the store
+keeps:
+
+```ts
+import { definePlugin, replaceText } from "@lunarhue/forms-core/plugins";
+
+const text = (value: unknown) => formatCard(String(value ?? ""));
+
+definePlugin({
+  name: "card",
+  attach: () => ({
+    beforeWrite: (write) => cleanCard(String(write.value ?? "")),
+    display: text,
+    edit: (input, value, event) => replaceText(input, text(value), cleanCard, event),
+  }),
+});
+```

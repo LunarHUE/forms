@@ -57,3 +57,9 @@ test.describe("phone", () => {
     await expect(list).toBeHidden();
   });
 });
+
+test("a moved page's old URL redirects to its new one", async ({ page }) => {
+  await page.goto("/solid/concepts/fields");
+  await page.waitForURL("**/solid/basics/fields");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});

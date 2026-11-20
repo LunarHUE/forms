@@ -2,8 +2,11 @@
 title: History
 description: Undo and redo the user's edits.
 section: plugins
-order: 2
+order: 6
 ---
+
+A long text or a settings page needs undo. `history()` records the user's
+edits so an Undo button can step back through them. Type, then undo.
 
 <Demo name="history/note" />
 
@@ -58,7 +61,7 @@ microtask later, when `history` records the step.
 Only user writes make a step. A plugin's writes, resets and rebases don't, and
 a reset clears both stacks. A plugin that writes to the store directly instead
 of through `ctx.write` makes a user write, so that does make a step. See
-[Writing a plugin](./writing-a-plugin).
+[Writing a plugin](../writing-plugins/first-plugin).
 
 Undo and redo go through the fields, so validation runs on the values they
 write.

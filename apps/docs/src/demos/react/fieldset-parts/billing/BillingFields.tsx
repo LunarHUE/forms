@@ -1,0 +1,31 @@
+import { type HandleOf, inputProps } from "@lunarhue/forms-react";
+import { rules } from "@lunarhue/forms-react/plugins";
+import { BillingFieldset } from "./forms";
+
+export function BillingFields({ field }: { field: HandleOf<typeof BillingFieldset> }) {
+  const scope = BillingFieldset.scope(field);
+  return (
+    <fieldset>
+      <legend>Billing</legend>
+      <scope.Field name="sameAsShipping">
+        {(same) => (
+          <label>
+            <input {...inputProps(same, { kind: "checkbox" })} />
+            Same as shipping
+          </label>
+        )}
+      </scope.Field>
+      {/* The rule hides `address`. The component decides what hidden means. */}
+      <scope.Field name="address">
+        {(address) =>
+          rules.meta(address).hidden ? null : (
+            <>
+              <scope.TextField name="address.street" label="Billing street" />
+              <scope.TextField name="address.city" label="Billing city" />
+            </>
+          )
+        }
+      </scope.Field>
+    </fieldset>
+  );
+}

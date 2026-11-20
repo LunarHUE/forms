@@ -2,8 +2,12 @@
 title: Rules
 description: Disable or hide a field based on the rest of the form.
 section: plugins
-order: 4
+order: 9
 ---
+
+Some fields depend on others: no street when the order is picked up, no
+gift message unless it is a gift. `rules()` sets fields disabled or hidden
+from the rest of the value, in the same render as the change.
 
 <Demo name="rules/delivery" />
 
@@ -38,19 +42,8 @@ array a rule, or the object around it.
 
 ## Rules on a fieldset
 
-A fieldset can carry rules of its own. Its rules get the fieldset's value,
-not the form's, and name fields below it:
-
-```ts
-const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
-```
-
-They attach at each field the fieldset is used on, the first time its scope
-is read. A rule that matters before that can be pinned on the definition, as
-`forms.define(config, Billing.at("billing"))`.
-
-To write rules apart from the definition, name the value type:
-`ruled<Order>({ ... })`.
+A fieldset can carry its own rules. See
+[Parts on fieldsets](../plugin-composition/fieldset-parts).
 
 ## Disabled and hidden
 

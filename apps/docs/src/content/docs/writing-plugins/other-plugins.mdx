@@ -1,0 +1,43 @@
+---
+title: Working with other plugins
+description: Require another plugin, run after one, and stay out of each other's way.
+section: writing-plugins
+order: 4
+navTitle: Other plugins
+---
+
+## Plugins a plugin requires
+
+A plugin that calls another one's API names it in `requires`, as a factory
+or a plugin:
+
+```ts
+const autosave = () =>
+  definePlugin({
+    name: "autosave",
+    requires: () => [dirty],
+    setup(ctx) {
+      // ctx.plugins.dirty is typed.
+      return {};
+    },
+  });
+```
+
+`requires` doesn't install anything. A form whose plugins list lacks one is a
+type error, `Add dirty() to the plugins: autosave requires it`, and without
+types the store throws [`plugins:missing`](/errors#core:plugins:missing) in
+development. The
+plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
+APIs. To run after a plugin without needing it, name it in `after`.
+
+`ctx.store` is typed with the names in `requires` too. A plugin that adds
+rows with `push` requires `arrays`, and one that reads `dirty` requires
+`dirty`.
+
+## Other plugins
+
+`ctx.installed` lists the store's plugins in the order their hooks run.
+`ctx.attachments(path)` lists the parts attached at a path and above it, in
+hook order, each as `{ name, path }`. A plugin can read them to stay out of
+another's way, such as a formatter that does nothing where a mask is
+attached.

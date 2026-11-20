@@ -1,42 +1,22 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { z } from "zod";
-import { TextField } from "./TextField";
+import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
+import { For, Show } from "solid-js";
+import { TextInput } from "./TextInput";
 
-const forms = createForms({ plugins: [zod()], fields: { TextField } });
-
-const SignUp = z.object({
-  username: z.string().min(3, "Use at least 3 characters."),
-  email: z.email("Enter a valid email."),
-});
-
-// Stands in for a request to your server. "ada" and "grace" are taken.
-function isTaken(name: string, signal: AbortSignal) {
-  return new Promise<boolean>((resolve, reject) => {
-    const timer = setTimeout(() => resolve(["ada", "grace"].includes(name)), 600);
-    signal.addEventListener("abort", () => {
-      clearTimeout(timer);
-      reject(signal.reason);
-    });
-  });
-}
+const forms = createForms();
 
 const signUp = forms.define({
-  schema: SignUp,
+  defaultValues: { username: "", password: "", confirm: "", terms: false },
   validate: {
+    // One function per field. Return an error, or undefined when it passes.
     fields: {
-      username: {
-        // A newer run aborts this one's `signal` and drops its result.
-        validate: async (name, { signal }) =>
-          (await isTaken(name, signal))
-            ? { message: "That name is taken." }
-            : undefined,
-        // Waits for a pause in typing. Submit skips the wait.
-        debounce: 400,
-      },
+      username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+      password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
     },
+    // Sees the whole value, so it can compare two fields.
+    form: (value) =>
+      value.confirm === value.password ? undefined : { fields: { confirm: { message: "The passwords don't match." } } },
   },
-  onSubmit: (value) => value,
+  onSubmit: (value) => `Signed up ${value.username}.`,
 });
 
 export default function SignUpForm() {
@@ -45,9 +25,32 @@ export default function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="username" label="Username" />
-          <form.TextField name="email" label="Email" />
+          <form.Field name="username">{(field) => <TextInput field={field} label="Username" />}</form.Field>
+          <form.Field name="password">
+            {(field) => <TextInput field={field} label="Password" type="password" />}
+          </form.Field>
+          <form.Field name="confirm">
+            {(field) => <TextInput field={field} label="Repeat the password" type="password" />}
+          </form.Field>
+          {/* A validator from the component, added while it is mounted. */}
+          <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
+            {(field) => (
+              <div>
+                <label>
+                  <input {...inputProps(field, { kind: "checkbox" })} />I accept the terms
+                </label>
+                <ul id={field.errorId}>
+                  <For each={field.shownErrors}>{(error) => <li>{error.message}</li>}</For>
+                </ul>
+              </div>
+            )}
+          </form.Field>
           <button type="submit">Sign up</button>
+          <p role="status">
+            <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+              {(submission) => submission().result}
+            </Show>
+          </p>
         </form>
       )}
     </form.Form>

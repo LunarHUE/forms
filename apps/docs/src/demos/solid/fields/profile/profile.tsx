@@ -1,23 +1,19 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { z } from "zod";
-import { NumberField } from "./NumberField";
-import { TextField } from "./TextField";
+import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
 
-// Registered once, available on every form as `form.TextField` and
-// `form.NumberField`.
-const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField, NumberField },
-});
+const forms = createForms();
 
-const Profile = z.object({
-  name: z.string().min(1, "Enter your name."),
-  age: z.number("Enter your age.").int().min(18, "You must be 18 or over."),
-});
+interface Profile {
+  name: string;
+  // Optional: starts out undefined, and an empty input shows it.
+  nickname?: string;
+  // A number input holds a number, or undefined while it is empty.
+  age: number | undefined;
+  plan: "free" | "pro";
+  newsletter: boolean;
+}
 
-const profile = forms.define({
-  schema: Profile,
+const profile = forms.define<Profile>({
+  defaultValues: { name: "", age: undefined, plan: "free", newsletter: false },
   onSubmit: (value) => value,
 });
 
@@ -27,8 +23,50 @@ export default function ProfileForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.NumberField name="age" label="Age" />
+          <form.Field name="name">
+            {(field) => (
+              <label>
+                Name
+                <input {...inputProps(field)} />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="nickname">
+            {(field) => (
+              <label>
+                Nickname (optional)
+                <input {...inputProps(field)} />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="age">
+            {(field) => (
+              <label>
+                Age
+                <input {...inputProps(field, { kind: "number" })} />
+                <output>Stored: {JSON.stringify(field.value) ?? "undefined"}</output>
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="plan">
+            {(field) => (
+              <label>
+                Plan
+                <select {...inputProps(field, { kind: "select" })}>
+                  <option value="free">Free</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="newsletter">
+            {(field) => (
+              <label>
+                <input {...inputProps(field, { kind: "checkbox" })} />
+                Send me the newsletter
+              </label>
+            )}
+          </form.Field>
           <button type="submit">Save</button>
         </form>
       )}

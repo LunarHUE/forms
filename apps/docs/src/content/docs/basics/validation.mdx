@@ -1,0 +1,150 @@
+---
+title: Validation
+description: Check fields with your own functions, and choose when errors show.
+section: basics
+order: 2
+---
+
+Every form can validate, with no plugin installed. Submit the demo empty, then
+type two passwords that differ.
+
+<Demo name="validation/sign-up" />
+
+## Field validators
+
+`validate.fields` is shaped like the value. Give a field a function that
+returns an error, or `undefined` when the value passes:
+
+```ts
+const signUp = forms.define({
+  defaultValues: { username: "", password: "", confirm: "", terms: false },
+  validate: {
+    fields: {
+      username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+      password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
+    },
+  },
+});
+```
+
+The function gets the field's value, typed. A Standard Schema for that one
+field works in place of the function. See
+[Validating with a schema](./schema-validation).
+
+## Form validators
+
+`validate.form` gets the whole value, so it can compare fields. It returns
+errors keyed by dotted field name, and each one lands on its field:
+
+```ts
+validate: {
+  form: (value) =>
+    value.confirm === value.password
+      ? undefined
+      : { fields: { confirm: { message: "The passwords don't match." } } },
+},
+```
+
+`form` in the same object holds errors for the form as a whole. At an array, a
+one-element tuple in `validate.fields` applies its entry to every item:
+`{ lines: [{ sku: checkSku }] }`.
+
+## Validators from a component
+
+The `validate` prop on `form.Field` adds a validator while the field is
+mounted, and removes it and its errors on unmount:
+
+```tsx
+<form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
+  {(field) => <input {...inputProps(field, { kind: "checkbox" })} />}
+</form.Field>
+```
+
+<Only framework="react">
+
+Inside a component, `useValidator(handle, validator)` does the same. Pass
+`undefined`, `null` or `false` to add none, so the validator can be
+conditional without breaking the rules of hooks:
+
+```ts
+useValidator(form.root.at("terms"), requireTerms ? mustAccept : undefined);
+```
+
+</Only>
+
+<Only framework="solid">
+
+Inside a component, `createValidator(handle, validator)` does the same, for
+the life of the current owner. To make it conditional, create it under
+`<Show>`:
+
+```ts
+createValidator(form.root.at("terms"), mustAccept);
+```
+
+</Only>
+
+A field that isn't rendered isn't checked by its component validators, so a
+submit can pass without them. Rules that must always hold belong in the
+definition. `handle.registerValidator(validator)` adds one from anywhere and
+returns the function that removes it.
+
+## When validators run
+
+A validator first runs on the field's first blur. After that it runs on every
+input. To change the first run, set `validate` on `createForms` to `"input"`,
+`"blur"` or `"submit"` for every form, `validate.on` in a definition for one
+form, or `on` on one validator:
+
+```ts
+username: { validate: checkName, on: "input" },
+```
+
+A submit runs every validator and stops if any field has an error.
+`field.validate()` runs one field's validators now and resolves true when it
+is valid. `form.store.validate()` runs them all.
+
+## Showing errors
+
+`field.errors` has every error on the field. `field.shownErrors` has the ones
+the user should see now, and `aria-invalid` follows it. Render
+`shownErrors`.
+
+The `show` setting decides. Set it on `createForms` for every form or on
+`define` for one:
+
+| `show` | Errors show |
+| --- | --- |
+| `"touched-or-submitted"` | after the field is blurred or the form submitted (the default) |
+| `"touched"` | after the field is blurred |
+| `"submitted"` | after the first submit |
+| `"always"` | at once |
+
+A function works too. It gets `touched`, `edited`, `dirty` and `submitCount`
+and returns true to show.
+
+## Errors you set
+
+`field.invalid` is true when the field has any error, including ones you set
+with `setErrors`, such as a server's answer. Those sit in `field.userErrors`
+too. They don't block a submit, since the form's `valid` counts validation
+errors only, and the next edit clears them. [Submit](./submit) shows how to
+put server errors on fields.
+
+`errors` lists validation errors in a fixed order: the schema's, then the form
+validator's, then field validators' in the order they were added. To tell them
+apart, pass a handle to `errorsByKind`. It returns `{ schema, form, field }`
+and leaves out what `setErrors` set. It reads once, so call it again when the
+field's `errors` change:
+
+```ts framework=react
+import { errorsByKind } from "@lunarhue/forms-react";
+
+const { schema, form, field } = errorsByKind(store.root.at("email"));
+```
+
+```ts framework=solid
+import { errorsByKind } from "@lunarhue/forms-solid";
+
+const { schema, form, field } = errorsByKind(store.root.at("email"));
+```

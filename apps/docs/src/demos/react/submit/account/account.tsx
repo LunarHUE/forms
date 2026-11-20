@@ -1,21 +1,17 @@
 import { createForms, useForm, useFormContext, useFormState } from "@lunarhue/forms-react";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { z } from "zod";
 import { saveAccount } from "./server";
-import { TextField } from "./TextField";
+import { TextInput } from "./TextInput";
 
-const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField },
-});
-
-const Account = z.object({
-  name: z.string().min(1, "Enter your name."),
-  email: z.email("Enter a valid email."),
-});
+const forms = createForms();
 
 const account = forms.define({
-  schema: Account,
+  defaultValues: { name: "", email: "" },
+  validate: {
+    fields: {
+      name: (name) => (name === "" ? { message: "Enter your name." } : undefined),
+      email: (email) => (email.includes("@") ? undefined : { message: "Enter a valid email." }),
+    },
+  },
   // Runs only once the value is valid. What it returns is the result.
   onSubmit: async (value, { store }) => {
     const response = await saveAccount(value);
@@ -45,8 +41,8 @@ export default function AccountForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
+          <form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>
+          <form.Field name="email">{(field) => <TextInput field={field} label="Email" type="email" />}</form.Field>
           <SubmitButton />
           <form.State select={(state) => state.submission}>
             {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
