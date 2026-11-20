@@ -18,7 +18,12 @@ A component that reads a plugin's member from its field says so in its type.
 The third type argument of `FieldApi` names the plugins it needs:
 
 ```tsx framework=react
-function TextField({ field, label }: { field: FieldApi<string, FormError, "dirty">; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string, FormError, "dirty">;
+  label: string;
+}
+
+function TextField({ field, label }: TextFieldProps) {
   return (
     <label>
       {field.dirty ? `${label} (changed)` : label}
@@ -29,7 +34,12 @@ function TextField({ field, label }: { field: FieldApi<string, FormError, "dirty
 ```
 
 ```tsx framework=solid
-function TextField(props: { field: FieldApi<string, FormError, "dirty">; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string, FormError, "dirty">;
+  label: string;
+}
+
+function TextField(props: TextFieldProps) {
   return (
     <label>
       {props.field.dirty ? `${props.label} (changed)` : props.label}
@@ -103,8 +113,22 @@ those forms is above.
 
 To take the form as a prop instead, type it `FormOf<typeof forms>`:
 
-```tsx
-function SaveBar(props: { form: FormOf<typeof forms> }) {
+```tsx framework=react
+interface SaveBarProps {
+  form: FormOf<typeof forms>;
+}
+
+function SaveBar({ form }: SaveBarProps) {
+  // ...
+}
+```
+
+```tsx framework=solid
+interface SaveBarProps {
+  form: FormOf<typeof forms>;
+}
+
+function SaveBar(props: SaveBarProps) {
   // ...
 }
 ```
