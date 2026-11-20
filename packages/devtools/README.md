@@ -36,8 +36,8 @@ Installing the plugin also calls `trackElements()` from the adapter, so
 ## The panel
 
 The panel docks in a corner of the page. Its menu moves it to another
-corner, which the browser remembers for the whole site. On a phone it's a
-button that opens a bottom sheet.
+corner, which the browser remembers for the whole site. At 640px wide and
+below the panel renders nothing: no dock, no outlines and no inspecting.
 
 - While the panel is on, a dashed outline marks each form on the page, with
   the form's name on a tag above it. Click the tag to select the form. The
