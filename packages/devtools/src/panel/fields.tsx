@@ -125,6 +125,9 @@ const flagClass: Record<Flag, string> = {
   "read-only": `${flagBox} text-soft`,
 };
 
+/** Every flag in the order rows show them, each in its own slot. `dirty` gets a slot only when the form has `dirty()`. */
+const flagOrder: readonly Flag[] = ["invalid", "validating", "dirty", "edited", "touched", "disabled", "read-only"];
+
 /** The flags a field has set, in the order rows show them. `dirty` only counts when the form has `dirty()`. */
 export function flagsOf(snapshot: Snapshot, dirty: boolean): Flag[] {
   const flags: Flag[] = [];
@@ -448,6 +451,7 @@ interface FieldRowProps {
 function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onInspect, onHint }: FieldRowProps): JSX.Element {
   const key = pathKey(row.path);
   const name = row.snapshot.name || row.label;
+  const set = new Set(flagsOf(row.snapshot, dirty));
   return (
     <li
       class="group flex items-center gap-1.5 h-7 pr-3 pl-[calc(12px+var(--depth,0)*16px)] hover:bg-row-hover aria-[current=true]:bg-active aria-[current=true]:shadow-[inset_2px_0_var(--color-brand)]"
@@ -467,10 +471,15 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
         {row.label} <span class="text-muted">{preview(row.snapshot.value)}</span>
       </button>
       {onInspect ? <ShowButton inRow path={row.path} name={name} onInspect={onInspect} /> : null}
-      <span class="flex gap-1">
-        {flagsOf(row.snapshot, dirty).map((flag) => (
-          <FlagIcon key={flag} flag={flag} onHint={(rect) => onHint(rect ? { path: row.path, flag, rect } : null)} />
-        ))}
+      {/* Every flag has a slot of its own, set or not, so nothing on the row moves when a flag comes or goes. */}
+      <span class="flex shrink-0 gap-0.5">
+        {flagOrder.map((flag) =>
+          flag === "dirty" && !dirty ? null : set.has(flag) ? (
+            <FlagIcon key={flag} flag={flag} onHint={(rect) => onHint(rect ? { path: row.path, flag, rect } : null)} />
+          ) : (
+            <span key={flag} class="size-5" />
+          ),
+        )}
       </span>
     </li>
   );
