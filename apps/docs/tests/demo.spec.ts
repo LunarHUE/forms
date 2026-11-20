@@ -30,12 +30,12 @@ for (const framework of frameworks) {
     await phone.pressSequentially("5551234567");
     await expect(phone).toHaveValue("(555) 123-4567");
 
-    await demo.getByRole("tab", { name: "Code" }).click();
-    const files = demo.getByRole("tablist", { name: "Files" }).getByRole("tab");
-    await expect(files).toHaveText(["contact.tsx", "PhoneInput.tsx"]);
-    await files.nth(1).click();
-    await expect(files.nth(1)).toHaveAttribute("aria-selected", "true");
-    await demo.getByRole("tab", { name: "Preview" }).click();
+    const tabs = demo.getByRole("tablist", { name: "Demo" }).getByRole("tab");
+    await expect(tabs).toHaveText(["Preview", "contact.tsx", "PhoneInput.tsx"]);
+    await tabs.nth(2).click();
+    await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true");
+    await expect(demo.getByRole("tabpanel")).toContainText("export function PhoneInput");
+    await tabs.nth(0).click();
     // The preview stays mounted while the code shows.
     await expect(phone).toHaveValue("(555) 123-4567");
 
@@ -62,7 +62,7 @@ for (const framework of frameworks) {
 
   test(`${framework}: the demo code hides the devtools wiring`, async ({ page }) => {
     const demo = await openMasks(page, framework);
-    await demo.getByRole("tab", { name: "Code" }).click();
+    await demo.getByRole("tab", { name: "contact.tsx" }).click();
     const code = demo.getByRole("tabpanel");
     await expect(code).toContainText("createForms({ plugins: [mask()], fields: { PhoneField } })");
     await expect(code).toContainText('id: "contact"');

@@ -3,7 +3,7 @@ import { cn } from "cn";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Hint } from "@/components/ui/tooltip";
 
 import { CodeBlock } from "./CodeBlock";
 import { CopyButton } from "./CopyButton";
@@ -31,14 +31,11 @@ export interface DemoFrameProps {
   children?: ReactNode;
 }
 
-type Mode = "preview" | "code";
-const MODES: { id: Mode; label: string }[] = [
-  { id: "preview", label: "Preview" },
-  { id: "code", label: "Code" },
-];
+/** The first tab. Every other tab is a file, named by its path. */
+const PREVIEW = "preview";
 
 /** Left and right arrows move between tabs, as in any tablist. */
-function arrowKeys<T>(items: readonly T[], current: T, select: (item: T) => void) {
+function arrowKeys(items: readonly string[], current: string, select: (item: string) => void) {
   return (event: KeyboardEvent<HTMLElement>) => {
     const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
     if (!step) return;
@@ -51,15 +48,17 @@ function arrowKeys<T>(items: readonly T[], current: T, select: (item: T) => void
   };
 }
 
+const tabClass =
+  "relative flex shrink-0 items-center px-2 text-[13px] whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground focus-visible:after:bg-ring after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full aria-selected:text-foreground aria-selected:after:bg-foreground";
+
 /**
- * The demo block: a toolbar with Preview and Code tabs, the live demo on a
- * stage, and the demo's files. The preview stays
- * mounted while the code shows, so the form keeps what the reader typed.
+ * The demo block: a tab row with Preview and one tab per file, the live demo
+ * on a stage, and the chosen file's code. The preview stays mounted while a
+ * file shows, so the form keeps what the reader typed.
  */
 export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
-  const [mode, setMode] = useState<Mode>("preview");
-  const [fileName, setFileName] = useState(files[0]?.name ?? "");
-  const file = files.find((candidate) => candidate.name === fileName) ?? files[0];
+  const [tab, setTab] = useState(PREVIEW);
+  const file = files.find((candidate) => candidate.name === tab);
   const stage = useRef<HTMLDivElement>(null);
 
   const reset = () => {
@@ -74,7 +73,7 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
   };
 
   const tabId = (part: string) => `${id}-${part}`.replace(/[^\w-]/g, "-");
-  const fileNames = files.map((candidate) => candidate.name);
+  const tabs = [PREVIEW, ...files.map((candidate) => candidate.name)];
 
   return (
     <div
@@ -82,85 +81,43 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
       data-demo={name}
       className="not-prose my-6 min-w-0 overflow-hidden rounded-lg border bg-background"
     >
-      <div className="flex h-11 items-center gap-3 border-b bg-background pr-2 pl-1.5">
+      <div className="flex h-11 items-stretch gap-2 border-b bg-background pr-2 pl-1">
         <div
           role="tablist"
-          aria-label="View"
-          className="flex h-8 shrink-0 items-center rounded-md border bg-muted p-[3px]"
-          onKeyDown={arrowKeys(
-            MODES.map((item) => item.id),
-            mode,
-            setMode,
-          )}
+          aria-label="Demo"
+          className="flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]"
+          onKeyDown={arrowKeys(tabs, tab, setTab)}
         >
-          {MODES.map((item) => (
+          {tabs.map((item) => (
             <button
-              key={item.id}
+              key={item}
               type="button"
               role="tab"
-              id={tabId(item.id)}
-              aria-selected={mode === item.id}
-              aria-controls={tabId(`${item.id}-panel`)}
-              tabIndex={mode === item.id ? 0 : -1}
-              onClick={() => setMode(item.id)}
-              className={cn(
-                "h-full rounded-[5px] border border-transparent px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
-                mode === item.id && "border-border bg-background text-foreground shadow-xs",
-              )}
+              id={tabId(item)}
+              aria-selected={tab === item}
+              aria-controls={tabId(item === PREVIEW ? "preview-panel" : "code-panel")}
+              tabIndex={tab === item ? 0 : -1}
+              onClick={() => setTab(item)}
+              className={cn(tabClass, item === PREVIEW ? "font-medium" : "font-mono text-xs")}
             >
-              {item.label}
+              {item === PREVIEW ? "Preview" : item}
             </button>
           ))}
         </div>
-        {mode === "code" && (
-          <>
-            <div aria-hidden className="h-5 w-px shrink-0 bg-border" />
-            <div
-              role="tablist"
-              aria-label="Files"
-              className="-mb-px flex h-11 min-w-0 items-stretch gap-4 overflow-x-auto [scrollbar-width:none]"
-              onKeyDown={arrowKeys(fileNames, file?.name ?? "", setFileName)}
-            >
-              {files.map((candidate) => (
-                <button
-                  key={candidate.name}
-                  type="button"
-                  role="tab"
-                  aria-selected={candidate === file}
-                  aria-controls={tabId("code-panel")}
-                  tabIndex={candidate === file ? 0 : -1}
-                  onClick={() => setFileName(candidate.name)}
-                  className={cn(
-                    "shrink-0 border-b-2 border-transparent font-mono text-xs whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground focus-visible:underline",
-                    candidate === file && "border-foreground text-foreground",
-                  )}
-                >
-                  {candidate.name}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
         <div className="ms-auto flex shrink-0 items-center">
-          {mode === "code" && file ? (
+          {file ? (
             <CopyButton text={file.code} label={`Copy ${file.name}`} />
           ) : (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Reset demo"
-                    className="text-muted-foreground hover:text-foreground"
-                    onClick={reset}
-                  />
-                }
+            <Hint label="Reset demo">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={reset}
               >
                 <RotateCcwIcon />
-              </TooltipTrigger>
-              <TooltipContent>Reset</TooltipContent>
-            </Tooltip>
+              </Button>
+            </Hint>
           )}
         </div>
       </div>
@@ -168,8 +125,8 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
       <div
         role="tabpanel"
         id={tabId("preview-panel")}
-        aria-labelledby={tabId("preview")}
-        hidden={mode !== "preview"}
+        aria-labelledby={tabId(PREVIEW)}
+        hidden={file !== undefined}
         className="demo-preview flex min-h-75 items-center justify-center bg-sidebar px-4 py-8 sm:px-10"
       >
         <div ref={stage} className="demo-stage">
@@ -177,8 +134,8 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
         </div>
       </div>
 
-      {mode === "code" && file && (
-        <div role="tabpanel" id={tabId("code-panel")} aria-labelledby={tabId("code")}>
+      {file && (
+        <div role="tabpanel" id={tabId("code-panel")} aria-labelledby={tabId(file.name)}>
           <CodeBlock
             html={file.html}
             lang={file.name.split(".").at(-1)}
