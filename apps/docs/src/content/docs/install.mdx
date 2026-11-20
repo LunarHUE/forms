@@ -47,9 +47,15 @@ Keeps a form in step with a Solid signal.
 
 |                         |                    |
 | ----------------------- | ------------------ |
-| @lunarhue/forms-solid   | Solid 2            |
+| @lunarhue/forms-solid   | Solid 2, or Solid 1.8 and later from `/v1` |
 | @lunarhue/forms-schema  | Zod 4 or Valibot 1 |
 | @lunarhue/forms-bind    | Solid 2            |
+
+On Solid 1, import the adapter from `@lunarhue/forms-solid/v1`. It has the
+same functions and types as the main entry, so a form moves between Solid 1
+and 2 by changing the import. `signal()` from `@lunarhue/forms-bind` needs
+Solid 2. On Solid 1, bind a signal with `bind()` from
+`@lunarhue/forms-solid/plugins`.
 
 </Only>
 
