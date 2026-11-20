@@ -215,6 +215,17 @@
       "name": "@lunarhue/forms-core",
       "version": "0.1.1",
     },
+    "packages/devtools": {
+      "name": "@lunarhue/forms-devtools",
+      "version": "0.1.1",
+      "devDependencies": {
+        "@lunarhue/forms-core": "workspace:^",
+        "jsdom": "catalog:",
+      },
+      "peerDependencies": {
+        "@lunarhue/forms-core": "workspace:^",
+      },
+    },
     "packages/react": {
       "name": "@lunarhue/forms-react",
       "version": "0.1.1",
@@ -330,6 +341,7 @@
       "name": "@lunarhue/forms-scripts",
       "version": "0.0.0",
       "devDependencies": {
+        "@lunarhue/forms-devtools": "workspace:*",
         "@lunarhue/forms-react": "workspace:*",
         "@lunarhue/forms-schema": "workspace:*",
         "@lunarhue/forms-solid": "workspace:*",
@@ -732,6 +744,8 @@
     "@lunarhue/forms-bind": ["@lunarhue/forms-bind@workspace:packages/bind"],
 
     "@lunarhue/forms-core": ["@lunarhue/forms-core@workspace:packages/core"],
+
+    "@lunarhue/forms-devtools": ["@lunarhue/forms-devtools@workspace:packages/devtools"],
 
     "@lunarhue/forms-docs": ["@lunarhue/forms-docs@workspace:apps/docs"],
 
