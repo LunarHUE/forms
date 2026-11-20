@@ -241,12 +241,18 @@
       "version": "0.1.1",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
+        "@types/node": "catalog:",
         "jsdom": "catalog:",
         "preact": "catalog:",
+        "vite": "catalog:",
       },
       "peerDependencies": {
         "@lunarhue/forms-core": "workspace:^",
+        "vite": "^8.0.0",
       },
+      "optionalPeers": [
+        "vite",
+      ],
     },
     "packages/react": {
       "name": "@lunarhue/forms-react",
