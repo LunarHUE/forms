@@ -88,19 +88,19 @@
     "backoffice": {
       "lunarhue": {
         "total": {
-          "min": 365239,
-          "gzip": 112991,
-          "brotli": 98018
+          "min": 365502,
+          "gzip": 113113,
+          "brotli": 98134
         },
         "forms": {
-          "min": 65296,
-          "gzip": 23292,
-          "brotli": 21125
+          "min": 65559,
+          "gzip": 23401,
+          "brotli": 21215
         },
         "app": {
-          "min": 12319,
-          "gzip": 4330,
-          "brotli": 3840
+          "min": 12582,
+          "gzip": 4459,
+          "brotli": 3963
         }
       }
     }

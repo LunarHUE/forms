@@ -112,8 +112,15 @@ const companyForm = forms.define((saved: Company) => ({
   schema: Company,
   defaultValues: saved,
   plugins: [baselineOnSubmit()],
-  onSubmit: async (value) => {
-    await companies.save(value);
+  // A refusal goes on the fields, as the submit docs show. Returning ends
+  // the submit as succeeded, so baselineOnSubmit() marks the refused values
+  // clean: https://github.com/LunarHUE/forms/issues/224
+  onSubmit: async (value, { store }) => {
+    const response = await companies.save(value);
+    if (!response.ok) {
+      store.setErrors({ fields: Object.fromEntries(Object.entries(response.errors).map(([name, message]) => [name, { message }])) });
+      return null;
+    }
     return "Company saved.";
   },
 }));

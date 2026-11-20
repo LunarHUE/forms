@@ -93,7 +93,9 @@ each loaded from the server:
   count only then.
 - Order: a list of lines with a SKU, a quantity and a price, a running
   total, and a gift message that shows once the order is a gift.
-- Company settings: name, phone, tax ID and a registered address.
+- Company settings: name, phone, tax ID and a registered address. The
+  server refuses the tax ID 00-0000000, and its message shows on the field
+  until the user edits it.
 - Invite a teammate: a dialog whose draft survives closing it and reloading
   the page.
 
@@ -115,6 +117,15 @@ is `persist()` on its definition.
 The invite dialog's submit handler calls `form.submit()` and resets the form
 once it succeeds. A reset puts the submission back to idle, so the "sent"
 message lives in React state.
+
+The company form handles the refusal the way the submit docs say: `setErrors`
+in `onSubmit`, then return. That ends the submit as succeeded, so
+`baselineOnSubmit()` takes the refused values as the baseline and the form
+reads clean although nothing was saved. This is
+[#224](https://github.com/LunarHUE/forms/issues/224). The app keeps the
+documented pattern and carries the bug until it is fixed. The spec "leaves a
+refused save unsaved" is marked `test.fail` for our build, so it starts
+failing once the fix lands and the mark can go.
 
 ## Running
 

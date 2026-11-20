@@ -91,8 +91,15 @@ export function editProfileElsewhere(): void {
 
 // Back office
 
-/** A record the server keeps, with a delay on every call and a way for "someone else" to change it. */
-function record<T>(initial: T, elsewhere: (current: T) => T) {
+/** Either saved, or refused with a message for each field the server rejects. */
+export type SaveResponse = { readonly ok: true } | { readonly ok: false; readonly errors: Readonly<Record<string, string>> };
+
+/**
+ * A record the server keeps, with a delay on every call and a way for
+ * "someone else" to change it. `refuse` returns the errors for a value the
+ * server won't store.
+ */
+function record<T>(initial: T, elsewhere: (current: T) => T, refuse?: (value: T) => Readonly<Record<string, string>> | undefined) {
   let stored = initial;
   // Arrow functions, so the app can pass them around unbound.
   return {
@@ -100,9 +107,12 @@ function record<T>(initial: T, elsewhere: (current: T) => T) {
       await wait(200);
       return stored;
     },
-    save: async (value: T): Promise<void> => {
+    save: async (value: T): Promise<SaveResponse> => {
       await wait(600);
+      const errors = refuse?.(value);
+      if (errors !== undefined) return { ok: false, errors };
       stored = value;
+      return { ok: true };
     },
     editElsewhere: (): void => {
       stored = elsewhere(stored);
@@ -143,6 +153,8 @@ export const companies = record<Company>(
     address: { street: "12 Dorset Street", city: "London", region: "", postcode: "W1U 4EH", country: "GB" },
   },
   (company) => ({ ...company, name: "Analytical Engines plc", phone: "2075550100" }),
+  // The tax registry knows no company with this number.
+  (company) => (company.taxId === "000000000" ? { taxId: "No company has this tax ID." } : undefined),
 );
 
 /** Sends an invitation. */

@@ -103,6 +103,31 @@ test.describe("back office", () => {
     await expect(company.getByLabel("Phone")).toHaveValue("(207) 555-0198");
   });
 
+  test("shows the server's refusal on the field until the user edits it", async ({ page }) => {
+    const company = page.getByRole("region", { name: "Company settings" });
+    const taxId = company.getByLabel("Tax ID");
+    await taxId.fill("000000000");
+    await company.getByRole("button", { name: "Save" }).click();
+    await expect(company.locator(".field").getByText("No company has this tax ID.")).toBeVisible();
+    await expect(taxId).toHaveAttribute("aria-invalid", "true");
+    await expect(company.getByRole("status")).toHaveText("");
+
+    await taxId.fill("123456780");
+    await expect(company.getByText("No company has this tax ID.")).toHaveCount(0);
+  });
+
+  test("leaves a refused save unsaved", async ({ page, library }) => {
+    // Ours marks the refused values clean until #224 is fixed:
+    // https://github.com/LunarHUE/forms/issues/224
+    test.fail(library === "lunarhue", "baselineOnSubmit() takes a refused save as the baseline (#224).");
+    const company = page.getByRole("region", { name: "Company settings" });
+    await company.getByLabel("Tax ID").fill("000000000");
+    await company.getByRole("button", { name: "Save" }).click();
+    await expect(company.locator(".field").getByText("No company has this tax ID.")).toBeVisible();
+    await expect(company.getByText("1 unsaved change")).toBeVisible();
+    await expect(company.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
   test("takes the server's copy on refresh for fields the user left alone", async ({ page }) => {
     const company = page.getByRole("region", { name: "Company settings" });
     await company.getByLabel("Phone").fill("2075550111");
