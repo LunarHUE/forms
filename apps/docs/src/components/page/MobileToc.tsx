@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { TocList, useActiveSection, type TocItem } from "./toc-list";
+import { TocList, useActiveSections, type TocItem } from "./toc-list";
 
 interface MobileTocProps {
   items: readonly TocItem[];
@@ -18,7 +18,7 @@ interface MobileTocProps {
  */
 export default function MobileToc({ items, children }: MobileTocProps) {
   const [open, setOpen] = useState(false);
-  const { active, select } = useActiveSection(items);
+  const active = useActiveSections(items);
   const trigger = useRef<HTMLButtonElement>(null);
 
   // Escape closes the list. Focus inside it goes back to the toggle.
@@ -37,7 +37,8 @@ export default function MobileToc({ items, children }: MobileTocProps) {
   // Close first, then jump, so the jump lands where the target is once the
   // list has collapsed. Base UI removes the panel a frame after it closes.
   const jump = (event: MouseEvent<HTMLAnchorElement>, slug: string) => {
-    if (!select(event, slug)) return;
+    // Let a click that opens the link elsewhere (modifier keys) through.
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     setOpen(false);
     history.pushState(null, "", `#${slug}`);
@@ -61,7 +62,7 @@ export default function MobileToc({ items, children }: MobileTocProps) {
       </div>
       <CollapsibleContent>
         <nav aria-label="On this page" className="pt-3 pb-4">
-          <TocList items={items} active={active} onSelect={jump} linkClassName="py-2 text-[15px] leading-5" />
+          <TocList items={items} active={active} onClick={jump} linkClassName="py-2 text-[15px] leading-5" />
         </nav>
       </CollapsibleContent>
     </Collapsible>
