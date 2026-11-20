@@ -4,18 +4,17 @@
  * 1024px: menu button (MobileNav), wordmark, search icon, theme.
  *
  * Both search buttons carry `data-search-trigger`; components/search opens
- * the palette from it.
+ * the palette from it. The icon buttons are one island, HeaderActions.
  */
 import { SearchIcon } from "lucide-react";
 
 import type { Framework } from "@/lib/frameworks";
 import { frameworkHref } from "@/lib/routes";
 
-import { GITHUB_URL, GitHubIcon, LogoMark } from "./icons";
+import { HeaderActions } from "./HeaderActions";
+import { LogoMark } from "./icons";
 import { MobileNav } from "./MobileNav";
 import type { SidebarData } from "./sidebar";
-import { DevtoolsToggle } from "./DevtoolsToggle";
-import { ThemeMenu } from "./ThemeMenu";
 
 interface Props {
   framework?: Framework;
@@ -53,28 +52,6 @@ const kbd = "inline-flex h-5 items-center rounded-sm border bg-background px-1 f
         <kbd class={kbd}>K</kbd>
       </span>
     </button>
-    <button
-      type="button"
-      data-search-trigger
-      aria-label="Search"
-      class:list={[
-        "inline-flex size-8 items-center justify-center rounded-md border border-transparent text-foreground hover:bg-muted lg:hidden",
-        focusRing,
-      ]}
-    >
-      <SearchIcon className="size-4.5" />
-    </button>
-    <a
-      href={GITHUB_URL}
-      aria-label="GitHub"
-      class:list={[
-        "hidden size-8 items-center justify-center rounded-md border border-transparent text-foreground hover:bg-muted lg:inline-flex",
-        focusRing,
-      ]}
-    >
-      <GitHubIcon className="size-5" />
-    </a>
-    <DevtoolsToggle client:idle />
-    <ThemeMenu client:idle />
+    <HeaderActions client:idle />
   </div>
 </header>
