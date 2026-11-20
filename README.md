@@ -228,6 +228,8 @@ them, so you import from the package you already have.
 
 | Plugin         | What it does                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------- |
+| `dirty()`      | Tracks which fields differ from their baseline, for `dirty` and `store.changes()`.             |
+| `arrays()`     | Lists: `Items`, row keys that follow moves, and `push`, `insert`, `remove` and `move`.         |
 | `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
 | `mask()`       | Cleans a value on its way into the store, for each field type that carries `masked(...)`.      |
 | `rules()`      | Works out `disabled` and `hidden` for a field from the form's value, with `ruled(...)` parts.  |
