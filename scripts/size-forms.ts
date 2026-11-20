@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { brotliCompressSync } from "node:zlib";
 import solid from "@solidjs/vite-plugin";
 import { build, defaultClientConditions, type PluginOption, type Rolldown } from "vite";
-import { panelCss } from "../packages/devtools/panel-css.ts";
+import { panelCss } from "../packages/devtools/panel-css.js";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 
