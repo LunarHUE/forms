@@ -1,4 +1,5 @@
 import { formOptions, useStore } from "@tanstack/react-form";
+import { useState } from "react";
 import { z } from "zod";
 import { editProfileElsewhere, getProfile, type Profile, saveProfile, timezones } from "../../shared/server.ts";
 import { Loaded, Page, ServerControls } from "../../shared/ui.tsx";
@@ -48,17 +49,11 @@ const profileOptions = formOptions({
 
 const SaveBar = withForm({
   ...profileOptions,
-  render: function Render({ form }) {
+  props: { refresh: async (): Promise<void> => {} },
+  render: function Render({ form, refresh }) {
     const count = useStore(form.store, (state) => Object.values(state.fieldMeta).filter((meta) => !meta.isDefaultValue).length);
     const clean = useStore(form.store, (state) => state.isDefaultValue);
     const submitting = useStore(form.store, (state) => state.isSubmitting);
-
-    // Fields the user hasn't changed take the server's copy. Changed ones
-    // keep their text and stay changed against the new defaults.
-    const refresh = async () => {
-      const fresh = await getProfile();
-      rebaseline(form, fieldNames, fresh, (name) => form.getFieldMeta(name)?.isDefaultValue === false);
-    };
 
     return (
       <div className="save-bar">
@@ -78,16 +73,30 @@ const SaveBar = withForm({
 });
 
 function ProfileForm({ saved }: { readonly saved: Profile }) {
+  // `useForm` applies its options again on every render, and an untouched
+  // form takes new `defaultValues` as its values. Defaults moved with
+  // `form.reset(values)` would snap back to the loaded profile on the next
+  // render, so they live in React state and move with each rebaseline.
+  const [defaults, setDefaults] = useState(saved);
   const form = useAppForm({
     ...profileOptions,
-    defaultValues: saved,
+    defaultValues: defaults,
     onSubmit: async ({ value, formApi }) => {
       await saveProfile(value);
       // What was sent becomes the defaults. A field edited while the save
       // ran keeps the newer text and stays changed.
       rebaseline(formApi, fieldNames, value, (name, current) => differsAt(value, name, current));
+      setDefaults(value);
     },
   });
+
+  // Fields the user hasn't changed take the server's copy. Changed ones
+  // keep their text and stay changed against the new defaults.
+  const refresh = async () => {
+    const fresh = await getProfile();
+    rebaseline(form, fieldNames, fresh, (name) => form.getFieldMeta(name)?.isDefaultValue === false);
+    setDefaults(fresh);
+  };
 
   return (
     <form
@@ -107,7 +116,7 @@ function ProfileForm({ saved }: { readonly saved: Profile }) {
         <form.AppField name="notifications.security">{(field) => <field.Checkbox label="Security alerts" />}</form.AppField>
         <form.AppField name="notifications.digest">{(field) => <field.Select label="Digest" options={digests} />}</form.AppField>
       </fieldset>
-      <SaveBar form={form} />
+      <SaveBar form={form} refresh={refresh} />
       <form.Subscribe selector={(state) => state.isSubmitSuccessful}>
         {(succeeded) => <p role="status">{succeeded ? "Saved." : null}</p>}
       </form.Subscribe>

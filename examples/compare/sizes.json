@@ -69,19 +69,19 @@
       },
       "tanstack": {
         "total": {
-          "min": 374757,
-          "gzip": 109114,
-          "brotli": 93976
+          "min": 374842,
+          "gzip": 109147,
+          "brotli": 94053
         },
         "forms": {
-          "min": 75649,
-          "gzip": 19469,
-          "brotli": 17227
+          "min": 75721,
+          "gzip": 19492,
+          "brotli": 17308
         },
         "app": {
-          "min": 6532,
-          "gzip": 2516,
-          "brotli": 2210
+          "min": 6604,
+          "gzip": 2550,
+          "brotli": 2244
         }
       }
     }

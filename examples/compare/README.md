@@ -68,6 +68,12 @@ Where the TanStack version needed a choice of its own:
   helper, `rebaseline`, reads the fields to keep, calls `form.reset(values)`,
   and writes the kept ones back. The save and Refresh both use it, with a
   hand-kept list of the form's fields to walk.
+- `useForm` applies its options again on every render, and an untouched form
+  takes new `defaultValues` as its values, so defaults moved with
+  `form.reset(values)` would snap back on the next render. The form keeps its
+  defaults in React state and moves them after every save and refresh.
+  Refresh lives in the form component for that reason, and the save bar
+  gets it as a prop.
 - `withForm` takes `formOptions` with default values, but the real ones are
   loaded. The shared options carry a blank profile, and `useAppForm` gets
   the loaded one.
