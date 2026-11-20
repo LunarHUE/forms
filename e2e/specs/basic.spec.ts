@@ -67,6 +67,22 @@ test("a submit shows the busy button, then the result", async ({ page }) => {
   expect(state.value).toEqual({ name: "Grace Hopper", email: "ada@example.com", newsletter: true });
 });
 
+test("optional fields start empty and unticked, and take what the user enters", async ({ page }) => {
+  const nickname = input(page, labels.nickname);
+  const updates = input(page, labels.updates);
+  await expect(nickname).toHaveValue("");
+  await expect(updates).not.toBeChecked();
+  expect((await probe(page)).value).toEqual({ name: "Ada Lovelace", email: "ada@example.com", newsletter: false });
+  await nickname.fill("Ada");
+  await updates.check();
+  await expect.poll(async () => (await probe(page)).value).toMatchObject({ nickname: "Ada", updates: true });
+  await nickname.fill("");
+  await updates.uncheck();
+  await expect.poll(async () => (await probe(page)).value).toMatchObject({ nickname: "", updates: false });
+  await page.getByRole("button", { name: submit.idle }).click();
+  await expect(page.getByRole("status")).toHaveText("Signed up Ada Lovelace (save 1).");
+});
+
 test("a second submit while one runs doesn't save twice", async ({ page }) => {
   // Two submits in one task, before the button can turn disabled.
   await page.locator("form").evaluate((form: HTMLFormElement) => {

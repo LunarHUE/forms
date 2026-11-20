@@ -82,7 +82,8 @@ interface FieldProps<V> {
   readonly label: string;
 }
 
-function TextField({ field, label }: FieldProps<string>) {
+// Text and checkbox fields take optional fields too, which start out undefined.
+function TextField({ field, label }: FieldProps<string | undefined>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
@@ -107,7 +108,7 @@ function NumberField({ field, label }: FieldProps<number>) {
   );
 }
 
-function Checkbox({ field, label }: FieldProps<boolean>) {
+function Checkbox({ field, label }: FieldProps<boolean | undefined>) {
   return (
     <div className="field">
       <label>

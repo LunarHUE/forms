@@ -6,11 +6,22 @@ const SignUp = v.object({
   name: v.pipe(v.string(), v.nonEmpty("Enter your name.")),
   email: v.pipe(v.string(), v.email("Enter a valid email.")),
   newsletter: v.boolean(),
+  nickname: v.optional(v.string()),
+  updates: v.optional(v.boolean()),
 });
 
-const labels = { name: "Name", email: "Email", newsletter: "Send me the newsletter" };
+const labels = {
+  name: "Name",
+  email: "Email",
+  newsletter: "Send me the newsletter",
+  nickname: "Nickname",
+  updates: "Send me product updates",
+};
 
-/** A sign-up form: typing, blur, errors, focus on an invalid submit, and a slow save. */
+/**
+ * A sign-up form: typing, blur, errors, focus on an invalid submit, and a
+ * slow save. `nickname` and `updates` are optional and start out missing.
+ */
 export const basicScenario = {
   ...scenario("basic", "Basic form", {
     values: { [labels.name]: "Ada Lovelace", [labels.email]: "ada@example.com" },
