@@ -1,0 +1,112 @@
+---
+title: Components that need a plugin
+description: Shared components that read a plugin's members, such as a dirty marker, an undo button or a save bar.
+section: plugin-composition
+order: 3
+navTitle: Shared components
+---
+
+An undo button or a save bar belongs on every form, not in each definition.
+The bar below works under any form from the same `createForms`, and the text
+field marks itself changed.
+
+<Demo name="shared-components/editor" />
+
+## A field component that reads a plugin
+
+A component that reads a plugin's member from its field says so in its type.
+The third type argument of `FieldApi` names the plugins it needs:
+
+```tsx framework=react
+function TextField({ field, label }: { field: FieldApi<string, FormError, "dirty">; label: string }) {
+  return (
+    <label>
+      {field.dirty ? `${label} (changed)` : label}
+      <input {...inputProps(field)} />
+    </label>
+  );
+}
+```
+
+```tsx framework=solid
+function TextField(props: { field: FieldApi<string, FormError, "dirty">; label: string }) {
+  return (
+    <label>
+      {props.field.dirty ? `${props.label} (changed)` : props.label}
+      <input {...inputProps(props.field)} />
+    </label>
+  );
+}
+```
+
+It then fits only forms with `dirty()`. Without the third argument,
+`field.dirty` is a type error.
+
+## The form from context
+
+A component shared by many forms can't name one definition. Pass the object
+`createForms` returned to `useFormContext` instead. It returns the nearest
+form above that one of its definitions made, and skips forms from other
+`createForms` calls:
+
+```tsx framework=react
+const undoHistory = history();
+export const forms = createForms({ plugins: [dirty(), undoHistory], fields: { TextField } });
+
+function SaveBar() {
+  const form = useFormContext(forms);
+  const changed = useFormState(form, (state) => state.dirty);
+  const canUndo = useFormState(form, (state) => undoHistory.formMeta(state).canUndo);
+  return (
+    <div>
+      <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
+        Undo
+      </button>
+      <button type="submit" disabled={!changed}>
+        Save
+      </button>
+    </div>
+  );
+}
+```
+
+```tsx framework=solid
+const undoHistory = history();
+export const forms = createForms({ plugins: [dirty(), undoHistory], fields: { TextField } });
+
+function SaveBar() {
+  const form = useFormContext(forms);
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={!undoHistory.formMeta(form.state).canUndo}
+        onClick={() => form.plugins.history.undo()}
+      >
+        Undo
+      </button>
+      <button type="submit" disabled={!form.state.dirty}>
+        Save
+      </button>
+    </div>
+  );
+}
+```
+
+The form's type knows the shared plugins, the error type and the registered
+field components, so `form.plugins.history`, `dirty` and `form.TextField` all
+type-check. Its value type is unknown, and plugins added by a definition or
+by one form are not in its type. `useFormContext` throws when no form of
+those forms is above.
+
+## Passing the form as a prop
+
+To take the form as a prop instead, type it `FormOf<typeof forms>`:
+
+```tsx
+function SaveBar(props: { form: FormOf<typeof forms> }) {
+  // ...
+}
+```
+
+Any form from `forms` fits.
