@@ -747,6 +747,18 @@ code {
   overflow: auto;
 }
 
+.status {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font: 13px/20px var(--sans);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.soft {
+  color: var(--soft);
+}
+
 .card .detail-head .muted {
   font: 12px/20px var(--sans);
 }

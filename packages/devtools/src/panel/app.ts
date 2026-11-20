@@ -1,7 +1,7 @@
 import type { Path } from "@lunarhue/forms-core";
 import { Fragment, h, type JSX, type TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { Hook } from "../hook.js";
+import type { FormEntry, Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
 import { Bundle } from "./bundle.js";
 import { Fields } from "./fields.js";
@@ -240,6 +240,8 @@ export function App({ hook, host }: AppProps): JSX.Element {
     selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null,
   );
 
+  const status = selected ? h(SubmitStatus, { entry: selected.entry }) : null;
+
   const formsMenu = h(
     "div",
     { class: "menu surface", role: "menu", "aria-label": "Forms on this page", ref: menuRef, style: `left: ${menu?.left ?? 0}px` },
@@ -345,6 +347,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
               "div",
               { class: "sheet-head", ref: menuButtons },
               chip,
+              status,
               inspectButton,
               h("div", { class: "end" }, onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null, iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })),
               openMenu,
@@ -380,12 +383,27 @@ export function App({ hook, host }: AppProps): JSX.Element {
           onClick: (event) => toggleMenu("dock", event),
         }),
         chip,
+        status,
         h("div", { class: "divider", "aria-hidden": "true" }),
         inspectButton,
         tabList(tab, openTab),
         openMenu,
       ),
     ),
+  );
+}
+
+/** The form's last submission, as `submit failed` and the like. Nothing before the first. */
+function SubmitStatus({ entry }: { readonly entry: FormEntry }): JSX.Element | null {
+  const last = () => entry.submissions.items[entry.submissions.items.length - 1]?.status;
+  const status = last();
+  useFrame(() => [last()]);
+  if (status === undefined) return null;
+  return h(
+    "span",
+    { class: "status", "data-status": status },
+    "submit ",
+    h("span", { class: status === "failed" || status === "invalid" ? "error" : "soft" }, status === "open" ? "running" : status),
   );
 }
 
