@@ -12,8 +12,6 @@ import { isConcrete, item, keyOf, matches, type Pattern, startsWith } from "./va
 import { copyTree } from "./tree.js";
 
 // Core has no DOM or node types, so this declares the platform globals validation uses.
-declare function setTimeout(run: () => void, ms: number): unknown;
-declare function clearTimeout(handle: unknown): void;
 declare const AbortController: new () => { readonly signal: PlatformAbortSignal; abort(): void };
 
 /**
@@ -47,7 +45,6 @@ interface Run {
   /** True once it ran while armed. A reset at or below its field clears it. */
   ran?: boolean;
   thrown?: boolean;
-  timer?: unknown;
   /** The latest call, whose result is the one that lands. */
   call?: Call | undefined;
   /** True while the latest call's promise is pending. */
@@ -63,12 +60,19 @@ interface Run {
 interface Call {
   controller: { readonly signal: PlatformAbortSignal; abort(): void } | undefined;
   aborted: boolean;
+  /** Ends the wait of a `debounced` check, so it runs now. */
+  flush?: (() => void) | undefined;
 }
 
 // A primitive's `then` comes from its prototype, which nothing sets.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   typeof (value as { then?: unknown } | null | undefined)?.then === "function";
+
+/** The promise a `debounced` check returns. */
+interface Flushable {
+  readonly "~flush"?: () => void;
+}
 
 // A result with no issues passed. An empty issue list counts as none, as `place` reads it.
 const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unknown> => {
@@ -81,8 +85,8 @@ const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unkno
 const defaultMapError: MapError<FormError> = (raw) => ({ message: raw.message });
 
 /**
- * The validation runner: field and form validators, their timing, debounce
- * and async runs, and placing their errors on fields. Making it and
+ * The validation runner: field and form validators, their timing, async
+ * runs, and placing their errors on fields. Making it and
  * registering validators run nothing: validators first run on a write, a
  * blur, a submit or `validate()`.
  */
@@ -140,7 +144,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     return out;
   };
 
-  const busy = (run: Run) => run.timer !== undefined || run.inflight;
+  const busy = (run: Run) => run.inflight;
 
   const mark = (run: Run, on: boolean) => {
     if (run.marked === on) return;
@@ -160,10 +164,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   const idle = (run: Run): Promise<void> | undefined =>
     busy(run) ? new Promise((resolve) => void run.waiters.push(resolve)) : undefined;
 
-  // Stops the pending debounce and the call in flight. Their results never land.
+  // Stops the call in flight. Its result never lands.
   const stop = (run: Run) => {
-    if (run.timer !== undefined) clearTimeout(run.timer);
-    run.timer = undefined;
     const call = run.call;
     run.call = undefined;
     run.inflight = false;
@@ -226,7 +228,6 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
 
   // Calls the check on the field's current value. Sync results land before it returns.
   const execute = (run: Run) => {
-    run.timer = undefined;
     if (!live(run)) return;
     stop(run);
     if (run.armed) run.ran = true;
@@ -261,6 +262,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       return;
     }
     run.inflight = true;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    call.flush = (result as Flushable)["~flush"];
     mark(run, true);
     const finish = (apply: () => void) => {
       // A newer call, a reset or a removal took over, so this result is dropped.
@@ -278,18 +281,6 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     );
   };
 
-  // Starts a run. A debounced check waits unless `now` is true. Either way the older call is stale from here.
-  const start = (run: Run, now: boolean) => {
-    stop(run);
-    const wait = run.reg.spec.debounce;
-    if (now || wait === 0) {
-      execute(run);
-      return;
-    }
-    mark(run, true);
-    run.timer = setTimeout(() => core.batch(() => execute(run)), wait);
-  };
-
   const arm = (run: Run) => {
     run.armed = true;
     run.scopes = undefined;
@@ -299,7 +290,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   const touch = (run: Run) => {
     if (!live(run)) return;
     if (!run.armed && run.reg.timing === "input") arm(run);
-    if (run.armed || run.scopes) start(run, false);
+    if (run.armed || run.scopes) execute(run);
   };
 
   // Adds the runs of pattern registrations whose fields are `path` or lie under it.
@@ -336,8 +327,9 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       for (const run of runs) {
         if (!live(run)) continue;
         arm(run);
-        if (rerun(run)) start(run, true);
-        else if (run.timer !== undefined) execute(run);
+        if (rerun(run)) execute(run);
+        // Submit and `validate()` skip the wait of a `debounced` check.
+        run.call?.flush?.();
         const wait = idle(run);
         if (wait) waits.push(wait);
       }
@@ -395,12 +387,12 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         if (run.key === key) {
           // Blur arms the validators at exactly the blurred field.
           arm(run);
-          start(run, false);
+          execute(run);
         } else if (run.reg.reaches && !inScope(run, path)) {
           // A form validator or schema above the field runs for the blurred subtree only,
           // so a blur on one field doesn't put errors on fields not yet visited.
           (run.scopes ??= []).push(path);
-          start(run, false);
+          execute(run);
         }
       }
     },
@@ -435,7 +427,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         // Runs made for an armed pattern start armed. Other patterns only have the runs that exist.
         for (const reg of patterns) if (reg.armedAll) patternRuns(reg, path, true, runs);
       }
-      for (const run of runs) if (live(run) && (run.armed || run.scopes)) start(run, false);
+      for (const run of runs) if (live(run) && (run.armed || run.scopes)) execute(run);
     },
     async settleForSubmit() {
       for (const reg of patterns) reg.armedAll = true;
@@ -449,7 +441,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       const run = runOf(schemaReg, []);
       core.batch(() => {
         arm(run);
-        start(run, true);
+        execute(run);
       });
       await idle(run);
       return captured;

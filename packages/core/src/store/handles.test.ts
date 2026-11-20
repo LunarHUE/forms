@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { validateOn } from "../validate-timing.js";
 import type { FormError } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
@@ -385,7 +386,7 @@ describe("field state commands", () => {
   it("setTouched runs and arms no blur validator", () => {
     const rule = vi.fn<() => FormError>(() => err("No"));
     const { root } = make({ a: "" });
-    root.at("a").registerValidator({ validate: rule, on: "blur" });
+    root.at("a").registerValidator(validateOn(rule, "blur"));
     root.at("a").setTouched();
     expect(rule).not.toHaveBeenCalled();
     // An armed validator would run on this edit.

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { debounced, validateOn } from "../../validate-timing.js";
 import type { ErrorMap, FormError, RawError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
@@ -52,10 +53,10 @@ describe("no side effects", () => {
           check("");
           return issues(["No"]);
         }),
-        validate: { form: { validate: formCheck, debounce: 50 }, fields: { name: check, rows: [{ t: { validate: check, debounce: 10 } }] } },
+        validate: { form: debounced(formCheck, 50), fields: { name: check, rows: [{ t: debounced(check, 10) }] } },
       },
     );
-    const remove = root.at("name").registerValidator({ validate: check, debounce: 10, on: "input" });
+    const remove = root.at("name").registerValidator(debounced(validateOn(check, "input"), 10));
     store.registerValidator(["rows"], check);
     expect(check).not.toHaveBeenCalled();
     expect(formCheck).not.toHaveBeenCalled();
@@ -112,7 +113,7 @@ describe("timing", () => {
   it("lets validate.on override the shared timing, and a validator's on override both", () => {
     const { root, messages } = make(
       { a: "x", b: "x" },
-      { timing: "submit", validate: { on: "input", fields: { a: required, b: { validate: required, on: "blur" } } } },
+      { timing: "submit", validate: { on: "input", fields: { a: required, b: validateOn(required, "blur") } } },
     );
     root.at("a").setValue("");
     root.at("b").setValue("");
@@ -250,7 +251,7 @@ describe("debounce", () => {
   it("waits after the last write and holds validating meanwhile", async () => {
     const { store, root, messages, validating } = make({ name: "" }, { timing: "input" });
     const check = vi.fn<Check>((value) => (value === "taken" ? err("Taken") : undefined));
-    root.at("name").registerValidator({ validate: check, debounce: 100 });
+    root.at("name").registerValidator(debounced(check, 100));
     root.at("name").setValue("tak");
     await vi.advanceTimersByTimeAsync(60);
     root.at("name").setValue("taken");
@@ -268,7 +269,7 @@ describe("debounce", () => {
   it("runs a pending debounce at once on submit", async () => {
     const { root, validation, messages } = make({ name: "" }, { timing: "input" });
     const check = vi.fn<Check>(() => err("No"));
-    root.at("name").registerValidator({ validate: check, debounce: 500 });
+    root.at("name").registerValidator(debounced(check, 500));
     root.at("name").setValue("x");
     await validation.settleForSubmit();
     expect(check).toHaveBeenCalledTimes(1);
@@ -279,7 +280,7 @@ describe("debounce", () => {
   it("runs a pending debounce at once on validate()", async () => {
     const { root, messages } = make({ name: "" }, { timing: "input" });
     const check = vi.fn<Check>(() => err("No"));
-    root.at("name").registerValidator({ validate: check, debounce: 500 });
+    root.at("name").registerValidator(debounced(check, 500));
     root.at("name").setValue("x");
     expect(await root.at("name").validate()).toBe(false);
     expect(check).toHaveBeenCalledTimes(1);

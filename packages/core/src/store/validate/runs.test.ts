@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { debounced, recheckOnSubmit, validateOn } from "../../validate-timing.js";
 import type { ErrorMap, FormError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
@@ -52,9 +53,9 @@ describe("validate.fields", () => {
     expect(messages(["user", "email"])).toEqual(["Email"]);
   });
 
-  it("reads the options-object form", async () => {
+  it("reads a wrapped check", async () => {
     const check = vi.fn<Check>(required);
-    const { root, messages } = make({ name: "x" }, { validate: { fields: { name: { validate: check, debounce: 50, on: "input" } } } });
+    const { root, messages } = make({ name: "x" }, { validate: { fields: { name: debounced(validateOn(check, "input"), 50) } } });
     root.at("name").setValue("");
     expect(check).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(50);
@@ -160,7 +161,7 @@ describe("settleForSubmit", () => {
     root.at("a").registerValidator(fresh);
     root.at("b").registerValidator(current);
     root.at("c").registerValidator(thrower);
-    root.at("d").registerValidator({ validate: recheck, recheckOnSubmit: true });
+    root.at("d").registerValidator(recheckOnSubmit(recheck));
     root.at("b").setValue("x");
     root.at("c").setValue("x");
     root.at("d").setValue("x");
@@ -176,7 +177,7 @@ describe("settleForSubmit", () => {
 
   it("resolves only once every running check has landed", async () => {
     const { root, validation, messages, store } = make({ a: "", b: "" }, { timing: "input" });
-    root.at("a").registerValidator({ validate: slow(30, err("Slow")), debounce: 500 });
+    root.at("a").registerValidator(debounced(slow(30, err("Slow")), 500));
     root.at("b").registerValidator(slow(10, undefined));
     root.setValue({ a: "x", b: "x" });
     let done = false;
@@ -225,11 +226,11 @@ describe("validate(path)", () => {
 describe("reset", () => {
   it("aborts runs, drops debounces and puts validators back to not-yet-run", async () => {
     const signals: PlatformAbortSignal[] = [];
-    const debounced = vi.fn<Check>(() => err("D"));
+    const waiting = vi.fn<Check>(() => err("D"));
     const blurred = vi.fn<Check>(required);
     const { root, core, validation, validating } = make({ a: "", b: "", c: "" });
-    root.at("a").registerValidator({ validate: slow(20, err("A"), signals), on: "input" });
-    root.at("b").registerValidator({ validate: debounced, on: "input", debounce: 50 });
+    root.at("a").registerValidator(validateOn(slow(20, err("A"), signals), "input"));
+    root.at("b").registerValidator(debounced(validateOn(waiting, "input"), 50));
     root.at("c").registerValidator(blurred);
     root.at("c").handleBlur();
     root.setValue({ a: "x", b: "x", c: "" });
@@ -240,7 +241,7 @@ describe("reset", () => {
     expect(validating(["b"])).toBe(false);
     expect(vi.getTimerCount()).toBe(1);
     await vi.runAllTimersAsync();
-    expect(debounced).not.toHaveBeenCalled();
+    expect(waiting).not.toHaveBeenCalled();
     // Blur timing again: a write doesn't run it until the next blur.
     const calls = blurred.mock.calls.length;
     root.at("c").setValue("y");
@@ -317,7 +318,7 @@ describe("cost", () => {
     const form = vi.fn<() => undefined>(() => undefined);
     const { root, core } = make(
       { rows },
-      { validate: { form: { validate: form, on: "input" }, fields: { rows: [{ t: { validate: t, on: "input" }, u }] } } },
+      { validate: { form: validateOn(form, "input"), fields: { rows: [{ t: validateOn(t, "input"), u }] } } },
     );
     root.at("rows").item("k1500").at("u").handleBlur();
     root.registerValidator(() => undefined);

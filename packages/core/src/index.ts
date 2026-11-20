@@ -1,6 +1,7 @@
 export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
+export { debounced, recheckOnSubmit, validateOn } from "./validate-timing.js";
 export { errorsByKind } from "./error-kinds.js";
 export { trackElements, trackedField, type ElementListener } from "./elements.js";
 /** Internal: the slot the adapters report elements to. Use `trackElements`. */
@@ -66,7 +67,6 @@ export type {
   FieldValidators,
   FormValidator,
   FormValidatorInput,
-  FormValidatorOptions,
   FormValidatorResult,
   NestedValidators,
   ValidateTiming,
@@ -74,9 +74,9 @@ export type {
   ValidatorContext,
   ValidatorInput,
   ValidatorKind,
-  ValidatorOptions,
   ValidatorRecord,
   ValidatorResult,
+  WrappedSchema,
 } from "./validator.js";
 export type {
   ArraySnapshotMembers,
