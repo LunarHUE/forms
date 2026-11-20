@@ -1,0 +1,143 @@
+name: Docs previews cleanup
+
+# Deletes old preview deployments of the lunarhue-forms-docs Pages project,
+# which keeps every upload otherwise. Production deployments stay, since a
+# rollback needs them, and so do `next` and `release-candidate`. The newest
+# deployment of each branch with an open pull request stays too, so its
+# preview link keeps working. Every other preview older than MAX_AGE_DAYS goes.
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list what would be deleted"
+        type: boolean
+        default: true
+
+permissions: {}
+
+# One cleanup at a time, and never cut short.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  MAX_AGE_DAYS: 14
+
+jobs:
+  cleanup:
+    # Forks get a copy of this workflow; only the real repo cleans up.
+    if: github.repository == 'LunarHUE/forms'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pull-requests: read # the open pull requests' branches
+    steps:
+      # Until the Cloudflare secrets are set, skip with a notice instead of
+      # failing every run.
+      - id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID isn't set, so nothing is cleaned up."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Scheduled runs delete. Manual runs only list unless told otherwise.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/lunarhue-forms-docs/deployments"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          # The Pages branch name docs-deploy.yml gives each open pull
+          # request from this repo. Keep the two in step.
+          open=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.repo.full_name == \"$GITHUB_REPOSITORY\") | .head.ref" |
+            while read -r ref; do
+              branch=$(printf '%s' "$ref" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | cut -c1-28)
+              case "$branch" in
+                main | next | release-candidate) branch="pr-$branch" ;;
+              esac
+              echo "$branch"
+            done | jq -R . | jq -s .)
+
+          # Every deployment first, then the deletes, so deleting doesn't
+          # shift the pages still to read.
+          all="[]"
+          page=1
+          while true; do
+            response=$(curl -fsS -H "$auth" "$api?page=$page&per_page=25")
+            all=$(jq -s '.[0] + .[1].result' <(echo "$all") <(echo "$response"))
+            pages=$(echo "$response" | jq '.result_info.total_pages // 1')
+            [ "$page" -ge "$pages" ] && break
+            page=$((page + 1))
+          done
+
+          # Newest first, so the first deployment seen for an open branch is
+          # the one its preview link shows.
+          cutoff=$(date -u -d "-$MAX_AGE_DAYS days" +%s)
+          plan=$(echo "$all" | jq --argjson open "$open" --argjson cutoff "$cutoff" '
+            map(select(.environment == "preview"))
+            | sort_by(.created_on) | reverse
+            | reduce .[] as $d ({seen: {}, out: []};
+                ($d.deployment_trigger.metadata.branch // "") as $branch
+                | ($d.created_on | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601) as $created
+                | (if $branch == "next" or $branch == "release-candidate" then "protected"
+                   elif any($open[]; . == $branch) and (.seen[$branch] | not) then "open"
+                   elif $created < $cutoff then "delete"
+                   else "recent" end) as $action
+                | .seen[$branch] = true
+                | .out += [{id: $d.id, branch: $branch, created: $d.created_on,
+                    aliased: (($d.aliases // []) | length > 0), action: $action}])
+            | .out')
+
+          deleted=0
+          failed=0
+          while read -r id branch created aliased; do
+            if [ "$DRY_RUN" = true ]; then
+              echo "Would delete $id ($branch, $created)"
+            else
+              # An alias, such as a branch's preview link, blocks the delete
+              # without force.
+              force=""
+              [ "$aliased" = true ] && force="?force=true"
+              if curl -fsS -X DELETE -H "$auth" "$api/$id$force" > /dev/null; then
+                echo "Deleted $id ($branch, $created)"
+              else
+                echo "::warning::Couldn't delete $id ($branch, $created)."
+                failed=$((failed + 1))
+                continue
+              fi
+            fi
+            deleted=$((deleted + 1))
+          done < <(echo "$plan" | jq -r '.[] | select(.action == "delete") | "\(.id) \(.branch) \(.created) \(.aliased)"')
+
+          count() { echo "$plan" | jq --arg action "$1" '[.[] | select(.action == $action)] | length'; }
+          {
+            echo "### Docs previews cleanup"
+            echo ""
+            if [ "$DRY_RUN" = true ]; then
+              echo "Dry run: nothing was deleted."
+              echo ""
+              echo "- Would delete: $deleted"
+            else
+              echo "- Deleted: $deleted"
+              if [ "$failed" -gt 0 ]; then echo "- Failed to delete: $failed"; fi
+            fi
+            echo "- Kept, \`next\` or \`release-candidate\`: $(count protected)"
+            echo "- Kept, newest of a branch with an open pull request: $(count open)"
+            echo "- Kept, newer than $MAX_AGE_DAYS days: $(count recent)"
+            echo "- Production deployments, never touched: $(echo "$all" | jq '[.[] | select(.environment != "preview")] | length')"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$failed" -gt 0 ]; then exit 1; fi
