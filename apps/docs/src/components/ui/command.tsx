@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
 
+import { useStagger } from "@/components/hooks/use-stagger"
+
 function Command({
   className,
   ...props
@@ -91,8 +93,10 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const stagger = useStagger()
   return (
     <CommandPrimitive.List
+      ref={stagger}
       data-slot="command-list"
       className={cn(
         "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
