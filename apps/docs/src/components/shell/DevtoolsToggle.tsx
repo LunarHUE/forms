@@ -8,7 +8,9 @@ import { setDevtools } from "@/lib/store";
 /**
  * The header's devtools switch. The dock can turn the devtools off, and this
  * is where they come back. Its look follows html[data-devtools], so it is
- * right before hydration too.
+ * right before hydration too. The panel renders nothing at 640px wide and
+ * below, phoneQuery in the devtools' panel/app.tsx, so the switch hides at
+ * the same width.
  */
 export function DevtoolsToggle() {
   const enabled = useDevtoolsEnabled();
@@ -19,7 +21,7 @@ export function DevtoolsToggle() {
         size="icon"
         aria-label="Forms devtools"
         aria-pressed={enabled}
-        className="text-brand in-data-[devtools=off]:text-muted-foreground"
+        className="text-brand in-data-[devtools=off]:text-muted-foreground [@media(max-width:640px)]:hidden"
         onClick={() => setDevtools(!enabled)}
       >
         <SquareEqualIcon />
