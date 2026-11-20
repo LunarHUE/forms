@@ -247,16 +247,24 @@ type FieldPluginsOf<C> = FieldPropOf<C> extends { readonly "~field"?: FieldTypes
 
 /**
  * The handles a registered component takes. A `FieldApi<T>` component takes
- * a handle of `Draft<T>` or of `T`. An `ExactFieldApi<V>` component takes a
- * handle of `V` only. Either takes only handles of forms with the plugins
- * its field names.
+ * a handle of `Draft<T>` or of `T`, and both again with `undefined`, `null`
+ * or both taken out of `T`. So a `FieldApi<string | undefined>` component
+ * takes required and optional string fields. An `ExactFieldApi<V>`
+ * component takes a handle of `V` only. Either takes only handles of forms
+ * with the plugins its field names.
  */
 export type ComponentHandle<C> =
   TakesDraft<C> extends true
-    ?
-        | FieldHandle<Draft<FieldValueOf<C>>, FieldErrorOf<C>, FieldPluginsOf<C>>
-        | FieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>
+    ? DraftOrExact<C, FieldValueOf<C>>
+      | DraftOrExact<C, Exclude<FieldValueOf<C>, undefined>>
+      | DraftOrExact<C, Exclude<FieldValueOf<C>, null>>
+      | DraftOrExact<C, NonNullable<FieldValueOf<C>>>
     : FieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>;
+
+/** The handles of `Draft<T>` and of `T` for component `C`. Nothing for `never`. */
+type DraftOrExact<C, T> = [T] extends [never]
+  ? never
+  : FieldHandle<Draft<T>, FieldErrorOf<C>, FieldPluginsOf<C>> | FieldHandle<T, FieldErrorOf<C>, FieldPluginsOf<C>>;
 
 /** A registered component's own props: all of them except `field`. */
 export type OwnProps<C> = Omit<PropsOf<C>, "field">;
