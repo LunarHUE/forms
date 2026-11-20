@@ -494,15 +494,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const byOwner = node.byOwner;
     if (!byOwner || byOwner.size === 0) return none;
     if (byOwner.size === 1) for (const list of byOwner.values()) return list;
-    // Few owners share a field, so an insertion sort is enough.
-    const ordered: { rank: number; list: readonly E[] }[] = [];
-    for (const [owner, list] of byOwner) {
-      const rank = rankOf(owner);
-      let at = ordered.length;
-      while (at > 0 && (ordered[at - 1]?.rank ?? -1) > rank) at--;
-      ordered.splice(at, 0, { rank, list });
-    }
-    const joined = ordered.flatMap((entry) => entry.list);
+    const joined = [...byOwner].sort((a, b) => rankOf(a[0]) - rankOf(b[0])).flatMap((entry) => entry[1]);
     return sameList(joined, node.validation) ? node.validation : freeze(joined);
   };
 
