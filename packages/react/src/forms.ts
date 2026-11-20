@@ -13,6 +13,7 @@ import type {
   FormSnapshot,
   FormStore,
   IntentArgs,
+  InvalidField,
   Part,
   PluginApis,
   PluginNames,
@@ -27,7 +28,7 @@ import type {
 import { attach, createFormsCore } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
-import { generatedIdUsed, useId } from "./compat.js";
+import { generatedIdUsed, useId, useSyncExternalStore } from "./compat.js";
 import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
@@ -571,4 +572,36 @@ export const useDisabledErrors = <E>(
   const store = storeOf(form) as AnyFormStore<unknown>;
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return useSelected(formSource(store), (snapshot) => disabledFor(store, snapshot)) as readonly DisabledInvalid<E>[];
+};
+
+const noFields: readonly InvalidField<unknown>[] = [];
+const invalidLists = new WeakMap<object, readonly InvalidField<unknown>[]>();
+
+/** True when two lists name the same fields, with the same names and error lists. */
+const sameFields = (a: readonly InvalidField<unknown>[], b: readonly InvalidField<unknown>[]): boolean =>
+  a.length === b.length && a.every((entry, i) => entry.field === b[i]?.field && entry.name === b[i]?.name && entry.errors === b[i]?.errors);
+
+/** The store's `invalid()`, as the same list object until an entry changes. */
+function invalidFor(store: AnyFormStore<unknown>): readonly InvalidField<unknown>[] {
+  const next = store.invalid();
+  const last = invalidLists.get(store) ?? noFields;
+  if (sameFields(last, next)) return last;
+  invalidLists.set(store, next);
+  return next;
+}
+
+/**
+ * Returns every field with errors, in value order, for an error summary:
+ * core's `invalid()`, validation errors and errors from `setErrors` alike.
+ * It re-renders when a field gains or loses its errors, an error list
+ * changes, or a field with errors moves, and the list keeps its identity in
+ * between. The server render gets an empty list. Takes the form or any
+ * store, such as `handle.store`.
+ */
+export const useInvalidFields = <E>(form: AnyFormStore<E> | { readonly store: AnyFormStore<E> }): readonly InvalidField<E>[] => {
+  // The error type only types the list, which comes from this store.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const store = storeOf(form) as AnyFormStore<unknown>;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return useSyncExternalStore(store.subscribeInvalid, () => invalidFor(store), () => noFields) as readonly InvalidField<E>[];
 };

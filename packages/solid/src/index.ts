@@ -3,7 +3,7 @@ export * from "@lunarhue/forms-core";
 // Plugin types too, so declarations that tsc writes for a consumer name them
 // through this package. Strict installs (pnpm, Bun isolated) hide core from it.
 export type * from "@lunarhue/forms-core/plugins";
-export { createDisabledErrors, createForm, createForms, useFormContext } from "./forms.js";
+export { createDisabledErrors, createForm, createForms, createInvalidFields, useFormContext } from "./forms.js";
 export { defineField } from "./field-type.js";
 export type {
   AnyForm,

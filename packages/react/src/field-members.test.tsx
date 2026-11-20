@@ -30,6 +30,7 @@ const snapshotMembers = {
   value: true,
   name: true,
   errors: true,
+  userErrors: true,
   shownErrors: true,
   invalid: true,
   touched: true,

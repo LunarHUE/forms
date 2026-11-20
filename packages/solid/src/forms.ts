@@ -7,6 +7,7 @@ import type {
   DefinedValue,
   DefineParts,
   DisabledInvalid,
+  InvalidField,
   Draft,
   ErrorOf,
   FieldHandle,
@@ -35,6 +36,7 @@ import type {
 import type { Accessor } from "solid-js";
 import type { SolidElement } from "./element.js";
 import { createDisabledErrorList } from "./disabled-errors.js";
+import { createInvalidFieldList } from "./invalid-fields.js";
 import type { ExactFieldApi, FieldTypes, FormState, HandleLike } from "./field.js";
 import { createFormRuntime, createFormsRuntime, useAnyForm } from "./forms-runtime.js";
 import type { FieldPath, ValueAt } from "./path.js";
@@ -700,3 +702,17 @@ export const createDisabledErrors: <V, E, I, R>(
   // The list comes from the store's `disabledInvalid()`, whose error type is the store's `E`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   createDisabledErrorList as never;
+
+/**
+ * Returns every field with errors, in value order, for an error summary:
+ * core's `invalid()`, validation errors and errors from `setErrors` alike.
+ * It updates when a field gains or loses its errors, an error list changes,
+ * or a field with errors moves. On the server it is empty. Call it in a
+ * component body.
+ */
+export const createInvalidFields: <V, E, I, R>(
+  form: FormStore<V, E, I, R> | { readonly store: FormStore<V, E, I, R> },
+) => Accessor<readonly InvalidField<E>[]> =
+  // The list comes from the store's `invalid()`, whose error type is the store's `E`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  createInvalidFieldList as never;
