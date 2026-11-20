@@ -1,4 +1,4 @@
-import { type HandleOf, inputProps } from "@lunarhue/forms-react";
+import { checkboxProps, type HandleOf } from "@lunarhue/forms-react";
 import { rules } from "@lunarhue/forms-react/plugins";
 import { BillingFieldset } from "./forms";
 
@@ -10,7 +10,7 @@ export function BillingFields({ field }: { field: HandleOf<typeof BillingFieldse
       <scope.Field name="sameAsShipping">
         {(same) => (
           <label>
-            <input {...inputProps(same, { kind: "checkbox" })} />
+            <input {...checkboxProps(same)} />
             Same as shipping
           </label>
         )}

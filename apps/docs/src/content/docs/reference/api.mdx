@@ -170,7 +170,8 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `useField(handle, select?, isEqual?)` | The field snapshot, or a selection of it. Re-renders when it changes by `isEqual`. |
+| `useField(handle)` | The field object. Re-renders when the field changes. |
+| `useField(handle, select, isEqual?)` | A selection of the field snapshot. Re-renders when it changes by `isEqual`. |
 | `useFormState(form, select?, isEqual?)` | The form snapshot, or a selection of it. |
 | `useItems(handle)` | An array's item handles. Re-renders only when an item is added, removed or moved. Needs `arrays()`. |
 | `<Items handle>` | Renders one child per item, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
@@ -199,8 +200,15 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
-| `useInputProps(handle, options?)` | The same props for a handle. |
+| `inputProps(field, { type }?)` | Props for a text-like `<input>` on a string field. |
+| `textareaProps(field)` | Props for a `<textarea>` on a string field. |
+| `selectProps(field, { empty }?)` | Props for a `<select>` on a string field. |
+| `numberProps(field, { empty }?)` | Props for `<input type="number">` on a number field. Keeps `1.` and `-` as typed. |
+| `rangeProps(field)` | Props for `<input type="range">` on a number field. |
+| `checkboxProps(field)` | Props for `<input type="checkbox">` on a boolean field. |
+| `checkboxGroupProps(field, value)` | Props for one checkbox of a group over an array of strings or numbers. |
+| `radioProps(field, value)` | Props for the radio that writes `value`. |
+| `numberPieces(field, { empty }?)` | `text`, `setText` and `handleBlur` for a number input bound by hand. |
 | `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 | `elementsOf(handle)` | The field's elements in the document, in document order. |
@@ -223,16 +231,35 @@ Each throws when no matching `form.Form` is above.
 
 </Only>
 
+<Only framework="react">
+
+Each props function type-checks only on a field of the value type it writes.
+`empty` is the value an empty input writes, required when the field's type
+has no `undefined`. The props set `aria-invalid` and point
+`aria-describedby` at the error id while the field shows errors.
+
+</Only>
+
+<Only framework="solid">
+
 The options pick the element by `kind`: `"text"` (the default), `"textarea"`,
 `"number"`, `"range"`, `"checkbox"`, `"radio"` or `"select"`. The compiler
 checks the kind against the field's value type. Input props set
 `aria-invalid` and point `aria-describedby` at the error id while the field
 shows errors.
 
+</Only>
+
 ### Field object
 
 What a registered component gets as `field`, and what `Field` passes its
 children.
+
+<Only framework="react">
+
+`useField(handle)` returns it too.
+
+</Only>
 
 <Only framework="solid">
 
@@ -256,15 +283,21 @@ children.
 | `readOnly` | True when it or a field above it is read-only. |
 | `meta` | Plugin state by plugin name, read with the plugin's reader. |
 | `keys` | Array fields only: the item keys, in order. |
-| `text` | The text an element shows: typed number text, else a plugin's display text, else the value. |
+| `text` | The text an element shows: a plugin's display text, else the value. In Solid, typed number text comes first. |
 | `setText(text, from?)` | Writes typed text. With a mask, puts the formatted text in the element `from` names and places the caret. |
-| `setNumberText(text, empty?)` | Writes typed number text. Text that isn't a number yet writes nothing. |
 | `ref` | Records the element for focus after an invalid submit. |
 | `handle` | The field's handle. |
 | `id`, `path`, `errorId` | The handle's id, its stable path, and the error element id. |
 
-It also has every command of its handle, bound. Its `handleBlur` also drops
+It also has every command of its handle, bound.
+
+<Only framework="solid">
+
+It has `setNumberText(text, empty?)` too, which writes typed number text.
+Text that isn't a number yet writes nothing. Its `handleBlur` also drops
 typed number text.
+
+</Only>
 
 ### Handles
 

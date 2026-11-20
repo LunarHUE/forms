@@ -112,8 +112,9 @@ a generic handle. Write the child instead: `field.at("city").setValue("Oslo")`.
 
 <Only framework="react">
 
-`useInputProps` reads the value type from the handle's own type, so type the
-child first: `const city: FieldHandle<string> = field.at("city")`.
+`useField` reads the value type from the handle's own type, so type the
+child first, `const city: FieldHandle<string> = field.at("city")`, before
+`inputProps(useField(city))`.
 
 </Only>
 

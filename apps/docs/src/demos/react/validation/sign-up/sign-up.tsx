@@ -1,4 +1,4 @@
-import { createForms, fieldValidators, formValidator, inputProps, useForm } from "@lunarhue/forms-react";
+import { checkboxProps, createForms, fieldValidators, formValidator, useForm } from "@lunarhue/forms-react";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -38,7 +38,7 @@ export default function SignUpForm() {
             {(field) => (
               <div>
                 <label>
-                  <input {...inputProps(field, { kind: "checkbox" })} />I accept the terms
+                  <input {...checkboxProps(field)} />I accept the terms
                 </label>
                 <ul id={field.errorId}>
                   {field.shownErrors.map((error) => (
