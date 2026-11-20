@@ -86,7 +86,7 @@ const gutter = "px-4 sm:px-6 lg:px-8";
         <div class="flex items-start gap-4">
           <h1
             id={TOP_ID}
-            class="min-w-0 flex-1 text-[2rem] leading-10 font-bold tracking-[-0.025em] sm:text-[2.375rem] sm:leading-[46px]"
+            class="min-w-0 flex-1 text-[clamp(2rem,1.75rem+1.1vw,2.375rem)] leading-[1.2] font-bold tracking-[-0.025em] text-balance"
           >
             {title}
           </h1>
@@ -98,7 +98,7 @@ const gutter = "px-4 sm:px-6 lg:px-8";
             )
           }
         </div>
-        <p class="mt-2 text-lg leading-7 text-muted-foreground sm:text-[1.1875rem] sm:leading-8">{description}</p>
+        <p class="mt-2 text-lg leading-7 text-pretty text-muted-foreground sm:text-[1.1875rem] sm:leading-8">{description}</p>
       </header>
       <div class="prose mt-8">
         <slot />

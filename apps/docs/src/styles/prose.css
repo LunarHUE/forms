@@ -49,6 +49,17 @@
   .prose > :where(p, ul, ol, table, blockquote, pre) {
     margin-block: 1rem;
   }
+  /* No one-word last lines in paragraphs; headings break into even lines.
+     Sub- and superscripts don't stretch their line. */
+  .prose :where(p, li) {
+    text-wrap: pretty;
+  }
+  .prose > :where(h2, h3, h4) {
+    text-wrap: balance;
+  }
+  .prose :where(sub, sup) {
+    line-height: 0;
+  }
   .prose > :first-child {
     margin-top: 0;
   }
