@@ -518,6 +518,19 @@ describe("side effects", () => {
     expect(keysAt(other, ["rows"])).toEqual(["k0", "k1"]);
   });
 
+  it("counts nothing in production", () => {
+    const store = make({ a: 1 });
+    const watch = count(store, [["a"]]);
+    expect(store.stats().subscribed).toBe(1);
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(store.stats()).toEqual({ nodes: 0, subscribed: 0 });
+    } finally {
+      vi.unstubAllEnvs();
+      watch.stop();
+    }
+  });
+
   it("drops subscriber state with the last subscriber and works again after", () => {
     const store = make({ a: 1, b: 1 });
     const first = count(store, [["a"], ["b"], ["a"]]);
