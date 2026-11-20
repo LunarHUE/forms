@@ -233,6 +233,63 @@ describe("Fields", () => {
   });
 });
 
+describe("Log", () => {
+  it("lists writes and submissions newest first, with causes and aborted submissions marked", async () => {
+    let finish: (() => void) | undefined;
+    const store = createFormsCore({ plugins: [devtools()] })
+      .define({
+        defaultValues: { name: "", tags: ["a"] },
+        onSubmit: () => new Promise<void>((resolve) => (finish = resolve)),
+      })
+      .createStore();
+    cleanups.push(store.subscribeForm(() => {}));
+    const root = await open();
+    button(root, "Log").click();
+    await frame();
+    expect(root.textContent).toContain("No writes or submissions yet");
+    store.root.at("name").setValue("Ada");
+    void store.submit();
+    await frame();
+    store.reset();
+    void store.submit();
+    await frame();
+    finish?.();
+    await frame();
+    const items = [...root.querySelectorAll(".log-item")].map((item) => item.textContent);
+    expect(items[0]).toMatch(/^#\d+submit succeeded/);
+    expect(items.find((item) => item?.includes("aborted"))).toContain("reset during submit");
+    expect(items.find((item) => item?.includes("name"))).toContain('"" → "Ada"user');
+    expect(items.some((item) => item?.includes("reset"))).toBe(true);
+    const seqs = [...root.querySelectorAll(".log-item")].map((item) => Number(item.getAttribute("data-seq")));
+    expect(seqs.every((seq, index) => index === 0 || seq < (seqs[index - 1] ?? 0))).toBe(true);
+  });
+});
+
+describe("Plugins", () => {
+  it("lists every installed plugin in hook order with its form meta and API keys", async () => {
+    const counter = definePlugin({
+      name: "counter",
+      initialFormMeta: { count: 0 },
+      setup: (ctx) => {
+        ctx.setFormMeta({ count: 1 });
+        return { api: { bump() {}, reset() {} } };
+      },
+    });
+    const store = createFormsCore({ plugins: [counter, devtools()] })
+      .define({ defaultValues: { name: "" } })
+      .createStore();
+    cleanups.push(store.subscribeForm(() => {}));
+    const root = await open();
+    button(root, "Plugins").click();
+    await frame();
+    const names = [...root.querySelectorAll(".plugin")].map((item) => item.getAttribute("data-plugin"));
+    expect(names).toEqual(["counter", "devtools"]);
+    const first = root.querySelector('[data-plugin="counter"]')?.textContent ?? "";
+    expect(first).toContain('"count": 1');
+    expect(first).toContain("bump, reset");
+  });
+});
+
 describe("listeners", () => {
   it("never subscribes to the store, so other plugins' onActive still ends", async () => {
     let active = 0;
@@ -261,6 +318,10 @@ describe("listeners", () => {
     await frame();
     row(root, ["name"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
     button(root, "Pick a form on the page").click();
+    await frame();
+    button(root, "Log").click();
+    await frame();
+    button(root, "Plugins").click();
     await frame();
     off();
     expect(active).toBe(0);
