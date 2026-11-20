@@ -5,7 +5,6 @@ import type { JSX, Ref, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
-import { Bundle } from "./bundle.js";
 import { empty, panelRoot, surface } from "./classes.js";
 import { Fields, type FieldsProps } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
@@ -15,13 +14,12 @@ import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspec
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
 
-export type Tab = "fields" | "log" | "plugins" | "bundle";
+export type Tab = "fields" | "log" | "plugins";
 
 const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
   { id: "fields", label: "Fields" },
   { id: "log", label: "Log" },
   { id: "plugins", label: "Plugins" },
-  { id: "bundle", label: "Bundle" },
 ];
 
 /** At this width and below the dock is a button that opens a bottom sheet. */
@@ -355,7 +353,6 @@ function TabContent({ tab, form, fields }: TabContentProps): JSX.Element {
   const key = `${tab}${form.id}`;
   if (tab === "log") return <Log key={key} entry={form.entry} />;
   if (tab === "plugins") return <Plugins key={key} entry={form.entry} />;
-  if (tab === "bundle") return <Bundle key={key} entry={form.entry} />;
   return <Fields key={key} entry={form.entry} {...fields} />;
 }
 

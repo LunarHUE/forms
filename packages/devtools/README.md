@@ -73,14 +73,6 @@ button that opens a bottom sheet.
   and inspecting stays on, so the next click pins another field. Escape
   unpins the card; the inspect button turns inspecting off.
 - Hovering a row of the Fields tab outlines the field's elements on the page.
-- The Bundle tab draws what the forms packages add to the build as bars:
-  their total, then core, the adapter and the plugins, then each plugin.
-  Below that it lists the plugins in the order their hooks run. Sizes come
-  from your production build, so the bars are even and show no sizes until
-  the Vite plugin below measures it. Each part shows minified bytes.
-  Compressed bytes don't add up across parts, so only the whole app's total
-  has a gzip size. `devtools()` stays out of the bars, since a production
-  build usually leaves it out.
 
 Vue doesn't record elements yet, so a Vue form has no inspect button and no
 outlines.
