@@ -49,12 +49,15 @@ export function libraryBuild(): UserConfig[] {
   ];
 }
 
-// Declarations for an adapter. tsc writes them to dist/types first, then this
-// bundles each entry's and inlines @lunarhue/forms-core, so the adapter's
-// types are its own. A consumer under a strict install (pnpm, Bun isolated)
-// can't resolve core, and declarations tsc writes for that consumer's code
-// must name only the adapter. The entries share one chunk of core's types,
-// so a type from `.` and the same type from `./plugins` are one type.
+// Declarations for a package whose users don't install core: the adapters,
+// schema and bind. tsc writes them to dist/types first, then this bundles
+// each entry's and inlines @lunarhue/forms-core, so the package's types are
+// its own. A consumer under a strict install (pnpm, Bun isolated) can't
+// resolve core, and declarations tsc writes for that consumer's code must
+// name only the packages it installed. The entries share one chunk of core's
+// types, so a type from `.` and the same type from `./plugins` are one type.
+// No entry exports that chunk, so each entry must export every core type its
+// functions return, or the consumer's emit fails with TS2883.
 export function typesBuild(entries: readonly string[]): UserConfig[] {
   const types: UserConfig = {
     entry: Object.fromEntries(entries.map((name) => [name, `dist/types/${name}.d.ts`])),

@@ -1,6 +1,10 @@
 import type { Path, Plugin } from "@lunarhue/forms-core";
 import type { $ZodType, $ZodTypes } from "zod/v4/core";
 
+// The declarations bundle core's types, so a consumer's emitted declarations
+// can name the type zod() returns only through this entry.
+export type { Plugin };
+
 /** A Zod 4 schema, from `zod` or `zod/mini`. */
 export type ZodSchema = $ZodType;
 
