@@ -5,9 +5,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
-// From source like the rest of the library: Astro loads this config without
-// the source condition, so the package name would need a package build first.
-import { formsDevtools } from "../../packages/devtools/src/vite";
 import { pagefindIndex } from "./integrations/pagefind";
 // Swap for `@astrojs/solid-js` once 8.x (Solid 2) is on npm.
 import solid from "./integrations/solid";
@@ -50,9 +47,8 @@ export default defineConfig({
     pagefindIndex(),
   ],
   vite: {
-    // The devtools panel builds from source here, its stylesheet included, and
-    // formsDevtools() measures the forms packages for its Bundle tab.
-    plugins: [tailwindcss(), panelCss(), formsDevtools()],
+    // The devtools panel builds from source here, its stylesheet included.
+    plugins: [tailwindcss(), panelCss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: {
       resolve: { conditions: [sourceCondition, ...defaultServerConditions] },

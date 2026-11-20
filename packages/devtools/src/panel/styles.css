@@ -36,12 +36,6 @@
   --color-error-tint: rgb(240 113 106 / 0.16);
   --color-outline: #b8b8b1;
   --color-white: #fff;
-  /* The Bundle graph's three rows of bars, their numbers and the wedge between. */
-  --color-bar-1: #262f4d;
-  --color-bar-2: #2f3c69;
-  --color-bar-3: #3b4d8a;
-  --color-bar-num: #a9b6dc;
-  --color-wedge: #232a3d;
 
   --font-*: initial;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
