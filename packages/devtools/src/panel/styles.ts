@@ -526,6 +526,28 @@ pre {
   color: #fff;
 }
 
+.outline.field {
+  border: 2px solid var(--brand);
+  background: var(--brand-tint);
+}
+
+.card {
+  position: fixed;
+  z-index: 2147483001;
+  display: flex;
+  flex-direction: column;
+  max-height: min(420px, calc(100vh - 16px));
+  overflow: auto;
+}
+
+.card .detail-head {
+  justify-content: flex-start;
+}
+
+.card .detail-head .icon {
+  margin-left: auto;
+}
+
 .fab {
   position: fixed;
   right: 16px;

@@ -94,6 +94,8 @@ export interface FieldsProps {
   readonly onRow: (path: Path | null) => void;
   readonly invalidOnly: boolean;
   readonly onInvalidOnly: (on: boolean) => void;
+  /** Called with a row's path while the pointer is over it, and with null when it leaves. */
+  readonly onHover?: ((path: Path | null) => void) | undefined;
 }
 
 /** The Fields tab: the value tree with each field's flags, and the selected field's detail. */
@@ -146,6 +148,8 @@ export function Fields(props: FieldsProps): JSX.Element {
                 style: `--depth: ${item.depth}`,
                 "data-path": key,
                 "aria-current": key === selectedKey ? "true" : undefined,
+                onPointerEnter: () => props.onHover?.(item.path),
+                onPointerLeave: () => props.onHover?.(null),
               },
               item.branch
                 ? h(

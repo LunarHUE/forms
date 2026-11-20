@@ -1,0 +1,175 @@
+import type { Path } from "@lunarhue/forms-core";
+import { Fragment, h, type JSX } from "preact";
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { Hook } from "../hook.js";
+import { fieldFacts } from "./fields.js";
+import { hasPlugin, type Listed } from "./forms.js";
+import { useFrame } from "./frame.js";
+import { icon } from "./icons.js";
+import { pathKey } from "./values.js";
+
+/** A field found on the page: its form, its stable path and the element the pointer is over. */
+export interface Found {
+  readonly form: Listed;
+  readonly path: Path;
+  readonly element: Element;
+}
+
+/** Whether a key from `hook.keyOf` is a field handle rather than a store. */
+const isHandle = (key: object): key is { readonly store: object; readonly path: Path } => "path" in key && "store" in key;
+
+/**
+ * The field under an event, from the first element on its composed path that
+ * a ref recorded. Undefined for an event inside the panel, or over no field
+ * of a listed form.
+ */
+export function fieldAt(hook: Hook, forms: readonly Listed[], host: Element, path: readonly EventTarget[]): Found | undefined {
+  if (path.includes(host)) return undefined;
+  for (const target of path) {
+    if (!(target instanceof Element)) continue;
+    const key = hook.keyOf(target);
+    if (key === undefined || !isHandle(key)) continue;
+    const form = forms.find((listed) => listed.entry.store === key.store);
+    if (form) return { form, path: key.path, element: target };
+  }
+  return undefined;
+}
+
+/** The keys of every row above `path` in the tree, which must be expanded to show it. */
+export const ancestors = (path: Path): string[] => path.slice(0, -1).map((_, index) => pathKey(path.slice(0, index + 1)));
+
+export interface InspectOptions {
+  readonly hook: Hook;
+  readonly forms: readonly Listed[];
+  readonly host: Element;
+  /** True while the inspect toggle is on. Holding Alt inspects without it. */
+  readonly on: boolean;
+  /** Called with the field a click landed on while inspecting. The click goes no further. */
+  readonly onPin: (found: Found) => void;
+}
+
+/**
+ * The field under the pointer while inspecting: with the toggle on, or while
+ * Alt is held. Listens on the document in the capture phase, so a click that
+ * pins a field never reaches the page.
+ */
+export function useInspect({ hook, forms, host, on, onPin }: InspectOptions): Found | undefined {
+  const [found, setFound] = useState<Found | undefined>(undefined);
+  const latest = useRef({ forms, on, onPin });
+  latest.current = { forms, on, onPin };
+  useEffect(() => {
+    // The last pointer path, so pressing Alt over a field shows it without a move.
+    let last: readonly EventTarget[] = [];
+    const show = (active: boolean) => {
+      const next = active ? fieldAt(hook, latest.current.forms, host, last) : undefined;
+      setFound((previous) =>
+        previous?.element === next?.element && previous?.form === next?.form && pathKey(previous?.path ?? []) === pathKey(next?.path ?? [])
+          ? previous
+          : next,
+      );
+    };
+    const onMove = (event: PointerEvent) => {
+      last = event.composedPath();
+      show(latest.current.on || event.altKey);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Alt") show(latest.current.on || event.type === "keydown");
+    };
+    const onClick = (event: MouseEvent) => {
+      if (!latest.current.on && !event.altKey) return;
+      const hit = fieldAt(hook, latest.current.forms, host, event.composedPath());
+      if (hit === undefined) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setFound(undefined);
+      latest.current.onPin(hit);
+    };
+    document.addEventListener("pointermove", onMove, true);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("keyup", onKey, true);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("pointermove", onMove, true);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("keyup", onKey, true);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [hook, host]);
+  // Turning the toggle off drops a card it showed.
+  useEffect(() => {
+    if (!on) setFound(undefined);
+  }, [on]);
+  return found;
+}
+
+const rectOf = (element: Element) => {
+  const rect = element.getBoundingClientRect();
+  return [rect.left, rect.top, rect.width, rect.height] as const;
+};
+
+/** A solid outline over each element, following it as the page scrolls or reflows. */
+export function Outlines({ elements }: { readonly elements: readonly Element[] }): JSX.Element {
+  useFrame(() => elements.flatMap((element) => rectOf(element)));
+  return h(
+    Fragment,
+    null,
+    elements.map((element, index) => {
+      const [left, top, width, height] = rectOf(element);
+      return h("div", {
+        key: index,
+        class: "outline field",
+        style: `left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`,
+        "aria-hidden": "true",
+      });
+    }),
+  );
+}
+
+/** How far the card keeps from the element and the window's edges. */
+const gap = 8;
+const cardWidth = 320;
+
+export interface FieldCardProps {
+  readonly found: Found;
+  /** Set on a pinned card, which has a close button. */
+  readonly onClose?: (() => void) | undefined;
+}
+
+/** The hover card: a field's facts in a card next to its element. */
+export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | null {
+  const { form, path, element } = found;
+  const { entry } = form;
+  const connected = element.isConnected;
+  const snapshot = entry.store.getSnapshot(path);
+  const dirty = hasPlugin(entry, "dirty");
+  useFrame(() => [
+    entry.store.getSnapshot(path),
+    entry.ctx.baseline.read(path)?.value,
+    entry.lastWrite.get(pathKey(path)),
+    element.isConnected,
+    ...rectOf(element),
+  ]);
+  if (!connected) return null;
+  const rect = element.getBoundingClientRect();
+  const width = Math.min(cardWidth, innerWidth - 2 * gap);
+  const left = Math.max(gap, Math.min(rect.left, innerWidth - width - gap));
+  // Below the element when it is in the top half of the window, else above it.
+  const below = rect.top + rect.height / 2 < innerHeight / 2;
+  const place = below ? `top: ${rect.bottom + gap}px` : `bottom: ${innerHeight - rect.top + gap}px`;
+  return h(
+    "section",
+    {
+      class: onClose ? "card surface pinned" : "card surface",
+      style: `left: ${left}px; width: ${width}px; ${place}`,
+      "aria-label": `Field ${snapshot.name || "(form)"}`,
+    },
+    h(
+      "div",
+      { class: "detail-head" },
+      h("strong", { class: "truncate" }, snapshot.name || "(form)"),
+      h("span", { class: "muted truncate" }, form.label),
+      onClose ? h("button", { class: "icon small", "aria-label": "Unpin the field card", onClick: onClose }, icon("close")) : null,
+    ),
+    h("dl", { class: "facts" }, ...fieldFacts(entry, path, snapshot, dirty)),
+  );
+}

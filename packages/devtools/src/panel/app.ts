@@ -7,6 +7,7 @@ import { Fields } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
 import { icon } from "./icons.js";
+import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
 
@@ -21,6 +22,8 @@ const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
 /** At this width and below the dock is a button that opens a bottom sheet. */
 const phoneQuery = "(max-width: 640px)";
 
+/** The handle at `path` in `form`, for its elements. */
+const handleOf = (form: Listed | undefined, path: Path | null) => (form && path ? form.entry.store.fieldAt(path) : undefined);
 
 /** The forms on the page, kept up to date through the hook's own `subscribe`. */
 function useForms(hook: Hook): Listed[] {
@@ -108,6 +111,12 @@ export function App({ hook, host }: AppProps): JSX.Element {
       return { ...base, ...patch(base) };
     });
 
+  const [inspecting, setInspecting] = useState(false);
+  const [pinned, setPinned] = useState<Found | null>(null);
+  const [rowHover, setRowHover] = useState<Path | null>(null);
+  // Vue records no elements, so its forms never get an adapter and offer no inspecting.
+  const tracked = forms.some((form) => form.entry.adapter !== undefined);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtons = useRef<HTMLDivElement>(null);
   useDismiss(menu !== null, () => [menuRef.current, menuButtons.current], () => setMenu(null));
@@ -128,6 +137,35 @@ export function App({ hook, host }: AppProps): JSX.Element {
       document.removeEventListener("keydown", onKey);
     };
   }, [picking, host]);
+
+  // Escape ends inspecting and unpins the card.
+  useEffect(() => {
+    if (!inspecting && pinned === null) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setInspecting(false);
+      setPinned(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [inspecting, pinned]);
+
+  /** Pins the card for a field the inspector clicked, and selects its row in the Fields tab. */
+  const pin = (found: Found) => {
+    setPinned(found);
+    setInspecting(false);
+    setSelectedId(found.form.id);
+    setMenu(null);
+    setTab("fields");
+    if (phone) setSheetOpen(true);
+    setView((previous) => ({
+      form: found.form.id,
+      expanded: new Set([...(previous.form === found.form.id ? previous.expanded : []), ...ancestors(found.path)]),
+      row: found.path,
+      invalidOnly: false,
+    }));
+  };
+  const hovered = useInspect({ hook, forms, host, on: inspecting, onPin: pin });
 
   /** Selects a form, which opens the panel on it, or clears the selection, which closes it. */
   const select = (id: number | null) => {
@@ -173,6 +211,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
       onRow: (row) => updateView(() => ({ row })),
       invalidOnly: current.invalidOnly,
       onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly, row: null })),
+      onHover: shown.entry.adapter === undefined ? undefined : setRowHover,
     });
   };
 
@@ -259,6 +298,34 @@ export function App({ hook, host }: AppProps): JSX.Element {
     icon("pick"),
   );
 
+  const inspectButton = tracked
+    ? h(
+        "button",
+        {
+          class: "icon",
+          "aria-label": "Inspect fields on the page",
+          "aria-pressed": inspecting ? "true" : "false",
+          title: "Inspect fields on the page. Or hold Alt.",
+          onClick: () => setInspecting(!inspecting),
+        },
+        icon("inspect"),
+      )
+    : null;
+
+  // The elements of the field under the pointer, or of the hovered row.
+  const card = hovered ?? pinned;
+  const outlined = hovered
+    ? handleOf(hovered.form, hovered.path)
+    : tab === "fields" && shown?.entry.adapter !== undefined
+      ? handleOf(shown, rowHover)
+      : undefined;
+  const fieldLayer = h(
+    Fragment,
+    null,
+    outlined ? h(Outlines, { elements: hook.elementsOf(outlined) }) : null,
+    card ? h(FieldCard, { key: card === pinned ? "pinned" : "hover", found: card, onClose: card === pinned ? () => setPinned(null) : undefined }) : null,
+  );
+
   const outlines = picking
     ? h(FormOutlines, {
         hook,
@@ -277,6 +344,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
       "div",
       { class: "root" },
       outlines,
+      fieldLayer,
       sheetOpen
         ? h(
             "div",
@@ -310,6 +378,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
     "div",
     { class: "root" },
     outlines,
+    fieldLayer,
     h(
       "div",
       { class: "dock", "data-corner": corner },
@@ -334,6 +403,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
           : null,
         h("div", { class: "divider", "aria-hidden": "true" }),
         pickButton,
+        inspectButton,
         tabList(tab, (next) => setTab(tab === next ? null : next)),
         menu === "dock" ? dockMenu : menu === "forms" ? formsMenu : null,
       ),
