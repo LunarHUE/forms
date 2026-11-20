@@ -165,6 +165,12 @@ Where it needed a choice of its own:
 - An array field re-renders only when rows come or go, so the order total
   subscribes to the lines on its own.
 - Array rows are keyed by index, as in TanStack's docs.
+- The tax ID refusal. The sign-up app returns server errors from
+  `onSubmitAsync`, but a record form has to save in `onSubmit` to know which
+  values it sent. A refusal there goes on the fields with
+  `form.setErrorMap({ onSubmit: { fields } })` and leaves the defaults
+  alone, so the form stays unsaved. `onSubmit` returning still sets
+  `isSubmitSuccessful`, so the "saved" line is React state.
 
 ## Running
 

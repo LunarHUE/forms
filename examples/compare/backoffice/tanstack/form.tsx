@@ -218,10 +218,9 @@ function SaveBar({ defaults, refresh }: SaveBarProps) {
   );
 }
 
-/** The form element, wired to submit, with the message a successful save shows. */
-function RecordForm({ saved, children }: { readonly saved: string; readonly children: ReactNode }) {
+/** The form element, wired to submit, with the status line under it. */
+function RecordForm({ status, children }: { readonly status: string; readonly children: ReactNode }) {
   const form = useFormContext();
-  const succeeded = useStore(form.store, (state) => state.isSubmitSuccessful);
   return (
     <form
       noValidate
@@ -231,7 +230,7 @@ function RecordForm({ saved, children }: { readonly saved: string; readonly chil
       }}
     >
       {children}
-      <p role="status">{succeeded ? saved : null}</p>
+      <p role="status">{status}</p>
     </form>
   );
 }

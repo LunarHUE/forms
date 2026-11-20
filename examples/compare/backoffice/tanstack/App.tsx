@@ -1,7 +1,7 @@
-import { getBy, useStore } from "@tanstack/react-form";
+import { type AnyFormApi, getBy, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { companies, customers, orders, sendInvite } from "../../shared/server.ts";
+import { companies, customers, orders, type SaveResponse, sendInvite } from "../../shared/server.ts";
 import { ErrorList, Loaded, Page, ServerControls } from "../../shared/ui.tsx";
 import { orderTotal } from "../format.ts";
 import { type Address, Company, countries, Customer, Invite, Order, roles } from "../schemas.ts";
@@ -38,16 +38,37 @@ const AddressFields = withFieldGroup({
  * React state and move with each rebaseline. After a save, what was sent
  * becomes the defaults, and a field edited while the save ran keeps the
  * newer value and stays changed.
+ *
+ * A refusal puts the server's messages on the fields with `setErrorMap` and
+ * leaves the defaults alone. `onSubmit` returning still counts as a
+ * successful submit, so the status line is React state, not
+ * `isSubmitSuccessful`.
  */
-function useRecordForm<T>(initial: T, schema: z.ZodType<T, T>, server: { readonly get: () => Promise<T>; readonly save: (value: T) => Promise<void> }) {
+function useRecordForm<T>(
+  initial: T,
+  schema: z.ZodType<T, T>,
+  server: { readonly get: () => Promise<T>; readonly save: (value: T) => Promise<SaveResponse> },
+  savedMessage: string,
+) {
   const [defaults, setDefaults] = useState(initial);
+  const [status, setStatus] = useState("");
   const form = useAppForm({
     defaultValues: defaults,
     validators: { onChange: schema },
+    onSubmitInvalid: () => setStatus(""),
     onSubmit: async ({ value, formApi }) => {
-      await server.save(value);
+      setStatus("");
+      const response = await server.save(value);
+      if (!response.ok) {
+        // The server names fields by string, and `T` is generic here, so the
+        // form is used through TanStack's untyped form type.
+        const untyped: AnyFormApi = formApi;
+        untyped.setErrorMap({ onSubmit: { fields: response.errors } });
+        return;
+      }
       rebaseline(formApi, value, (name, current) => !same(current, getBy(value, name)));
       setDefaults(value);
+      setStatus(savedMessage);
     },
   });
 
@@ -59,14 +80,14 @@ function useRecordForm<T>(initial: T, schema: z.ZodType<T, T>, server: { readonl
     setDefaults(fresh);
   };
 
-  return { form, saveBar: { defaults, refresh } };
+  return { form, status, saveBar: { defaults, refresh } };
 }
 
 function CustomerForm({ initial }: { readonly initial: Customer }) {
-  const { form, saveBar } = useRecordForm(initial, Customer, customers);
+  const { form, status, saveBar } = useRecordForm(initial, Customer, customers, "Customer saved.");
   return (
     <form.AppForm>
-      <form.RecordForm saved="Customer saved.">
+      <form.RecordForm status={status}>
         <form.ErrorSummary />
         <form.AppField name="name">{(field) => <field.TextField label="Name" />}</form.AppField>
         <form.AppField name="email">{(field) => <field.TextField label="Email" />}</form.AppField>
@@ -85,10 +106,10 @@ function CustomerForm({ initial }: { readonly initial: Customer }) {
 const newLine = { sku: "", quantity: "1", price: "" };
 
 function OrderForm({ initial }: { readonly initial: Order }) {
-  const { form, saveBar } = useRecordForm(initial, Order, orders);
+  const { form, status, saveBar } = useRecordForm(initial, Order, orders, "Order saved.");
   return (
     <form.AppForm>
-      <form.RecordForm saved="Order saved.">
+      <form.RecordForm status={status}>
         <form.ErrorSummary />
         <form.AppField name="reference">{(field) => <field.TextField label="Reference" />}</form.AppField>
         <form.Field name="lines" mode="array">
@@ -145,10 +166,10 @@ function OrderForm({ initial }: { readonly initial: Order }) {
 }
 
 function CompanyForm({ initial }: { readonly initial: Company }) {
-  const { form, saveBar } = useRecordForm(initial, Company, companies);
+  const { form, status, saveBar } = useRecordForm(initial, Company, companies, "Company saved.");
   return (
     <form.AppForm>
-      <form.RecordForm saved="Company saved.">
+      <form.RecordForm status={status}>
         <form.ErrorSummary />
         <form.AppField name="name">{(field) => <field.TextField label="Company name" />}</form.AppField>
         <form.AppField name="phone">{(field) => <field.PhoneField label="Phone" inputMode="tel" />}</form.AppField>

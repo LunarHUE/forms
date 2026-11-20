@@ -88,19 +88,36 @@
     "backoffice": {
       "lunarhue": {
         "total": {
-          "min": 365502,
-          "gzip": 113113,
-          "brotli": 98134
+          "min": 365520,
+          "gzip": 113125,
+          "brotli": 98156
         },
         "forms": {
-          "min": 65559,
-          "gzip": 23401,
-          "brotli": 21215
+          "min": 65577,
+          "gzip": 23411,
+          "brotli": 21217
         },
         "app": {
-          "min": 12582,
-          "gzip": 4459,
-          "brotli": 3963
+          "min": 12600,
+          "gzip": 4471,
+          "brotli": 3970
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 385348,
+          "gzip": 112128,
+          "brotli": 96726
+        },
+        "forms": {
+          "min": 85523,
+          "gzip": 22477,
+          "brotli": 19958
+        },
+        "app": {
+          "min": 16405,
+          "gzip": 5654,
+          "brotli": 5053
         }
       }
     }
