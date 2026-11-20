@@ -16,9 +16,7 @@ export const CHANNEL: Channel = import.meta.env.DOCS_CHANNEL === "next" ? "next"
 /** Where each channel is served. */
 export const CHANNEL_URLS: Readonly<Record<Channel, string>> = {
   release: "https://forms.lunarhue.dev",
-  // The `next` branch alias on Cloudflare Pages, until the DNS record for
-  // https://next.forms.lunarhue.dev points at it. Then switch to that.
-  next: "https://next.lunarhue-forms-docs.pages.dev",
+  next: "https://next.forms.lunarhue.dev",
 };
 
 /** This build's origin, also `site` in astro.config.ts. */

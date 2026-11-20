@@ -3,7 +3,7 @@
  * the release candidate and only promotes the build when it passes. Deploys of
  * main run it against `next` and only report.
  *
- *   bun scripts/smoke.ts https://next.lunarhue-forms-docs.pages.dev
+ *   bun scripts/smoke.ts https://next.forms.lunarhue.dev
  *
  * It checks that each page in PAGES returns 200 with its title, that the
  * search index loads, that no internal link on those pages is broken, and
