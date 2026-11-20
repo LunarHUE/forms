@@ -1,7 +1,12 @@
 import { checkboxProps, type FieldApi, type FormError, inputProps, numberProps } from "@lunarhue/forms-solid";
 import { For } from "solid-js";
 
-function Errors(props: { readonly id: string; readonly errors: readonly FormError[] }) {
+interface ErrorsProps {
+  readonly id: string;
+  readonly errors: readonly FormError[];
+}
+
+function Errors(props: ErrorsProps) {
   return (
     <ul id={props.id}>
       <For each={props.errors}>{(error) => <li>{error.message}</li>}</For>
@@ -9,8 +14,13 @@ function Errors(props: { readonly id: string; readonly errors: readonly FormErro
   );
 }
 
+interface FieldProps<T> {
+  readonly field: FieldApi<T>;
+  readonly label: string;
+}
+
 // `undefined` in the type lets it take optional string fields too.
-export function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
+export function TextField(props: FieldProps<string | undefined>) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
@@ -21,7 +31,7 @@ export function TextField(props: { field: FieldApi<string | undefined>; label: s
 }
 
 // Only number fields fit, so `<form.NumberField name="name" />` is a type error.
-export function NumberField(props: { field: FieldApi<number>; label: string }) {
+export function NumberField(props: FieldProps<number>) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
@@ -31,7 +41,7 @@ export function NumberField(props: { field: FieldApi<number>; label: string }) {
   );
 }
 
-export function CheckboxField(props: { field: FieldApi<boolean>; label: string }) {
+export function CheckboxField(props: FieldProps<boolean>) {
   return (
     <div>
       <label>

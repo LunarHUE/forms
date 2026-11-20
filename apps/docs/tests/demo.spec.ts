@@ -31,10 +31,10 @@ for (const framework of frameworks) {
     await expect(phone).toHaveValue("(555) 123-4567");
 
     const tabs = demo.getByRole("tablist", { name: "Demo" }).getByRole("tab");
-    await expect(tabs).toHaveText(["Preview", "contact.tsx", "PhoneInput.tsx"]);
+    await expect(tabs).toHaveText(["Preview", "contact.tsx", "PhoneField.tsx"]);
     await tabs.nth(2).click();
     await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true");
-    await expect(demo.getByRole("tabpanel")).toContainText("export function PhoneInput");
+    await expect(demo.getByRole("tabpanel")).toContainText("export const PhoneField");
     await tabs.nth(0).click();
     // The preview stays mounted while the code shows.
     await expect(phone).toHaveValue("(555) 123-4567");

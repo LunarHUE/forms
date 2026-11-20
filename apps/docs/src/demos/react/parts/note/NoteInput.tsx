@@ -1,6 +1,11 @@
 import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
-export function NoteInput({ field, label }: { field: FieldApi<string>; label: string }) {
+interface NoteInputProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+export function NoteInput({ field, label }: NoteInputProps) {
   return (
     <label>
       {label}

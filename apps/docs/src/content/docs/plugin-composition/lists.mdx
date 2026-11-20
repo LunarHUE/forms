@@ -18,13 +18,12 @@ says it needs the [`arrays()`](../plugins/arrays) plugin. The component can't
 build the keys it doesn't know, so it takes a function that makes a full item:
 
 ```tsx framework=react
-function NamedList<T extends Named>({
-  items,
-  create,
-}: {
+interface NamedListProps<T extends Named> {
   items: ArrayHandle<T[], FormError, "arrays">;
   create: (base: Named) => T;
-}) {
+}
+
+function NamedList<T extends Named>({ items, create }: NamedListProps<T>) {
   return (
     <div>
       <Items handle={items}>{(item) => <NameField field={item} />}</Items>
@@ -40,10 +39,12 @@ function NamedList<T extends Named>({
 ```
 
 ```tsx framework=solid
-function NamedList<T extends Named>(props: {
+interface NamedListProps<T extends Named> {
   items: ArrayHandle<T[], FormError, "arrays">;
   create: (base: Named) => T;
-}) {
+}
+
+function NamedList<T extends Named>(props: NamedListProps<T>) {
   return (
     <div>
       <Items handle={props.items}>{(item) => <NameField field={item} />}</Items>
@@ -63,10 +64,27 @@ function NamedList<T extends Named>(props: {
 A row's handle is generic too, so render it through a
 [generic fieldset](../composition/fieldsets#generic-fieldsets):
 
-```tsx
+```tsx framework=react
 const NamedFieldset = forms.fieldset<Named>();
 
-function NameField<T extends Named>(props: { field: HandleOf<typeof NamedFieldset, T> }) {
+interface NameFieldProps<T extends Named> {
+  field: HandleOf<typeof NamedFieldset, T>;
+}
+
+function NameField<T extends Named>({ field }: NameFieldProps<T>) {
+  const scope = NamedFieldset.scope(field);
+  return <scope.TextField name="name" label="Name" />;
+}
+```
+
+```tsx framework=solid
+const NamedFieldset = forms.fieldset<Named>();
+
+interface NameFieldProps<T extends Named> {
+  field: HandleOf<typeof NamedFieldset, T>;
+}
+
+function NameField<T extends Named>(props: NameFieldProps<T>) {
   const scope = NamedFieldset.scope(props.field);
   return <scope.TextField name="name" label="Name" />;
 }

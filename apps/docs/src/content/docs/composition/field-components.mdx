@@ -21,7 +21,12 @@ edits, and list the component under `fields`:
 ```tsx framework=react
 import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-react";
 
-function TextField({ field, label }: { field: FieldApi<string>; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string>;
+  label: string;
+}
+
+function TextField({ field, label }: TextFieldProps) {
   return (
     <label>
       {label}
@@ -36,7 +41,12 @@ export const forms = createForms({ fields: { TextField } });
 ```tsx framework=solid
 import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
-function TextField(props: { field: FieldApi<string>; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string>;
+  label: string;
+}
+
+function TextField(props: TextFieldProps) {
   return (
     <label>
       {props.label}
@@ -80,7 +90,12 @@ reads `field.value` as a `string` would get it wrong. To render optional
 fields too, put `undefined` in the type:
 
 ```tsx framework=react
-function TextField({ field, label }: { field: FieldApi<string | undefined>; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string | undefined>;
+  label: string;
+}
+
+function TextField({ field, label }: TextFieldProps) {
   return (
     <label>
       {label}
@@ -91,7 +106,12 @@ function TextField({ field, label }: { field: FieldApi<string | undefined>; labe
 ```
 
 ```tsx framework=solid
-function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
+interface TextFieldProps {
+  field: FieldApi<string | undefined>;
+  label: string;
+}
+
+function TextField(props: TextFieldProps) {
   return (
     <label>
       {props.label}

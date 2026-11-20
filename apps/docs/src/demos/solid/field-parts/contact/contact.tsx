@@ -1,19 +1,10 @@
-import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
-import { digits, mask, masked, upper } from "@lunarhue/forms-solid/plugins";
+import { createForm, createForms } from "@lunarhue/forms-solid";
+import { mask } from "@lunarhue/forms-solid/plugins";
+import { CodeField, PhoneField } from "./fields";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
-// "5551234567" shows as "(555) 123-4567".
-function formatPhone(value: string) {
-  if (value.length > 6) return `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
-  if (value.length > 3) return `(${value.slice(0, 3)}) ${value.slice(3)}`;
-  return value;
-}
-
-// Two field types from one component. Each part travels with its type.
-const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
-const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
-
+// The field types bring their parts. The form installs mask() once.
 const forms = createForms({ plugins: [mask(), docsDevtools], fields: { TextInput, PhoneField, CodeField } });
 
 const contact = forms.define({

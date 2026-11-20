@@ -131,7 +131,12 @@ prop as `FieldApi<T>`, where `T` is the value type it edits:
 ```tsx framework=react
 import { type FieldApi, inputProps } from "@lunarhue/forms-react";
 
-function TextInput({ field, label }: { field: FieldApi<string>; label: string }) {
+interface TextInputProps {
+  field: FieldApi<string>;
+  label: string;
+}
+
+function TextInput({ field, label }: TextInputProps) {
   return (
     <label>
       {label}
@@ -146,7 +151,12 @@ function TextInput({ field, label }: { field: FieldApi<string>; label: string })
 ```tsx framework=solid
 import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
-function TextInput(props: { field: FieldApi<string>; label: string }) {
+interface TextInputProps {
+  field: FieldApi<string>;
+  label: string;
+}
+
+function TextInput(props: TextInputProps) {
   return (
     <label>
       {props.label}
@@ -242,11 +252,21 @@ read of `field` during render.
   onBlur={field.handleBlur}
 />
 
-<input type="checkbox" ref={field.ref} checked={field.value} onChange={(event) => field.setValue(event.currentTarget.checked)} />
+<input
+  type="checkbox"
+  ref={field.ref}
+  checked={field.value}
+  onChange={(event) => field.setValue(event.currentTarget.checked)}
+/>
 
 const number = numberPieces(field);
 
-<input ref={field.ref} value={number.text} onInput={(event) => number.setText(event.currentTarget.value)} onBlur={number.handleBlur} />
+<input
+  ref={field.ref}
+  value={number.text}
+  onInput={(event) => number.setText(event.currentTarget.value)}
+  onBlur={number.handleBlur}
+/>
 ```
 
 A primitive bound this way shows a reset or a value `persist` restored, since

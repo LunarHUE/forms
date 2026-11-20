@@ -42,7 +42,7 @@ shows how.
 
 A helper that is generic over the schema type, such as
 `function makeForm<S extends z.ZodObject>(schema: S)`, can't call `define`.
-[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin#ts2353-from-define-in-a-function-generic-over-the-schema)
+[Schema adapters](https://forms.lunarhue.dev/react/writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema)
 shows the form that works.
 
 The [main README](https://github.com/LunarHUE/forms#readme) has a full example.

@@ -21,7 +21,11 @@ import type { HandleOf } from "@lunarhue/forms-react";
 
 const AddressFieldset = forms.fieldset(Address);
 
-function AddressFields({ field }: { field: HandleOf<typeof AddressFieldset> }) {
+interface AddressFieldsProps {
+  field: HandleOf<typeof AddressFieldset>;
+}
+
+function AddressFields({ field }: AddressFieldsProps) {
   const scope = AddressFieldset.scope(field);
   return (
     <fieldset>
@@ -39,7 +43,11 @@ import type { HandleOf } from "@lunarhue/forms-solid";
 
 const AddressFieldset = forms.fieldset(Address);
 
-function AddressFields(props: { field: HandleOf<typeof AddressFieldset> }) {
+interface AddressFieldsProps {
+  field: HandleOf<typeof AddressFieldset>;
+}
+
+function AddressFields(props: AddressFieldsProps) {
   const scope = AddressFieldset.scope(props.field);
   return (
     <fieldset>
@@ -75,7 +83,11 @@ To take objects with more keys, make the component generic in the value and
 pass it as the second argument of `HandleOf`:
 
 ```tsx framework=react
-function AddressFields<A extends Address>({ field }: { field: HandleOf<typeof AddressFieldset, A> }) {
+interface AddressFieldsProps<A extends Address> {
+  field: HandleOf<typeof AddressFieldset, A>;
+}
+
+function AddressFields<A extends Address>({ field }: AddressFieldsProps<A>) {
   const scope = AddressFieldset.scope(field);
   return (
     <fieldset>
@@ -90,7 +102,11 @@ function AddressFields<A extends Address>({ field }: { field: HandleOf<typeof Ad
 ```
 
 ```tsx framework=solid
-function AddressFields<A extends Address>(props: { field: HandleOf<typeof AddressFieldset, A> }) {
+interface AddressFieldsProps<A extends Address> {
+  field: HandleOf<typeof AddressFieldset, A>;
+}
+
+function AddressFields<A extends Address>(props: AddressFieldsProps<A>) {
   const scope = AddressFieldset.scope(props.field);
   return (
     <fieldset>

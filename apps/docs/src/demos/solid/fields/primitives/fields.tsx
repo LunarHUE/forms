@@ -9,7 +9,12 @@ interface FieldProps<T> {
 // Plain elements bound the way a primitive library takes a field: its text
 // or value, the writes, the blur, and `ref` so an invalid submit can focus
 // it. A primitive's own value and change props take the same pieces.
-function Errors(props: { readonly id: string; readonly errors: readonly FormError[] }) {
+interface ErrorsProps {
+  readonly id: string;
+  readonly errors: readonly FormError[];
+}
+
+function Errors(props: ErrorsProps) {
   return (
     <ul id={props.id}>
       <For each={props.errors}>{(error) => <li>{error.message}</li>}</For>

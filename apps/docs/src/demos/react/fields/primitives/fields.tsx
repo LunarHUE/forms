@@ -13,7 +13,11 @@ interface FieldProps<T> {
 // can focus it. Each component takes `ref` out of the field first: React
 // Compiler treats an object whose member is passed as `ref` as a ref, and
 // would flag every other read of `field` during render.
-function Errors({ errors }: { readonly errors: readonly FormError[] }) {
+interface ErrorsProps {
+  readonly errors: readonly FormError[];
+}
+
+function Errors({ errors }: ErrorsProps) {
   return (
     <Field.Error match render={<ul />}>
       {errors.map((error) => (

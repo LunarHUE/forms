@@ -5,7 +5,7 @@ interface TextInputProps {
   readonly label: string;
 }
 
-// One plain component. The field types in contact.tsx give it different masks.
+// One plain component. The field types in fields.ts give it different masks.
 export function TextInput(props: TextInputProps) {
   return (
     <label>

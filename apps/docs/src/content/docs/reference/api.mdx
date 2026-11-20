@@ -17,13 +17,17 @@ plugins, so you import everything from the adapter you installed.
 
 `@lunarhue/forms-react`, for React 18 and later. React 16.8 and 17 need the
 `@lunarhue/react-legacy` resolve condition, see [Install](../install#react-168-and-17).
+The adapter reaches its React glue through the `#lunarhue/react` import, which
+the condition points at the legacy build. `@lunarhue/forms-react/legacy` is
+that build, for a bundler that aliases `#lunarhue/react` instead.
 
 </Only>
 
 <Only framework="solid">
 
-`@lunarhue/forms-solid`, for Solid 2. `@lunarhue/forms-solid/v1` only
-re-exports core for now. The Solid 1 adapter isn't written yet.
+`@lunarhue/forms-solid`, for Solid 2. `@lunarhue/forms-solid/v1` is the
+same adapter for `solid-js` 1.8 and later, with the same exports, so moving a
+form between Solid 1 and 2 means changing the import.
 
 </Only>
 
@@ -75,7 +79,10 @@ forms.define({
   defaultValues?,  // required unless a schema plugin accepts the schema
   schema?,         // needs the schema plugin for its library
   plugins?,        // this form's plugins, after the shared ones
-  validate?: { on?, form?, fields? },
+  validate?: {
+    form?: formValidator(check),
+    fields?: fieldValidators({ ... }),
+  },
   show?,
   equals?,         // needs dirty()
   disabled?,       // fields that start disabled
@@ -86,6 +93,21 @@ forms.define({
 
 `define` also takes a function of per-form options that returns the config.
 The form hook then needs those options as its second argument.
+
+### Validators
+
+| | |
+| --- | --- |
+| `fieldValidators(tree)` | Field validators shaped like the value, for `validate.fields`. A one-element tuple at an array applies to every item. |
+| `formValidator(check)` | A check of the whole value, for `validate.form`. Returns errors keyed by dotted field name, and `form` for the form as a whole. |
+| `validateOn(check, timing)` | Runs `check` first on `"input"`, `"blur"` or `"submit"` instead of the shared `validate` setting. |
+| `debounced(check, ms)` | Waits for a pause of `ms` before it runs `check`. A submit skips the wait. |
+| `recheckOnSubmit(check)` | Runs `check` on every submit, even when its last result is still current. |
+
+`check` is a validator function or a Standard Schema. The three wrappers
+return a check that goes anywhere a bare one does, in `fieldValidators`,
+`formValidator`, a `validate` prop or `registerValidator`, and they nest in any
+order. See [Validation](../basics/validation#when-validators-run).
 
 <Only framework="react">
 
@@ -399,7 +421,7 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 </Only>
 
-### plugins
+### Writing plugins
 
 | | |
 | --- | --- |
@@ -407,13 +429,13 @@ Import from `@lunarhue/forms-solid/plugins`.
 | `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
 
-### plugins/arrays
+### arrays
 
 | | |
 | --- | --- |
 | `arrays()` | Turns on `Items`, `useItems`, `createItems` and `push`, `insert`, `remove` and `move`, with keys that follow the items. See [Arrays](../plugins/arrays). |
 
-### plugins/history
+### history
 
 | | |
 | --- | --- |
@@ -422,7 +444,7 @@ Import from `@lunarhue/forms-solid/plugins`.
 `canUndo` and `canRedo` are form meta: `plugin.formMeta(snapshot).canUndo`.
 See [History](../plugins/history).
 
-### plugins/mask
+### mask
 
 | | |
 | --- | --- |
@@ -433,7 +455,7 @@ See [History](../plugins/history).
 
 Put `masked(...)` on a field type. See [Masks](../plugins/masks).
 
-### plugins/rules
+### rules
 
 | | |
 | --- | --- |
@@ -444,13 +466,13 @@ Put `masked(...)` on a field type. See [Masks](../plugins/masks).
 Each rule takes the value and returns `{ disabled?, hidden? }`. Put `ruled`
 after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
 
-### plugins/persist
+### persist
 
 | | |
 | --- | --- |
 | `persist(key, storage?)` | Saves the value as JSON once the page is idle, and restores it on mount. `localStorage` by default. |
 
-### plugins/rebase
+### rebase
 
 | | |
 | --- | --- |
@@ -459,14 +481,14 @@ after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
 `resolve` gets each differing leaf (`path`, `value`, `baseline`, `incoming`,
 `edited`) and returns `"keep"`, `"take"` or `{ value }`.
 
-### plugins/dirty
+### dirty
 
 | | |
 | --- | --- |
 | `dirty()` | Turns on `dirty`, `equals` and `store.changes()`. |
 | `baselineOnSubmit()` | Moves the baseline to what a successful submit sent. |
 
-### plugins/bind
+### bind
 
 | | |
 | --- | --- |

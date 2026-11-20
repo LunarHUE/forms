@@ -11,12 +11,17 @@ phone number, then type in the middle of it.
 
 <Demo name="masks/contact" />
 
-A mask cleans a field's value before the store takes it. Put `mask()` in the
-form's plugins, and a `masked(...)` part on the field type it cleans:
+A mask cleans a field's value before the store takes it. Put a `masked(...)`
+part on the field type it cleans, and export the field type so every form
+uses the same one:
 
-```ts
-const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
+```ts title="PhoneField.tsx"
+export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
+```
 
+A form that registers it installs `mask()` once:
+
+```ts title="contact.tsx"
 const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
 ```
 

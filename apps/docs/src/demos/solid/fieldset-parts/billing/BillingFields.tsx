@@ -3,7 +3,11 @@ import { rules } from "@lunarhue/forms-solid/plugins";
 import { Show } from "solid-js";
 import { BillingFieldset } from "./forms";
 
-export function BillingFields(props: { field: HandleOf<typeof BillingFieldset> }) {
+interface BillingFieldsProps {
+  readonly field: HandleOf<typeof BillingFieldset>;
+}
+
+export function BillingFields(props: BillingFieldsProps) {
   const scope = BillingFieldset.scope(props.field);
   return (
     <fieldset>

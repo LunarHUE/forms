@@ -2,7 +2,11 @@ import { checkboxProps, type HandleOf } from "@lunarhue/forms-react";
 import { rules } from "@lunarhue/forms-react/plugins";
 import { BillingFieldset } from "./forms";
 
-export function BillingFields({ field }: { field: HandleOf<typeof BillingFieldset> }) {
+interface BillingFieldsProps {
+  readonly field: HandleOf<typeof BillingFieldset>;
+}
+
+export function BillingFields({ field }: BillingFieldsProps) {
   const scope = BillingFieldset.scope(field);
   return (
     <fieldset>

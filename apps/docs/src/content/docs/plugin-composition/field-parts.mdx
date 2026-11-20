@@ -15,12 +15,15 @@ below.
 
 ## Field types with parts
 
-`defineField` takes the component and any number of parts:
+`defineField` takes the component and any number of parts. Export the field
+types from one module, so every form imports the same ones:
 
-```ts
-const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
-const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
+```ts title="fields.ts"
+export const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
+export const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
+```
 
+```ts title="contact.tsx"
 const forms = createForms({ plugins: [mask()], fields: { TextInput, PhoneField, CodeField } });
 ```
 
