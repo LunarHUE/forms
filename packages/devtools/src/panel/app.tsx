@@ -534,7 +534,8 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
       {boxes.map(({ form, rect }, index) => (
         <div
           key={index}
-          class={`form-outline fixed z-[2147482999] pointer-events-none border rounded-[0_6px_6px_6px] ${
+          // Just above the page's own content and under its overlays, such as a dialog or a drawer. The panel stays above both.
+          class={`form-outline fixed z-[1] pointer-events-none border rounded-[0_6px_6px_6px] ${
             form.id === selectedId ? "on border-brand" : "border-dashed border-outline has-[button:hover]:border-brand"
           }`}
           style={`left: ${rect.left - pad}px; top: ${rect.top - pad}px; width: ${rect.width + 2 * pad}px; height: ${rect.height + 2 * pad}px`}

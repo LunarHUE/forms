@@ -198,7 +198,7 @@ export function Outlines({ elements }: OutlinesProps): JSX.Element {
         return (
           <div
             key={index}
-            class="field-outline fixed z-[2147482999] pointer-events-none border-2 border-brand rounded-sm bg-brand-tint"
+            class="field-outline fixed z-[1] pointer-events-none border-2 border-brand rounded-sm bg-brand-tint"
             style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`}
             aria-hidden="true"
           />
