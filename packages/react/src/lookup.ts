@@ -1,4 +1,4 @@
-import type { AnyFieldHandle } from "@lunarhue/forms-core";
+import { type AnyFieldHandle, trackedField } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
 import { elementsFor, fields } from "./refs.js";
 
@@ -21,7 +21,9 @@ export function elementsOf(handle: HandleLike): HTMLElement[] {
  * inside one, walk `parentElement` or `event.composedPath()` until it
  * returns a handle.
  *
- * Development only for now. In production it always returns `undefined`.
+ * In production it returns `undefined` unless the app called
+ * `trackElements()` before the form rendered. Elements mounted before that
+ * call aren't found. `devtools()` calls it for you.
  */
 export function fieldOf(element: Element): AnyFieldHandle<unknown> | undefined {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -29,5 +31,5 @@ export function fieldOf(element: Element): AnyFieldHandle<unknown> | undefined {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return fields.get(element) as AnyFieldHandle<unknown> | undefined;
   }
-  return undefined;
+  return trackedField(element);
 }

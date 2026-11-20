@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createForms, elementsOf, fieldOf, type FormOf, type HandleLike, useFieldRef, useForm, useInputProps } from "./index.js";
+import {
+  createForms,
+  elementsOf,
+  fieldOf,
+  type FormOf,
+  type HandleLike,
+  trackElements,
+  useFieldRef,
+  useForm,
+  useInputProps,
+} from "./index.js";
 
 const forms = createForms();
 const profile = forms.define({ defaultValues: { name: "", plan: "free", bio: "" } });
@@ -95,5 +105,40 @@ describe("elementsOf", () => {
     vi.stubEnv("NODE_ENV", "production");
     render(<Profile />);
     expect(elementsOf(current().root.at("name"))).toEqual([screen.getByLabelText("name")]);
+  });
+});
+
+// Last, since tracking stays on once `trackElements` runs.
+describe("trackElements", () => {
+  type Event = [element: object, key: object, added: boolean, adapter: string];
+  const events: Event[] = [];
+
+  it("lets fieldOf find fields in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    trackElements((...event) => events.push(event));
+    render(<Profile />);
+    expect(fieldOf(screen.getByLabelText("name"))).toBe(current().root.at("name"));
+    expect(fieldOf(screen.getByLabelText("pro"))).toBe(current().root.at("plan"));
+    expect(fieldOf(screen.getByTestId("bio"))).toBe(current().root.at("bio"));
+    expect(fieldOf(screen.getByTestId("form"))).toBeUndefined();
+  });
+
+  it("reports the form element with its store as the key", () => {
+    events.length = 0;
+    render(<Profile />);
+    expect(events).toContainEqual([screen.getByTestId("form"), current().store, true, "react"]);
+    expect(events).toContainEqual([screen.getByLabelText("name"), current().root.at("name"), true, "react"]);
+  });
+
+  it("reports an element that unmounts, and fieldOf forgets it", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const { rerender } = render(<Profile early />);
+    const team = screen.getByLabelText("team");
+    const plan = current().root.at("plan");
+    expect(fieldOf(team)).toBe(plan);
+    events.length = 0;
+    rerender(<Profile />);
+    expect(events).toEqual([[team, plan, false, "react"]]);
+    expect(fieldOf(team)).toBeUndefined();
   });
 });
