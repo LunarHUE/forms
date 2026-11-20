@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "plugins"
+    "plugins",
+    "legacy"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -43,7 +44,32 @@
         "default": "./dist/cjs/plugins.js"
       }
     },
+    "./legacy": {
+      "@lunarhue/source": "./src/legacy.ts",
+      "import": {
+        "types": "./dist/esm/legacy.d.ts",
+        "default": "./dist/esm/legacy.js"
+      },
+      "require": {
+        "types": "./dist/cjs/legacy.d.ts",
+        "default": "./dist/cjs/legacy.js"
+      }
+    },
     "./package.json": "./package.json"
+  },
+  "imports": {
+    "#lunarhue/react": {
+      "@lunarhue/source": {
+        "@lunarhue/react-legacy": "./src/legacy.ts",
+        "default": "./src/react18.ts"
+      },
+      "@lunarhue/react-legacy": {
+        "import": "./dist/esm/legacy.js",
+        "require": "./dist/cjs/legacy.js"
+      },
+      "import": "./dist/esm/react18.js",
+      "require": "./dist/cjs/react18.js"
+    }
   },
   "dependencies": {
     "@lunarhue/forms-core": "workspace:^"

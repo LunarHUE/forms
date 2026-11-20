@@ -9,7 +9,7 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
 const docs = "https://forms.lunarhue.dev/errors#react:";
 
 /** Every error and warning the adapter raises, as the errors page lists it. */
-export type Code = "form:definition" | "context:form" | "context:forms" | "context:definition" | "id:server";
+export type Code = "form:definition" | "context:form" | "context:forms" | "context:definition" | "id:server" | "react:legacy";
 
 /**
  * The message for `code`: the package, then what went wrong. Development
@@ -27,6 +27,8 @@ export function problem(code: Code): string {
         "no form.Form of these forms is mounted above this component. Forms of other createForms calls don't count. Render it inside the form.Form of a form made from one of their definitions.",
       "context:definition":
         "no form.Form of this definition is mounted above this component. Forms of other definitions don't count. Render it inside the form.Form of a form made from it.",
+      "react:legacy":
+        "this build needs React 18 or later. On React 16.8 or 17, add the `@lunarhue/react-legacy` condition to your bundler's resolve conditions.",
       "id:server":
         "a form was server rendered without an `id`. React before 18 has no `useId`, so the generated id can't match on the client. Pass `id` to `useForm`.",
     };

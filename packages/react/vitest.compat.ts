@@ -35,7 +35,9 @@ function reactFrom(major: 16 | 17 | 18): Plugin {
  * main suite it runs the source as published, without the React Compiler.
  */
 export function compatTests(major: ReactMajor) {
-  const base = packageTests();
+  // React 16.8 and 17 take the adapter's fallback hooks through this
+  // condition, as the docs tell apps on them to set it.
+  const base = packageTests(major < 18 ? { conditions: ["@lunarhue/react-legacy"] } : {});
   return {
     ...base,
     plugins: major === 19 ? [] : [reactFrom(major)],

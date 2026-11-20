@@ -28,7 +28,7 @@ import type {
 import { attach, createFormsCore, invalidFields, subscribeInvalid } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
-import { generatedIdUsed, useId, useSyncExternalStore } from "./compat.js";
+import { generatedIdUsed, useId, useSyncExternalStore } from "#lunarhue/react";
 import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";

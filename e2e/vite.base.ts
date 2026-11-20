@@ -74,3 +74,15 @@ export function appConfig(plugins: PluginOption[], ssrBuild: boolean): UserConfi
         },
   };
 }
+
+/**
+ * `config` with `condition` resolved ahead of the others, on the client and
+ * in the server build.
+ */
+export function withCondition(config: UserConfig, condition: string): UserConfig {
+  return {
+    ...config,
+    resolve: { ...config.resolve, conditions: [condition, ...(config.resolve?.conditions ?? [])] },
+    ssr: { ...config.ssr, resolve: { ...config.ssr?.resolve, conditions: [condition, ...(config.ssr?.resolve?.conditions ?? [])] } },
+  };
+}

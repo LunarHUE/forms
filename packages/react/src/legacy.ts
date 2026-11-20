@@ -2,9 +2,10 @@ import * as React from "react";
 import { useEffect, useLayoutEffect, useReducer, useState } from "react";
 import { problem } from "./problem.js";
 
-// React's own hooks where it has them, and small fallbacks for React 16.8 and
-// 17. Each choice is made once, here at load, so a component calls the same
-// hooks on every render.
+// What `#lunarhue/react` resolves to under the `@lunarhue/react-legacy`
+// condition, and the package's `./legacy` export: React's own hooks where it
+// has them, and small fallbacks for React 16.8 and 17. Each choice is made
+// once, here at load, so a component calls the same hooks on every render.
 
 // The package has no node types, so this declares the one global the warning reads.
 declare const process: { readonly env: { readonly NODE_ENV?: string } };

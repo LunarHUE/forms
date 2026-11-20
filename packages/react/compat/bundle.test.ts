@@ -7,7 +7,8 @@ import { expect, it } from "vitest";
 // Runs in the React 17 project only. Bundlers see nothing missing when a
 // module imports a name React 17 lacks, since React 17 is CommonJS. Node's
 // own ESM loader does check, and fails to link such a module. So this
-// bundles the adapter as ESM with React left external, then has Node import
+// bundles the adapter as ESM under the `@lunarhue/react-legacy` condition, as
+// a React 17 app would, with React left external, then has Node import
 // the bundle natively, with React 17 next to it. The project config
 // externalizes `compat/react-17/dist`, so Vitest doesn't transform it.
 
@@ -34,7 +35,7 @@ it("bundles for React 17 with no warning and loads in Node's ESM loader", async 
     configFile: false,
     logLevel: "silent",
     root,
-    resolve: { conditions: ["@lunarhue/source", ...defaultClientConditions] },
+    resolve: { conditions: ["@lunarhue/source", "@lunarhue/react-legacy", ...defaultClientConditions] },
     build: {
       outDir,
       emptyOutDir: true,
