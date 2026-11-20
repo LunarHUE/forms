@@ -81,12 +81,13 @@ async function waitUntilReady(): Promise<void> {
 }
 
 function decode(text: string): string {
+  // `&amp;` goes last, so `&amp;lt;` decodes to `&lt;`, not to `<`.
   return text
-    .replaceAll("&amp;", "&")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll("&quot;", '"')
     .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&")
     .trim();
 }
 
