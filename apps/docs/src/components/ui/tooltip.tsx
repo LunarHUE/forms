@@ -49,10 +49,12 @@ const useWarm = () =>
   )
 
 /** Base UI's Provider, for a group narrower than the site's. Most code needs none. */
+interface TooltipProviderProps extends TooltipPrimitive.Provider.Props {}
+
 function TooltipProvider({
   delay = 0,
   ...props
-}: TooltipPrimitive.Provider.Props) {
+}: TooltipProviderProps) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
@@ -62,8 +64,10 @@ function TooltipProvider({
   )
 }
 
-function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props) {
-  const report = useCallback<NonNullable<TooltipPrimitive.Root.Props["onOpenChange"]>>(
+interface TooltipProps extends TooltipPrimitive.Root.Props {}
+
+function Tooltip({ onOpenChange, ...props }: TooltipProps) {
+  const report = useCallback<NonNullable<TooltipProps["onOpenChange"]>>(
     (open, details) => {
       if (open) opened()
       else closed()
@@ -74,7 +78,9 @@ function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props) {
   return <TooltipPrimitive.Root data-slot="tooltip" onOpenChange={report} {...props} />
 }
 
-function TooltipTrigger({ delay, ...props }: TooltipPrimitive.Trigger.Props) {
+interface TooltipTriggerProps extends TooltipPrimitive.Trigger.Props {}
+
+function TooltipTrigger({ delay, ...props }: TooltipTriggerProps) {
   const instant = useWarm()
   return (
     <TooltipPrimitive.Trigger
@@ -85,6 +91,10 @@ function TooltipTrigger({ delay, ...props }: TooltipPrimitive.Trigger.Props) {
   )
 }
 
+interface TooltipContentProps
+  extends TooltipPrimitive.Popup.Props,
+    Pick<TooltipPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset"> {}
+
 function TooltipContent({
   className,
   side = "top",
@@ -93,11 +103,7 @@ function TooltipContent({
   alignOffset = 0,
   children,
   ...props
-}: TooltipPrimitive.Popup.Props &
-  Pick<
-    TooltipPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+}: TooltipContentProps) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Positioner
@@ -130,19 +136,18 @@ function TooltipContent({
  *
  *   <Hint label="GitHub"><a href={url}><GitHubIcon /></a></Hint>
  */
-function Hint({
-  label,
-  children,
-  side = "bottom",
-  ...root
-}: {
+interface HintProps extends Pick<TooltipProps, "open" | "onOpenChange"> {
+  /** The tooltip, and the accessible name when it is a string. */
   label: ReactNode
+  /** The trigger element. */
   children: ReactElement<Record<string, unknown>>
-  side?: TooltipPrimitive.Positioner.Props["side"]
-} & Pick<TooltipPrimitive.Root.Props, "open" | "onOpenChange">) {
+  side?: TooltipContentProps["side"]
+}
+
+function Hint({ label, children, side = "bottom", open, onOpenChange }: HintProps) {
   const named = typeof label === "string" && children.props["aria-label"] === undefined
   return (
-    <Tooltip {...root}>
+    <Tooltip open={open} onOpenChange={onOpenChange}>
       <TooltipTrigger {...(named ? { "aria-label": label } : {})} render={children} />
       <TooltipContent side={side} sideOffset={6}>
         {label}
@@ -152,3 +157,4 @@ function Hint({
 }
 
 export { Hint, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+export type { HintProps, TooltipProps, TooltipTriggerProps, TooltipContentProps, TooltipProviderProps }

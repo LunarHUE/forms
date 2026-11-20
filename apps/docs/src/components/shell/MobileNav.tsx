@@ -21,7 +21,12 @@ import type { SidebarData } from "./sidebar";
  * one per framework and the drawer shows the last-used one, like the desktop
  * sidebar does with CSS.
  */
-export function MobileNav({ sidebars, currentSlug }: { sidebars: SidebarData[]; currentSlug?: string }) {
+interface MobileNavProps {
+  sidebars: SidebarData[];
+  currentSlug?: string;
+}
+
+export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
   const last = useLastFramework();
   const sidebar = pick(sidebars, last);
   if (!sidebar) return null;
