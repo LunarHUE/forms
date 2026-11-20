@@ -1,9 +1,12 @@
 name: Docs deploy
 
 # Builds the docs site and uploads it to Cloudflare Pages. Pushes to main go
-# to production. Pull requests from this repo get a preview at
+# to the `next` branch alias (next.forms.lunarhue.dev), since main documents
+# unreleased APIs. Production follows releases instead: docs-production.yml.
+# Pull requests from this repo get a preview at
 # <branch>.lunarhue-forms-docs.pages.dev; forks get none, since they can't
-# read the secrets. CI tests the site, so this only builds and uploads.
+# read the secrets. CI tests the site, so this only builds, uploads and, for
+# `next`, reports a smoke test.
 on:
   push:
     branches: [main]
@@ -42,6 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Each page's "last updated" date comes from git history.
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -71,13 +76,23 @@ jobs:
         run: bun run build
 
       # Pages names a preview after its branch: lowercase letters, digits and
-      # dashes. main is the production branch.
+      # dashes. main becomes `next`. A pull request branch that would land on
+      # one of the reserved names gets a prefix instead: `main` is the
+      # production branch, `next` serves main, and docs-production.yml tests
+      # each release at `release-candidate`.
       - id: branch
         if: steps.secrets.outputs.ready == 'true'
         env:
-          REF: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+          REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
         run: |
-          branch=$(printf '%s' "$REF" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | cut -c1-28)
+          if [ "$REF" = main ] && [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            branch=next
+          else
+            branch=$(printf '%s' "$REF" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | cut -c1-28)
+            case "$branch" in
+              main | next | release-candidate) branch="pr-$branch" ;;
+            esac
+          fi
           echo "name=$branch" >> "$GITHUB_OUTPUT"
 
       - id: deploy
@@ -98,3 +113,25 @@ jobs:
             echo "Deployed to $URL"
             if [ -n "$ALIAS" ]; then echo ""; echo "Branch alias: $ALIAS"; fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # `next` only reports: a failure shows as a warning on the run and in
+      # its summary, and blocks nothing. The production gate runs the same
+      # script before it promotes a release.
+      - id: smoke
+        if: steps.secrets.outputs.ready == 'true' && steps.branch.outputs.name == 'next'
+        continue-on-error: true
+        working-directory: apps/docs
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          {
+            echo ""
+            echo "### Smoke test"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          bun run smoke "$URL" | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - if: steps.smoke.outcome == 'failure'
+        run: echo "::warning::The smoke test failed on next. The deploy stays up; see the run summary."
