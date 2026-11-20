@@ -3,7 +3,7 @@ import type { Path } from "@lunarhue/forms-core";
 import { Check, ChevronDown, EyeOff, Locate, SquareEqual, X } from "lucide-preact";
 import type { JSX, Ref, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { FormEntry, Hook } from "../hook.js";
+import type { Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
 import { Bundle } from "./bundle.js";
 import { empty, panelRoot, surface } from "./classes.js";
@@ -238,8 +238,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
     <FormChip phone={phone} selected={selected} noForms={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
   );
 
-  const status = selected ? <SubmitStatus entry={selected.entry} /> : null;
-
   const inspectButton = tracked ? <InspectButton inspecting={inspecting} onToggle={() => setInspecting(!inspecting)} /> : null;
 
   // The elements of the field under the pointer, or of the hovered row.
@@ -285,7 +283,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
             <div class="w-9 h-1 mt-2 mx-auto rounded-[2px] bg-thumb" aria-hidden="true" />
             <div class="relative flex items-center gap-0.5 h-12 px-2" ref={menuButtons}>
               {chip}
-              {status}
               {inspectButton}
               <div class="flex ml-auto">
                 {onDisable ? <IconButton label="Turn off devtools" icon={EyeOff} onClick={turnOff} /> : null}
@@ -332,7 +329,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
             onClick={(event) => toggleMenu("dock", event)}
           />
           {chip}
-          {status}
           <div class="shrink-0 w-px h-4 mx-1 bg-line" aria-hidden="true" />
           {inspectButton}
           <TabList phone={false} active={tab} onTab={openTab} />
@@ -504,23 +500,6 @@ function InspectButton({ inspecting, onToggle }: InspectButtonProps): JSX.Elemen
       data-tip={inspecting ? "Stop inspecting" : "Inspect fields. Or hold Alt"}
       onClick={onToggle}
     />
-  );
-}
-
-interface SubmitStatusProps {
-  readonly entry: FormEntry;
-}
-
-/** The form's last submission, as `submit failed` and the like. Nothing before the first. */
-function SubmitStatus({ entry }: SubmitStatusProps): JSX.Element | null {
-  const last = () => entry.submissions.items[entry.submissions.items.length - 1]?.status;
-  const status = last();
-  useFrame(() => [last()]);
-  if (status === undefined) return null;
-  return (
-    <span class="status shrink-0 px-1.5 font-sans text-sm/5 text-muted whitespace-nowrap" data-status={status}>
-      submit <span class={status === "failed" || status === "invalid" ? "text-error" : "text-soft"}>{status === "open" ? "running" : status}</span>
-    </span>
   );
 }
 

@@ -297,22 +297,6 @@ describe("Fields", () => {
   });
 });
 
-describe("bar", () => {
-  it("shows how the selected form's last submission went", async () => {
-    const store = createFormsCore({ plugins: [devtools()] })
-      .define({ defaultValues: { name: "" }, onSubmit: () => Promise.reject(new Error("Down.")) })
-      .createStore(undefined, { id: "checkout" });
-    cleanups.push(store.subscribeForm(() => {}));
-    const root = await open();
-    button(root, "Fields").click();
-    await frame();
-    expect(root.querySelector(".status")).toBeNull();
-    await store.submit().catch(() => {});
-    await frame();
-    expect(root.querySelector(".status")?.textContent).toBe("submit failed");
-  });
-});
-
 describe("Log", () => {
   it("lists writes and submissions newest first, with causes and aborted submissions marked", async () => {
     let finish: (() => void) | undefined;

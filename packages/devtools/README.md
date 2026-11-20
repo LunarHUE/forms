@@ -55,8 +55,6 @@ button that opens a bottom sheet.
   and its last writes, each with its cause. The filter box above the tree
   lists the fields whose name contains the text, and its toggle lists just
   the fields with errors.
-- The bar shows how the selected form's last submission went, such as
-  `submit failed`, once the form has submitted.
 - The Log tab lists the form's writes and submissions in the order they
   happened, newest first, each write with its cause: `user`, `reset`,
   `rebase` or the plugin's name. A submission that a reset ended shows as
