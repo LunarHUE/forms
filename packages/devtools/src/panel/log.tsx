@@ -70,7 +70,7 @@ export function Log({ entry }: LogProps): JSX.Element {
         const { seq, at, record } = item.logged;
         const name = entry.store.getSnapshot(record.path).name;
         return (
-          <li key={seq} class={logItem} data-seq={seq} title={clock(at)}>
+          <li key={seq} class={logItem} data-seq={seq} data-tip={clock(at)}>
             <span class={side}>{`#${seq}`}</span>
             <span class="flex flex-col min-w-0">
               <span>{name === "" ? "(form)" : name}</span>

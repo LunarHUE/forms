@@ -201,7 +201,7 @@ export function Bundle({ entry }: BundleProps): JSX.Element {
               ) : row.kind === "devtools" && report ? (
                 <span class="text-muted">dev only</span>
               ) : (
-                <span class="text-muted" title={report ? "The report has no part with this kind and name." : "Not measured"}>
+                <span class="text-muted" data-tip={report ? "The report has no part with this kind and name." : "Not measured"}>
                   –
                 </span>
               )}
