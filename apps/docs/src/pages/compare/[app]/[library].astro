@@ -1,0 +1,47 @@
+---
+/*
+ * One comparison app on a page of its own, for the iframe in <Compare>
+ * (components/mdx/Compare.astro). The iframe keeps the app's stylesheet,
+ * which styles body, main and form, away from the docs.
+ *
+ * The page runs the app's own main.tsx, the entry scripts/size-compare.ts
+ * measures, so the preview is the measured app. Like the docs' demos, our
+ * library builds from source here.
+ */
+import type { GetStaticPaths } from "astro";
+
+import { COMPARE_LIBRARIES } from "@/lib/compare";
+import { appTitle, COMPARE_APPS, compareBuilds } from "@/lib/compare-sources";
+import { SITE_NAME } from "@/lib/site";
+
+export const getStaticPaths = (() =>
+  COMPARE_APPS.flatMap((app) =>
+    COMPARE_LIBRARIES.map((library) => ({ params: { app, library } })),
+  )) satisfies GetStaticPaths;
+
+const { app, library } = Astro.params;
+const build = compareBuilds(app).find((candidate) => candidate.library === library);
+const title = `${appTitle(app)} · ${build?.title ?? library} · ${SITE_NAME}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div id="root" data-app={app} data-library={library}></div>
+    <script>
+      // Each entry is its own chunk, so a page loads only its app.
+      const entries = import.meta.glob("../../../../../../examples/compare/*/*/main.tsx");
+      const { app, library } = document.getElementById("root")?.dataset ?? {};
+      const load = entries[`../../../../../../examples/compare/${app}/${library}/main.tsx`];
+      if (load === undefined) throw new Error(`No comparison app ${app}/${library}.`);
+      void load();
+    </script>
+  </body>
+</html>

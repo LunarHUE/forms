@@ -1,12 +1,12 @@
 import { RotateCcwIcon } from "lucide-react";
-import { cn } from "cn";
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
 
 import { CodeBlock } from "./CodeBlock";
 import { CopyButton } from "./CopyButton";
+import { DemoTabs } from "./demo/DemoTabs";
 
 export interface DemoFile {
   /** Path inside the demo folder, shown on its tab. */
@@ -34,23 +34,6 @@ export interface DemoFrameProps {
 /** The first tab. Every other tab is a file, named by its path. */
 const PREVIEW = "preview";
 
-/** Left and right arrows move between tabs, as in any tablist. */
-function arrowKeys(items: readonly string[], current: string, select: (item: string) => void) {
-  return (event: KeyboardEvent<HTMLElement>) => {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
-    event.preventDefault();
-    const next = items[(items.indexOf(current) + step + items.length) % items.length];
-    if (next === undefined) return;
-    select(next);
-    const tabs = event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]');
-    tabs[items.indexOf(next)]?.focus();
-  };
-}
-
-const tabClass =
-  "relative flex shrink-0 items-center px-2 text-[13px] whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground focus-visible:after:bg-ring after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full aria-selected:text-foreground aria-selected:after:bg-foreground";
-
 /**
  * The demo block: a tab row with Preview and one tab per file, the live demo
  * on a stage, and the chosen file's code. The preview stays mounted while a
@@ -73,7 +56,6 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
   };
 
   const tabId = (part: string) => `${id}-${part}`.replace(/[^\w-]/g, "-");
-  const tabs = [PREVIEW, ...files.map((candidate) => candidate.name)];
 
   return (
     <div
@@ -82,28 +64,21 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
       className="not-prose my-6 min-w-0 overflow-hidden rounded-lg border bg-background"
     >
       <div className="flex h-11 items-stretch gap-2 border-b bg-background pr-2 pl-1">
-        <div
-          role="tablist"
-          aria-label="Demo"
-          className="scroll-fade-x flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]"
-          onKeyDown={arrowKeys(tabs, tab, setTab)}
-        >
-          {tabs.map((item) => (
-            <button
-              key={item}
-              type="button"
-              role="tab"
-              id={tabId(item)}
-              aria-selected={tab === item}
-              aria-controls={tabId(item === PREVIEW ? "preview-panel" : "code-panel")}
-              tabIndex={tab === item ? 0 : -1}
-              onClick={() => setTab(item)}
-              className={cn(tabClass, item === PREVIEW ? "font-medium" : "font-mono text-xs")}
-            >
-              {item === PREVIEW ? "Preview" : item}
-            </button>
-          ))}
-        </div>
+        <DemoTabs
+          label="Demo"
+          tabs={[
+            { value: PREVIEW, label: "Preview", panel: tabId("preview-panel") },
+            ...files.map((candidate) => ({
+              value: candidate.name,
+              label: candidate.name,
+              panel: tabId("code-panel"),
+              mono: true,
+            })),
+          ]}
+          value={tab}
+          onChange={setTab}
+          tabId={tabId}
+        />
         <div className="ms-auto flex shrink-0 items-center">
           {file ? (
             <CopyButton text={file.code} label={`Copy ${file.name}`} />

@@ -23,6 +23,9 @@ function demo(name: string) {
   ];
 }
 
+/** Stands in for a comparison's sizes table and files. */
+const compare = (app: string): string => `sizes and files of ${app}`;
+
 describe("toMarkdown", () => {
   it("starts with the title, description and source", () => {
     expect(page("Body.")).toBe(
@@ -81,6 +84,10 @@ describe("toMarkdown", () => {
 
   it("fails on a demo with no files", () => {
     expect(() => page('<Demo name="masks/contact" />')).toThrow(/masks\/contact/);
+  });
+
+  it("turns a comparison into what its source writes", () => {
+    expect(content(page('<Compare app="signup" />', { compare }))).toBe("sizes and files of signup\n");
   });
 
   it("writes install lines as npm commands", () => {

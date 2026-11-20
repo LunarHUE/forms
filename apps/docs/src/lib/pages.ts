@@ -1,4 +1,5 @@
 import { getDocs, getErrors, toNavPage } from "./content";
+import { compareMarkdownFor } from "./compare-sources";
 import { demoSources } from "./demo-sources";
 import { AVAILABLE_FRAMEWORKS, type Framework } from "./frameworks";
 import { lastCommitDate } from "./git";
@@ -56,6 +57,7 @@ export async function sitePages(): Promise<SitePage[]> {
                 framework,
                 url: absoluteUrl(item.href),
                 demo: (name) => demoSources(framework, name),
+                compare: compareMarkdownFor,
               }),
           },
         ];
