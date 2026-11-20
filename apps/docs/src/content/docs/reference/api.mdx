@@ -325,7 +325,7 @@ tests.
 
 | | |
 | --- | --- |
-| `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
+| `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `FieldApi<string \| undefined>` takes required and optional string fields. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
 | `HandleOf<typeof fieldset, A>` | The handle prop a fieldset component takes. It takes only the fieldset's exact value. For values with more keys, make the component generic, `<A extends Address>`, and pass `A`. |
 | `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
