@@ -70,12 +70,6 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - if: steps.secrets.outputs.ready == 'true'
-        run: bun install --frozen-lockfile
-      - if: steps.secrets.outputs.ready == 'true'
-        working-directory: apps/docs
-        run: bun run build
-
       # Pages names a preview after its branch: lowercase letters, digits and
       # dashes. main becomes `next`. A pull request branch that would land on
       # one of the reserved names gets a prefix instead: `main` is the
@@ -95,6 +89,16 @@ jobs:
             esac
           fi
           echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - if: steps.secrets.outputs.ready == 'true'
+        run: bun install --frozen-lockfile
+      - if: steps.secrets.outputs.ready == 'true'
+        working-directory: apps/docs
+        env:
+          # The next site labels itself "next" in the version picker and stays
+          # out of search. Previews build like a release.
+          DOCS_CHANNEL: ${{ steps.branch.outputs.name == 'next' && 'next' || '' }}
+        run: bun run build
 
       - id: deploy
         if: steps.secrets.outputs.ready == 'true'
