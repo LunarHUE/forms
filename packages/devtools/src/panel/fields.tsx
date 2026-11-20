@@ -463,7 +463,7 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
     >
       {row.branch ? (
         <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon={ChevronDown}
-          class="w-4 h-5 rounded-sm text-muted [&_svg]:size-3.5 [&[aria-expanded=false]_svg]:-rotate-90" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
+          class="inline-flex shrink-0 items-center justify-center w-4 h-5 rounded-sm text-muted [&_svg]:size-3.5 [&[aria-expanded=false]_svg]:-rotate-90" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
       ) : (
         <span class="shrink-0 w-4" />
       )}
