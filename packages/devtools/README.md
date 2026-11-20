@@ -33,41 +33,6 @@ write, such as from a keyboard shortcut.
 Installing the plugin also calls `trackElements()` from the adapter, so
 `fieldOf(element)` works in production from then on.
 
-## Bundle sizes
-
-The Vite plugin measures your production build for the Bundle tab:
-
-```ts
-// vite.config.ts
-import { formsDevtools } from "@lunarhue/forms-devtools/vite";
-
-export default defineConfig({ plugins: [formsDevtools()] });
-```
-
-`vite build` writes the report to `lunarhue-forms-sizes.json` at the root of
-the output, and the panel reads it from there. In `vite dev`, the plugin
-builds your app for production on a worker thread when the server starts, and
-again a second after your source stops changing. That build writes nothing.
-The dev server serves the report and tells open pages when a new one is
-ready. Until the first build finishes, the tab shows no sizes.
-
-The plugin splits the minified chunks by their source maps. Each byte counts
-for the package its module comes from, and in core for the plugin file it
-comes from. A core module that only one plugin imports, such as the mask's
-caret helpers, counts for that plugin. One that several plugins share counts
-for core. A plugin your forms don't import isn't in the build, so it isn't in
-the report. A third-party plugin has no part, since the plugin can't tell its
-code from the rest of your app. If your build has no source maps, the plugin
-makes hidden ones and drops them before writing.
-
-A framework that hands Vite its config inline, like Astro, leaves the dev
-server no config file to build the app again from. There the plugin builds
-what your modules import from the forms packages, once the browser has loaded
-them, and the total covers only that build. `vite build` (`astro build`)
-measures the whole app.
-
-Vite 8 is an optional peer dependency.
-
 ## The panel
 
 The panel docks in a corner of the page. Its menu moves it to another

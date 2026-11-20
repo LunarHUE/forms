@@ -248,15 +248,10 @@
         "lucide-preact": "catalog:",
         "preact": "catalog:",
         "tailwindcss": "4.3.5",
-        "vite": "catalog:",
       },
       "peerDependencies": {
         "@lunarhue/forms-core": "workspace:^",
-        "vite": "^8.0.0",
       },
-      "optionalPeers": [
-        "vite",
-      ],
     },
     "packages/react": {
       "name": "@lunarhue/forms-react",
