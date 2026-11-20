@@ -177,10 +177,9 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
   const below = rect.top + rect.height / 2 < innerHeight / 2;
   const place = below ? `top: ${rect.bottom + gap}px` : `bottom: ${innerHeight - rect.top + gap}px`;
   return (
-    <section class={`card ${surface} fixed z-[2147483001] flex flex-col max-h-[min(420px,calc(100vh-16px))] overflow-auto`} style={`left: ${left}px; width: ${width}px; ${place}`} aria-label={`Field ${snapshot.name || "(form)"}`}>
+    <section class={`card ${surface} fixed z-[2147483001] flex flex-col max-h-[min(420px,calc(100vh-16px))] overflow-x-hidden overflow-y-auto`} style={`left: ${left}px; width: ${width}px; ${place}`} aria-label={`Field ${snapshot.name || "(form)"}`}>
       <div class={detailHead}>
         <strong class={detailName}>{snapshot.name || "(form)"}</strong>
-        <span class="font-sans text-xs/5 text-muted truncate">{form.label}</span>
         {onClose ? <IconButton label="Unpin the field card" icon={X} class={`${smallBox} ${iconTone}`} onClick={onClose} /> : null}
       </div>
       <FieldFacts entry={entry} path={path} snapshot={snapshot} />
