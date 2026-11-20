@@ -4,6 +4,11 @@ import { forms, Order } from "./forms";
 
 const order = forms.define({
   schema: Order,
+  defaultValues: {
+    name: "",
+    shipping: { street: "", city: "" },
+    billing: { street: "", city: "" },
+  },
   onSubmit: (value) => value,
 });
 

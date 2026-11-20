@@ -138,3 +138,28 @@ const errors = useField(tasks, (snapshot) => snapshot.shownErrors);
 ```tsx framework=solid
 const list = createField(tasks); // list.shownErrors
 ```
+
+## Reusable lists
+
+A reusable list is generic in its item type, as a
+[generic fieldset](../composition/fieldsets#generic-fieldsets) is, and takes
+a function that makes a full item, since it can't build the keys it doesn't
+know:
+
+```tsx
+function TagList<T extends Tag>(props: {
+  tags: ArrayHandle<T[], FormError, "arrays">;
+  create: (base: Tag) => T;
+}) {
+  return (
+    <>
+      <Items handle={props.tags}>{(tag) => <TagFields field={tag} />}</Items>
+      <button type="button" onClick={() => props.tags.push(props.create({ id: Date.now(), name: "" }))}>
+        Add
+      </button>
+    </>
+  );
+}
+
+<TagList tags={form.root.at("tags")} create={(base) => ({ ...base, enabled: true })} />;
+```
