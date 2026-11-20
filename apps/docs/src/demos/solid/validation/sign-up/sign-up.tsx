@@ -1,4 +1,4 @@
-import { createForm, createForms, fieldValidators, formValidator, inputProps } from "@lunarhue/forms-solid";
+import { checkboxProps, createForm, createForms, fieldValidators, formValidator } from "@lunarhue/forms-solid";
 import { For, Show } from "solid-js";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
@@ -39,7 +39,7 @@ export default function SignUpForm() {
             {(field) => (
               <div>
                 <label>
-                  <input {...inputProps(field, { kind: "checkbox" })} />I accept the terms
+                  <input {...checkboxProps(field)} />I accept the terms
                 </label>
                 <ul id={field.errorId}>
                   <For each={field.shownErrors}>{(error) => <li>{error.message}</li>}</For>

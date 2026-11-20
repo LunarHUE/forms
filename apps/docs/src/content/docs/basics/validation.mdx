@@ -62,15 +62,9 @@ given: `fieldValidators<SignUp>({...})`.
 The `validate` prop on `form.Field` adds a validator while the field is
 mounted, and removes it and its errors on unmount:
 
-```tsx framework=react
+```tsx
 <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
   {(field) => <input {...checkboxProps(field)} />}
-</form.Field>
-```
-
-```tsx framework=solid
-<form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
-  {(field) => <input {...inputProps(field, { kind: "checkbox" })} />}
 </form.Field>
 ```
 

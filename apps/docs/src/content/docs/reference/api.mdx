@@ -196,8 +196,6 @@ Each throws when no matching `form.Form` is above.
 
 ### Inputs
 
-<Only framework="react">
-
 | | |
 | --- | --- |
 | `inputProps(field, { type }?)` | Props for a text-like `<input>` on a string field. |
@@ -209,11 +207,16 @@ Each throws when no matching `form.Form` is above.
 | `checkboxGroupProps(field, value)` | Props for one checkbox of a group over an array of strings or numbers. |
 | `radioProps(field, value)` | Props for the radio that writes `value`. |
 | `numberPieces(field, { empty }?)` | `text`, `setText` and `handleBlur` for a number input bound by hand. |
-| `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 | `elementsOf(handle)` | The field's elements in the document, in document order. |
 | `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
 | `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
+
+<Only framework="react">
+
+| | |
+| --- | --- |
+| `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 
 </Only>
 
@@ -221,32 +224,22 @@ Each throws when no matching `form.Form` is above.
 
 | | |
 | --- | --- |
-| `inputProps(field, options?)` | Props that bind one plain HTML element to a field object. |
-| `createInputProps(handle, options?)` | The same props for a handle. |
 | `fieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
-| `errorId(handle)` | The id of the element that shows the field's errors. |
-| `elementsOf(handle)` | The field's elements in the document, in document order. |
-| `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
-| `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
 
 </Only>
-
-<Only framework="react">
 
 Each props function type-checks only on a field of the value type it writes.
 `empty` is the value an empty input writes, required when the field's type
 has no `undefined`. The props set `aria-invalid` and point
 `aria-describedby` at the error id while the field shows errors.
 
-</Only>
-
 <Only framework="solid">
 
-The options pick the element by `kind`: `"text"` (the default), `"textarea"`,
-`"number"`, `"range"`, `"checkbox"`, `"radio"` or `"select"`. The compiler
-checks the kind against the field's value type. Input props set
-`aria-invalid` and point `aria-describedby` at the error id while the field
-shows errors.
+Every props function except `numberPieces` also takes `describedBy` in its
+options, more ids for `aria-describedby` placed before the error id. The
+options come last, as in `radioProps(field, value, { describedBy })`. The
+value, `name`, flags and aria props are getters, so each one updates on its
+own.
 
 </Only>
 
@@ -283,21 +276,13 @@ children.
 | `readOnly` | True when it or a field above it is read-only. |
 | `meta` | Plugin state by plugin name, read with the plugin's reader. |
 | `keys` | Array fields only: the item keys, in order. |
-| `text` | The text an element shows: a plugin's display text, else the value. In Solid, typed number text comes first. |
+| `text` | The text an element shows: a plugin's display text, else the value. |
 | `setText(text, from?)` | Writes typed text. With a mask, puts the formatted text in the element `from` names and places the caret. |
 | `ref` | Records the element for focus after an invalid submit. |
 | `handle` | The field's handle. |
 | `id`, `path`, `errorId` | The handle's id, its stable path, and the error element id. |
 
 It also has every command of its handle, bound.
-
-<Only framework="solid">
-
-It has `setNumberText(text, empty?)` too, which writes typed number text.
-Text that isn't a number yet writes nothing. Its `handleBlur` also drops
-typed number text.
-
-</Only>
 
 ### Handles
 

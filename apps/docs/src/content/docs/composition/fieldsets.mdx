@@ -120,7 +120,8 @@ child first, `const city: FieldHandle<string> = field.at("city")`, before
 
 <Only framework="solid">
 
-`createInputProps` reads the value type from the handle's own type, so type
-the child first: `const city: FieldHandle<string> = props.field.at("city")`.
+`createField` reads the value type from the handle's own type, so type the
+child first, `const city: FieldHandle<string> = props.field.at("city")`,
+before `inputProps(createField(city))`.
 
 </Only>

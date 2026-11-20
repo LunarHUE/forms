@@ -1,4 +1,4 @@
-import { type HandleOf, inputProps } from "@lunarhue/forms-solid";
+import { checkboxProps, type HandleOf } from "@lunarhue/forms-solid";
 import { rules } from "@lunarhue/forms-solid/plugins";
 import { Show } from "solid-js";
 import { BillingFieldset } from "./forms";
@@ -11,7 +11,7 @@ export function BillingFields(props: { field: HandleOf<typeof BillingFieldset> }
       <scope.Field name="sameAsShipping">
         {(same) => (
           <label>
-            <input {...inputProps(same, { kind: "checkbox" })} />
+            <input {...checkboxProps(same)} />
             Same as shipping
           </label>
         )}

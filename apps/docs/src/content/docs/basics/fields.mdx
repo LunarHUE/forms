@@ -12,15 +12,9 @@ trailing `.` and watch the line under Age.
 
 <Demo name="fields/profile" />
 
-```tsx framework=react
+```tsx
 <form.Field name="age">
   {(field) => <input {...numberProps(field)} />}
-</form.Field>
-```
-
-```tsx framework=solid
-<form.Field name="age">
-  {(field) => <input {...inputProps(field, { kind: "number" })} />}
 </form.Field>
 ```
 
@@ -45,8 +39,6 @@ that bind an element. A new object arrives with each change.
 
 ## Props for plain elements
 
-<Only framework="react">
-
 For plain HTML, a props function puts every piece on the element and adds
 the rest it needs: `name`, `id`, the value, the change and blur handlers,
 `ref`, `disabled`, `readOnly`, and `aria-invalid` and `aria-describedby`
@@ -67,7 +59,10 @@ functions, not members, so a form ships only the ones it calls.
 
 `numberProps` and `selectProps` take `empty`, the value an empty input
 writes: `numberProps(field, { empty: 0 })`. It defaults to `undefined` and
-is required when the field's type has no `undefined`.
+is required when the field's type has no `undefined`. `numberProps` keeps
+`1.` and `-` in the input as typed, the same way `numberPieces` does.
+
+<Only framework="react">
 
 A component given only a handle reads the field object with
 `useField(handle)` and passes it on: `inputProps(useField(handle))`. A
@@ -77,48 +72,29 @@ custom input records its element with `useFieldRef(handle)`.
 
 <Only framework="solid">
 
-For plain HTML, `inputProps(field)` puts every piece on the element and
-adds the rest an `<input>` needs: `name`, `id`, `value`, the change and blur
-handlers, `ref`, `disabled`, `readOnly`, and `aria-invalid` and
-`aria-describedby` while errors show. It is a function, not a member, so a
-form that never calls it doesn't ship it. Pass options for other kinds of
-input. The compiler checks them against the field's value type.
+Each one also takes `describedBy` as an option, for ids such as a hint's
+that go in `aria-describedby` before the error id. It comes last, after the
+value for a radio or a box of a group:
 
-| Call | Element | Field type |
-| --- | --- | --- |
-| `inputProps(field)` or `inputProps(field, { type: "email" })` | `<input>` | string |
-| `inputProps(field, { kind: "textarea" })` | `<textarea>` | string |
-| `inputProps(field, { kind: "select" })` | `<select>` | string |
-| `inputProps(field, { kind: "number" })` or `{ kind: "range" }` | `<input type="number">` or `"range"` | number |
-| `inputProps(field, { kind: "checkbox" })` | `<input type="checkbox">` | boolean |
-| `inputProps(field, { kind: "checkbox", value })` | one box of a group | array of strings or numbers |
-| `inputProps(field, { kind: "radio", value })` | one radio | string, number or boolean |
+```tsx framework=solid
+<input {...inputProps(field, { type: "email", describedBy: "email-hint" })} />
+<input {...radioProps(field, "pro", { describedBy: "plan-hint" })} />
+```
 
-Number inputs take `empty`, the value an empty input writes. It defaults to
-`undefined` and is required when the field's type has no `undefined`.
+The value, `name`, the flags and the aria props are getters over the field,
+so each one updates the element on its own.
 
-A component given only a handle records its element with `fieldRef(handle)`
-and gets the props from `createInputProps(handle)`.
+A component given only a handle makes the field object with
+`createField(handle)` and passes it on: `inputProps(createField(handle))`.
+A custom input records its element with `fieldRef(handle)`.
 
 </Only>
 
 ## Number inputs
 
-<Only framework="react">
-
 A number field bound with `numberProps(field)`, or by hand with
 `numberPieces(field)`, holds a number, or `undefined` while the input is
 empty. Some text on the way to a number isn't one yet:
-
-</Only>
-
-<Only framework="solid">
-
-A number field bound with `inputProps(field, { kind: "number" })`, or with
-`field.setNumberText`, holds a number, or `undefined` while the input is
-empty. Some text on the way to a number isn't one yet:
-
-</Only>
 
 | Typed | Input shows | Field holds |
 | --- | --- | --- |
@@ -126,22 +102,10 @@ empty. Some text on the way to a number isn't one yet:
 | `-` | `-` | the value it held before |
 | nothing | nothing | `undefined`, or the `empty` option |
 
-<Only framework="react">
-
 The input keeps the typed text while the field still holds the value that
 text wrote, so the caret and the `.` don't jump. Once the input loses focus,
 or something else writes a different value, it shows the number again.
 `numberPieces(field).text` is that text, for an input bound by hand.
-
-</Only>
-
-<Only framework="solid">
-
-`field.text` keeps the typed text while the field still holds the value that
-text wrote, so the caret and the `.` don't jump. Once the input loses focus,
-or something else writes a different value, it shows the number again.
-
-</Only>
 
 ## Optional fields
 
@@ -211,8 +175,6 @@ Component libraries such as Base UI, Radix and React Aria own their labels,
 ids and aria, and take a value with a change callback. Give them the pieces
 of the field object and leave the rest to them:
 
-<Only framework="react">
-
 | Piece | What it does |
 | --- | --- |
 | `text` | The text to show: the display text a plugin such as a mask gives, else the value. |
@@ -227,20 +189,6 @@ keeps showing what was typed until the value changes or the field blurs.
 Empty text writes `undefined`, or the `empty` option:
 `numberPieces(field, { empty: 0 })`. The option is required when the field's
 type has no `undefined`.
-
-</Only>
-
-<Only framework="solid">
-
-| Piece | What it does |
-| --- | --- |
-| `text` | The text to show: number text the user is typing, else the display text a plugin such as a mask gives, else the value. |
-| `setText(text, from?)` | Writes typed text. With a mask, it also puts the formatted text in the element and places the caret. `from` is the element or an event whose `target` is the element. Without it, the focused element `ref` recorded is used. |
-| `setNumberText(text, empty?)` | Writes text typed in a number field. `-` writes nothing yet, `12.` writes `12`, and empty text writes `empty`. |
-| `handleBlur` | Marks the field touched, runs blur validation, and drops typed number text. |
-| `ref` | Records the element, so an invalid submit can focus it. |
-
-</Only>
 
 Checkboxes, switches, selects and radio groups hold a value, not text, so
 bind `value` and `setValue`.
@@ -295,6 +243,10 @@ read of `field` during render.
 />
 
 <input type="checkbox" ref={field.ref} checked={field.value} onChange={(event) => field.setValue(event.currentTarget.checked)} />
+
+const number = numberPieces(field);
+
+<input ref={field.ref} value={number.text} onInput={(event) => number.setText(event.currentTarget.value)} onBlur={number.handleBlur} />
 ```
 
 A primitive bound this way shows a reset or a value `persist` restored, since
