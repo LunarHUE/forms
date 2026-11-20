@@ -1,7 +1,17 @@
 import { FRAMEWORKS, type Framework } from "@/lib/frameworks";
 import type { Alternate } from "@/lib/nav";
 import { docHref, frameworkHref } from "@/lib/routes";
+import { CHANNEL, CHANNEL_URLS } from "@/lib/site";
 import { VERSIONS } from "@/lib/versions";
+
+/** The version item for main's docs, which the next site serves. */
+const NEXT = "next";
+
+/**
+ * The version the picker shows as current. The next site says "next": main
+ * keeps the last release's version number until the version bump.
+ */
+export const pickerVersion = (version: string): string => (CHANNEL === "next" ? NEXT : version);
 
 export interface PickerItem {
   group: "framework" | "version";
@@ -33,7 +43,24 @@ export function pickerItems({ framework, slug, alternates }: PickerOptions): Pic
     const href = alternates?.find((alternate) => alternate.framework === info.id)?.href;
     return href ? { ...item, href } : item;
   });
-  const versionItems = VERSIONS.map(
+  return [...frameworkItems, ...versionItems(framework, slug)];
+}
+
+/**
+ * The version group. A release build lists its versions, then next on the
+ * next site. The next site lists next, then the latest release on production.
+ * The cross-site items open the same page there.
+ */
+function versionItems(framework: Framework, slug: string | undefined): PickerItem[] {
+  const path = slug ? docHref({ framework, slug }) : frameworkHref(framework);
+  if (CHANNEL === "next") {
+    const release = new URL(path, CHANNEL_URLS.release).href;
+    return [
+      { group: "version", value: NEXT, label: NEXT, href: path, hint: "unreleased" },
+      { group: "version", value: "latest", label: "latest", href: release, hint: "release" },
+    ];
+  }
+  const released = VERSIONS.map(
     ({ id, latest }): PickerItem => ({
       group: "version",
       value: id,
@@ -42,5 +69,12 @@ export function pickerItems({ framework, slug, alternates }: PickerOptions): Pic
       hint: latest ? "latest" : undefined,
     }),
   );
-  return [...frameworkItems, ...versionItems];
+  const next: PickerItem = {
+    group: "version",
+    value: NEXT,
+    label: NEXT,
+    href: new URL(path, CHANNEL_URLS.next).href,
+    hint: "unreleased",
+  };
+  return [...released, next];
 }

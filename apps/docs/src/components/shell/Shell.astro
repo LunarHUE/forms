@@ -40,7 +40,7 @@ import Search from "@/components/search/Search.astro";
 
 import Footer from "./Footer.astro";
 import Header from "./Header.astro";
-import { pickerItems } from "./picker";
+import { pickerItems, pickerVersion } from "./picker";
 import Sidebar from "./Sidebar.astro";
 import type { SidebarData } from "./sidebar";
 import "./shell.css";
@@ -74,12 +74,12 @@ if (framework) {
   const pageAlternates =
     others ?? alternatesFor((await getDocs()).map(toNavPage), currentSlug ?? INTRODUCTION_SLUG, version);
   const items = pickerItems({ framework, slug: currentSlug, alternates: pageAlternates });
-  sidebars = [{ framework, version, items, groups }];
+  sidebars = [{ framework, version: pickerVersion(version), items, groups }];
 } else {
   const pages = (await getDocs()).map(toNavPage);
   sidebars = AVAILABLE_FRAMEWORKS.map((id) => ({
     framework: id,
-    version: LATEST_VERSION,
+    version: pickerVersion(LATEST_VERSION),
     // Without alternates the framework items have no href, so picking one
     // swaps the sidebar and the page stays.
     items: pickerItems({ framework: id }),
