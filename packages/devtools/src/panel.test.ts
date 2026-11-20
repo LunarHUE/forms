@@ -56,6 +56,12 @@ const button = (root: ShadowRoot, label: string): HTMLButtonElement => {
   return found;
 };
 
+/** Gives an element a box, as the page's layout would. jsdom lays nothing out, so every box is empty there. */
+function laidOut<E extends Element>(element: E): E {
+  element.getBoundingClientRect = () => new DOMRect(20, 40, 200, 32);
+  return element;
+}
+
 const row = (root: ShadowRoot, path: Path) => root.querySelector(`[data-path='${JSON.stringify(path)}']`);
 
 describe("mount", () => {
@@ -131,7 +137,7 @@ describe("dock", () => {
 
   it("outlines every form with its name on a tag, and the tag selects the form and opens the Fields tab", async () => {
     const store = form({ name: "" }, "signup");
-    const element = document.createElement("form");
+    const element = laidOut(document.createElement("form"));
     document.body.prepend(element);
     // What an adapter's ref reports for the form element.
     tracking.record?.(element, store, true, "test");
@@ -143,6 +149,18 @@ describe("dock", () => {
     expect(root.querySelector(".form-outline")?.classList.contains("on")).toBe(true);
     expect(button(root, "Form signup. Choose a form")).toBeDefined();
     expect(root.querySelector('[aria-label="Devtools fields"]')).not.toBeNull();
+  });
+
+  it("outlines no form that isn't rendered, such as one in a hidden tab", async () => {
+    const store = form({ name: "" }, "signup");
+    const element = document.createElement("form");
+    document.body.prepend(element);
+    tracking.record?.(element, store, true, "test");
+    const root = await open();
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(0);
+    laidOut(element);
+    await frame();
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(1);
   });
 
   it("has no pick button", async () => {
@@ -422,7 +440,7 @@ describe("inspect", () => {
 
   it("shows a card for the field under the pointer while the toggle is on", async () => {
     const store = form({ name: "Ada" });
-    const input = field(store, ["name"]);
+    const input = laidOut(field(store, ["name"]));
     const root = await open();
     move(input);
     await frame();
@@ -545,7 +563,8 @@ describe("inspect", () => {
 
   it("outlines a field's elements while the pointer is over its row", async () => {
     const store = form({ name: "" });
-    field(store, ["name"]);
+    laidOut(field(store, ["name"]));
+    laidOut(field(store, ["name"]));
     field(store, ["name"]);
     const root = await open();
     button(root, "Fields").click();

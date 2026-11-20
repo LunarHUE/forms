@@ -519,7 +519,10 @@ const pad = 8;
  * selects the form. The selected form's outline is solid.
  */
 function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): JSX.Element {
-  const boxes = forms.flatMap((form) => hook.elementsOf(form.entry.store).map((element) => ({ form, rect: element.getBoundingClientRect() })));
+  const boxes = forms
+    .flatMap((form) => hook.elementsOf(form.entry.store).map((element) => ({ form, rect: element.getBoundingClientRect() })))
+    // A form that isn't rendered, such as one in a hidden tab, has an empty box at the window's corner.
+    .filter(({ rect }) => rect.width > 0 || rect.height > 0);
   // The outlines follow the forms as the page scrolls or reflows.
   useFrame(() =>
     forms.flatMap((form) =>

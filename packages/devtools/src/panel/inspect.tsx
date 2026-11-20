@@ -195,6 +195,8 @@ export function Outlines({ elements }: OutlinesProps): JSX.Element {
     <>
       {elements.map((element, index) => {
         const [left, top, width, height] = rectOf(element);
+        // An element that isn't rendered, such as one in a hidden tab, has an empty box at the window's corner.
+        if (width === 0 && height === 0) return null;
         return (
           <div
             key={index}
