@@ -38,7 +38,8 @@
   },
   "devDependencies": {
     "@lunarhue/forms-core": "workspace:^",
-    "jsdom": "catalog:"
+    "jsdom": "catalog:",
+    "preact": "catalog:"
   },
   "publishConfig": {
     "access": "public"
