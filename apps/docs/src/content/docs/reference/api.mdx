@@ -305,10 +305,11 @@ tests.
 | `batch(fn)` | Runs `fn`, notifying listeners once at the end. |
 | `submit(intent?)` | Submits without the adapter's focus handling. |
 | `handleSubmit(event?)` | The same, for a submit event. |
-| `setErrors(errorMap)` | Replaces user errors across the form. |
+| `setErrors(errorMap)` | Replaces user errors across the form. A name no field has goes to the root. |
 | `validate()` | Runs every validator now. |
 | `reset(options?)` | Resets the whole form. |
-| `fieldAt(path)` | The handle at a stable path. |
+| `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
+| `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
 | `firstInvalid()` | The first enabled field with a validation error. |
 | `disabledInvalid()` | Every disabled field with a validation error. |

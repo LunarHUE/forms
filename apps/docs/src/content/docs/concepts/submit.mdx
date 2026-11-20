@@ -125,6 +125,19 @@ onSubmit: async (value, { store }) => {
 field, so render the root's errors somewhere, or the user sees nothing. See
 [`submit:unseen`](/errors#core:submit:unseen) for how.
 
+A name that matches no field also lands on the root, after the `form`
+errors, and development warns with
+[`errors:unknown`](/errors#core:errors:unknown). That happens when the server
+renames a field before the form catches up. A name counts as a field when the
+value has that key, when a field there is rendered or validated, or when it
+sits under an object that is missing. To send such errors somewhere else,
+such as a toast, check each name with `store.pathOf` first:
+
+```ts
+// The names to show in a toast instead.
+const unknown = Object.keys(response.fields).filter((name) => store.pathOf(name) === undefined);
+```
+
 Errors set this way don't block the next submit. Each one clears when the
 user edits its field, and they all clear when the next submit starts.
 
