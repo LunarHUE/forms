@@ -4,6 +4,7 @@ import type {
   Draft,
   ErrorOf,
   FieldHandle,
+  HandleBase,
   FieldSnapshot,
   FormError,
   HandleTypes,
@@ -81,6 +82,15 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * plain form's `number` field is, fits too. That side is loose: the
  * component may write `undefined` into a field typed `number`, and the type
  * checker won't catch it.
+ *
+ * For a text input or checkbox that renders optional fields too, write
+ * `FieldApi<string | undefined>` or `FieldApi<boolean | undefined>`. The
+ * component then fits required and optional fields of that type, and
+ * `field.value` reads `undefined` where the field can hold it. A
+ * `FieldApi<string>` component fits required fields only, so its
+ * `field.value` stays a `string`. The loose side is the same as above: the
+ * component may write `undefined` into a required field. `null` works the
+ * same way.
  *
  * For a select, radio group or checkbox group, write `FieldApi<Choice>` or
  * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
@@ -226,14 +236,19 @@ export type FieldValueOf<C> = AcceptedValues<FieldPropOf<C>> extends { readonly 
 /**
  * The value types a registered component's field accepts, each wrapped as
  * `{ value: T }` so a union of them stays apart. A `FieldApi<T>` accepts
- * `Draft<T>` and `T`. A field object typed another way, such as
+ * `Draft<T>` and `T`, and both again with `undefined`, `null` or both taken
+ * out of `T`. So a `FieldApi<string | undefined>` component takes required
+ * and optional string fields. A field object typed another way, such as
  * `FieldApiOf<H>`, accepts its value type only.
  */
 export type AcceptedValues<A> = "~fits" extends keyof A
   ? A extends { readonly "~fits"?: { readonly value: infer T } }
-    ? { readonly value: Draft<T> } | { readonly value: T }
+    ? DraftOrExact<T> | DraftOrExact<Exclude<T, undefined>> | DraftOrExact<Exclude<T, null>> | DraftOrExact<NonNullable<T>>
     : never
   : { readonly value: ValueOf<A> };
+
+/** `Draft<T>` and `T`, each wrapped as `{ value }`. Nothing for `never`. */
+type DraftOrExact<T> = [T] extends [never] ? never : { readonly value: Draft<T> } | { readonly value: T };
 
 /**
  * The handles a component that accepts `A` (see `AcceptedValues`) takes,
@@ -366,10 +381,14 @@ export type BoundFieldComponents<V, E, F extends FieldComponentMap, Installed ex
   >;
 };
 
-/** The members every scope has besides the registered components. */
-export interface ScopeMembers<V, E, Installed extends string = never> {
+/**
+ * The members every scope has besides the registered components. `R` is the
+ * root handle's value type: a fieldset's scope types names by its shape `V`
+ * and keeps the handle it was given as `root`.
+ */
+export interface ScopeMembers<V, E, Installed extends string = never, R = V> {
   /** The scope's object handle. `name` paths start here. */
-  readonly root: FieldHandle<V, E, Installed>;
+  readonly root: FieldHandle<R, E, Installed>;
   /** Renders one field of this scope. */
   readonly Field: BoundField<V, E, Installed>;
 }
@@ -380,10 +399,11 @@ export interface ScopeMembers<V, E, Installed extends string = never> {
  * The form is the scope at its root plus the submit members. `Installed`
  * is the names of the form's plugins, see `ExactFieldApi`.
  */
-export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never> = ScopeMembers<
+export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never, R = V> = ScopeMembers<
   V,
   E,
-  Installed
+  Installed,
+  R
 > &
   BoundFieldComponents<V, E, F, Installed>;
 
@@ -405,8 +425,16 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
    * Returns the scope of `handle`, the same object `forms.scope` returns,
    * typed to the shape. The first call for a handle attaches the parts at
    * it. A cached lookup, not a hook.
+   *
+   * The handle's value may be any subtype of the shape, as in a component
+   * generic in it. Names and bound components are typed by the shape, and
+   * `root` keeps the handle's own value type, so writes through it still
+   * take the whole value.
    */
-  scope(handle: FieldHandle<V, E, N>): Scope<V, E, F, Installed | N>;
+  // It infers the handle, not W: a deferred FieldHandle<T> from a generic
+  // component isn't assignable to FieldHandle<W> on a method of an
+  // instantiated interface. HandleBase is covariant in its value.
+  scope<H extends HandleBase<V, E, N>>(handle: H): Scope<V, E, F, Installed | N, ValueOf<H>>;
   /**
    * The parts pinned at the dotted name `name`, for `define` to attach when
    * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
@@ -416,11 +444,14 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
 }
 
 /**
- * The handle type a fieldset component takes as a prop. A handle fits when
- * it is assignable to it, the rule core's handles follow: the same leaves,
- * and objects with at least the keys the shape has. So a handle of a wider
- * object, an item handle, or a handle from another form of the same
- * `createForms` fits, and a handle with a leaf of another type does not. A
+ * The handle type a fieldset component takes as a prop. Handles are exact
+ * in their value type, so `HandleOf<typeof Shape>` takes a handle whose
+ * value is the shape: an item handle or a field of another form of the same
+ * `createForms` fits, a handle of an object with more keys doesn't. A
  * fieldset with parts takes handles of forms that have their plugins.
+ *
+ * For a component that takes wider objects too, make it generic and pass
+ * the value type as `V`:
+ * `function AddressFields<A extends Address>(props: { field: HandleOf<typeof Shape, A> })`.
  */
-export type HandleOf<T> = FieldHandle<ValueOf<T>, ErrorOf<T>, PluginsOf<T>>;
+export type HandleOf<T, V extends ValueOf<T> = ValueOf<T>> = FieldHandle<V, ErrorOf<T>, PluginsOf<T>>;

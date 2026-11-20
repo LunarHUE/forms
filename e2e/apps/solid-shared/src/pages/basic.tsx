@@ -15,6 +15,8 @@ export function BasicPage() {
             <form.TextField name="name" label={labels.name} />
             <form.TextField name="email" label={labels.email} />
             <form.Checkbox name="newsletter" label={labels.newsletter} />
+            <form.TextField name="nickname" label={labels.nickname} />
+            <form.Checkbox name="updates" label={labels.updates} />
             <SubmitButton {...scenario.submit} />
             <Status />
           </form>

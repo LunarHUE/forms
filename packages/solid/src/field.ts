@@ -113,6 +113,15 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * `undefined` into a field typed `number`, and the type checker won't catch
  * it.
  *
+ * For a text input or checkbox that renders optional fields too, write
+ * `FieldApi<string | undefined>` or `FieldApi<boolean | undefined>`. The
+ * component then fits required and optional fields of that type, and
+ * `field.value` reads `undefined` where the field can hold it. A
+ * `FieldApi<string>` component fits required fields only, so its
+ * `field.value` stays a `string`. The loose side is the same as above: the
+ * component may write `undefined` into a required field. `null` works the
+ * same way.
+ *
  * For a select, radio group or checkbox group, write `FieldApi<Choice>` or
  * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
  * props. The component then fits any field of string options, and each use

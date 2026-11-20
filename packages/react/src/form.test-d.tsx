@@ -360,8 +360,13 @@ function AddressFields(props: { readonly field: HandleOf<typeof AddressShape>; r
   );
 }
 
-function ContactFields(props: { readonly field: HandleOf<typeof ContactShape> }) {
+// Generic in the value, so it takes the order's root, which has more keys than the shape.
+function ContactFields<C extends { customer: string; email: string }>(props: { readonly field: HandleOf<typeof ContactShape, C> }) {
   const scope = ContactShape.scope(props.field);
+  // A child that C's constraint names reads as the constraint's type.
+  // (A plain assignment: expectTypeOf can't check a type that depends on C.)
+  const email: LeafHandle<string> = props.field.at("email");
+  void email;
   return (
     <>
       <scope.TextField name="customer" label="Customer" />
@@ -369,6 +374,8 @@ function ContactFields(props: { readonly field: HandleOf<typeof ContactShape> })
     </>
   );
 }
+
+declare function ExactContactFields(props: { readonly field: HandleOf<typeof ContactShape> }): null;
 
 declare const emptyHandle: HandleOf<typeof AddressShape>;
 
@@ -394,6 +401,8 @@ function OrderWithFieldsets() {
       {(props) => (
         <form {...props}>
           <ContactFields field={form.root} />
+          {/* @ts-expect-error: the order has keys the contact shape would drop on a write */}
+          <ExactContactFields field={form.root} />
           <AddressFields field={form.root.at("billing")} title="Billing" />
           <AddressFields field={form.root.at("shipping")} title="Shipping" />
           <billing.TextField name="zip" label="Billing zip" />
@@ -539,7 +548,8 @@ describe("fieldsets and scopes", () => {
 
   it("takes the schema's draft as the shape and any handle that fits it", () => {
     expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<DraftAddress>>();
-    expectTypeOf<FieldHandle<DraftOrder>>().toExtend<HandleOf<typeof ContactShape>>();
+    expectTypeOf<FieldHandle<DraftOrder>>().not.toExtend<HandleOf<typeof ContactShape>>();
+    expectTypeOf<FieldHandle<DraftOrder>>().toEqualTypeOf<HandleOf<typeof ContactShape, DraftOrder>>();
     expectTypeOf<ItemHandle<DraftAddress>>().toExtend<HandleOf<typeof AddressShape>>();
   });
 

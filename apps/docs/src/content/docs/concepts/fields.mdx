@@ -93,6 +93,49 @@ that bind an element. A new object arrives with each change.
 `FieldApi<number>` has `value: number | undefined`, since a schema form starts
 a number field empty. `FieldApi<string>` is a plain string.
 
+## Optional fields
+
+A `FieldApi<string>` component takes required string fields only. An optional
+field such as `nick?: string` starts out `undefined`, and a component that
+reads `field.value` as a `string` would get it wrong. To render optional
+fields too, put `undefined` in the type:
+
+```tsx framework=react
+function TextField({ field, label }: { field: FieldApi<string | undefined>; label: string }) {
+  return (
+    <label>
+      {label}
+      <input {...inputProps(field)} />
+    </label>
+  );
+}
+```
+
+```tsx framework=solid
+function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...inputProps(props.field)} />
+    </label>
+  );
+}
+```
+
+This component takes `name: string` and `nick?: string` alike, whether the
+form's type comes from `define<T>()` or from a schema. `inputProps` shows
+`undefined` as an empty input. A checkbox does the same with
+`FieldApi<boolean | undefined>`, and shows `undefined` unticked. `null` works
+the same way: `FieldApi<string | null>` takes `string` and `string | null`
+fields.
+
+The type checker doesn't stop such a component from writing `undefined` into
+a required field, so leave writes to `inputProps` or write a value of the
+field's own type. A `FieldApi<number>` component has the same gap.
+
+In a component generic over its value, such as `<T extends Profile>`, pass an
+optional child by `name`. Its handle from `field.at("nick")` doesn't fit.
+
 ## Binding an element
 
 Component libraries such as Base UI, Radix and React Aria own their labels,

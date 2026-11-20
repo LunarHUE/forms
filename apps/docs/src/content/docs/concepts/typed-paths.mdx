@@ -130,6 +130,83 @@ lookup, not a hook, so call it anywhere.
 The fieldset's schema only types the shape. The form's own schema does the
 validating. Without a schema, write the type: `forms.fieldset<Address>()`.
 
-Any handle whose value has the shape fits: an object with more keys, an
-array row, or a field of another form from the same `createForms`. A handle
-whose `city` is a number doesn't.
+A handle fits when its value has exactly the shape: an array row, or a field
+of another form from the same `createForms`. A handle of an object with more
+keys doesn't. The component could replace the whole value and drop the keys
+it doesn't know, so handles are strict in their value type. A handle of a
+form with more plugins still fits one that asks for fewer.
+
+To take objects with more keys, make the component generic in the value and
+pass it as the second argument of `HandleOf`:
+
+```tsx framework=react
+function AddressFields<A extends Address>({ field }: { field: HandleOf<typeof AddressFieldset, A> }) {
+  const scope = AddressFieldset.scope(field);
+  return (
+    <fieldset>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField handle={field.at("city")} label="City" />
+    </fieldset>
+  );
+}
+
+// `office` has a `phone` too.
+<AddressFields field={form.root.at("office")} />;
+```
+
+```tsx framework=solid
+function AddressFields<A extends Address>(props: { field: HandleOf<typeof AddressFieldset, A> }) {
+  const scope = AddressFieldset.scope(props.field);
+  return (
+    <fieldset>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField handle={props.field.at("city")} label="City" />
+    </fieldset>
+  );
+}
+
+// `office` has a `phone` too.
+<AddressFields field={form.root.at("office")} />;
+```
+
+A child that `Address` names, such as `field.at("city")`, reads as its type
+in `Address`, so it fits a `FieldApi<string>` component. A child that is an
+object itself stays generic and needs a generic component of its own. A
+merge write such as `field.setValue({ city: "Oslo" })` doesn't type-check on
+a generic handle. Write the child instead: `field.at("city").setValue("Oslo")`.
+
+<Only framework="react">
+
+`useInputProps` reads the value type from the handle's own type, so type the
+child first: `const city: FieldHandle<string> = field.at("city")`.
+
+</Only>
+
+<Only framework="solid">
+
+`createInputProps` reads the value type from the handle's own type, so type
+the child first: `const city: FieldHandle<string> = props.field.at("city")`.
+
+</Only>
+
+A reusable list works the same way. It is generic in the item type and takes
+a function that makes a full item, since it can't build the keys it doesn't
+know:
+
+```tsx
+function TagList<T extends Tag>(props: {
+  tags: ArrayHandle<T[], FormError, "arrays">;
+  create: (base: Tag) => T;
+}) {
+  return (
+    <>
+      <Items handle={props.tags}>{(tag) => <TagFields field={tag} />}</Items>
+      <button type="button" onClick={() => props.tags.push(props.create({ id: Date.now(), name: "" }))}>
+        Add
+      </button>
+    </>
+  );
+}
+
+<TagList tags={form.root.at("tags")} create={(base) => ({ ...base, enabled: true })} />;
+```
