@@ -83,6 +83,11 @@ describe("toMarkdown", () => {
     expect(() => page('<Demo name="masks/contact" />')).toThrow(/masks\/contact/);
   });
 
+  it("turns a comparison into what its source writes", () => {
+    const compare = (app: string) => `sizes and files of ${app}`;
+    expect(content(page('<Compare app="signup" />', { compare }))).toBe("sizes and files of signup\n");
+  });
+
   it("writes install lines as npm commands", () => {
     expect(content(page('<Install adapter packages="zod" />'))).toBe("```bash\nnpm install @lunarhue/forms-react zod\n```\n");
   });

@@ -20,12 +20,15 @@ export interface MarkdownPage {
   readonly url: string;
   /** The files of a `<Demo name>`, entry file first. */
   readonly demo?: (name: string) => readonly DemoSource[];
+  /** A `<Compare app>` block as Markdown: its sizes table and both libraries' files. */
+  readonly compare?: (app: string) => string;
 }
 
 const FENCE = /^(\s*)(`{3,}|~{3,})(.*)$/;
 const ONLY_OPEN = /^<Only\s+framework="([\w-]+)"\s*>\s*$/;
 const ONLY_CLOSE = /^<\/Only>\s*$/;
 const DEMO = /^<Demo\s+name="([^"]+)"\s*\/>\s*$/;
+const COMPARE = /^<Compare\b(.*?)\/>\s*$/;
 const INSTALL = /^<Install\b(.*?)\/>\s*$/;
 const CALLOUT_OPEN = /^<Callout\b(.*?)>\s*$/;
 const CALLOUT_CLOSE = /^<\/Callout>\s*$/;
@@ -72,13 +75,14 @@ function fence(lang: string, code: string, title?: string): string {
  * own. For `framework`:
  * - `<Only>` blocks and tagged fences for other frameworks are dropped.
  * - `<Demo name>` becomes its files, each in a fence titled with its name.
+ * - `<Compare app>` becomes its sizes table and both libraries' files.
  * - `<Install>` becomes an npm command.
  * - `<Callout>` becomes a blockquote.
  * - Links become absolute, and links to docs pages point at their `.md`.
  * The MDX imports go. A `Source:` line with the page's URL follows the
  * description.
  */
-export function toMarkdown({ title, description, body, framework, url, demo }: MarkdownPage): string {
+export function toMarkdown({ title, description, body, framework, url, demo, compare }: MarkdownPage): string {
   const base = new URL(url);
   const out: string[] = [];
   const shown: boolean[] = [];
@@ -130,6 +134,14 @@ export function toMarkdown({ title, description, body, framework, url, demo }: M
       const files = demo?.(demoName) ?? [];
       if (files.length === 0) throw new Error(`${url}: <Demo name="${demoName}"> has no files for ${framework}`);
       push(files.map((file) => fence(file.name.split(".").at(-1) ?? "", file.code, file.name)).join("\n\n"));
+      continue;
+    }
+
+    const compareTag = COMPARE.exec(line)?.[1];
+    if (compareTag !== undefined) {
+      const app = attribute(compareTag, "app");
+      if (app === undefined || compare === undefined) throw new Error(`${url}: <Compare> needs an app and a compare source`);
+      push(compare(app));
       continue;
     }
 
