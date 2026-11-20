@@ -7,7 +7,7 @@ type BootConfig = typeof BOOT_CONFIG;
  * serialized with `toString()`: it must not use anything from outside its own
  * body. Everything it needs comes in through `config`.
  *
- * Sets html.dark, data-theme, data-pm and data-framework the same way
+ * Sets html.dark, data-theme, data-pm, data-framework and data-devtools the same way
  * `applyToDocument` in store.ts does, and keeps html.dark in step with the OS
  * while the theme is `system`, also on pages without islands.
  */
@@ -29,6 +29,7 @@ export function boot(config: BootConfig, pageFramework: string | null): void {
   root.dataset.theme = theme;
   const pm = pick(read(config.keys.pm), config.packageManagers);
   if (pm) root.dataset.pm = pm;
+  root.dataset.devtools = read(config.keys.devtools) === "off" ? "off" : "on";
 
   if (pageFramework) {
     root.dataset.framework = pageFramework;

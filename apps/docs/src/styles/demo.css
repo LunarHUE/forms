@@ -270,6 +270,15 @@
   outline-offset: 2px;
 }
 
+/* Devtools off: the outline keeps its space but shows nothing. */
+html[data-devtools="off"] [data-form-demo] {
+  border-color: transparent;
+}
+
+html[data-devtools="off"] [data-form-tag] {
+  display: none;
+}
+
 /* Pick mode in the dock: every form outline is a target. */
 html[data-devtools-picking] [data-form-demo] {
   cursor: crosshair;

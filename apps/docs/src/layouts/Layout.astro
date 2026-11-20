@@ -18,12 +18,13 @@
  *
  * Slots: default (the body), `head` (extra tags at the end of <head>).
  *
- * The inline boot script (lib/boot.ts) sets html.dark, data-theme, data-pm
- * and data-framework from localStorage before first paint. The server
+ * The inline boot script (lib/boot.ts) sets html.dark, data-theme, data-pm,
+ * data-framework and data-devtools from localStorage before first paint. The server
  * markup carries the defaults (data-pm="bun", data-theme="system") so the
  * page also reads right without JavaScript.
  *
  * Every page carries the devtools dock (src/devtools), in production too.
+ * Visitors turn it off and on with the devtools setting (lib/store.ts).
  */
 import type { Framework } from "@/lib/frameworks";
 import { DevtoolsDock } from "@/devtools/DevtoolsDock";
@@ -51,6 +52,7 @@ const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
   lang="en"
   data-theme={DEFAULT_STATE.theme}
   data-pm={DEFAULT_STATE.pm}
+  data-devtools="on"
   data-framework={framework}
 >
   <head>

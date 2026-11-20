@@ -7,7 +7,7 @@ import { getServerState, getState, subscribe, type PackageManager, type Theme } 
  * React views of lib/store.ts. During hydration they return the server
  * default (`DEFAULT_STATE`), then the visitor's setting, so server and client
  * markup match. Change values with `setTheme`, `setPackageManager` and
- * `setFramework` from `@/lib/store`.
+ * `setFramework` and `setDevtools` from `@/lib/store`.
  */
 
 /** The theme setting: light, dark or system. */
@@ -21,3 +21,7 @@ export const usePackageManager = (): PackageManager =>
 /** The framework of the last docs page opened, or null. */
 export const useLastFramework = (): Framework | null =>
   useSyncExternalStore(subscribe, () => getState().framework, () => getServerState().framework);
+
+/** Whether the forms devtools are on. */
+export const useDevtoolsEnabled = (): boolean =>
+  useSyncExternalStore(subscribe, () => getState().devtools, () => getServerState().devtools);

@@ -9,6 +9,7 @@ import {
   getState,
   resetStoreForTests,
   setFramework,
+  setDevtools,
   setPackageManager,
   setTheme,
   subscribe,
@@ -58,7 +59,7 @@ describe("store", () => {
     localStorage.setItem("forms:theme", "dark");
     localStorage.setItem("forms:pm", "cargo");
     localStorage.setItem("forms:framework", "solid");
-    expect(getState()).toEqual({ theme: "dark", pm: "bun", framework: "solid" });
+    expect(getState()).toEqual({ theme: "dark", pm: "bun", framework: "solid", devtools: true });
   });
 
   it("persists a change, updates <html> and notifies subscribers", () => {
@@ -72,6 +73,18 @@ describe("store", () => {
 
     setPackageManager("pnpm");
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns the devtools off and on", () => {
+    expect(getState().devtools).toBe(true);
+    setDevtools(false);
+    expect(localStorage.getItem("forms:devtools")).toBe("off");
+    expect(root().dataset.devtools).toBe("off");
+    resetStoreForTests();
+    expect(getState().devtools).toBe(false);
+    setDevtools(true);
+    expect(localStorage.getItem("forms:devtools")).toBe("on");
+    expect(root().dataset.devtools).toBe("on");
   });
 
   it("stops notifying after unsubscribe", () => {
@@ -137,6 +150,14 @@ describe("boot", () => {
     expect(root().dataset.theme).toBe("dark");
     expect(root().dataset.pm).toBe("yarn");
     expect(root().dataset.framework).toBe("solid");
+  });
+
+  it("applies a saved devtools setting, on when nothing is saved", () => {
+    boot(BOOT_CONFIG, null);
+    expect(root().dataset.devtools).toBe("on");
+    localStorage.setItem("forms:devtools", "off");
+    boot(BOOT_CONFIG, null);
+    expect(root().dataset.devtools).toBe("off");
   });
 
   it("records the page's framework", () => {

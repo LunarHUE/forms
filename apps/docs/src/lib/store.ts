@@ -1,7 +1,8 @@
 import { FRAMEWORK_IDS, isFramework, type Framework } from "./frameworks";
 
 /*
- * The visitor's settings: theme, package manager and last-used framework.
+ * The visitor's settings: theme, package manager, last-used framework and
+ * whether the forms devtools are on.
  *
  * A tiny external store without framework code, so React islands (through
  * `@/components/hooks/store`) and plain scripts can share it. Each change
@@ -16,6 +17,7 @@ import { FRAMEWORK_IDS, isFramework, type Framework } from "./frameworks";
  *   html[data-theme]          the setting: light | dark | system
  *   html[data-pm]             bun | npm | pnpm | yarn
  *   html[data-framework]      react | solid | vue, once known
+ *   html[data-devtools]       on | off
  */
 
 export const THEMES = ["light", "dark", "system"] as const;
@@ -29,6 +31,7 @@ export const STORAGE_KEYS = {
   theme: "forms:theme",
   pm: "forms:pm",
   framework: "forms:framework",
+  devtools: "forms:devtools",
 } as const;
 
 export interface DocsState {
@@ -36,10 +39,12 @@ export interface DocsState {
   readonly pm: PackageManager;
   /** The framework of the last docs page the visitor opened, or null before the first one. */
   readonly framework: Framework | null;
+  /** Whether the forms devtools show. On by default, in production too. */
+  readonly devtools: boolean;
 }
 
 /** What the server renders and what a first visit starts with. */
-export const DEFAULT_STATE: DocsState = { theme: "system", pm: "bun", framework: null };
+export const DEFAULT_STATE: DocsState = { theme: "system", pm: "bun", framework: null, devtools: true };
 
 /** Settings the boot script needs. It runs inline and can't import anything. */
 export const BOOT_CONFIG = {
@@ -76,10 +81,12 @@ const readStorage = (): DocsState => {
   const theme = readKey(STORAGE_KEYS.theme);
   const pm = readKey(STORAGE_KEYS.pm);
   const framework = readKey(STORAGE_KEYS.framework);
+  const devtools = readKey(STORAGE_KEYS.devtools);
   return {
     theme: isTheme(theme) ? theme : DEFAULT_STATE.theme,
     pm: isPackageManager(pm) ? pm : DEFAULT_STATE.pm,
     framework: framework !== null && isFramework(framework) ? framework : DEFAULT_STATE.framework,
+    devtools: devtools === null ? DEFAULT_STATE.devtools : devtools !== "off",
   };
 };
 
@@ -94,6 +101,7 @@ export const applyToDocument = (next: DocsState, root: HTMLElement = document.do
   root.dataset.theme = next.theme;
   root.dataset.pm = next.pm;
   if (next.framework) root.dataset.framework = next.framework;
+  root.dataset.devtools = next.devtools ? "on" : "off";
 };
 
 let state: DocsState | undefined;
@@ -137,11 +145,19 @@ export const subscribe = (listener: () => void): (() => void) => {
 export const setState = (patch: Partial<DocsState>): void => {
   const current = getState();
   const next: DocsState = { ...current, ...patch };
-  if (next.theme === current.theme && next.pm === current.pm && next.framework === current.framework) return;
+  if (
+    next.theme === current.theme &&
+    next.pm === current.pm &&
+    next.framework === current.framework &&
+    next.devtools === current.devtools
+  ) {
+    return;
+  }
   state = next;
   if (next.theme !== current.theme) writeKey(STORAGE_KEYS.theme, next.theme);
   if (next.pm !== current.pm) writeKey(STORAGE_KEYS.pm, next.pm);
   if (next.framework !== current.framework && next.framework) writeKey(STORAGE_KEYS.framework, next.framework);
+  if (next.devtools !== current.devtools) writeKey(STORAGE_KEYS.devtools, next.devtools ? "on" : "off");
   applyToDocument(next);
   emit();
 };
@@ -149,6 +165,7 @@ export const setState = (patch: Partial<DocsState>): void => {
 export const setTheme = (theme: Theme): void => setState({ theme });
 export const setPackageManager = (pm: PackageManager): void => setState({ pm });
 export const setFramework = (framework: Framework): void => setState({ framework });
+export const setDevtools = (devtools: boolean): void => setState({ devtools });
 
 /** Test helper: forgets the cached state and listeners. */
 export const resetStoreForTests = (): void => {
