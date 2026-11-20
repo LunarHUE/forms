@@ -4,9 +4,9 @@
 "@lunarhue/forms-solid": minor
 ---
 
-Errors from `setErrors` now make a field invalid, and the store can list every invalid field.
+Errors from `setErrors` now make a field invalid, and core can list every invalid field.
 
-`store.invalid()` returns every field with an error, in form order, as `{ field, name, errors }`. The root comes first, with name `""`. `store.subscribeInvalid(listener)` fires when that list may change. `useInvalidFields(form)` in React and `createInvalidFields(form)` in Solid follow it, so an error summary is a few lines. The new `InvalidField<E>` type names an entry.
+`invalidFields(store)`, a new core function, returns every field with an error, in form order, as `{ field, name, errors }`. The root comes first, with name `""`. `subscribeInvalid(store, listener)` fires when that list may change. Both are standalone functions rather than store methods, so a form that never lists its errors doesn't ship them. `useInvalidFields(form)` in React and `createInvalidFields(form)` in Solid follow the list, so an error summary is a few lines. The new `InvalidField<E>` type names an entry.
 
 The field snapshot has a new `userErrors` member, the errors `setErrors` put there. They come last in `errors`, so the validation errors are `errors.slice(0, errors.length - userErrors.length)`.
 

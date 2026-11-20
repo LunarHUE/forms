@@ -314,8 +314,6 @@ tests.
 | `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
 | `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
-| `invalid()` | Every field with an error, in form order, as `{ field, name, errors }`. |
-| `subscribeInvalid(listener)` | Calls `listener` after a write that may change `invalid()`. |
 | `firstInvalid()` | The first enabled field with an error. |
 | `disabledInvalid()` | Every disabled field with an error. |
 
@@ -352,6 +350,8 @@ any release, so don't copy them into your own code.
 | --- | --- |
 | `createFormsCore(config?)` | Core's entry point, which the adapters wrap. Returns `define`. |
 | `branch(handle, snapshot, key, value)` | Narrows a handle to one member of a discriminated union. |
+| `invalidFields(store)` | Every field with an error, in form order, as `{ field, name, errors }`. The adapter hooks above wrap it. |
+| `subscribeInvalid(store, listener)` | Calls `listener` after a write that may change `invalidFields(store)`. Returns the function that unsubscribes. |
 | `splitPath(path)` | `"items.0.name"` to `["items", 0, "name"]`. |
 | `fieldId(formId, path)` | The DOM id the adapters give a field. |
 | `optionId(id, option)` | The DOM id of one radio or checkbox in a group. |
