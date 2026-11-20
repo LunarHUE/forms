@@ -1,0 +1,37 @@
+# @lunarhue/forms-devtools
+
+Devtools for [forms](https://github.com/LunarHUE/forms). Install the plugin on
+the forms you want to inspect and a panel opens on the page.
+
+```sh
+npm install -D @lunarhue/forms-devtools
+```
+
+```ts
+import { createForms } from "@lunarhue/forms-react";
+import { devtools } from "@lunarhue/forms-devtools";
+
+const forms = createForms({ plugins: [import.meta.env.DEV && devtools()] });
+```
+
+`dev && devtools()` leaves the plugin out of production builds. The plugin
+itself never reads `NODE_ENV`, so a site that wants the panel in production,
+such as a docs site, can install it there too.
+
+| Option | |
+| --- | --- |
+| `enabled` | `true` (the default), `false`, or a function read when the form mounts, after each write and on `syncDevtools()`. The panel shows while any form's reads true, and loads as its own chunk the first time one does. |
+| `onDisable` | Puts "Turn off devtools" in the panel, which calls it. Set what `enabled` reads to false there. |
+
+```ts
+devtools({ enabled: () => location.search.includes("devtools") });
+```
+
+Call `syncDevtools()` after changing what `enabled` reads outside a form
+write, such as from a keyboard shortcut.
+
+Installing the plugin also calls `trackElements()` from the adapter, so
+`fieldOf(element)` works in production from then on.
+
+The panel itself is still being built. For now the plugin collects each
+mounted form's writes and submissions and mounts an empty panel host.
