@@ -1,0 +1,125 @@
+{
+  "versions": {
+    "@lunarhue/forms-react": "0.2.0",
+    "@tanstack/react-form": "1.33.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7",
+    "vite": "8.3.8"
+  },
+  "builds": {
+    "total": "Everything the page loads: React, react-dom, Zod, the form library and the app.",
+    "forms": "The form library and the app's own code. React, react-dom and Zod are external.",
+    "app": "The app's own code only. React, react-dom, Zod, @lunarhue/* and @tanstack/* are external."
+  },
+  "apps": {
+    "signup": {
+      "lunarhue": {
+        "total": {
+          "min": 257892,
+          "gzip": 81599,
+          "brotli": 70834
+        },
+        "forms": {
+          "min": 38201,
+          "gzip": 14231,
+          "brotli": 12931
+        },
+        "app": {
+          "min": 3667,
+          "gzip": 1574,
+          "brotli": 1371
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 293493,
+          "gzip": 86217,
+          "brotli": 74343
+        },
+        "forms": {
+          "min": 73935,
+          "gzip": 19000,
+          "brotli": 16816
+        },
+        "app": {
+          "min": 4821,
+          "gzip": 1983,
+          "brotli": 1748
+        }
+      }
+    },
+    "profile": {
+      "lunarhue": {
+        "total": {
+          "min": 349620,
+          "gzip": 108013,
+          "brotli": 93727
+        },
+        "forms": {
+          "min": 50234,
+          "gzip": 18522,
+          "brotli": 16786
+        },
+        "app": {
+          "min": 5102,
+          "gzip": 2104,
+          "brotli": 1841
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 374842,
+          "gzip": 109147,
+          "brotli": 94053
+        },
+        "forms": {
+          "min": 75721,
+          "gzip": 19492,
+          "brotli": 17308
+        },
+        "app": {
+          "min": 6604,
+          "gzip": 2550,
+          "brotli": 2244
+        }
+      }
+    },
+    "backoffice": {
+      "lunarhue": {
+        "total": {
+          "min": 365520,
+          "gzip": 113125,
+          "brotli": 98156
+        },
+        "forms": {
+          "min": 65577,
+          "gzip": 23411,
+          "brotli": 21217
+        },
+        "app": {
+          "min": 12600,
+          "gzip": 4471,
+          "brotli": 3970
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 385348,
+          "gzip": 112128,
+          "brotli": 96726
+        },
+        "forms": {
+          "min": 85523,
+          "gzip": 22477,
+          "brotli": 19958
+        },
+        "app": {
+          "min": 16405,
+          "gzip": 5654,
+          "brotli": 5053
+        }
+      }
+    }
+  }
+}
