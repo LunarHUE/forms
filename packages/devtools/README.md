@@ -47,6 +47,13 @@ button that opens a bottom sheet.
   against baseline, display text, errors by where they came from, the
   plugins attached there and its last write. "Invalid only" lists just the
   fields with errors.
+- The Log tab lists the form's writes and submissions in the order they
+  happened, newest first, each write with its cause: `user`, `reset`,
+  `rebase` or the plugin's name. A submission that a reset ended shows as
+  `aborted`. The log keeps the last 500 of each and starts when the panel
+  turns on.
+- The Plugins tab lists every plugin on the form in the order their hooks
+  run, with each one's form meta and the keys of its API on `store.plugins`.
 
 An error that one of our packages raised shows as its code, linked to its
 entry on the [errors page](https://forms.lunarhue.dev/errors).
