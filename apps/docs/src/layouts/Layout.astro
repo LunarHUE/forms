@@ -13,7 +13,8 @@
  *   description  meta description, optional.
  *   framework    the framework the page is for, on framework pages. Sets
  *                html[data-framework] and saves it as the last-used framework.
- *   noindex      adds robots noindex (the 404 page).
+ *   noindex      adds robots noindex (the 404 page). Every page of the next
+ *                site gets it anyway, and no canonical link.
  *   meta         canonical path, Markdown copy, og:type, modified date and
  *                JSON-LD (lib/seo.ts). The canonical defaults to the page's
  *                own URL.
@@ -38,7 +39,7 @@ import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-lat
 import type { Framework } from "@/lib/frameworks";
 import { bootScript } from "@/lib/boot";
 import { jsonForScript, type PageMeta } from "@/lib/seo";
-import { SITE_NAME } from "@/lib/site";
+import { CHANNEL, SITE_NAME } from "@/lib/site";
 import { DEFAULT_STATE } from "@/lib/store";
 import "@/styles/global.css";
 
@@ -51,7 +52,9 @@ interface Props {
   class?: string;
 }
 
-const { title, description, framework, noindex = false, meta = {}, class: bodyClass } = Astro.props;
+const { title, description, framework, noindex: pageNoindex = false, meta = {}, class: bodyClass } = Astro.props;
+// The next site documents unreleased APIs, so search engines only see production.
+const noindex = pageNoindex || CHANNEL === "next";
 const fullTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
 // `build.format: "file"` gives /react/install.html here; the public URL has no extension.
 const pathname = Astro.url.pathname.replace(/(\/index)?\.html$/, "") || "/";
@@ -77,7 +80,7 @@ const canonical = absolute(meta.canonical ?? pathname);
     {!noindex && <link rel="canonical" href={canonical} />}
     {meta.markdown && <link rel="alternate" type="text/markdown" href={meta.markdown} title="This page as Markdown" />}
     <link rel="alternate" type="text/plain" href="/llms.txt" title="Docs index for language models" />
-    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    {!noindex && <link rel="sitemap" type="application/xml" href="/sitemap.xml" />}
     <meta property="og:title" content={fullTitle} />
     {description && <meta property="og:description" content={description} />}
     <meta property="og:site_name" content={SITE_NAME} />
