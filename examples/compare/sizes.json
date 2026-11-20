@@ -48,6 +48,42 @@
           "brotli": 1748
         }
       }
+    },
+    "profile": {
+      "lunarhue": {
+        "total": {
+          "min": 349620,
+          "gzip": 108013,
+          "brotli": 93727
+        },
+        "forms": {
+          "min": 50234,
+          "gzip": 18522,
+          "brotli": 16786
+        },
+        "app": {
+          "min": 5102,
+          "gzip": 2104,
+          "brotli": 1841
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 374757,
+          "gzip": 109114,
+          "brotli": 93976
+        },
+        "forms": {
+          "min": 75649,
+          "gzip": 19469,
+          "brotli": 17227
+        },
+        "app": {
+          "min": 6532,
+          "gzip": 2516,
+          "brotli": 2210
+        }
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 // Presentational pieces both libraries render, so the two builds of an app
 // differ only in how they wire the form. Nothing here knows about a form
 // library: each side's field components pass in ids, errors and flags.
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 interface FieldShellProps {
   /** The input's id, which the label points at. */
@@ -63,5 +63,33 @@ export function Page({ title, lede, children }: { readonly title: string; readon
       <p className="lede">{lede}</p>
       {children}
     </main>
+  );
+}
+
+/**
+ * Waits for `load` once and renders `children` with its result. Each app
+ * loads its server data with this before the form mounts.
+ */
+export function Loaded<T>({ load, children }: { readonly load: () => Promise<T>; readonly children: (data: T) => ReactNode }) {
+  const [data, setData] = useState<{ readonly value: T }>();
+  useEffect(() => {
+    let live = true;
+    void load().then((value) => {
+      if (live) setData({ value });
+    });
+    return () => {
+      live = false;
+    };
+  }, [load]);
+  return data === undefined ? <p role="status">Loading...</p> : children(data.value);
+}
+
+/** Controls that act on the fake server, set apart from the form. */
+export function ServerControls({ children }: { readonly children: ReactNode }) {
+  return (
+    <aside className="server" aria-label="Server">
+      <span>Server:</span>
+      {children}
+    </aside>
   );
 }

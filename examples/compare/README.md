@@ -49,6 +49,36 @@ Where the TanStack version needed a choice of its own:
   TanStack's docs put server errors on fields. `onSubmit` only shows the
   welcome message, kept in React state since TanStack's submit has no result.
 
+**Profile settings** (`profile/`). Name, email, bio, time zone and a nested
+`notifications` object, checked by a Zod schema and loaded from the server
+first. Each changed field is marked, and typing the original back clears the
+mark. Save is disabled while nothing changed. After a save the form is clean,
+except for fields edited while the save ran. Refresh takes the server's copy
+for unchanged fields and keeps the changed ones. Discard goes back to the last
+saved or refreshed copy. Our side uses `zod()`, `dirty()`,
+`baselineOnSubmit()`, `rebase()` and `store.changes()`. TanStack's uses its
+Standard Schema support, `isDefaultValue`, `form.reset`, `formOptions` and
+`withForm`.
+
+Where the TanStack version needed a choice of its own:
+
+- `isDirty` stays true once the user types, even when they type the original
+  back. The mark and the change count read `isDefaultValue` instead.
+- TanStack has no way to move the defaults and keep some values. A small
+  helper, `rebaseline`, reads the fields to keep, calls `form.reset(values)`,
+  and writes the kept ones back. The save and Refresh both use it, with a
+  hand-kept list of the form's fields to walk.
+- `withForm` takes `formOptions` with default values, but the real ones are
+  loaded. The shared options carry a blank profile, and `useAppForm` gets
+  the loaded one.
+- TanStack's field context can't tie a select's options to the field's
+  value type, so `Select` takes strings.
+
+On our side, `store.changes()` is a read, not a subscription, and the form
+snapshot doesn't change on a second edit while the form is already dirty. The
+save bar reads the count under `useField(form.root, ...)`, which re-runs on
+every value change.
+
 ## Running
 
 From the repo root:

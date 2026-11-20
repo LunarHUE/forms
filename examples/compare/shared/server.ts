@@ -44,3 +44,45 @@ export async function signUp(request: SignUpRequest): Promise<SignUpResponse> {
   takenNames.add(request.username.toLowerCase());
   return { ok: true };
 }
+
+// Profile settings
+
+export const timezones = ["Europe/London", "Europe/Paris", "America/New_York", "America/Los_Angeles", "Asia/Tokyo"] as const;
+
+export interface Profile {
+  readonly name: string;
+  readonly email: string;
+  readonly bio: string;
+  readonly timezone: (typeof timezones)[number];
+  readonly notifications: {
+    readonly product: boolean;
+    readonly security: boolean;
+    readonly digest: "daily" | "weekly" | "never";
+  };
+}
+
+let storedProfile: Profile = {
+  name: "Ada Lovelace",
+  email: "ada@example.com",
+  bio: "Writes programs for engines that don't exist yet.",
+  timezone: "Europe/London",
+  notifications: { product: true, security: true, digest: "weekly" },
+};
+
+/** The server's copy of the profile. */
+export async function getProfile(): Promise<Profile> {
+  await wait(200);
+  return storedProfile;
+}
+
+/** Saves the profile and returns what the server stored. Slow on purpose. */
+export async function saveProfile(profile: Profile): Promise<Profile> {
+  await wait(800);
+  storedProfile = profile;
+  return storedProfile;
+}
+
+/** Someone else changes the name and the bio on the server. */
+export function editProfileElsewhere(): void {
+  storedProfile = { ...storedProfile, name: "Ada King", bio: "Countess of Lovelace." };
+}

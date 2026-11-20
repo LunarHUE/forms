@@ -153,3 +153,27 @@ button:disabled {
 [role="alert"] {
   color: var(--danger);
 }
+
+.server {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.save-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.save-bar .count {
+  margin-right: auto;
+  color: var(--muted);
+}

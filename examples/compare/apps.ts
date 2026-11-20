@@ -1,7 +1,10 @@
 // The apps in this package and the libraries each is built with. The Vite
 // config, the Playwright config and scripts/size-compare.ts all read this.
 
-export const apps = [{ name: "signup", title: "Sign-up" }] as const;
+export const apps = [
+  { name: "signup", title: "Sign-up" },
+  { name: "profile", title: "Profile settings" },
+] as const;
 
 export const libraries = [
   { name: "lunarhue", title: "@lunarhue/forms" },
