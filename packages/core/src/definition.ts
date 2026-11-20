@@ -3,7 +3,7 @@ import type { Path } from "./path.js";
 import type { HasSchemaPlugin, Needs, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
-import type { FieldValidators, FormValidatorInput, ValidateTiming } from "./validator.js";
+import type { FieldValidatorSet, FormValidatorSet, ValidateTiming } from "./validator.js";
 import type { ChildValue, DeepPartial, DeepReadonly, Draft, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf, Widened } from "./value.js";
 
 /**
@@ -93,12 +93,10 @@ export interface SubmitContext<V, E = FormError, I = undefined> {
 
 /** A definition's `validate`. */
 export interface DefinitionValidate<V, E> {
-  /** When this form's validators first run. Defaults to the shared timing. */
-  readonly on?: ValidateTiming;
-  /** A validator for the whole value. Its errors land on the fields its `ErrorMap` names. */
-  readonly form?: FormValidatorInput<V, E>;
-  /** Field validators shaped like the value. */
-  readonly fields?: FieldValidators<V, E>;
+  /** A validator for the whole value, from `formValidator`. Its errors land on the fields its `ErrorMap` names. */
+  readonly form?: FormValidatorSet<V, E>;
+  /** Field validators shaped like the value, from `fieldValidators`. */
+  readonly fields?: FieldValidatorSet<V, E>;
 }
 
 /**
@@ -157,7 +155,11 @@ export interface NoSchemaPlugin<S extends StandardSchemaV1> {
  * optional and deep partial, and overrides the plugin's defaults. Otherwise
  * it is required and complete (see `NoSchemaPlugin`).
  */
-export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I, R> = (HasSchemaPlugin<S, P> extends true
+export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I, R, D extends Plugins = []> = (SchemaPluginIn<
+  S,
+  P,
+  D
+> extends true
   ? {
       /** The schema. Fixed for the life of the definition. */
       readonly schema: S;
@@ -165,7 +167,23 @@ export type SchemaDefinition<S extends StandardSchemaV1, P extends Plugins, E, I
       readonly defaultValues?: DeepPartial<StandardSchemaV1.InferInput<S>>;
     }
   : NoSchemaPlugin<S>) &
-  DefinitionOptions<SchemaValue<S, P>, StandardSchemaV1.InferOutput<S>, E, I, R, P>;
+  DefinitionOptions<
+    SchemaPluginIn<S, P, D> extends true ? Draft<StandardSchemaV1.InferInput<S>> : StandardSchemaV1.InferInput<S>,
+    StandardSchemaV1.InferOutput<S>,
+    E,
+    I,
+    R,
+    Combined<P, D>
+  >;
+
+/**
+ * `HasSchemaPlugin` for the shared plugins `P` and the definition's own `D`.
+ * It asks `P` first: while `define` infers `D`, a check against both can't
+ * resolve, and `fieldValidators` and `formValidator` inside the config would
+ * take the schema's input type instead of its `Draft`. Internal.
+ */
+type SchemaPluginIn<S extends StandardSchemaV1, P extends Plugins, D extends Plugins> =
+  HasSchemaPlugin<S, P> extends true ? true : HasSchemaPlugin<S, Combined<P, D>>;
 
 /**
  * A definition without a schema. `defaultValues` is required and sets the
@@ -270,7 +288,7 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
    * plugins must be among the form's.
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
-    config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    config: DefineConfig<V, S, O, P, E, I, R, D>,
     ...parts: readonly DefineParts<V, S, P, D>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>>;
 }
@@ -287,15 +305,19 @@ export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D exte
   NoInfer<DefinedValue<V, S, P>>
 >;
 
-/** What `define` takes: a config, or a function of per-store options that returns one. `C` is every plugin the form gets. */
-export type DefineConfig<V, S extends StandardSchemaV1, O, C extends Plugins, E, I, R, D extends Plugins> =
-  | WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>, PluginNames<C>>
-  | ((options: O) => WithPlugins<Definition<V, S, C, E, I, R>, D, NoInfer<DefinedValue<V, S, C>>, PluginNames<C>>);
+/** What `define` takes: a config, or a function of per-store options that returns one. `P` is the shared plugins and `D` the definition's own. */
+export type DefineConfig<V, S extends StandardSchemaV1, O, P extends Plugins, E, I, R, D extends Plugins> =
+  | WithPlugins<Definition<V, S, P, E, I, R, D>, D, NoInfer<DefinedValue<V, S, Combined<P, D>>>, PluginNames<Combined<P, D>>>
+  | ((options: O) => WithPlugins<Definition<V, S, P, E, I, R, D>, D, NoInfer<DefinedValue<V, S, Combined<P, D>>>, PluginNames<Combined<P, D>>>);
 
-/** A definition's config: `SchemaDefinition` when `S` is a schema, `PlainDefinition` when it is `never`. */
-export type Definition<V, S extends StandardSchemaV1, P extends Plugins, E, I, R> = [S] extends [never]
-  ? PlainDefinition<V, E, I, R, P>
-  : SchemaDefinition<S, P, E, I, R>;
+/**
+ * A definition's config: `SchemaDefinition` when `S` is a schema,
+ * `PlainDefinition` when it is `never`. `P` is the shared plugins and `D`
+ * the definition's own.
+ */
+export type Definition<V, S extends StandardSchemaV1, P extends Plugins, E, I, R, D extends Plugins = []> = [S] extends [never]
+  ? PlainDefinition<V, E, I, R, Combined<P, D>>
+  : SchemaDefinition<S, P, E, I, R, D>;
 
 /** The value type of a definition: `SchemaValue` with a schema, or `Widened<V>` without one. */
 export type DefinedValue<V, S extends StandardSchemaV1, P extends Plugins = []> = [S] extends [never] ? Widened<V> : SchemaValue<S, P>;

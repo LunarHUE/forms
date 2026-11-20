@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { isSchema, type Tags } from "./store/validate/inputs.js";
-import type { ValidateTiming, WrappedSchema } from "./validator.js";
+import type { SchemaInput, ValidateTiming, WrappedSchema } from "./validator.js";
 import type { PlatformAbortSignal } from "./value.js";
 
 // Core has no DOM or node types, so this declares the platform globals it uses.
@@ -9,9 +9,6 @@ declare function clearTimeout(handle: unknown): void;
 
 /** A check as the wrappers call it. */
 type AnyCheck = ((value: unknown, ctx: { readonly signal: PlatformAbortSignal }) => unknown) & Tags;
-
-/** The input type of a schema or of a wrapped one. */
-type SchemaInput<S> = S extends StandardSchemaV1<infer In, unknown> ? In : S extends WrappedSchema<infer In> ? In : never;
 
 /** A function stays as it is. A schema becomes a function that returns its result. */
 const checkOf = (check: object): AnyCheck => {

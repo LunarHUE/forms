@@ -6,6 +6,8 @@ export { errorsByKind } from "./error-kinds.js";
 export { trackElements, trackedField, type ElementListener } from "./elements.js";
 /** Internal: the slot the adapters report elements to. Use `trackElements`. */
 export { tracking } from "./store/elements.js";
+export { fieldValidators } from "./store/validate/fields.js";
+export { formValidator } from "./store/validate/form.js";
 export { invalidFields, subscribeInvalid } from "./invalid.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
@@ -65,6 +67,8 @@ export type {
 } from "./errors.js";
 export type {
   FieldValidators,
+  FieldValidatorSet,
+  FormValidatorSet,
   FormValidator,
   FormValidatorInput,
   FormValidatorResult,

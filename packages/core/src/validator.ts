@@ -62,6 +62,9 @@ export interface WrappedSchema<In = unknown> {
   readonly "~types"?: { readonly input: In } | undefined;
 }
 
+/** The input type of a schema or of a wrapped one. */
+export type SchemaInput<S> = S extends StandardSchemaV1<infer In, unknown> ? In : S extends WrappedSchema<infer In> ? In : never;
+
 /**
  * Anything accepted where a field validator goes: a validator function, a
  * Standard Schema whose input type is the field's value type, or either one
@@ -115,3 +118,25 @@ export type NestedValidators<V, E = FormError> =
 export type ValidatorRecord<V, E = FormError> = {
   readonly [K in KeysOf<V>]?: FieldValidators<ChildValue<V, K>, E>;
 } & { readonly "~standard"?: never };
+
+/** Marks the functions `fieldValidators` and `formValidator` return. Types only. */
+declare const validatorSet: unique symbol;
+
+/**
+ * A definition's field validators, as `fieldValidators` wraps them for
+ * `validate.fields`. A bare record or validator doesn't fit, so a definition
+ * can't leave the wrapper out by mistake.
+ */
+// A function type with one call signature and nothing else, so TypeScript
+// infers `V` for a `fieldValidators` call written inside the config that
+// gives `V`. The brand sits on the return type for the same reason.
+export type FieldValidatorSet<V, E = FormError> = (
+  core: never,
+  add: never,
+  runOf: never,
+) => { readonly [validatorSet]: { readonly fields: (value: V) => V; readonly error: (error: E) => E } };
+
+/** A definition's form validator, as `formValidator` wraps it for `validate.form`. A function type, as `FieldValidatorSet` is. */
+export type FormValidatorSet<V, E = FormError> = (
+  add: never,
+) => { readonly [validatorSet]: { readonly form: (value: V) => V; readonly error: (error: E) => E } };

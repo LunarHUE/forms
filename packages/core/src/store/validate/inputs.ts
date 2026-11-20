@@ -1,3 +1,4 @@
+import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { ValidateTiming } from "../../validator.js";
 import { isPlainObject } from "../tree.js";
@@ -13,6 +14,8 @@ export interface Spec {
   /** True when the check is a Standard Schema, whose result holds issues. */
   readonly schema: boolean;
   readonly check: Check;
+  /** Places a result that isn't a field's own errors. `formValidator` gives the one for an `ErrorMap`. */
+  readonly place?: (placed: never, core: never, base: Path, result: unknown) => void;
   readonly on: ValidateTiming | undefined;
   readonly recheckOnSubmit: boolean;
 }

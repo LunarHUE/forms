@@ -1,13 +1,13 @@
-import type { ErrorMap, MapError } from "../../errors.js";
+import type { MapError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { ValidatorResult } from "../../validator.js";
 import type { StoreCore } from "../core.js";
 import { errorList } from "../handles.js";
-import { addErrors, addNamed, type Placed } from "../placed.js";
+import { addErrors, type Placed } from "../placed.js";
 import type { Spec } from "./inputs.js";
 
-const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
+export const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
   errors === undefined || errors === null ? [] : errorList(errors);
 
 const segmentOf = (seg: PropertyKey | StandardSchemaV1.PathSegment): string =>
@@ -50,13 +50,10 @@ export function place<E, I, R>(
       const path = resolve(core, base, issue) ?? base;
       addErrors(placed, path, [mapError({ source: "schema", message: issue.message, path, issue })]);
     }
-  } else if (spec.kind === "form") {
-    // A form validator returns an `ErrorMap`, and `base` is the root.
+  } else if (spec.place) {
+    // `place` was typed for the form's error type, which this runner leaves open.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const map = result as ErrorMap<E>;
-    addErrors(placed, base, listOf(map.form));
-    // A name that resolves to no field lands on the root after the form errors, so it still blocks submit.
-    for (const [name, errors] of Object.entries(map.fields ?? {})) addNamed(placed, core, name, listOf(errors));
+    spec.place(placed as never, core as never, base, result);
   } else {
     // A validator's own errors are already the form's error type.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
