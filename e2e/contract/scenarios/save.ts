@@ -8,7 +8,7 @@ const Account = v.object({
   email: v.pipe(v.string(), v.email("Enter a valid email.")),
 });
 
-const labels = { name: "Name", email: "Email", formErrors: "Form errors" };
+const labels = { name: "Name", email: "Email", formErrors: "Form errors", summary: "Error summary" };
 
 /** The email the fake server refuses to save. */
 const takenEmail = "taken@example.com";
