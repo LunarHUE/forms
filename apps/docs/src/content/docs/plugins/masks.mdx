@@ -39,8 +39,15 @@ the server and the browser both call it. Text inputs and textareas show the
 display text, on the server too, so the page hydrates with it. Number,
 checkbox, radio and select inputs ignore it.
 
+Everything except the input reads the stored value: `field.value`, the
+schema, `onSubmit`, `dirty`, history and persistence. The display text lives
+only in `field.text`, which `inputProps(field)` uses too. An input bound to
+`field.value` instead shows the stored value. To keep the caret in place,
+write with `field.setText(text, event)`. See
+[Binding an element](../basics/fields#binding-an-element).
+
 A plugin of your own can give a field display text too. See
-[Display text](../basics/display-text).
+[Writing a plugin](../writing-plugins/first-plugin#display-text-from-a-plugin).
 
 ## Fields that haven't rendered
 

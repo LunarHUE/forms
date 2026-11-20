@@ -1,32 +1,18 @@
-import { createForms, defineField, useForm } from "@lunarhue/forms-react";
-import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { z } from "zod";
+import { createForms, useForm } from "@lunarhue/forms-react";
 import { CheckboxField, NumberField, TextField } from "./fields";
 
-// "5551234567" shows as "(555) 123-4567".
-function formatPhone(value: string) {
-  if (value.length > 6) return `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
-  if (value.length > 3) return `(${value.slice(0, 3)}) ${value.slice(3)}`;
-  return value;
-}
-
-const PhoneField = defineField(TextField, masked({ clean: digits, display: formatPhone }));
-
-const forms = createForms({
-  plugins: [zod(), mask()],
-  fields: { TextField, NumberField, CheckboxField, PhoneField },
-});
-
-const Order = z.object({
-  phone: z.string().length(10, "Enter a 10-digit phone number."),
-  quantity: z.number("Enter a quantity.").min(0.5, "Order at least half a box."),
-  terms: z.boolean().refine((value) => value, "Accept the terms."),
-});
+const forms = createForms();
 
 const order = forms.define({
-  schema: Order,
-  defaultValues: { terms: false },
+  defaultValues: { name: "", quantity: undefined as number | undefined, terms: false },
+  validate: {
+    fields: {
+      name: (name) => (name === "" ? { message: "Enter your name." } : undefined),
+      quantity: (quantity) =>
+        quantity === undefined || quantity < 0.5 ? { message: "Order at least half a box." } : undefined,
+      terms: (accepted) => (accepted ? undefined : { message: "Accept the terms." }),
+    },
+  },
   onSubmit: (value) => value,
 });
 
@@ -36,9 +22,9 @@ export default function OrderForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.PhoneField name="phone" label="Phone" />
-          <form.NumberField name="quantity" label="Boxes" />
-          <form.CheckboxField name="terms" label="I accept the terms" />
+          <form.Field name="name">{(field) => <TextField field={field} label="Name" />}</form.Field>
+          <form.Field name="quantity">{(field) => <NumberField field={field} label="Boxes" />}</form.Field>
+          <form.Field name="terms">{(field) => <CheckboxField field={field} label="I accept the terms" />}</form.Field>
           <div>
             <button type="submit">Order</button>
             <button type="button" onClick={() => form.root.reset()}>

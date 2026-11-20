@@ -31,7 +31,8 @@
   font-weight: 500;
 }
 
-.demo-stage input {
+.demo-stage input,
+.demo-stage select {
   width: 100%;
   height: 40px;
   padding: 0 12px;
@@ -43,7 +44,8 @@
   font-weight: 400;
 }
 
-.demo-stage input:focus-visible {
+.demo-stage input:focus-visible,
+.demo-stage select:focus-visible {
   border-color: var(--ring);
   outline: 2px solid color-mix(in oklab, var(--ring) 30%, transparent);
   outline-offset: 0;

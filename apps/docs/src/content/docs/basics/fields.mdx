@@ -1,74 +1,21 @@
 ---
 title: Fields
-description: Write an input component once, register it, and use it on every form.
+description: The field object, inputProps, number and optional inputs, and binding component libraries.
 section: basics
 order: 6
 ---
 
-A field component is your own component with a `field` prop. Register it on
-`createForms` and every form gets it as a member, `form.TextField`, that
-takes a field name instead of the `field` prop.
+`form.Field` takes a field name and passes that field's object to its child.
+The object holds the field's state and commands, and `inputProps` turns it
+into the props an input needs. Type a number with a trailing `.` and watch
+the line under Age.
 
 <Demo name="fields/profile" />
 
-## Registering a component
-
-Type the prop as `FieldApi<T>`, where `T` is the value type the component
-edits. List the component under `fields`:
-
-```tsx framework=react
-import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-react";
-
-function TextField({ field, label }: { field: FieldApi<string>; label: string }) {
-  return (
-    <label>
-      {label}
-      <input {...inputProps(field)} />
-    </label>
-  );
-}
-
-const forms = createForms({ fields: { TextField } });
-```
-
-```tsx framework=solid
-import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-solid";
-
-function TextField(props: { field: FieldApi<string>; label: string }) {
-  return (
-    <label>
-      {props.label}
-      <input {...inputProps(props.field)} />
-    </label>
-  );
-}
-
-const forms = createForms({ fields: { TextField } });
-```
-
-<Only framework="solid">
-
-Read the field through `props.field`. Destructuring it reads each member
-once and the component stops updating.
-
-</Only>
-
-`form.TextField` takes the component's own props, minus `field`, plus one of:
-
-- `name`, a field name such as `"address.city"`. The compiler checks it, and
-  only names whose value fits the component are accepted: a `FieldApi<string>`
-  component won't take a number field. See [Typed paths](../composition/typed-paths).
-- `handle`, a field handle from `form.root.at(...)` or an array row.
-
-For a one-off input, `form.Field` passes the same object to a function
-child, with no registration:
-
-```tsx framework=react
-<form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
-```
-
-```tsx framework=solid
-<form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
+```tsx
+<form.Field name="age">
+  {(field) => <input {...inputProps(field, { kind: "number" })} />}
+</form.Field>
 ```
 
 ## The field object
@@ -90,18 +37,95 @@ that bind an element. A new object arrives with each change.
 | `handle` | The field's handle, to pass to another component or keep for later. |
 | `id`, `errorId` | Ids for the input and its error list. |
 
-`FieldApi<number>` has `value: number | undefined`, since a schema form starts
-a number field empty. `FieldApi<string>` is a plain string.
+## inputProps
+
+For plain HTML, `inputProps(field)` puts every piece on the element and
+adds the rest an `<input>` needs: `name`, `id`, `value`, the change and blur
+handlers, `ref`, `disabled`, `readOnly`, and `aria-invalid` and
+`aria-describedby` while errors show. It is a function, not a member, so a
+form that never calls it doesn't ship it. Pass options for other kinds of
+input. The compiler checks them against the field's value type.
+
+| Call | Element | Field type |
+| --- | --- | --- |
+| `inputProps(field)` or `inputProps(field, { type: "email" })` | `<input>` | string |
+| `inputProps(field, { kind: "textarea" })` | `<textarea>` | string |
+| `inputProps(field, { kind: "select" })` | `<select>` | string |
+| `inputProps(field, { kind: "number" })` or `{ kind: "range" }` | `<input type="number">` or `"range"` | number |
+| `inputProps(field, { kind: "checkbox" })` | `<input type="checkbox">` | boolean |
+| `inputProps(field, { kind: "checkbox", value })` | one box of a group | array of strings or numbers |
+| `inputProps(field, { kind: "radio", value })` | one radio | string, number or boolean |
+
+<Only framework="react">
+
+Number and select inputs take `empty`, the value an empty input writes. It
+defaults to `undefined` and is required when the field's type has no
+`undefined`.
+
+</Only>
+
+<Only framework="solid">
+
+Number inputs take `empty`, the value an empty input writes. It defaults to
+`undefined` and is required when the field's type has no `undefined`.
+
+</Only>
+
+<Only framework="react">
+
+A component given only a handle records its element with
+`useFieldRef(handle)` and gets the props from `useInputProps(handle)`.
+
+</Only>
+
+<Only framework="solid">
+
+A component given only a handle records its element with `fieldRef(handle)`
+and gets the props from `createInputProps(handle)`.
+
+</Only>
+
+## Number inputs
+
+A number field bound with `inputProps(field, { kind: "number" })`, or with
+`field.setNumberText`, holds a number, or `undefined` while the input is
+empty. Some text on the way to a number isn't one yet:
+
+| Typed | Input shows | Field holds |
+| --- | --- | --- |
+| `12.` | `12.` | `12` |
+| `-` | `-` | the value it held before |
+| nothing | nothing | `undefined`, or the `empty` option |
+
+`field.text` keeps the typed text while the field still holds the value that
+text wrote, so the caret and the `.` don't jump. Once the input loses focus,
+or something else writes a different value, it shows the number again.
 
 ## Optional fields
 
-A `FieldApi<string>` component takes required string fields only. An optional
-field such as `nick?: string` starts out `undefined`, and a component that
-reads `field.value` as a `string` would get it wrong. To render optional
-fields too, put `undefined` in the type:
+An optional field such as `nickname?: string` starts out `undefined`.
+`inputProps` shows `undefined` as an empty input, and a checkbox shows it
+unticked. Type the form with `define<T>()` to have optional keys, since
+`defaultValues` can't leave a key out and still name it:
+
+```ts
+interface Profile {
+  name: string;
+  nickname?: string;
+}
+
+const profile = forms.define<Profile>({ defaultValues: { name: "" } });
+```
+
+## Components that take a field
+
+The child of `form.Field` can hand the field to your own component. Type its
+prop as `FieldApi<T>`, where `T` is the value type it edits:
 
 ```tsx framework=react
-function TextField({ field, label }: { field: FieldApi<string | undefined>; label: string }) {
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
+
+function TextInput({ field, label }: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {label}
@@ -109,10 +133,14 @@ function TextField({ field, label }: { field: FieldApi<string | undefined>; labe
     </label>
   );
 }
+
+<form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>;
 ```
 
 ```tsx framework=solid
-function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
+
+function TextInput(props: { field: FieldApi<string>; label: string }) {
   return (
     <label>
       {props.label}
@@ -120,21 +148,20 @@ function TextField(props: { field: FieldApi<string | undefined>; label: string }
     </label>
   );
 }
+
+<form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>;
 ```
 
-This component takes `name: string` and `nick?: string` alike, whether the
-form's type comes from `define<T>()` or from a schema. `inputProps` shows
-`undefined` as an empty input. A checkbox does the same with
-`FieldApi<boolean | undefined>`, and shows `undefined` unticked. `null` works
-the same way: `FieldApi<string | null>` takes `string` and `string | null`
-fields.
+<Only framework="solid">
 
-The type checker doesn't stop such a component from writing `undefined` into
-a required field, so leave writes to `inputProps` or write a value of the
-field's own type. A `FieldApi<number>` component has the same gap.
+Read the field through `props.field`. Destructuring it reads each member once
+and the component stops updating.
 
-In a component generic over its value, such as `<T extends Profile>`, pass an
-optional child by `name`. Its handle from `field.at("nick")` doesn't fit.
+</Only>
+
+To skip the `form.Field` wrapper and get `<form.TextInput name="name" />` on
+every form, register the component. See
+[Reusable field components](../composition/typed-paths).
 
 ## Binding an element
 
@@ -155,16 +182,15 @@ bind `value` and `setValue`.
 
 <Only framework="react">
 
-The demo binds Base UI's `Field`, `Input` and `Checkbox`. Type in the middle
-of the phone number, type `1.` in Boxes, submit it empty, and clear it.
+The demo binds Base UI's `Field`, `Input` and `Checkbox`. Type `1.` in Boxes,
+submit it empty, and clear it.
 
 </Only>
 
 <Only framework="solid">
 
 The demo binds plain elements the same way a primitive library takes a
-field. Type in the middle of the phone number, type `1.` in Boxes, submit it
-empty, and clear it.
+field. Type `1.` in Boxes, submit it empty, and clear it.
 
 </Only>
 
@@ -226,43 +252,6 @@ what the form holds.
 
 </Only>
 
-## inputProps
-
-For plain HTML, `inputProps(field)` puts every piece on the element and
-adds the rest an `<input>` needs: `name`, `id`, `value`, the change and blur
-handlers, `ref`, `disabled`, `readOnly`, and `aria-invalid` and
-`aria-describedby` while errors show. It is a function, not a member, so a
-form that never calls it doesn't ship it. Pass options for other kinds of
-input. The compiler checks them against the field's value type.
-
-| Call | Element | Field type |
-| --- | --- | --- |
-| `inputProps(field)` or `inputProps(field, { type: "email" })` | `<input>` | string |
-| `inputProps(field, { kind: "textarea" })` | `<textarea>` | string |
-| `inputProps(field, { kind: "select" })` | `<select>` | string |
-| `inputProps(field, { kind: "number" })` or `{ kind: "range" }` | `<input type="number">` or `"range"` | number |
-| `inputProps(field, { kind: "checkbox" })` | `<input type="checkbox">` | boolean |
-| `inputProps(field, { kind: "checkbox", value })` | one box of a group | array of strings or numbers |
-| `inputProps(field, { kind: "radio", value })` | one radio | string, number or boolean |
-
-Number and select inputs take `empty`, the value an empty input writes. It
-defaults to `undefined` and is required when the field's type has no
-`undefined`.
-
-<Only framework="react">
-
-A component given only a handle records its element with
-`useFieldRef(handle)` and gets the props from `useInputProps(handle)`.
-
-</Only>
-
-<Only framework="solid">
-
-A component given only a handle records its element with `fieldRef(handle)`
-and gets the props from `createInputProps(handle)`.
-
-</Only>
-
 ## Ids
 
 `field.id` is the form's id followed by the field's path. It stays the same
@@ -282,21 +271,3 @@ them, pass `id` to `useForm`. See [`id:server`](/errors#react:id:server).
 `inputProps(field)` points `aria-describedby` at it while errors show, so
 screen readers read them with the input. A primitive library that renders
 its own error element points at that one instead.
-
-## Shown errors
-
-`errors` has every error on the field. `shownErrors` has the ones the user
-should see now, and `aria-invalid` follows it. Render `shownErrors`.
-
-The `show` setting decides. Set it on `createForms` for every form or on
-`define` for one:
-
-| `show` | Errors show |
-| --- | --- |
-| `"touched-or-submitted"` | after the field is blurred or the form submitted (the default) |
-| `"touched"` | after the field is blurred |
-| `"submitted"` | after the first submit |
-| `"always"` | at once |
-
-A function works too. It gets `touched`, `edited`, `dirty` and `submitCount`
-and returns true to show.
