@@ -134,7 +134,10 @@
   --color-devtools-muted: var(--devtools-muted);
   --color-devtools-border: var(--devtools-border);
 
-  /* Paper: 6px for controls, tabs and nav items; 8px for blocks, panels and popovers. */
+  /* Paper: 6px for controls, tabs and nav items; 8px for blocks, panels and
+     popovers. Rows in a popover sit 4px in from its 8px corner, so they take
+     4px and the two curves stay parallel. */
+  --radius-xs: 0.25rem;
   --radius-sm: 0.375rem;
   --radius-md: 0.375rem;
   --radius-lg: var(--radius);
