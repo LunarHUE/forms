@@ -395,6 +395,10 @@ describe("inspect", () => {
     expect(card(root)?.textContent).toContain('"Grace"');
     move(document.body);
     await frame();
+    // The card stays a moment after the pointer leaves, for a pointer crossing a gap.
+    expect(card(root)).not.toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await frame();
     expect(card(root)).toBeNull();
   });
 

@@ -53,6 +53,47 @@ export function fieldAt(hook: Hook, forms: readonly Listed[], host: Element, pat
 /** The keys of every row above `path` in the tree, which must be expanded to show it. */
 export const ancestors = (path: Path): string[] => path.slice(0, -1).map((_, index) => pathKey(path.slice(0, index + 1)));
 
+/** How far apart a label and its control can be for the gap between them to keep the card. */
+const bridgeGap = 32;
+
+/** How long the card stays after the pointer leaves its field, so crossing a small gap doesn't flicker it. */
+const grace = 150;
+
+/** The labels of a control: those its `labels` lists, one that wraps it, and those whose `for` names it. */
+function labelsOf(element: Element): Element[] {
+  const labels = new Set<Element>();
+  if ("labels" in element && element.labels instanceof NodeList) for (const label of element.labels) if (label instanceof Element) labels.add(label);
+  const wrapping = element.closest("label");
+  if (wrapping) labels.add(wrapping);
+  const root = element.getRootNode();
+  if (element.id && (root instanceof Document || root instanceof ShadowRoot))
+    for (const label of root.querySelectorAll(`label[for="${CSS.escape(element.id)}"]`)) labels.add(label);
+  return [...labels];
+}
+
+/** The distance between two boxes, along the axis they are furthest apart on. Zero when they overlap. */
+const distance = (a: DOMRect, b: DOMRect) => Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom, 0);
+
+/**
+ * Whether a point is in the box spanning a control and its labels that sit
+ * within `bridgeGap` of it. The pointer crosses that box going from a label
+ * to its input. A label further away bridges nothing, so it can't make a
+ * large stretch of the page keep the card.
+ */
+export function inBridge(element: Element, x: number, y: number): boolean {
+  const own = element.getBoundingClientRect();
+  const near = labelsOf(element)
+    .map((label) => label.getBoundingClientRect())
+    .filter((rect) => distance(rect, own) <= bridgeGap);
+  if (near.length === 0) return false;
+  const boxes = [own, ...near];
+  const left = Math.min(...boxes.map((box) => box.left));
+  const right = Math.max(...boxes.map((box) => box.right));
+  const top = Math.min(...boxes.map((box) => box.top));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+  return x >= left && x <= right && y >= top && y <= bottom;
+}
+
 export interface InspectOptions {
   readonly hook: Hook;
   readonly forms: readonly Listed[];
@@ -70,13 +111,31 @@ export interface InspectOptions {
  */
 export function useInspect({ hook, forms, host, on, onPin }: InspectOptions): Found | undefined {
   const [found, setFound] = useState<Found | undefined>(undefined);
-  const latest = useRef({ forms, on, onPin });
-  latest.current = { forms, on, onPin };
+  const latest = useRef({ forms, on, onPin, found });
+  latest.current = { forms, on, onPin, found };
   useEffect(() => {
-    // The last pointer path, so pressing Alt over a field shows it without a move.
+    // The last pointer path and place, so pressing Alt over a field shows it without a move.
     let last: readonly EventTarget[] = [];
+    let point: readonly [x: number, y: number] | undefined;
+    // Clears the card once the pointer has been off its field for `grace`.
+    let leaving: ReturnType<typeof setTimeout> | undefined;
+    const stopLeaving = () => {
+      clearTimeout(leaving);
+      leaving = undefined;
+    };
     const show = (active: boolean) => {
       const next = active ? fieldAt(hook, latest.current.forms, host, last) : undefined;
+      const { found: current } = latest.current;
+      if (active && next === undefined && current) {
+        // Between a label and its input the card stays. Anywhere else it goes after the grace period.
+        if (point && inBridge(current.element, ...point)) stopLeaving();
+        else leaving ??= setTimeout(() => {
+          leaving = undefined;
+          setFound(undefined);
+        }, grace);
+        return;
+      }
+      stopLeaving();
       setFound((previous) =>
         previous?.element === next?.element && previous?.form === next?.form && pathKey(previous?.path ?? []) === pathKey(next?.path ?? [])
           ? previous
@@ -85,6 +144,7 @@ export function useInspect({ hook, forms, host, on, onPin }: InspectOptions): Fo
     };
     const onMove = (event: PointerEvent) => {
       last = event.composedPath();
+      point = [event.clientX, event.clientY];
       show(latest.current.on || event.altKey);
     };
     const onKey = (event: KeyboardEvent) => {
@@ -96,6 +156,7 @@ export function useInspect({ hook, forms, host, on, onPin }: InspectOptions): Fo
       if (hit === undefined) return;
       event.preventDefault();
       event.stopPropagation();
+      stopLeaving();
       setFound(undefined);
       latest.current.onPin(hit);
     };
@@ -104,6 +165,7 @@ export function useInspect({ hook, forms, host, on, onPin }: InspectOptions): Fo
     document.addEventListener("keyup", onKey, true);
     document.addEventListener("click", onClick, true);
     return () => {
+      stopLeaving();
       document.removeEventListener("pointermove", onMove, true);
       document.removeEventListener("keydown", onKey, true);
       document.removeEventListener("keyup", onKey, true);
