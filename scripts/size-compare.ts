@@ -21,7 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { build, type Rolldown } from "vite";
-import { apps, libraries } from "../examples/compare/apps.js";
+import { apps, librariesOf } from "../examples/compare/apps.js";
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const compare = join(repo, "examples", "compare");
@@ -104,7 +104,7 @@ for (const name of ["core", "react", "schema"]) {
 const measured: Record<string, Record<string, Record<BuildName, Size>>> = {};
 for (const app of apps) {
   const perLibrary: Record<string, Record<BuildName, Size>> = {};
-  for (const library of libraries) {
+  for (const library of librariesOf(app)) {
     const entry = join(compare, app.name, library.name, "main.tsx");
     perLibrary[library.name] = {
       total: await measure(entry, builds[0].external),
@@ -140,7 +140,7 @@ const table = [
   line(header),
   line(header.map((_, index) => (index < 2 ? "---" : "---:"))),
   ...apps.flatMap((app) =>
-    libraries.map((library) => {
+    librariesOf(app).map((library) => {
       const sizes = fresh.apps[app.name]?.[library.name];
       if (sizes === undefined) throw new Error(`No sizes for ${app.name} ${library.name}.`);
       return line([

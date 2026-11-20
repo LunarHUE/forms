@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultClientConditions, defineConfig } from "vite";
-import { apps, libraries } from "./apps.ts";
+import { apps, librariesOf } from "./apps.ts";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +17,7 @@ export default defineConfig({
     rolldownOptions: {
       input: Object.fromEntries(
         apps.flatMap((app) =>
-          libraries.map((library) => [`${app.name}-${library.name}`, join(root, app.name, library.name, "index.html")]),
+          librariesOf(app).map((library) => [`${app.name}-${library.name}`, join(root, app.name, library.name, "index.html")]),
         ),
       ),
     },
