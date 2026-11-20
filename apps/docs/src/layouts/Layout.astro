@@ -14,6 +14,9 @@
  *   framework    the framework the page is for, on framework pages. Sets
  *                html[data-framework] and saves it as the last-used framework.
  *   noindex      adds robots noindex (the 404 page).
+ *   meta         canonical path, Markdown copy, og:type, modified date and
+ *                JSON-LD (lib/seo.ts). The canonical defaults to the page's
+ *                own URL.
  *   class        classes for <body>.
  *
  * Slots: default (the body), `head` (extra tags at the end of <head>).
@@ -34,6 +37,8 @@ import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-lat
 
 import type { Framework } from "@/lib/frameworks";
 import { bootScript } from "@/lib/boot";
+import { jsonForScript, type PageMeta } from "@/lib/seo";
+import { SITE_NAME } from "@/lib/site";
 import { DEFAULT_STATE } from "@/lib/store";
 import "@/styles/global.css";
 
@@ -42,15 +47,17 @@ interface Props {
   description?: string;
   framework?: Framework;
   noindex?: boolean;
+  meta?: PageMeta;
   class?: string;
 }
 
-const SITE_NAME = "LunarHUE Forms";
-const { title, description, framework, noindex = false, class: bodyClass } = Astro.props;
+const { title, description, framework, noindex = false, meta = {}, class: bodyClass } = Astro.props;
 const fullTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
 // `build.format: "file"` gives /react/install.html here; the public URL has no extension.
 const pathname = Astro.url.pathname.replace(/(\/index)?\.html$/, "") || "/";
-const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
+const absolute = (path: string) => (Astro.site ? new URL(path, Astro.site).href : path);
+const url = absolute(pathname);
+const canonical = absolute(meta.canonical ?? pathname);
 ---
 
 <html
@@ -67,10 +74,25 @@ const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
     <title>{fullTitle}</title>
     {description && <meta name="description" content={description} />}
     {noindex && <meta name="robots" content="noindex" />}
-    {canonical && !noindex && <link rel="canonical" href={canonical} />}
+    {!noindex && <link rel="canonical" href={canonical} />}
+    {meta.markdown && <link rel="alternate" type="text/markdown" href={meta.markdown} title="This page as Markdown" />}
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Docs index for language models" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <meta property="og:title" content={fullTitle} />
     {description && <meta property="og:description" content={description} />}
     <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:type" content={meta.type ?? "website"} />
+    <meta property="og:url" content={url} />
+    <meta property="og:locale" content="en_US" />
+    {meta.modified && <meta property="article:modified_time" content={meta.modified.toISOString()} />}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={fullTitle} />
+    {description && <meta name="twitter:description" content={description} />}
+    {
+      meta.structuredData?.map((data) => (
+        <script is:inline type="application/ld+json" set:html={jsonForScript(data)} />
+      ))
+    }
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={geistMonoLatin} as="font" type="font/woff2" crossorigin />
     <script is:inline set:html={bootScript(framework ?? null)} />

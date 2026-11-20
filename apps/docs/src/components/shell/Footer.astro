@@ -1,0 +1,41 @@
+---
+/*
+ * The site footer under every page's content: name and version, license,
+ * GitHub and the npm package. The npm link goes to the page's adapter, React
+ * on pages without a framework.
+ */
+import { DEFAULT_FRAMEWORK, type Framework } from "@/lib/frameworks";
+import { adapterPackage, GITHUB_URL, npmUrl, SITE_NAME } from "@/lib/site";
+import { LATEST_VERSION } from "@/lib/versions";
+
+interface Props {
+  framework?: Framework;
+}
+
+const pkg = adapterPackage(Astro.props.framework ?? DEFAULT_FRAMEWORK);
+const links = [
+  { label: "MIT License", href: `${GITHUB_URL}/blob/main/LICENSE` },
+  { label: "GitHub", href: GITHUB_URL },
+  { label: "npm", href: npmUrl(pkg) },
+];
+---
+
+<footer data-pagefind-ignore class="border-t px-4 py-6 text-sm text-muted-foreground sm:px-6 lg:px-8">
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+    <p>
+      <span class="font-medium text-foreground">{SITE_NAME}</span>
+      <span class="ml-1.5 font-mono text-xs">v{LATEST_VERSION}</span>
+    </p>
+    <ul class="flex flex-wrap gap-x-5 gap-y-2">
+      {
+        links.map((link) => (
+          <li>
+            <a href={link.href} class="underline-offset-4 hover:text-foreground hover:underline">
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</footer>
