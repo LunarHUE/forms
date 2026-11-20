@@ -1,7 +1,6 @@
 import type { FieldSnapshot } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
 import { errorId } from "./input.js";
-import { type NumberText, numberTextSource } from "./number-text.js";
 import { piecesFor, textOf } from "./pieces.js";
 import { cached, type Source } from "./select.js";
 import { fieldSource } from "./sources.js";
@@ -12,7 +11,6 @@ export type AnyFieldApi = FieldSnapshot<unknown, unknown> & Readonly<Record<stri
 /** What a field object is built from, and the object itself. */
 export interface FieldView {
   readonly snapshot: FieldSnapshot<unknown, unknown>;
-  readonly text: NumberText | undefined;
   readonly api: AnyFieldApi;
 }
 
@@ -21,6 +19,13 @@ const notCommands = new Set(["peek", "registerValidator"]);
 
 const commandCache = new WeakMap<HandleLike, Readonly<Record<string, unknown>>>();
 const viewSources = new WeakMap<HandleLike, Source<FieldView>>();
+const refreshers = new WeakMap<object, () => void>();
+
+/**
+ * Gives the readers of a field a new field object, for state the adapter
+ * keeps outside the store, such as the text typed in a number input.
+ */
+export const refreshField = (handle: object): void => refreshers.get(handle)?.();
 
 /** Picks the field object from a view. */
 export const pickApi = (view: FieldView): unknown => view.api;
@@ -31,7 +36,7 @@ const commandsOf = (handle: HandleLike): Readonly<Record<string, unknown>> =>
     Object.fromEntries(Object.entries(handle).filter(([key, value]) => typeof value === "function" && !notCommands.has(key))),
   );
 
-function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>, text: NumberText | undefined): FieldView {
+function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>): FieldView {
   const api: AnyFieldApi = {
     ...snapshot,
     ...commandsOf(handle),
@@ -40,46 +45,50 @@ function makeView(handle: HandleLike, snapshot: FieldSnapshot<unknown, unknown>,
     path: handle.path,
     errorId: errorId(handle),
     ...piecesFor(handle),
-    text: textOf(snapshot, text),
+    text: textOf(snapshot),
   };
-  return { snapshot, text, api };
+  return { snapshot, api };
 }
 
 /**
- * The source of a field's view: its snapshot, its number text and the field
- * object built from both. The view keeps its identity until either changes,
- * and the server and client views are one object while they read the same.
+ * The source of a field's view: its snapshot and the field object built
+ * from it. The view keeps its identity until the snapshot changes or
+ * `refreshField` runs, and the server and client views are one object while
+ * they read the same.
  */
 export const fieldViewSource = (handle: HandleLike): Source<FieldView> =>
   cached(viewSources, handle, () => {
     const field = fieldSource(handle);
-    const texts = numberTextSource(handle);
+    const listeners = new Set<() => void>();
+    let stale = false;
+    refreshers.set(handle, () => {
+      stale = true;
+      for (const listener of listeners) listener();
+    });
     let current: FieldView | undefined;
     let initial: FieldView | undefined;
     return {
       subscribe(listener) {
-        const stopField = field.subscribe(listener);
-        const stopText = texts.subscribe(listener);
+        listeners.add(listener);
+        const stop = field.subscribe(listener);
         return () => {
-          stopField();
-          stopText();
+          listeners.delete(listener);
+          stop();
         };
       },
       get() {
         const snapshot = field.get();
-        const text = texts.get();
-        if (current?.snapshot !== snapshot || current.text !== text) {
+        if (stale || current?.snapshot !== snapshot) {
           // While nothing has changed since server rendering, the client view is
           // the server view, so a hydrated component doesn't render again.
-          current = initial?.snapshot === snapshot && text === undefined ? initial : makeView(handle, snapshot, text);
+          current = !stale && initial?.snapshot === snapshot ? initial : makeView(handle, snapshot);
+          stale = false;
         }
         return current;
       },
       server() {
         const snapshot = field.server();
-        if (initial?.snapshot !== snapshot) {
-          initial = current?.snapshot === snapshot && current.text === undefined ? current : makeView(handle, snapshot, undefined);
-        }
+        if (initial?.snapshot !== snapshot) initial = current?.snapshot === snapshot ? current : makeView(handle, snapshot);
         return initial;
       },
     };

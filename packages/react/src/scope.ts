@@ -37,10 +37,11 @@ type CommandsOf<V, E, Installed extends string> = Omit<
  * (`setValue`, `setErrors`, `setTouched`, `handleBlur`, `reset`, `push` on
  * arrays, `at` on objects and so on, all bound), the handle itself,
  * `errorId`, and the pieces that bind an element by hand: `text`,
- * `setText`, `setNumberText`, `ref` and `handleBlur`, which also drops typed
- * number text. `inputProps(field)` builds a DOM prop spread from them. A
- * new object comes with each new snapshot.
- * `Field` passes this to its children. Registered components take `FieldApi`.
+ * `setText`, `ref` and `handleBlur`. The props functions, such as
+ * `inputProps(field)` and `numberProps(field)`, build a DOM prop spread from
+ * them. A new object comes with each new snapshot.
+ * `Field` passes this to its children, and `useField(handle)` returns it.
+ * Registered components take `FieldApi`.
  *
  * `Installed` is the names of the form's plugins. Members a plugin adds,
  * such as `dirty` from `dirty()`, are there only when it is among them.
@@ -55,15 +56,10 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
     readonly path: Path;
     /** `errorId(handle)`, for the element that shows the errors. */
     readonly errorId: string;
-    /**
-     * The text an element shows: the number text the user is typing, else
-     * the display text a plugin such as a mask gives, else the value.
-     */
+    /** The text an element shows: the display text a plugin such as a mask gives, else the value. */
     readonly text: string;
     /** See `FieldPieces.setText`. */
     readonly setText: FieldPieces["setText"];
-    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
-    readonly setNumberText: (text: string, empty?: V) => void;
     /** See `FieldPieces.ref`. */
     readonly ref: FieldRef;
     /** Type information only. It lets `ValueOf`, `ErrorOf` and `PluginsOf` read a field object. */

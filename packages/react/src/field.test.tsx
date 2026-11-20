@@ -14,7 +14,6 @@ import {
   useField,
   useForm,
   useFormState,
-  useInputProps,
   useItems,
   useValidator,
   type ValidatorInput,
@@ -42,7 +41,7 @@ const order = forms.define({
 
 function Line(props: { readonly item: LeafHandle<string>; readonly name: string }) {
   useCommits(commits, props.name);
-  return <input aria-label={props.name} {...useInputProps(props.item)} />;
+  return <input aria-label={props.name} {...inputProps(useField(props.item))} />;
 }
 
 function Lines(props: { readonly form: FormOf<typeof order> }) {
@@ -167,7 +166,7 @@ function Name(props: { readonly validator: Check; readonly debounce?: number }) 
   const errors = useField(name, (snapshot) => snapshot.errors.map((error) => error.message).join(","));
   return (
     <>
-      <input aria-label="name" {...useInputProps(name)} />
+      <input aria-label="name" {...inputProps(useField(name))} />
       <p role="status">{errors}</p>
       <button type="button" onClick={() => void name.validate()}>
         check
@@ -185,7 +184,7 @@ function InlineSchema(props: { readonly validate: (value: unknown) => StandardSc
   const errors = useField(name, (snapshot) => snapshot.errors.map((error) => error.message).join(","));
   return (
     <>
-      <input aria-label="name" {...useInputProps(name)} />
+      <input aria-label="name" {...inputProps(useField(name))} />
       <p role="status">{errors}</p>
     </>
   );

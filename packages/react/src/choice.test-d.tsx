@@ -10,6 +10,9 @@ import {
   type StandardSchemaV1,
   useForm,
   type ValueOf,
+  selectProps,
+  checkboxGroupProps,
+  radioProps,
 } from "./index.js";
 
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -33,7 +36,7 @@ function SelectField(props: {
   const { field } = props;
   expectTypeOf(field.value).toEqualTypeOf<Choice | undefined>();
   return (
-    <select {...inputProps(field, { kind: "select" })} aria-label={props.label}>
+    <select {...selectProps(field)} aria-label={props.label}>
       {props.options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -48,7 +51,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
   return (
     <>
       {props.options.map((option) => (
-        <input key={option.value} {...inputProps(field, { kind: "radio", value: option.value })} />
+        <input key={option.value} {...radioProps(field, option.value)} />
       ))}
       <button type="button" onClick={() => field.setValue(props.options[0]?.value)}>
         First
@@ -63,7 +66,7 @@ function CheckboxGroupField(props: { readonly field: FieldApi<Choice[]>; readonl
   return (
     <>
       {props.options.map((option) => (
-        <input key={option.value} {...inputProps(field, { kind: "checkbox", value: option.value })} />
+        <input key={option.value} {...checkboxGroupProps(field, option.value)} />
       ))}
     </>
   );
@@ -74,7 +77,7 @@ function SizeField(props: { readonly field: FieldApi<Choice<number>>; readonly s
   return (
     <>
       {props.sizes.map((size) => (
-        <input key={size} {...inputProps(field, { kind: "radio", value: size })} />
+        <input key={size} {...radioProps(field, size)} />
       ))}
     </>
   );
@@ -166,7 +169,7 @@ function OwnValidateSelect(props: {
   readonly options: readonly Option<Choice>[];
   readonly validate?: boolean;
 }) {
-  return <select {...inputProps(props.field, { kind: "select" })} data-validate={props.validate} />;
+  return <select {...selectProps(props.field)} data-validate={props.validate} />;
 }
 
 // Fits a plain form's field with no undefined.

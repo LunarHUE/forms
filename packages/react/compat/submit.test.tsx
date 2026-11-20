@@ -1,6 +1,6 @@
 import { fireEvent } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
-import { createForms, useForm, useFormContext, useFormState, useInputProps, fieldValidators } from "../src/index.js";
+import { createForms, useForm, useFormContext, useFormState, fieldValidators, inputProps, useField } from "../src/index.js";
 import { settle } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -17,7 +17,7 @@ const account = createForms().define({
 
 function Text(props: { readonly name: "name" | "email" }) {
   const form = useFormContext(account);
-  return <input aria-label={props.name} {...useInputProps(form.root.at(props.name))} />;
+  return <input aria-label={props.name} {...inputProps(useField(form.root.at(props.name)))} />;
 }
 
 function Status() {
@@ -48,8 +48,8 @@ function InlineAccount() {
   const form = useForm(account, { id: "inline" });
   return (
     <form {...form.formProps}>
-      <input aria-label="name" {...useInputProps(form.root.at("name"))} />
-      <input aria-label="email" {...useInputProps(form.root.at("email"))} />
+      <input aria-label="name" {...inputProps(useField(form.root.at("name")))} />
+      <input aria-label="email" {...inputProps(useField(form.root.at("email")))} />
       <form.State select={(snapshot) => `${snapshot.submission.status} ${snapshot.submitCount}`}>
         {(status, owner) => <p data-testid="status">{`${status} ${owner.id}`}</p>}
       </form.State>

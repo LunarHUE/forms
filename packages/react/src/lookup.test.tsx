@@ -7,10 +7,12 @@ import {
   fieldOf,
   type FormOf,
   type HandleLike,
+  inputProps,
+  radioProps,
   trackElements,
+  useField,
   useFieldRef,
   useForm,
-  useInputProps,
 } from "./index.js";
 
 const forms = createForms();
@@ -39,10 +41,10 @@ function Profile({ early }: { readonly early?: boolean }) {
     holder.form = form;
   });
   const root = form.root;
-  const name = useInputProps(root.at("name"));
-  const free = useInputProps(root.at("plan"), { kind: "radio", value: "free" });
-  const pro = useInputProps(root.at("plan"), { kind: "radio", value: "pro" });
-  const team = useInputProps(root.at("plan"), { kind: "radio", value: "team" });
+  const name = inputProps(useField(root.at("name")));
+  const free = radioProps(useField(root.at("plan")), "free");
+  const pro = radioProps(useField(root.at("plan")), "pro");
+  const team = radioProps(useField(root.at("plan")), "team");
   return (
     <form.Form>
       {(formProps) => (

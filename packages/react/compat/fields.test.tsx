@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/dom";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { Items, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, useField, useForm, useInputProps } from "../src/index.js";
+import { Items, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, useField, useForm, checkboxProps, numberProps } from "../src/index.js";
 import { arrays } from "../src/plugins.js";
 import { type Commits, countListeners, type Listeners, useCommits } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
@@ -39,12 +39,12 @@ const current = (): ProfileForm => {
 
 function Age(props: { readonly field: LeafHandle<number | undefined> }) {
   useCommits(commits, "Age");
-  return <input aria-label="Age" {...useInputProps(props.field, { kind: "number" })} />;
+  return <input aria-label="Age" {...numberProps(useField(props.field))} />;
 }
 
 function Agree(props: { readonly field: LeafHandle<boolean> }) {
   useCommits(commits, "Agree");
-  return <input aria-label="Agree" {...useInputProps(props.field, { kind: "checkbox" })} />;
+  return <input aria-label="Agree" {...checkboxProps(useField(props.field))} />;
 }
 
 function NameFilled(props: { readonly field: LeafHandle<string> }) {

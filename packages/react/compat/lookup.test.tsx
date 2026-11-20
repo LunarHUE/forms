@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/dom";
 import { useEffect, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { createForms, elementsOf, fieldOf, type FormOf, trackElements, useForm, useInputProps } from "../src/index.js";
+import { createForms, elementsOf, fieldOf, type FormOf, radioProps, trackElements, useField, useForm } from "../src/index.js";
 import { act, render } from "./render.js";
 
 const forms = createForms();
@@ -17,9 +17,9 @@ function Order() {
     holder.form = form;
   });
   const size = form.root.at("size");
-  const l = useInputProps(size, { kind: "radio", value: "l" });
-  const s = useInputProps(size, { kind: "radio", value: "s" });
-  const m = useInputProps(size, { kind: "radio", value: "m" });
+  const l = radioProps(useField(size), "l");
+  const s = radioProps(useField(size), "s");
+  const m = radioProps(useField(size), "m");
   return (
     <div>
       <button type="button" onClick={() => setLarge(!large)}>

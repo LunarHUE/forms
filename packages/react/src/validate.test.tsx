@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { debounced, validateOn, type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput, fieldValidators } from "./index.js";
+import { debounced, validateOn, type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput, fieldValidators, radioProps } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -92,7 +92,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
       {props.options.map((option) => (
         <label key={option}>
           {option}
-          <input {...inputProps(props.field, { kind: "radio", value: option })} />
+          <input {...radioProps(props.field, option)} />
         </label>
       ))}
     </>

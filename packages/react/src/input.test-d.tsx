@@ -2,45 +2,66 @@ import { describe, expectTypeOf, it } from "vitest";
 import {
   type ArrayHandle,
   type CheckboxGroupInputProps,
+  checkboxGroupProps,
   type CheckboxInputProps,
+  checkboxProps,
   createForms,
   errorId,
+  type ExactFieldApi,
   type FieldApi,
+  type FieldApiOf,
   inputProps,
   type LeafHandle,
   type NumberInputProps,
+  type NumberPieces,
+  numberPieces,
+  numberProps,
   type RadioInputProps,
+  radioProps,
+  type RangeInputProps,
+  rangeProps,
   type SelectProps,
+  selectProps,
   type TextareaProps,
+  textareaProps,
   type TextInputProps,
   useField,
   useFieldRef,
-  useInputProps,
 } from "./index.js";
 
 function Text({ name, bio }: { readonly name: LeafHandle<string>; readonly bio: LeafHandle<string | undefined> }) {
-  const props = useInputProps(name);
+  const field = useField(name);
+  expectTypeOf(field).toEqualTypeOf<FieldApiOf<LeafHandle<string>>>();
+  const props = inputProps(field);
   expectTypeOf(props).toEqualTypeOf<TextInputProps>();
-  expectTypeOf(useInputProps(name, { kind: "text" })).toEqualTypeOf<TextInputProps>();
-  const bioProps = useInputProps(bio, { kind: "textarea" });
+  const bioProps = textareaProps(useField(bio));
   expectTypeOf(bioProps).toEqualTypeOf<TextareaProps>();
   // @ts-expect-error: a text input's type holds a string
-  useInputProps(name, { type: "number" });
+  inputProps(field, { type: "number" });
   return (
     <>
       <input {...props} />
-      <input {...useInputProps(name, { type: "email" })} />
+      <input {...inputProps(field, { type: "email" })} />
       <textarea {...bioProps} />
     </>
   );
 }
 
 function Numbers({ draft, plain }: { readonly draft: LeafHandle<number | undefined>; readonly plain: LeafHandle<number> }) {
-  const draftProps = useInputProps(draft, { kind: "number" });
+  const draftField = useField(draft);
+  const plainField = useField(plain);
+  const draftProps = numberProps(draftField);
   expectTypeOf(draftProps).toEqualTypeOf<NumberInputProps>();
-  const range = useInputProps(plain, { kind: "range", empty: 0 });
+  expectTypeOf(numberProps(plainField, { empty: 0 })).toEqualTypeOf<NumberInputProps>();
+  const range = rangeProps(plainField);
+  expectTypeOf(range).toEqualTypeOf<RangeInputProps>();
+  expectTypeOf(numberPieces(draftField)).toEqualTypeOf<NumberPieces>();
   // @ts-expect-error: an empty input needs a number to write, since undefined is not allowed
-  useInputProps(plain, { kind: "number" });
+  numberProps(plainField);
+  // @ts-expect-error: the same holds for the pieces
+  numberPieces(plainField);
+  // @ts-expect-error: empty is a number
+  numberProps(plainField, { empty: "" });
   return (
     <>
       <input {...draftProps} />
@@ -50,14 +71,15 @@ function Numbers({ draft, plain }: { readonly draft: LeafHandle<number | undefin
 }
 
 function Checkboxes({ newsletter, tags }: { readonly newsletter: LeafHandle<boolean>; readonly tags: ArrayHandle<string[]> }) {
-  const props = useInputProps(newsletter, { kind: "checkbox" });
+  const props = checkboxProps(useField(newsletter));
   expectTypeOf(props).toEqualTypeOf<CheckboxInputProps>();
-  const urgent = useInputProps(tags, { kind: "checkbox", value: "urgent" });
+  const tagsField = useField(tags);
+  const urgent = checkboxGroupProps(tagsField, "urgent");
   expectTypeOf(urgent).toEqualTypeOf<CheckboxGroupInputProps>();
   // @ts-expect-error: a group box needs its option
-  useInputProps(tags, { kind: "checkbox" });
+  checkboxGroupProps(tagsField);
   // @ts-expect-error: the array holds strings
-  useInputProps(tags, { kind: "checkbox", value: 1 });
+  checkboxGroupProps(tagsField, 1);
   return (
     <>
       <input {...props} />
@@ -67,66 +89,98 @@ function Checkboxes({ newsletter, tags }: { readonly newsletter: LeafHandle<bool
 }
 
 function Radios({ plan }: { readonly plan: LeafHandle<"free" | "pro"> }) {
-  const free = useInputProps(plan, { kind: "radio", value: "free" });
+  const field = useField(plan);
+  const free = radioProps(field, "free");
   expectTypeOf(free).toEqualTypeOf<RadioInputProps>();
   // @ts-expect-error: not one of the plan's options
-  useInputProps(plan, { kind: "radio", value: "team" });
+  radioProps(field, "team");
   return <input {...free} />;
 }
 
 function Selects({ country, plan }: { readonly country: LeafHandle<string>; readonly plan: LeafHandle<"free" | "pro" | undefined> }) {
-  const props = useInputProps(country, { kind: "select", empty: "" });
+  const countryField = useField(country);
+  const props = selectProps(countryField, { empty: "" });
   expectTypeOf(props).toEqualTypeOf<SelectProps>();
   // @ts-expect-error: the empty option needs a string to write, since undefined is not allowed
-  useInputProps(country, { kind: "select" });
+  selectProps(countryField);
   return (
     <>
       <select {...props}>
         <option value="">Pick one</option>
       </select>
-      <select {...useInputProps(plan, { kind: "select" })} />
+      <select {...selectProps(useField(plan))} />
     </>
   );
 }
 
-const addressStore = createForms().define({ defaultValues: { address: { city: "" } } }).createStore();
+const addressStore = createForms().define({ defaultValues: { address: { city: "" }, flags: [true] } }).createStore();
 
-function WrongKinds({ age, name, newsletter }: { readonly age: LeafHandle<number>; readonly name: LeafHandle<string>; readonly newsletter: LeafHandle<boolean> }) {
+// Each function binds the value types it names, and rejects the others.
+function WrongTypes(props: {
+  readonly age: ExactFieldApi<number>;
+  readonly name: ExactFieldApi<string>;
+  readonly newsletter: ExactFieldApi<boolean>;
+  readonly tags: ExactFieldApi<string[]>;
+}) {
+  const { age, name, newsletter, tags } = props;
+  const address = useField(addressStore.root.at("address"));
+  const flags = useField(addressStore.root.at("flags"));
   // @ts-expect-error: a text input writes strings, and age is a number
-  useInputProps(age);
+  inputProps(age);
+  // @ts-expect-error: a textarea writes strings
+  textareaProps(newsletter);
+  // @ts-expect-error: a select writes strings
+  selectProps(age, { empty: 0 });
   // @ts-expect-error: a checkbox writes booleans, and name is a string
-  useInputProps(name, { kind: "checkbox" });
+  checkboxProps(name);
+  // @ts-expect-error: a group box needs an array
+  checkboxGroupProps(name, "a");
+  // @ts-expect-error: a group box needs an array of strings or numbers
+  checkboxGroupProps(flags, true);
+  // @ts-expect-error: a radio writes a string, number or boolean
+  radioProps(tags, ["a"]);
   // @ts-expect-error: a number input writes numbers, and newsletter is a boolean
-  useInputProps(newsletter, { kind: "number", empty: false });
+  numberProps(newsletter, { empty: false });
+  // @ts-expect-error: a range writes numbers
+  rangeProps(name);
+  // @ts-expect-error: the number pieces write numbers
+  numberPieces(name, { empty: "" });
   // @ts-expect-error: an object field has no input
-  useInputProps(addressStore.root.at("address"));
+  inputProps(address);
   return <span />;
 }
 
-// inputProps(field) has the same checks on a field object.
+// A registered component's field fits the functions for its value type.
 function FromField({ text, count }: { readonly text: FieldApi<string>; readonly count: FieldApi<number> }) {
   expectTypeOf(inputProps(text)).toEqualTypeOf<TextInputProps>();
-  expectTypeOf(inputProps(count, { kind: "number", empty: 0 })).toEqualTypeOf<NumberInputProps>();
-  // @ts-expect-error: count is a number, so it needs a kind
+  expectTypeOf(numberProps(count)).toEqualTypeOf<NumberInputProps>();
+  // @ts-expect-error: count is a number
   inputProps(count);
   // @ts-expect-error: text is a string
-  inputProps(text, { kind: "checkbox" });
+  checkboxProps(text);
   return <input {...inputProps(text)} />;
 }
 
 // A custom input records its element for focus and points at its error element itself.
 function DatePicker({ born }: { readonly born: LeafHandle<Date | undefined> }) {
   const ref = useFieldRef(born);
-  const snapshot = useField(born);
+  const field = useField(born);
   return (
-    <div ref={ref} tabIndex={-1} aria-describedby={snapshot.shownErrors.length > 0 ? errorId(born) : undefined}>
-      {snapshot.value?.toDateString()}
+    <div ref={ref} tabIndex={-1} aria-describedby={field.shownErrors.length > 0 ? errorId(born) : undefined}>
+      {field.value?.toDateString()}
     </div>
   );
 }
 
-describe("input props check the kind against the value type", () => {
-  it("binds text, number, range, checkbox, checkbox group, radio and select", () => {
+// `useField` with a selector returns what it picks from the snapshot.
+function Selected({ name }: { readonly name: LeafHandle<string> }) {
+  const length = useField(name, (snapshot) => snapshot.value.length);
+  expectTypeOf(length).toEqualTypeOf<number>();
+  return <span>{length}</span>;
+}
+
+describe("the props functions check the field's value type", () => {
+  it("binds text, textarea, number, range, checkbox, checkbox group, radio and select", () => {
     expectTypeOf(Text).toBeFunction();
     expectTypeOf(Numbers).toBeFunction();
     expectTypeOf(Checkboxes).toBeFunction();
@@ -134,12 +188,13 @@ describe("input props check the kind against the value type", () => {
     expectTypeOf(Selects).toBeFunction();
   });
 
-  it("rejects kinds that don't fit, on the hook and on the field object", () => {
-    expectTypeOf(WrongKinds).toBeFunction();
+  it("rejects fields of other value types", () => {
+    expectTypeOf(WrongTypes).toBeFunction();
     expectTypeOf(FromField).toBeFunction();
   });
 
   it("gives custom inputs a ref and an error id", () => {
     expectTypeOf(DatePicker).toBeFunction();
+    expectTypeOf(Selected).toBeFunction();
   });
 });

@@ -57,7 +57,6 @@ const commonMembers = {
   errorId: true,
   text: true,
   setText: true,
-  setNumberText: true,
   ref: true,
   "~types": false,
 } as const;

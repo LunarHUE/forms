@@ -7,7 +7,6 @@ import {
   inputProps,
   useField,
   useForm,
-  useInputProps,
   type ArrayHandle,
   type FieldApi,
   type FieldHandle,
@@ -51,7 +50,7 @@ function TagRow<T extends Tag>(props: { readonly tag: HandleOf<typeof TagShape, 
     <>
       <TagFields field={props.tag} />
       <other.TextField handle={props.tag.at("name")} label={value} />
-      <input {...useInputProps(name)} />
+      <input {...inputProps(useField(name))} />
     </>
   );
 }

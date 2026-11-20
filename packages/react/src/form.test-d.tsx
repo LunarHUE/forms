@@ -28,6 +28,9 @@ import {
   useForm,
   useFormContext,
   useFormState,
+  checkboxProps,
+  checkboxGroupProps,
+  numberProps,
 } from "./index.js";
 import { arrays } from "./plugins.js";
 
@@ -54,7 +57,7 @@ function NumberField(props: { readonly field: FieldApi<number>; readonly label: 
   return (
     <label>
       {props.label}
-      <input {...inputProps(props.field, { kind: "number" })} />
+      <input {...numberProps(props.field)} />
     </label>
   );
 }
@@ -138,8 +141,8 @@ function OrderPage() {
             {(field) => {
               expectTypeOf(field.value).toEqualTypeOf<readonly ("email" | "sms")[]>();
               // @ts-expect-error: a picked option is never undefined
-              inputProps(field, { kind: "checkbox", value: undefined });
-              return <input {...inputProps(field, { kind: "checkbox", value: "sms" })} />;
+              checkboxGroupProps(field, undefined);
+              return <input {...checkboxGroupProps(field, "sms")} />;
             }}
           </form.Field>
           <Items handle={form.root.at("lines")}>
@@ -244,10 +247,10 @@ function ValidateProps() {
       />
       <form.NumberField name="age" label="Age" validate={debounced((value) => (value === undefined ? { message: "Required" } : null), 300)} />
       <form.Field name="age" validate={debounced((value: number | undefined) => (value === 0 ? { message: "Zero" } : null), 300)}>
-        {(field) => <input {...inputProps(field, { kind: "number" })} />}
+        {(field) => <input {...numberProps(field)} />}
       </form.Field>
       <form.Field handle={qty} validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>
-        {(field) => <input {...inputProps(field, { kind: "number" })} />}
+        {(field) => <input {...numberProps(field)} />}
       </form.Field>
       <form.Field name="email" validate={false}>{() => null}</form.Field>
       <billing.TextField
@@ -443,7 +446,7 @@ function LineDialogBody() {
   const inner = useFormContext(lineDialog);
   expectTypeOf(outer.root).toEqualTypeOf<ObjectHandle<DraftOrder, FormError, "fake" | "arrays">>();
   expectTypeOf(inner.root).toEqualTypeOf<ObjectHandle<{ item: string; qty: number }, FormError, "fake" | "arrays">>();
-  return <inner.Field name="qty">{(field) => <input {...inputProps(field, { kind: "number", empty: 0 })} />}</inner.Field>;
+  return <inner.Field name="qty">{(field) => <input {...numberProps(field, { empty: 0 })} />}</inner.Field>;
 }
 
 function LineDialog() {
@@ -602,7 +605,7 @@ describe("form.State", () => {
 function Checkbox(props: { readonly field: FieldApi<boolean>; readonly label: string }) {
   return (
     <label>
-      <input {...inputProps(props.field, { kind: "checkbox" })} />
+      <input {...checkboxProps(props.field)} />
       {props.label}
     </label>
   );
