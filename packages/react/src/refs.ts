@@ -51,6 +51,7 @@ const attributeValued = new Set(["checkbox", "radio", "file", "hidden", "submit"
 function showRendered(element: HTMLElement): void {
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
     // A textarea has no `checked` or `defaultChecked`, so the first check passes it by.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const control = element as HTMLInputElement;
     if (control.checked !== control.defaultChecked) control.checked = control.defaultChecked;
     // On these types `value` isn't what the user typed, and writing it sets the `value` attribute.

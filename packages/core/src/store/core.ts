@@ -491,6 +491,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const byOwner = node.byOwner;
     if (!byOwner || byOwner.size === 0) return none;
     if (byOwner.size === 1) for (const list of byOwner.values()) return list;
+    // The spread is a fresh array, so sorting it in place is safe.
+    // oxlint-disable-next-line unicorn/no-array-sort
     const joined = [...byOwner].sort((a, b) => rankOf(a[0]) - rankOf(b[0])).flatMap((entry) => entry[1]);
     return sameList(joined, node.validation) ? node.validation : freeze(joined);
   };
