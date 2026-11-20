@@ -1,6 +1,6 @@
 ---
 title: Your first form
-description: Build a sign-up form with two fields, Zod validation and a submit handler.
+description: A sign-up form with two inputs and a submit handler, and no plugins.
 section: basics
 order: 1
 navTitle: First form
@@ -8,124 +8,52 @@ navTitle: First form
 
 import Install from "@/components/mdx/Install.astro";
 
-This is the form you'll end up with. Submit it empty to see the errors.
+This is the form you'll end up with. Fill it in and submit it.
 
 <Demo name="first-form/sign-up" />
 
-You need the adapter, the schema package and Zod. See [Install](../install) for the details.
+Every page in Basics uses the adapter alone. No plugins, nothing registered.
 
-<Install adapter packages="@lunarhue/forms-schema zod" />
+<Install adapter />
 
-## Write a field component
+## Make a forms object
 
-A field component is your own component with a `field` prop. The library doesn't ship inputs, so this is where your markup and styles go.
+`createForms` holds what your forms share: plugins, field components and
+settings. This form needs none of them.
 
-```tsx title="TextField.tsx" framework=react
-import { type FieldApi, inputProps } from "@lunarhue/forms-react";
-
-interface TextFieldProps {
-  readonly field: FieldApi<string>;
-  readonly label: string;
-}
-
-export function TextField({ field, label }: TextFieldProps) {
-  return (
-    <div>
-      <label htmlFor={field.id}>{label}</label>
-      <input {...inputProps(field)} />
-      <ul id={field.errorId}>
-        {field.shownErrors.map((error) => (
-          <li key={error.message}>{error.message}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-```tsx title="TextField.tsx" framework=solid
-import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
-import { For } from "solid-js";
-
-interface TextFieldProps {
-  readonly field: FieldApi<string>;
-  readonly label: string;
-}
-
-export function TextField(props: TextFieldProps) {
-  return (
-    <div>
-      <label for={props.field.id}>{props.label}</label>
-      <input {...inputProps(props.field)} />
-      <ul id={props.field.errorId}>
-        <For each={props.field.shownErrors}>
-          {(error) => <li>{error.message}</li>}
-        </For>
-      </ul>
-    </div>
-  );
-}
-```
-
-<Only framework="solid">
-
-Read the field through `props` rather than destructuring it, or it stops updating.
-
-</Only>
-
-`inputProps(field)` returns the value, the change and blur handlers, and the aria attributes that point at `field.errorId`. `shownErrors` stays empty until the user leaves the field or submits.
-
-## Register it
-
-`createForms` takes the plugins and the field components every form in your app shares. Make one and import it where you need it.
-
-```ts title="forms.ts" framework=react
+```ts title="sign-up.tsx" framework=react
 import { createForms } from "@lunarhue/forms-react";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { TextField } from "./TextField";
 
-export const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField },
-});
+const forms = createForms();
 ```
 
-```ts title="forms.ts" framework=solid
+```ts title="sign-up.tsx" framework=solid
 import { createForms } from "@lunarhue/forms-solid";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { TextField } from "./TextField";
 
-export const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField },
-});
+const forms = createForms();
 ```
-
-Every form can validate. The `zod()` plugin lets a form take its rules from a Zod schema. Every form defined from `forms` gets `form.TextField`.
 
 ## Define the form
 
 ```ts title="sign-up.tsx"
-import { z } from "zod";
-import { forms } from "./forms";
-
-const SignUp = z.object({
-  name: z.string().min(1, "Enter your name."),
-  email: z.email("Enter a valid email."),
-});
-
 const signUp = forms.define({
-  schema: SignUp,
+  defaultValues: { name: "", email: "" },
   onSubmit: (value) => `Signed up ${value.name}.`,
 });
 ```
 
-The schema validates the form and gives it its types. It also sets the starting values, so both fields start as empty strings and you don't write `defaultValues`. `onSubmit` runs only when the schema passes, and gets the parsed value.
+`defaultValues` is the value the form starts from, and its type is the form's
+type. Here that is `{ name: string; email: string }`. `onSubmit` gets a copy
+of the value when the user submits.
 
 ## Render it
 
-```tsx title="sign-up.tsx" framework=react
-import { useForm } from "@lunarhue/forms-react";
+<Only framework="react">
+
+`useForm` makes a form from the definition for this component.
+
+```tsx title="sign-up.tsx"
+import { inputProps, useForm } from "@lunarhue/forms-react";
 
 export default function SignUpForm() {
   const form = useForm(signUp);
@@ -133,8 +61,22 @@ export default function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
+          <form.Field name="name">
+            {(field) => (
+              <label>
+                Name
+                <input {...inputProps(field)} />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="email">
+            {(field) => (
+              <label>
+                Email
+                <input {...inputProps(field, { type: "email" })} />
+              </label>
+            )}
+          </form.Field>
           <button type="submit">Sign up</button>
         </form>
       )}
@@ -143,8 +85,14 @@ export default function SignUpForm() {
 }
 ```
 
-```tsx title="sign-up.tsx" framework=solid
-import { createForm } from "@lunarhue/forms-solid";
+</Only>
+
+<Only framework="solid">
+
+`createForm` makes a form from the definition for this component.
+
+```tsx title="sign-up.tsx"
+import { createForm, inputProps } from "@lunarhue/forms-solid";
 
 export default function SignUpForm() {
   const form = createForm(signUp);
@@ -152,8 +100,22 @@ export default function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
+          <form.Field name="name">
+            {(field) => (
+              <label>
+                Name
+                <input {...inputProps(field)} />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="email">
+            {(field) => (
+              <label>
+                Email
+                <input {...inputProps(field, { type: "email" })} />
+              </label>
+            )}
+          </form.Field>
           <button type="submit">Sign up</button>
         </form>
       )}
@@ -162,23 +124,19 @@ export default function SignUpForm() {
 }
 ```
 
-<Only framework="react">
-
-`useForm` creates the form for this component.
-
 </Only>
 
-<Only framework="solid">
-
-`createForm` creates the form for this component.
-
-</Only>
-
-`form.TextField` is the component you registered, bound to the field you name. The compiler checks `name` against the schema, so `name="emial"` is a type error. `formProps` hands your `<form>` its submit handler and turns off the browser's own validation.
+- `form.Form` hands your `<form>` its submit handler as `formProps`, and turns
+  off the browser's own validation.
+- `form.Field` takes a field name and passes that field to its child. The
+  compiler checks the name, so `name="emial"` is a type error.
+- `inputProps(field)` gives the input its value, `name`, `id`, the change and
+  blur handlers, and the aria attributes for errors.
 
 ## Show the result
 
-Whatever `onSubmit` returns becomes `submission.result`. Read it from the form's state:
+Whatever `onSubmit` returns becomes `submission.result`. Read it from the
+form's state:
 
 ```tsx framework=react
 <form.State select={(state) => state.submission}>
@@ -198,7 +156,8 @@ Whatever `onSubmit` returns becomes `submission.result`. Read it from the form's
 
 <Only framework="react">
 
-`form.State` re-renders only its children, and only when the selected value changes.
+`form.State` re-renders only its children, and only when the selected value
+changes.
 
 </Only>
 
@@ -208,10 +167,10 @@ Whatever `onSubmit` returns becomes `submission.result`. Read it from the form's
 
 </Only>
 
-A submission is `idle`, `submitting`, `invalid`, `failed` or `succeeded`. If `onSubmit` throws, the status is `failed` and `error` holds what it threw.
+A submission is `idle`, `submitting`, `invalid`, `failed` or `succeeded`. If
+`onSubmit` throws, the status is `failed` and `error` holds what it threw.
+[Submit](./submit) has the rest.
 
 ## Next
 
-- [Fields](./fields) covers what a field component gets.
-- [Validation](./validation) covers validators, async checks and when errors show.
-- [Schemas](../plugins/schemas) covers Zod, Valibot and starting values.
+The form takes anything right now. [Validation](./validation) adds the checks.

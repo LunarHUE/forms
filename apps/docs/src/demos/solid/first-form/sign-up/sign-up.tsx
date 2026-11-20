@@ -1,21 +1,11 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
-import { zod } from "@lunarhue/forms-schema/zod";
+import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
-import { z } from "zod";
-import { TextField } from "./TextField";
 
-const forms = createForms({
-  plugins: [zod()],
-  fields: { TextField },
-});
-
-const SignUp = z.object({
-  name: z.string().min(1, "Enter your name."),
-  email: z.email("Enter a valid email."),
-});
+// No plugins and no field components: this form uses only what every form has.
+const forms = createForms();
 
 const signUp = forms.define({
-  schema: SignUp,
+  defaultValues: { name: "", email: "" },
   onSubmit: (value) => `Signed up ${value.name}.`,
 });
 
@@ -25,8 +15,22 @@ export default function SignUpForm() {
     <form.Form>
       {(formProps) => (
         <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
+          <form.Field name="name">
+            {(field) => (
+              <label>
+                Name
+                <input {...inputProps(field)} />
+              </label>
+            )}
+          </form.Field>
+          <form.Field name="email">
+            {(field) => (
+              <label>
+                Email
+                <input {...inputProps(field, { type: "email" })} />
+              </label>
+            )}
+          </form.Field>
           <button type="submit">Sign up</button>
           <p role="status">
             <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
