@@ -5,6 +5,7 @@ import type { Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { invalidFields, subscribeInvalid } from "../invalid.js";
 import { arrays } from "../plugins/arrays.js";
 
 // Core declares no timer globals, so the tests declare the one they use.
@@ -526,17 +527,17 @@ describe("errors from setErrors", () => {
   });
 });
 
-describe("invalid", () => {
+describe("invalidFields", () => {
   it("lists every field with errors in value order, validation and user errors alike, disabled ones too", async () => {
     const { store } = make(
       { validate: { fields: { name: required, rows: [{ title: required }] } }, disabled: { rows: true } },
       { name: "", rows: [{ title: "" }, { title: "b" }] },
     );
-    expect(store.invalid()).toEqual([]);
+    expect(invalidFields(store)).toEqual([]);
     await store.validate();
     store.root.at("rows").item("k1").at("title").setErrors(err("Taken"));
     store.root.setErrors(err("Form"));
-    expect(store.invalid()).toEqual([
+    expect(invalidFields(store)).toEqual([
       { field: store.root, name: "", errors: [err("Form")] },
       { field: store.root.at("name"), name: "name", errors: [err("Required")] },
       { field: store.root.at("rows").item("k0").at("title"), name: "rows.0.title", errors: [err("Required")] },
@@ -544,8 +545,8 @@ describe("invalid", () => {
     ]);
     // The move is a user edit of `rows`, so it clears the user error below it.
     store.root.at("rows").move(1, 0);
-    expect(store.invalid().map((entry) => entry.name)).toEqual(["", "name", "rows.1.title"]);
-    expect(store.invalid()[2]?.field).toBe(store.root.at("rows").item("k0").at("title"));
+    expect(invalidFields(store).map((entry) => entry.name)).toEqual(["", "name", "rows.1.title"]);
+    expect(invalidFields(store)[2]?.field).toBe(store.root.at("rows").item("k0").at("title"));
   });
 
   it("gives a handle for a field whose key the value lacks", () => {
@@ -553,7 +554,22 @@ describe("invalid", () => {
     // The value type has no such key, so the test reaches it through the loose handle.
     const extra = store.fieldAt([])?.at("extra");
     extra?.setErrors(err("x"));
-    expect(store.invalid()).toEqual([{ field: extra, name: "extra", errors: [err("x")] }]);
+    expect(invalidFields(store)).toEqual([{ field: extra, name: "extra", errors: [err("x")] }]);
+  });
+});
+
+describe("subscribeInvalid", () => {
+  it("wakes the listener when the list changes, until it unsubscribes", () => {
+    const { store } = make();
+    let runs = 0;
+    const stop = subscribeInvalid(store, () => void runs++);
+    store.setErrors({ fields: { name: err("Taken") } });
+    expect(runs).toBe(1);
+    store.root.at("name").setTouched();
+    expect(runs).toBe(1);
+    stop();
+    store.setErrors({});
+    expect(runs).toBe(1);
   });
 });
 

@@ -5,7 +5,7 @@ import type { Submission } from "../snapshot.js";
 import type { InvalidField, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
-import { errorList, reach } from "./handles.js";
+import { errorList } from "./handles.js";
 import type { PluginHost } from "./plugins.js";
 import { addErrors, addNamed, type Placed } from "./placed.js";
 import type { Validation } from "./runner.js";
@@ -27,8 +27,6 @@ export interface Submit<E, I, R> {
   handleSubmit(this: void, event?: { preventDefault(): void }): Promise<void>;
   /** As `FormStore.setErrors`. */
   setErrors(this: void, errors: ErrorMap<E>): void;
-  /** As `FormStore.invalid`. */
-  invalid(this: void): InvalidField<E>[];
   /** As `FormStore.firstInvalid`. */
   firstInvalid(this: void): Handle<E> | undefined;
   /** As `FormStore.disabledInvalid`. */
@@ -110,17 +108,17 @@ export function createSubmit<V, E, I, R, O = V>(
     return promise;
   };
 
-  // Every field with an error, with its disabled flag for the filters below.
-  const listed = () =>
-    core.invalid().map((path) => {
-      const { name, errors, disabled } = core.getSnapshot(path);
-      // `reach` makes the handle even for a key the value lacks, where
-      // `handle.setErrors` can put errors. Its errors are this store's `E`.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const field = reach(context.store(), path) as Handle<E>;
-      return { field, name, errors, disabled };
-    });
-  const strip = ({ field, name, errors }: InvalidField<E>): InvalidField<E> => ({ field, name, errors });
+  // The fields with an error that are disabled, or enabled, in value order.
+  // `fieldAt` has no handle for a key the value lacks, so those are skipped.
+  const listed = (disabled: boolean) => {
+    const found: (InvalidField<E> & { readonly field: Handle<E> })[] = [];
+    for (const path of core.invalid()) {
+      const field = context.store().fieldAt(path);
+      const { name, errors, disabled: off } = core.getSnapshot(path);
+      if (field && off === disabled) found.push({ field, name, errors });
+    }
+    return found;
+  };
 
   return {
     // With no argument the intent is undefined, which `IntentArgs` allows only when I includes it.
@@ -143,9 +141,8 @@ export function createSubmit<V, E, I, R, O = V>(
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);
       });
     },
-    invalid: () => listed().map(strip),
-    firstInvalid: () => listed().find((entry) => !entry.disabled)?.field,
-    disabledInvalid: () => listed().filter((entry) => entry.disabled).map(strip),
+    firstInvalid: () => listed(false)[0]?.field,
+    disabledInvalid: () => listed(true),
     abort() {
       const run = running;
       running = undefined;

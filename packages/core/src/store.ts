@@ -15,7 +15,7 @@ export interface Change {
   readonly value: unknown;
 }
 
-/** A field with errors, as `invalid` and `disabledInvalid` list it. */
+/** A field with errors, as `invalidFields` and `disabledInvalid` list it. */
 export interface InvalidField<E = FormError> {
   /** The field's handle. */
   readonly field: AnyFieldHandle<E>;
@@ -167,21 +167,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    */
   pathOf(name: string): Path | undefined;
   /**
-   * Returns every field with an error, in value order: validation errors and
-   * those `setErrors` set, on enabled and disabled fields alike. For an error
-   * summary above the form. Returns an empty list when there is none. A read
-   * for event handlers and effects. To render the list, follow it with
-   * `subscribeInvalid`, or use the adapter's hook.
-   */
-  invalid(): readonly InvalidField<E>[];
-  /**
-   * Calls `listener` after any write that changes what `invalid` returns:
-   * a field gains or loses its errors, an error list changes, or a field with
-   * errors moves. Returns the function that unsubscribes.
-   */
-  subscribeInvalid(this: void, listener: () => void): () => void;
-  /**
-   * Returns the first enabled field in `invalid`, for the adapter to focus
+   * Returns the first enabled field in `invalidFields(store)`, for the adapter to focus
    * after an invalid submit, or for an `onSubmit` that just put a server's
    * errors on the form with `setErrors`. Read-only fields count. Disabled
    * ones don't: `disabledInvalid` lists those. Returns `undefined` when there
@@ -189,7 +175,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    */
   firstInvalid(): AnyFieldHandle<E, N> | undefined;
   /**
-   * Returns the disabled fields in `invalid`. Their validation errors still
+   * Returns the disabled fields in `invalidFields(store)`. Their validation errors still
    * block submit, but `firstInvalid` skips them, so after an invalid submit
    * the adapter can show these at form level. A field counts as disabled when
    * it or a field above it is. Returns an empty list when there is none. A

@@ -705,7 +705,7 @@ export const createDisabledErrors: <V, E, I, R>(
 
 /**
  * Returns every field with errors, in value order, for an error summary:
- * core's `invalid()`, validation errors and errors from `setErrors` alike.
+ * core's `invalidFields`, validation errors and errors from `setErrors` alike.
  * It updates when a field gains or loses its errors, an error list changes,
  * or a field with errors moves. On the server it is empty. Call it in a
  * component body.
@@ -713,6 +713,6 @@ export const createDisabledErrors: <V, E, I, R>(
 export const createInvalidFields: <V, E, I, R>(
   form: FormStore<V, E, I, R> | { readonly store: FormStore<V, E, I, R> },
 ) => Accessor<readonly InvalidField<E>[]> =
-  // The list comes from the store's `invalid()`, whose error type is the store's `E`.
+  // The list comes from core's `invalidFields`, whose error type is the store's `E`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   createInvalidFieldList as never;

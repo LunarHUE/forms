@@ -1,6 +1,7 @@
 export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
+export { invalidFields, subscribeInvalid } from "./invalid.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 

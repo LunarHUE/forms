@@ -25,7 +25,7 @@ import type {
   Submission,
   ValueOf,
 } from "@lunarhue/forms-core";
-import { attach, createFormsCore } from "@lunarhue/forms-core";
+import { attach, createFormsCore, invalidFields, subscribeInvalid } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
 import { generatedIdUsed, useId, useSyncExternalStore } from "./compat.js";
@@ -581,9 +581,9 @@ const invalidLists = new WeakMap<object, readonly InvalidField<unknown>[]>();
 const sameFields = (a: readonly InvalidField<unknown>[], b: readonly InvalidField<unknown>[]): boolean =>
   a.length === b.length && a.every((entry, i) => entry.field === b[i]?.field && entry.name === b[i]?.name && entry.errors === b[i]?.errors);
 
-/** The store's `invalid()`, as the same list object until an entry changes. */
+/** Core's `invalidFields(store)`, as the same list object until an entry changes. */
 function invalidFor(store: AnyFormStore<unknown>): readonly InvalidField<unknown>[] {
-  const next = store.invalid();
+  const next = invalidFields(store);
   const last = invalidLists.get(store) ?? noFields;
   if (sameFields(last, next)) return last;
   invalidLists.set(store, next);
@@ -592,7 +592,7 @@ function invalidFor(store: AnyFormStore<unknown>): readonly InvalidField<unknown
 
 /**
  * Returns every field with errors, in value order, for an error summary:
- * core's `invalid()`, validation errors and errors from `setErrors` alike.
+ * core's `invalidFields`, validation errors and errors from `setErrors` alike.
  * It re-renders when a field gains or loses its errors, an error list
  * changes, or a field with errors moves, and the list keeps its identity in
  * between. The server render gets an empty list. Takes the form or any
@@ -603,5 +603,9 @@ export const useInvalidFields = <E>(form: AnyFormStore<E> | { readonly store: An
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const store = storeOf(form) as AnyFormStore<unknown>;
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return useSyncExternalStore(store.subscribeInvalid, () => invalidFor(store), () => noFields) as readonly InvalidField<E>[];
+  return useSyncExternalStore(
+    (listener) => subscribeInvalid(store, listener),
+    () => invalidFor(store),
+    () => noFields,
+  ) as readonly InvalidField<E>[];
 };

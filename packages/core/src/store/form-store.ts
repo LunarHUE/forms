@@ -9,6 +9,7 @@ import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.
 import type { FormContext } from "./context.js";
 import type { BuildKeys } from "./baseline/keys.js";
 import { createStoreCore, type CreateArrays, type StoreCore } from "./core.js";
+import { cores } from "./cores.js";
 import { createHandles } from "./handles.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
@@ -158,12 +159,12 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
             throw new Error(problem("dirty:missing"));
           }
         : baseline.changes,
-    invalid: submit.invalid,
-    subscribeInvalid: core.subscribeInvalid,
     firstInvalid: submit.firstInvalid,
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
   };
+  // For `invalidFields` and `subscribeInvalid`.
+  cores.set(store, core);
   host?.start(store, baseline, validation, parts);
   return { store, core, baseline, validation, submit };
 }
