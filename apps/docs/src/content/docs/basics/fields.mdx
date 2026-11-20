@@ -252,11 +252,21 @@ read of `field` during render.
   onBlur={field.handleBlur}
 />
 
-<input type="checkbox" ref={field.ref} checked={field.value} onChange={(event) => field.setValue(event.currentTarget.checked)} />
+<input
+  type="checkbox"
+  ref={field.ref}
+  checked={field.value}
+  onChange={(event) => field.setValue(event.currentTarget.checked)}
+/>
 
 const number = numberPieces(field);
 
-<input ref={field.ref} value={number.text} onInput={(event) => number.setText(event.currentTarget.value)} onBlur={number.handleBlur} />
+<input
+  ref={field.ref}
+  value={number.text}
+  onInput={(event) => number.setText(event.currentTarget.value)}
+  onBlur={number.handleBlur}
+/>
 ```
 
 A primitive bound this way shows a reset or a value `persist` restored, since
