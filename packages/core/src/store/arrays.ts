@@ -36,6 +36,7 @@ export function createArrays<E>(
     (node.removed ??= new Map()).set(key, child);
     bump(node, "editedCount", -child.editedCount);
     bump(node, "invalidCount", -child.invalidCount);
+    bump(node, "errorCount", -child.errorCount);
     bump(node, "validatingCount", -child.validatingCount);
     bury(child);
   };

@@ -166,10 +166,14 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   itemSteps(path: Path, strict?: boolean): readonly boolean[] | undefined;
   /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
   invalidAt(path: Path): boolean;
-  /** The stable path of the first enabled field, in value order, with a validation error. */
-  firstInvalid(): Path | undefined;
-  /** The stable paths of the disabled fields with a validation error, in value order. Makes no nodes. */
-  disabledInvalid(): Path[];
+  /** The stable paths of the fields with an error of either kind, in value order. Makes no nodes. */
+  invalid(): Path[];
+  /**
+   * Calls `listener` after a write that changes which fields have errors,
+   * one of their error lists or one of their names. Returns the function
+   * that unsubscribes.
+   */
+  subscribeInvalid(this: void, listener: () => void): () => void;
 
   /** How many paths have a node, and how many of those hold subscriber state. For tests and leak checks. */
   stats(): { readonly nodes: number; readonly subscribed: number };
@@ -202,8 +206,11 @@ interface Flag {
 
 type FlagKind = "disabled" | "readOnly";
 
-/** Counts of nodes at and below a node that are edited, invalid or validating. */
-export type Count = "editedCount" | "invalidCount" | "validatingCount";
+/**
+ * Counts of nodes at and below a node that are edited, have a validation
+ * error, have an error of either kind, or are validating.
+ */
+export type Count = "editedCount" | "invalidCount" | "errorCount" | "validatingCount";
 
 /**
  * One stable path the store knows about. A node exists once something read,
@@ -236,6 +243,7 @@ export interface Node<E> extends Cell<Snapshot<E>> {
   marked: boolean;
   editedCount: number;
   invalidCount: number;
+  errorCount: number;
   validatingCount: number;
   disabled: Flag;
   readOnly: Flag;
@@ -326,6 +334,11 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let formMeta: Meta;
   // True once `submit:unseen` was logged for this store.
   let warnedUnseen = false;
+  // Wakes `subscribeInvalid` listeners. Its snapshot is a counter, made on the first subscribe.
+  let invalidCell: Cell<number> | undefined;
+  const invalidChanged = () => {
+    if (invalidCell) replace(invalidCell, invalidCell.snapshot + 1);
+  };
 
   // The index of item key `seg` in the array at `node` of `length` items, or -1.
   const indexIn = (node: Node<E> | undefined, seg: string, length: number) =>
@@ -390,13 +403,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
 
   const build = (node: Node<E>): Snapshot<E> => {
     const dirty = dirtyOf(node);
-    const invalid = node.validation.length > 0;
     // User errors always show: something set them on purpose.
-    const shownErrors = invalid && showsValidation(node, dirty) ? node.errors : node.user;
+    const shownErrors = node.validation.length > 0 && showsValidation(node, dirty) ? node.errors : node.user;
     return entries(node.value, node.name, Array.isArray(node.value) ? (node.list ? keysView(node.list) : positionalKeys(node.value.length)) : undefined, {
       errors: node.errors,
+      userErrors: node.user,
       shownErrors,
-      invalid,
+      invalid: node.errors.length > 0,
       touched: node.touched,
       edited: node.editedCount > 0,
       dirty,
@@ -455,6 +468,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   // edited state flips gets a new snapshot. The other counts only show on the form.
   const bump = (from: Node<E> | undefined, count: Count, delta: number) => {
     if (delta === 0) return;
+    if (count === "errorCount") invalidChanged();
     for (let n = from; n; n = n.parent) {
       const was = n[count] > 0;
       n[count] += delta;
@@ -507,12 +521,16 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       if (is) withErrors.add(node);
       else withErrors.delete(node);
     }
-    const { user } = node;
+    const { user, errors } = node;
     if (validation.length === 0) node.errors = user;
     else if (user.length === 0) node.errors = validation;
     else {
       const joined = [...validation, ...user];
       if (!sameList(joined, node.errors)) node.errors = freeze(joined);
+    }
+    if (node.errors !== errors) {
+      invalidChanged();
+      bump(node, "errorCount", Number(node.errors.length > 0) - Number(errors.length > 0));
     }
     rebuild(node);
   };
@@ -544,6 +562,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       marked: false,
       editedCount: 0,
       invalidCount: 0,
+      errorCount: 0,
       validatingCount: 0,
       disabled: parent ? flagUnder(parent.disabled, seg) : flagFrom(options.disabled, false),
       readOnly: parent ? flagUnder(parent.readOnly, seg) : flagFrom(options.readOnly, false),
@@ -615,7 +634,10 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     place(node);
     const moved = renamed || node.index !== index;
     if (!moved && node.blocked === blocked && Object.is(node.value, value)) return;
-    if (moved) node.name = nameOf(node);
+    if (moved) {
+      node.name = nameOf(node);
+      if (node.errors.length > 0) invalidChanged();
+    }
     syncKeys(node);
     rebuild(node);
     node.children?.forEach((child) => update(child, moved));
@@ -1024,30 +1046,17 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const node = findNode(path);
       return node !== undefined && !node.dead && node.invalidCount > 0;
     },
-    firstInvalid() {
-      const visit = (node: Node<E>): Node<E> | undefined => {
-        // A disabled node's subtree is disabled too, so it is skipped whole.
-        if (node.invalidCount === 0 || node.disabled.on) return undefined;
-        if (node.validation.length > 0) return node;
-        for (const child of inValueOrder(node)) {
-          const found = visit(child);
-          if (found) return found;
-        }
-        return undefined;
-      };
-      const found = root && visit(root);
-      return found && pathOf(found, false);
-    },
-    disabledInvalid() {
+    invalid() {
       const paths: Path[] = [];
       const visit = (node: Node<E>) => {
-        if (node.invalidCount === 0) return;
-        if (node.validation.length > 0 && node.disabled.on) paths.push(pathOf(node, false));
+        if (node.errorCount === 0) return;
+        if (node.errors.length > 0) paths.push(pathOf(node, false));
         for (const child of inValueOrder(node)) visit(child);
       };
       if (root) visit(root);
       return paths;
     },
+    subscribeInvalid: (listener) => listen((invalidCell ??= { snapshot: 0, before: undefined, subscriptions: undefined }), listener),
 
     stats() {
       let nodes = 0;

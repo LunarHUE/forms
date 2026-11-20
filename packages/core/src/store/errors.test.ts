@@ -148,19 +148,20 @@ describe("mapError", () => {
 });
 
 describe("two sources", () => {
-  it("lists validation errors first, then user errors, and counts only validation errors as invalid", async () => {
+  it("lists validation errors first, then user errors, and counts only validation errors against the form", async () => {
     const store = make({ validate: { fields: { name: required } } });
     store.root.at("name").setErrors([err("user 1"), err("user 2")]);
-    expect(store.getSnapshot(["name"])).toMatchObject({ invalid: false });
+    expect(store.getSnapshot(["name"])).toMatchObject({ invalid: true });
     expect(store.getFormSnapshot().valid).toBe(true);
     await store.validate();
     expect(messages(store, ["name"])).toEqual(["Required", "user 1", "user 2"]);
+    expect(store.getSnapshot(["name"]).userErrors).toEqual([err("user 1"), err("user 2")]);
     expect(store.getSnapshot(["name"]).invalid).toBe(true);
     expect(store.getFormSnapshot().valid).toBe(false);
     store.root.at("name").setValue("ok", { edited: false });
     await store.validate();
     expect(messages(store, ["name"])).toEqual(["user 1", "user 2"]);
-    expect(store.getSnapshot(["name"]).invalid).toBe(false);
+    expect(store.getSnapshot(["name"]).invalid).toBe(true);
     expect(store.getFormSnapshot().valid).toBe(true);
   });
 

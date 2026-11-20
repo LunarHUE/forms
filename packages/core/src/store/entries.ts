@@ -13,6 +13,7 @@ export const none: readonly never[] = freeze([]);
 /** The state of a field nothing has touched. */
 export const idle: FieldState<never> = {
   errors: none,
+  userErrors: none,
   shownErrors: none,
   invalid: false,
   touched: false,

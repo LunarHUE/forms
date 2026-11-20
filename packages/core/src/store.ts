@@ -15,8 +15,8 @@ export interface Change {
   readonly value: unknown;
 }
 
-/** A disabled field with a validation error, as `disabledInvalid` lists it. */
-export interface DisabledInvalid<E = FormError> {
+/** A field with errors, as `invalid` and `disabledInvalid` list it. */
+export interface InvalidField<E = FormError> {
   /** The field's handle. */
   readonly field: AnyFieldHandle<E>;
   /** The field's dotted value path, as the snapshot's `name`. */
@@ -24,6 +24,9 @@ export interface DisabledInvalid<E = FormError> {
   /** Every error on the field, as the snapshot's `errors`. The form's `show` setting doesn't filter it. */
   readonly errors: readonly E[];
 }
+
+/** A disabled field with errors, as `disabledInvalid` lists it. The same shape as `InvalidField`. */
+export type DisabledInvalid<E = FormError> = InvalidField<E>;
 
 /**
  * The arguments `submit` takes. When `undefined` is a valid intent the
@@ -164,21 +167,35 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    */
   pathOf(name: string): Path | undefined;
   /**
-   * Returns the first enabled field, in value order, that has a validation
-   * error, for the adapter to focus after an invalid submit. Read-only fields
-   * count. Disabled ones don't: `disabledInvalid` lists those. Returns
-   * `undefined` when there is none. A read for event handlers and effects,
-   * not render.
+   * Returns every field with an error, in value order: validation errors and
+   * those `setErrors` set, on enabled and disabled fields alike. For an error
+   * summary above the form. Returns an empty list when there is none. A read
+   * for event handlers and effects. To render the list, follow it with
+   * `subscribeInvalid`, or use the adapter's hook.
+   */
+  invalid(): readonly InvalidField<E>[];
+  /**
+   * Calls `listener` after any write that changes what `invalid` returns:
+   * a field gains or loses its errors, an error list changes, or a field with
+   * errors moves. Returns the function that unsubscribes.
+   */
+  subscribeInvalid(this: void, listener: () => void): () => void;
+  /**
+   * Returns the first enabled field in `invalid`, for the adapter to focus
+   * after an invalid submit, or for an `onSubmit` that just put a server's
+   * errors on the form with `setErrors`. Read-only fields count. Disabled
+   * ones don't: `disabledInvalid` lists those. Returns `undefined` when there
+   * is none. A read for event handlers and effects, not render.
    */
   firstInvalid(): AnyFieldHandle<E, N> | undefined;
   /**
-   * Returns every disabled field, in value order, that has a validation
-   * error. Their errors still block submit, but `firstInvalid` skips them, so
-   * after an invalid submit the adapter can show these at form level. A field
-   * counts as disabled when it or a field above it is. Returns an empty list
-   * when there is none. A read for event handlers and effects, not render.
+   * Returns the disabled fields in `invalid`. Their validation errors still
+   * block submit, but `firstInvalid` skips them, so after an invalid submit
+   * the adapter can show these at form level. A field counts as disabled when
+   * it or a field above it is. Returns an empty list when there is none. A
+   * read for event handlers and effects, not render.
    */
-  disabledInvalid(): readonly DisabledInvalid<E>[];
+  disabledInvalid(): readonly InvalidField<E>[];
   /**
    * The API of each installed hook plugin that has one, by plugin name:
    * `store.plugins.history.undo()`. A store from a definition types it

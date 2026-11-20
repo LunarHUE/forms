@@ -2,10 +2,10 @@ import type { SubmitContext } from "../definition.js";
 import type { ErrorMap } from "../errors.js";
 import type { Handle } from "./handles.js";
 import type { Submission } from "../snapshot.js";
-import type { DisabledInvalid, IntentArgs } from "../store.js";
+import type { InvalidField, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
-import { errorList } from "./handles.js";
+import { errorList, reach } from "./handles.js";
 import type { PluginHost } from "./plugins.js";
 import { addErrors, addNamed, type Placed } from "./placed.js";
 import type { Validation } from "./runner.js";
@@ -27,10 +27,12 @@ export interface Submit<E, I, R> {
   handleSubmit(this: void, event?: { preventDefault(): void }): Promise<void>;
   /** As `FormStore.setErrors`. */
   setErrors(this: void, errors: ErrorMap<E>): void;
+  /** As `FormStore.invalid`. */
+  invalid(this: void): InvalidField<E>[];
   /** As `FormStore.firstInvalid`. */
   firstInvalid(this: void): Handle<E> | undefined;
   /** As `FormStore.disabledInvalid`. */
-  disabledInvalid(this: void): DisabledInvalid<E>[];
+  disabledInvalid(this: void): InvalidField<E>[];
   /** Called when the whole form is reset, inside the reset's batch, to abort a running submit. */
   abort(): void;
 }
@@ -108,6 +110,18 @@ export function createSubmit<V, E, I, R, O = V>(
     return promise;
   };
 
+  // Every field with an error, with its disabled flag for the filters below.
+  const listed = () =>
+    core.invalid().map((path) => {
+      const { name, errors, disabled } = core.getSnapshot(path);
+      // `reach` makes the handle even for a key the value lacks, where
+      // `handle.setErrors` can put errors. Its errors are this store's `E`.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const field = reach(context.store(), path) as Handle<E>;
+      return { field, name, errors, disabled };
+    });
+  const strip = ({ field, name, errors }: InvalidField<E>): InvalidField<E> => ({ field, name, errors });
+
   return {
     // With no argument the intent is undefined, which `IntentArgs` allows only when I includes it.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -129,20 +143,9 @@ export function createSubmit<V, E, I, R, O = V>(
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);
       });
     },
-    firstInvalid() {
-      const path = core.firstInvalid();
-      return path && context.store().fieldAt(path);
-    },
-    disabledInvalid() {
-      const found: DisabledInvalid<E>[] = [];
-      for (const path of core.disabledInvalid()) {
-        const field = context.store().fieldAt(path);
-        if (!field) continue;
-        const { name, errors } = core.getSnapshot(path);
-        found.push({ field, name, errors });
-      }
-      return found;
-    },
+    invalid: () => listed().map(strip),
+    firstInvalid: () => listed().find((entry) => !entry.disabled)?.field,
+    disabledInvalid: () => listed().filter((entry) => entry.disabled).map(strip),
     abort() {
       const run = running;
       running = undefined;

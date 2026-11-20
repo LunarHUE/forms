@@ -158,6 +158,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
             throw new Error(problem("dirty:missing"));
           }
         : baseline.changes,
+    invalid: submit.invalid,
+    subscribeInvalid: core.subscribeInvalid,
     firstInvalid: submit.firstInvalid,
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
