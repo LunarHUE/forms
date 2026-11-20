@@ -6,6 +6,7 @@ import { BasicPage } from "./pages/basic.js";
 import { BindPage } from "./pages/bind.js";
 import { DirtyPage } from "./pages/dirty.js";
 import { HistoryPage } from "./pages/history.js";
+import { InspectPage } from "./pages/inspect.js";
 import { MaskPage } from "./pages/mask.js";
 import { PersistPage } from "./pages/persist.js";
 import { RendersPage } from "./pages/renders.js";
@@ -24,6 +25,7 @@ const pages: Pages<ComponentType> = {
   mask: MaskPage,
   persist: PersistPage,
   bind: BindPage,
+  inspect: InspectPage,
 };
 
 interface AppProps {

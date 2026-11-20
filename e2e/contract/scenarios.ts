@@ -4,6 +4,7 @@ import { basicScenario } from "./scenarios/basic.js";
 import { bindScenario } from "./scenarios/bind.js";
 import { dirtyScenario } from "./scenarios/dirty.js";
 import { historyScenario } from "./scenarios/history.js";
+import { inspectScenario } from "./scenarios/inspect.js";
 import { maskScenario } from "./scenarios/mask.js";
 import { persistScenario } from "./scenarios/persist.js";
 import { rendersScenario } from "./scenarios/renders.js";
@@ -23,6 +24,7 @@ export const scenarios = [
   maskScenario,
   persistScenario,
   bindScenario,
+  inspectScenario,
 ] as const;
 
 export type ScenarioId = (typeof scenarios)[number]["id"];

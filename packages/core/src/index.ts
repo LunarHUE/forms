@@ -2,6 +2,9 @@ export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
 export { errorsByKind } from "./error-kinds.js";
+export { trackElements, trackedField, type ElementListener } from "./elements.js";
+/** Internal: the slot the adapters report elements to. Use `trackElements`. */
+export { tracking } from "./store/elements.js";
 export { invalidFields, subscribeInvalid } from "./invalid.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";

@@ -71,6 +71,7 @@
       "dependencies": {
         "@lunarhue/forms-bind": "workspace:*",
         "@lunarhue/forms-core": "workspace:*",
+        "@lunarhue/forms-devtools": "workspace:*",
         "@lunarhue/forms-schema": "workspace:*",
         "valibot": "catalog:",
         "zustand": "catalog:",
@@ -215,6 +216,18 @@
       "name": "@lunarhue/forms-core",
       "version": "0.1.1",
     },
+    "packages/devtools": {
+      "name": "@lunarhue/forms-devtools",
+      "version": "0.1.1",
+      "devDependencies": {
+        "@lunarhue/forms-core": "workspace:^",
+        "jsdom": "catalog:",
+        "preact": "catalog:",
+      },
+      "peerDependencies": {
+        "@lunarhue/forms-core": "workspace:^",
+      },
+    },
     "packages/react": {
       "name": "@lunarhue/forms-react",
       "version": "0.1.1",
@@ -330,6 +343,7 @@
       "name": "@lunarhue/forms-scripts",
       "version": "0.0.0",
       "devDependencies": {
+        "@lunarhue/forms-devtools": "workspace:*",
         "@lunarhue/forms-react": "workspace:*",
         "@lunarhue/forms-schema": "workspace:*",
         "@lunarhue/forms-solid": "workspace:*",
@@ -366,6 +380,7 @@
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
     "pkg-pr-new": "0.0.93",
+    "preact": "11.2.0",
     "publint": "0.3.25",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -732,6 +747,8 @@
     "@lunarhue/forms-bind": ["@lunarhue/forms-bind@workspace:packages/bind"],
 
     "@lunarhue/forms-core": ["@lunarhue/forms-core@workspace:packages/core"],
+
+    "@lunarhue/forms-devtools": ["@lunarhue/forms-devtools@workspace:packages/devtools"],
 
     "@lunarhue/forms-docs": ["@lunarhue/forms-docs@workspace:apps/docs"],
 
@@ -1776,6 +1793,8 @@
     "postcss-selector-parser": ["postcss-selector-parser@7.2.1", "", { "dependencies": { "util-deprecate": "^1.0.2" } }, "sha512-GwxlMgTTXwIom+ebC7an3k6RaJDwklRQQnfiXsLPGicu8FYV/k/+1/9YY2OU2+r938H2t4X0TDxoif+HP2rjzQ=="],
 
     "powershell-utils": ["powershell-utils@0.2.1", "", {}, "sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A=="],
+
+    "preact": ["preact@11.2.0", "", { "peerDependencies": { "preact-render-to-string": ">=6.7.0" }, "optionalPeers": ["preact-render-to-string"] }, "sha512-/HfHI/7N84e6GrWBJ3J280z3mLaRJiDcSvj/A+y/4AbLnND/1UlGHe1sR6oYuTGwId0nP7dqDU9OnLxMPZ7xBg=="],
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 

@@ -1,4 +1,4 @@
-import type { AnyFieldHandle, AnyFormStore } from "@lunarhue/forms-core";
+import { type AnyFieldHandle, type AnyFormStore, tracking } from "@lunarhue/forms-core";
 import { version } from "react";
 import type { FocusOnInvalid } from "./forms.js";
 import type { FieldRef } from "./input.js";
@@ -12,15 +12,24 @@ const elements = new WeakMap<object, Set<HTMLElement>>();
 const refs = new WeakMap<object, FieldRef>();
 
 /**
- * The field handle of each field element, for `fieldOf`. Only development
- * fills it. A bundler folds the checks around it to false in production and
- * drops the map with them.
+ * The field handle of each field element, for `fieldOf` in development. A
+ * bundler folds the checks around it to false in production and drops the
+ * map with them. Production reads core's `trackedField` instead.
  */
 export const fields = /* @__PURE__ */ new WeakMap<Element, object>();
 
-/** Drops the elements that left the document, so the set can't grow without bound. */
-function connected(set: Set<HTMLElement>): Set<HTMLElement> {
-  for (const element of set) if (!element.isConnected) set.delete(element);
+/**
+ * Drops the elements that left the document, so the set can't grow without
+ * bound, and reports each to `trackElements`. Before React 19 this is the
+ * only place an element of `key` is forgotten.
+ */
+function connected(set: Set<HTMLElement>, key: object): Set<HTMLElement> {
+  for (const element of set) {
+    if (!element.isConnected) {
+      set.delete(element);
+      tracking.record?.(element, key, false, "react");
+    }
+  }
   return set;
 }
 
@@ -59,19 +68,22 @@ function showRendered(element: HTMLElement): void {
  * function for the life of the key. On React 19 it returns a cleanup that
  * forgets the element. Earlier versions get no cleanup and call the callback
  * with `null` without saying which element left, so that call does nothing
- * and lookups skip elements that left the document.
+ * and lookups skip elements that left the document. Each element recorded or
+ * forgotten is reported to `tracking`, store keys included.
  */
 export function refFor(key: object): FieldRef {
   return cached(refs, key, () => (element) => {
     if (element === null) return undefined;
     showRendered(element);
-    const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
+    const set = connected(cached(elements, key, () => new Set<HTMLElement>()), key);
     set.add(element);
+    tracking.record?.(element, key, true, "react");
     // A store's elements are `<form>` elements, which aren't fields. Handles have a path.
     if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && "path" in key) fields.set(element, key);
     if (!refCleanups) return undefined;
     return () => {
       set.delete(element);
+      tracking.record?.(element, key, false, "react");
       if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && fields.get(element) === key) fields.delete(element);
     };
   });
@@ -81,7 +93,7 @@ export function refFor(key: object): FieldRef {
 export function elementsFor(key: object): HTMLElement[] {
   // A copy, sorted in place. `toSorted` is past the ES2020 the package targets.
   // oxlint-disable-next-line unicorn/no-array-sort
-  return [...connected(elements.get(key) ?? new Set())].sort((a, b) =>
+  return [...connected(elements.get(key) ?? new Set(), key)].sort((a, b) =>
     (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING) === 0 ? -1 : 1,
   );
 }
@@ -89,7 +101,7 @@ export function elementsFor(key: object): HTMLElement[] {
 /** The first connected element, in document order, recorded for `key`. */
 function firstElement(key: object): HTMLElement | undefined {
   let first: HTMLElement | undefined;
-  for (const element of connected(elements.get(key) ?? new Set())) {
+  for (const element of connected(elements.get(key) ?? new Set(), key)) {
     if (first === undefined || (first.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING) !== 0) first = element;
   }
   return first;

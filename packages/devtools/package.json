@@ -1,0 +1,78 @@
+{
+  "name": "@lunarhue/forms-devtools",
+  "license": "MIT",
+  "version": "0.1.1",
+  "description": "Devtools for forms: inspect live forms in a panel on the page.",
+  "keywords": ["form", "forms", "devtools", "debugging"],
+  "homepage": "https://github.com/LunarHUE/forms#readme",
+  "bugs": "https://github.com/LunarHUE/forms/issues",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunarHUE/forms.git",
+    "directory": "packages/devtools"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "@lunarhue/source": "./src/index.ts",
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@lunarhue/forms-core": "workspace:^"
+  },
+  "devDependencies": {
+    "@lunarhue/forms-core": "workspace:^",
+    "jsdom": "catalog:",
+    "preact": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.build.json && tsdown -c tsdown.types.config.ts && rm -rf dist/types",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:package": "publint --strict --pack npm && attw --pack .",
+    "size": "size-limit"
+  },
+  "size-limit": [
+    {
+      "name": "devtools()",
+      "path": "dist/esm/index.js",
+      "import": "{ devtools }",
+      "ignore": ["./panel.js"],
+      "limit": "1.1 kB"
+    },
+    {
+      "name": "core + devtools()",
+      "import": {
+        "../core/dist/esm/index.js": "{ createFormsCore }",
+        "dist/esm/index.js": "{ devtools }"
+      },
+      "ignore": ["./panel.js"],
+      "limit": "9.75 kB"
+    },
+    {
+      "name": "panel chunk, minified",
+      "path": "dist/esm/panel.js",
+      "ignore": ["@lunarhue/forms-core"],
+      "brotli": false,
+      "limit": "45.5 kB"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { tracking } from "@lunarhue/forms-core";
 import { getOwner, onCleanup } from "solid-js";
 
 // The package has no node types, so this declares the global the development check reads.
@@ -10,9 +11,9 @@ const registry = new WeakMap<object, Set<HTMLElement>>();
 const formElements = new WeakMap<object, HTMLFormElement>();
 
 /**
- * The handle of each registered element, for `fieldOf`. Only development
- * fills it. A bundler folds the checks around it to false in production and
- * drops the map with them.
+ * The handle of each registered element, for `fieldOf` in development. A
+ * bundler folds the checks around it to false in production and drops the
+ * map with them. Production reads core's `trackedField` instead.
  */
 export const fields = /* @__PURE__ */ new WeakMap<Element, object>();
 
@@ -25,7 +26,8 @@ export function elementsOf(handle: object): HTMLElement[] {
  * Returns a ref callback that registers each element it gets as a focus
  * target of `handle`. Every element it registered is removed when the
  * current owner is disposed. Ref callbacks run with no owner, so the cleanup
- * is taken here.
+ * is taken here. Each element registered or removed is reported to
+ * `tracking`.
  */
 export function elementRegistrar(handle: object): (element: HTMLElement) => void {
   const registered: HTMLElement[] = [];
@@ -33,6 +35,7 @@ export function elementRegistrar(handle: object): (element: HTMLElement) => void
     onCleanup(() => {
       for (const element of registered) {
         registry.get(handle)?.delete(element);
+        tracking.record?.(element, handle, false, "solid");
         if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && fields.get(element) === handle) fields.delete(element);
       }
     });
@@ -42,13 +45,15 @@ export function elementRegistrar(handle: object): (element: HTMLElement) => void
     if (!elements) registry.set(handle, (elements = new Set()));
     elements.add(element);
     registered.push(element);
+    tracking.record?.(element, handle, true, "solid");
     if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") fields.set(element, handle);
   };
 }
 
-/** Records the `<form>` element of `store`. */
+/** Records the `<form>` element of `store`. It is never reported as forgotten. */
 export function registerFormElement(store: object, element: HTMLFormElement): void {
   formElements.set(store, element);
+  tracking.record?.(element, store, true, "solid");
 }
 
 /** The `<form>` element of `store`, while it is in the document. */

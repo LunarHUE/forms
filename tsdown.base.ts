@@ -50,7 +50,7 @@ export function libraryBuild(): UserConfig[] {
 }
 
 // Declarations for a package whose users don't install core: the adapters,
-// schema and bind. tsc writes them to dist/types first, then this bundles
+// schema, bind and devtools. tsc writes them to dist/types first, then this bundles
 // each entry's and inlines @lunarhue/forms-core, so the package's types are
 // its own. A consumer under a strict install (pnpm, Bun isolated) can't
 // resolve core, and declarations tsc writes for that consumer's code must

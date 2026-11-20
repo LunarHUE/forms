@@ -35,7 +35,7 @@ function anchorsInDocs(): Set<string> {
 }
 
 it("finds the source of every package and the errors page", () => {
-  expect(new Set(Object.keys(sources).map(packageOf))).toEqual(new Set(["bind", "core", "react", "schema", "solid", "vue"]));
+  expect(new Set(Object.keys(sources).map(packageOf))).toEqual(new Set(["bind", "core", "devtools", "react", "schema", "solid", "vue"]));
   expect(anchorsInDocs().size).toBeGreaterThan(0);
 });
 
