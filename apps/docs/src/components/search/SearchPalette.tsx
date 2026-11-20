@@ -1,3 +1,4 @@
+import { navigate } from "astro:transitions/client";
 import { Command as CommandPrimitive } from "cmdk";
 import { cn } from "cn";
 import { CornerDownRightIcon, FileTextIcon, SearchIcon } from "lucide-react";
@@ -134,7 +135,7 @@ export function SearchPalette() {
   const go = (url: string) => {
     // A link to a heading on the current page only scrolls, so close first.
     setOpen(false);
-    window.location.assign(url);
+    void navigate(url);
   };
 
   // The last results stay up while the next search runs, and go once the box is empty.
