@@ -47,6 +47,17 @@ for (const framework of frameworks) {
   });
 }
 
+for (const framework of frameworks) {
+  test(`${framework}: the demo code hides the devtools wiring`, async ({ page }) => {
+    const demo = await openMasks(page, framework);
+    await demo.getByRole("tab", { name: "Code" }).click();
+    const code = demo.getByRole("tabpanel");
+    await expect(code).toContainText("createForms({ plugins: [mask()], fields: { PhoneField } })");
+    await expect(code).toContainText('id: "contact"');
+    await expect(code).not.toContainText("docsDevtools");
+  });
+}
+
 /** Every script and document the page loads, with its body, after the demo has hydrated. */
 async function scriptsOf(page: Page, framework: Framework) {
   const responses: Response[] = [];
