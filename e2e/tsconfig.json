@@ -3,6 +3,8 @@
   "compilerOptions": {
     "lib": ["es2023", "dom", "dom.iterable"],
     "types": ["node"],
+    // The devtools panel, which the contract reaches from source, is TSX with its own @jsxImportSource.
+    "jsx": "react-jsx",
     "noEmit": true,
     "customConditions": ["@lunarhue/source"]
   },

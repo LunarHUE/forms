@@ -44,6 +44,12 @@ export function pinFramework(names: readonly string[], replace: Readonly<Record<
 }
 
 /**
+ * Files Solid's plugin must leave alone: the dependencies, and the devtools
+ * panel, whose TSX is Preact's and names its runtime with `@jsxImportSource`.
+ */
+export const notSolid = [/\/node_modules\//, /\/packages\/devtools\/src\//];
+
+/**
  * The Vite config every app shares. `vite build` makes the client bundle,
  * with its entry at a fixed name the shared server links to, and
  * `vite build --ssr src/entry-server.tsx` makes the server entry the shared

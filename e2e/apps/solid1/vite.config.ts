@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
-import { appConfig, pinFramework } from "../../vite.base.ts";
+import { appConfig, notSolid, pinFramework } from "../../vite.base.ts";
 
 // The adapter's `./v1` build, which is its source under this condition.
 const solid1 = "@lunarhue/solid1";
@@ -12,7 +12,7 @@ export default defineConfig(({ isSsrBuild }) => {
   const config = appConfig(
     [
       pinFramework(["solid-js"], { "@solidjs/web": "solid-js/web", "@lunarhue/forms-solid": "@lunarhue/forms-solid/v1" }),
-      solid({ ssr: true }),
+      solid({ ssr: true, exclude: notSolid }),
     ],
     isSsrBuild === true,
   );
