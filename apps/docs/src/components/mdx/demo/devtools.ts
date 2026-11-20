@@ -2,7 +2,7 @@
 const importLine = 'import { docsDevtools } from "@/devtools/enabled";\n';
 
 /**
- * Removes the docs' devtools wiring from a demo's source, so the Code tab
+ * Removes the docs' devtools wiring from a demo's source, so the file tabs
  * shows the plain example: the import line and `docsDevtools` in a
  * `plugins` list. Throws when `docsDevtools` is still there after, so a
  * demo written another way fails the build instead of leaking the wiring.

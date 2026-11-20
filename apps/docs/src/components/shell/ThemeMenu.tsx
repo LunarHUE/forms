@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setTheme, THEMES, type Theme } from "@/lib/store";
 
 const options: Record<Theme, { label: string; Icon: typeof SunIcon }> = {
@@ -27,10 +28,17 @@ export function ThemeMenu() {
   const theme = useTheme();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Theme" />}>
-        <SunIcon className="dark:hidden" />
-        <MoonIcon className="hidden dark:block" />
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={<DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Theme" />} />}
+        >
+          <SunIcon className="dark:hidden" />
+          <MoonIcon className="hidden dark:block" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Theme
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuRadioGroup
           value={theme}

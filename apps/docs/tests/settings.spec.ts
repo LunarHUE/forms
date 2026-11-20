@@ -39,7 +39,7 @@ test("the dark theme survives a reload and applies before hydration", async ({ p
   await recordDomContentLoaded(page);
   await page.goto("/react/install");
   await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
-  await hydrated(page, 'astro-island:has([data-slot="dropdown-menu-trigger"])');
+  await hydrated(page, 'astro-island:has([aria-label="Theme"])');
 
   await page.getByRole("button", { name: "Theme" }).click();
   await page.getByRole("menuitemradio", { name: "Dark" }).click();
