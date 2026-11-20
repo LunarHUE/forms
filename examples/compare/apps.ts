@@ -18,7 +18,7 @@ interface App {
 export const apps = [
   { name: "signup", title: "Sign-up" },
   { name: "profile", title: "Profile settings" },
-  { name: "backoffice", title: "Back office", only: ["lunarhue"] },
+  { name: "backoffice", title: "Back office" },
 ] as const satisfies readonly App[];
 
 export type AppName = (typeof apps)[number]["name"];

@@ -127,6 +127,45 @@ documented pattern and carries the bug until it is fixed. The spec "leaves a
 refused save unsaved" is marked `test.fail` for our build, so it starts
 failing once the fix lands and the mark can go.
 
+TanStack's side uses `createFormHook` with the save bar, the error summary and
+the form element as form components, `withFieldGroup` for the address,
+Standard Schema validators, `isDefaultValue` and `form.reset`. The rest is
+written by hand:
+
+- Masks. `MaskedInput` stores `clean(text)`, shows `display(value)`, and puts
+  the caret back after the same number of clean characters, since React moves
+  it to the end when the text changes length. A TanStack user could pull in a
+  mask library instead, or roll their own as here. Rolling your own often
+  isn't worth it: this one doesn't step over separators on backspace, which a
+  library would.
+- Undo. TanStack has no history. The field components and the line buttons
+  record a field's old value before each change, and Undo writes it back
+  with `setFieldValue`. Discard clears the stack.
+- Rules. The state, the shipping address and the gift message are shown or
+  hidden with `form.Subscribe` or `useStore` around each field, in each form.
+- The change count and Refresh. The same `rebaseline` idea as the profile
+  app, but walking the values for leaf names (`lines[0].price`) instead of a
+  hand-kept list, and treating an array whose length changed as one leaf.
+- The invite draft. Read from `localStorage` once for the defaults, written
+  in an effect on every change.
+
+Where it needed a choice of its own:
+
+- `useForm` applies its options again on every render, and an untouched form
+  takes new `defaultValues` as its values. Defaults moved with
+  `form.reset(values)` snap back on the next render that passes the old ones.
+  Each form keeps its defaults in React state and moves them after every
+  save, refresh and sent invite.
+- The form context hands components a copy of the form whose `options` don't
+  follow `reset(values)`, and field components see the original. The save
+  bar takes the current defaults as a prop, and undo stacks are keyed by
+  `formId`.
+- The error summary links to inputs, so input ids come from the form's id and
+  the field name instead of `useId`.
+- An array field re-renders only when rows come or go, so the order total
+  subscribes to the lines on its own.
+- Array rows are keyed by index, as in TanStack's docs.
+
 ## Running
 
 From the repo root:

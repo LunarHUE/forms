@@ -201,7 +201,7 @@ function InviteDialog() {
 
 export function App() {
   return (
-    <Page title="Back office" lede="Three record forms and a dialog on one set of plugins and field components.">
+    <Page title="Back office" lede="Three record forms and a dialog that share field components, a save bar and an error summary.">
       <ServerControls>
         <button type="button" onClick={customers.editElsewhere}>
           Edit customer
