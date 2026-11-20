@@ -327,11 +327,11 @@ tests.
 | --- | --- |
 | `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
-| `HandleOf<typeof fieldset>` | The handle prop a fieldset component takes. |
+| `HandleOf<typeof fieldset, A>` | The handle prop a fieldset component takes. It takes only the fieldset's exact value. For values with more keys, make the component generic, `<A extends Address>`, and pass `A`. |
 | `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
 | `Part<N, V>` | A plugin's config for one place. `N` is the plugin and `V` the values it fits. |
 | `FormOf<typeof definition>` | The form a definition makes. |
-| `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. |
+| `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. Handles are strict in `V`: a `FieldHandle<Address>` takes no handle of an object with more keys. For a generic `V`, the children its constraint names read as the constraint's types. |
 | `FieldPath<V>`, `ValueAt<V, P>` | The dotted names of `V`, and the type at one. |
 | `ValueOf<H>`, `ErrorOf<H>` | A handle's value and error types. |
 | `FieldSnapshot<V>`, `FormSnapshot` | What the field and form reads return. |
