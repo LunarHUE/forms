@@ -4,6 +4,7 @@ import { ExternalLinkIcon, MenuIcon, XIcon } from "lucide-react";
 import { useLastFramework } from "@/components/hooks/store";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Hint } from "@/components/ui/tooltip";
 import type { Framework } from "@/lib/frameworks";
 
 import { FrameworkPicker } from "./FrameworkPicker";
@@ -20,15 +21,22 @@ import type { SidebarData } from "./sidebar";
  * one per framework and the drawer shows the last-used one, like the desktop
  * sidebar does with CSS.
  */
-export function MobileNav({ sidebars, currentSlug }: { sidebars: SidebarData[]; currentSlug?: string }) {
+interface MobileNavProps {
+  sidebars: SidebarData[];
+  currentSlug?: string;
+}
+
+export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
   const last = useLastFramework();
   const sidebar = pick(sidebars, last);
   if (!sidebar) return null;
   return (
     <Sheet>
-      <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open navigation" />}>
-        <MenuIcon className="size-5" />
-      </SheetTrigger>
+      <Hint label="Open navigation">
+        <SheetTrigger render={<Button variant="ghost" size="icon" />}>
+          <MenuIcon className="size-5" />
+        </SheetTrigger>
+      </Hint>
       {/* shadcn's SheetContent has a light, blurred scrim; the mock's is darker and flat. */}
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />
@@ -38,9 +46,11 @@ export function MobileNav({ sidebars, currentSlug }: { sidebars: SidebarData[]; 
             <div className="min-w-0 flex-1">
               <FrameworkPicker items={sidebar.items} framework={sidebar.framework} version={sidebar.version} />
             </div>
-            <SheetClose render={<Button variant="ghost" size="icon" aria-label="Close navigation" />}>
-              <XIcon className="size-5" />
-            </SheetClose>
+            <Hint label="Close navigation">
+              <SheetClose render={<Button variant="ghost" size="icon" />}>
+                <XIcon className="size-5" />
+              </SheetClose>
+            </Hint>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-4">
             <NavTree groups={sidebar.groups} currentSlug={currentSlug} compact />
