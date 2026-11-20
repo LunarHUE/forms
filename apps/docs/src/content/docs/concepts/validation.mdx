@@ -103,7 +103,8 @@ Errors show once a field is touched or the form submitted. `show` on
 `"submitted"`, `"touched-or-submitted"`, or a function. `field.errors` has
 every error and `field.shownErrors` only the ones to show now.
 
-`field.invalid` is true when a validator failed. Errors you set yourself with
-`setErrors`, such as a server's answer, show in `errors` but don't make the
-field invalid, and the next user edit clears them. [Submit](submit) shows how
-to put server errors on fields.
+`field.invalid` is true when the field has any error. That includes errors
+you set yourself with `setErrors`, such as a server's answer. Those also sit
+in `field.userErrors`, and they don't block a submit: the form's `valid`
+only counts validation errors. The next user edit clears them.
+[Submit](submit) shows how to put server errors on fields.

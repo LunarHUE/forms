@@ -176,6 +176,7 @@ Each throws when no matching `form.Form` is above.
 | `<Items handle>` | Renders one child per item, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `useValidator(handle, validator)` | Adds a validator while the component is mounted. |
 | `useDisabledErrors(form)` | The disabled fields whose errors blocked the last submit. |
+| `useInvalidFields(form)` | Every field with errors, in form order, as `{ field, name, errors }`. Re-renders when the list changes. |
 
 </Only>
 
@@ -188,6 +189,7 @@ Each throws when no matching `form.Form` is above.
 | `<Items handle fallback?>` | Renders the items with `For`, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `createValidator(handle, validator)` | Adds a validator for the life of the owner. |
 | `createDisabledErrors(form)` | An accessor of the disabled fields whose errors blocked the last submit. |
+| `createInvalidFields(form)` | An accessor of every field with errors, in form order, as `{ field, name, errors }`. |
 
 </Only>
 
@@ -238,7 +240,8 @@ children.
 | `name` | The dotted name, as `"address.city"`. |
 | `errors` | Every error on the field. |
 | `shownErrors` | The errors to show now, per `show`. |
-| `invalid` | True when it has a validation error. Errors you set don't count. |
+| `userErrors` | The errors set with `setErrors`, the tail of `errors`. |
+| `invalid` | True when it has any error, from validation or `setErrors`. |
 | `touched` | True after a blur. |
 | `edited` | True after a user edit. |
 | `dirty` | True when the value differs from the baseline. Needs `dirty()`. |
@@ -311,8 +314,10 @@ tests.
 | `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
 | `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
-| `firstInvalid()` | The first enabled field with a validation error. |
-| `disabledInvalid()` | Every disabled field with a validation error. |
+| `invalid()` | Every field with an error, in form order, as `{ field, name, errors }`. |
+| `subscribeInvalid(listener)` | Calls `listener` after a write that may change `invalid()`. |
+| `firstInvalid()` | The first enabled field with an error. |
+| `disabledInvalid()` | Every disabled field with an error. |
 
 ### Types
 
