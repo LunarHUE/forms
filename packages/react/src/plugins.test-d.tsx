@@ -1,7 +1,7 @@
 import type { FormError, Plugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
+import { debounced, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -35,7 +35,7 @@ describe("with no plugins", () => {
           {(field) => field.value}
         </form.Field>
         <form.TextField name="name" label="Name" validate={required} />
-        <scope.TextField name="name" label="Name" validate={{ validate: required, debounce: 100 }} />
+        <scope.TextField name="name" label="Name" validate={debounced(required, 100)} />
       </>
     );
   }

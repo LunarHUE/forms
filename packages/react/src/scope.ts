@@ -112,8 +112,8 @@ export type FieldApiOf<H> = ExactFieldApi<ValueOf<H>, ErrorOf<H>, PluginsOf<H>>;
 /**
  * The `validate` prop of `Field` and of the bound registered components. It
  * takes what `useValidator` takes, typed from the field: a validator
- * function, a Standard Schema, or either one with options such as
- * `debounce`. `undefined`, `null` or `false` add none.
+ * function, a Standard Schema, or either one wrapped by `debounced`,
+ * `validateOn` or `recheckOnSubmit`. `undefined`, `null` or `false` add none.
  *
  * The validator runs only while the component is mounted. On unmount it is
  * removed along with the errors it set. A field that isn't rendered, such as

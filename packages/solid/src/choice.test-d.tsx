@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
-import { type Choice, createForm, createForms, type FieldApi, inputProps } from "./index.js";
+import { debounced, type Choice, createForm, createForms, type FieldApi, inputProps } from "./index.js";
 
 interface Option<T> {
   readonly value: T;
@@ -110,7 +110,7 @@ function ValidateUses() {
       <form.CheckboxGroupField
         name="channels"
         options={[{ value: "sms", label: "SMS" }]}
-        validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), debounce: 300 }}
+        validate={debounced((value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), 300)}
       />
       <form.SelectField
         handle={form.root.at("country")}

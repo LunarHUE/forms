@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput } from "../index.js";
+import { debounced, validateOn, type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
@@ -41,7 +41,7 @@ function mountSignup(check: () => Check, debounce?: number) {
   const nameValidator = (): ValidatorInput<string> => {
     const current = check();
     const validate = (value: string) => toError(current(value));
-    return debounce === undefined ? validate : { validate, debounce };
+    return debounce === undefined ? validate : debounced(validate, debounce);
   };
   function Page() {
     const own = createForm(Signup);
@@ -87,6 +87,16 @@ const deliveryStart: { method: "post" | "pickup" } = { method: "post" };
 const Delivery = choiceForms.define({ defaultValues: deliveryStart });
 
 describe("the validate prop", () => {
+  it("keeps the timing a wrapped check sets", async () => {
+    const { host } = mount(() => {
+      const form = createForm(Signup);
+      return <form.TextField name="email" label="Email" validate={validateOn(work, "input")} />;
+    });
+    typeText(get(host, "[data-label=Email]"), "ada@y.io");
+    await settle();
+    expect(errorsOf(host, "Email")).toBe("work email");
+  });
+
   it("runs on the form's timing, shows its errors, and never reaches the registered component", async () => {
     const { host } = mountSignup(() => () => undefined);
     const email = get(host, "[data-label=Email]");
@@ -160,7 +170,7 @@ describe("the validate prop", () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 
-  it("takes an options object with debounce", async () => {
+  it("takes a debounced check", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const check = vi.fn<Check>((value) => (value.length < 3 ? "short" : undefined));
     const { host } = mountSignup(() => check, 200);

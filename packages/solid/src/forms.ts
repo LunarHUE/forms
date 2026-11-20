@@ -105,8 +105,8 @@ export type FormComponent<T> = (props: {
 /**
  * The `validate` prop of `Field` and of the bound registered components. It
  * takes what `createValidator` takes, typed from the field: a validator
- * function, a Standard Schema, or either one with options such as
- * `debounce`. `undefined`, `null` or `false` add none.
+ * function, a Standard Schema, or either one wrapped by `debounced`,
+ * `validateOn` or `recheckOnSubmit`. `undefined`, `null` or `false` add none.
  *
  * The validator runs only while the component is mounted. When the
  * component's owner is disposed it is removed along with the errors it set.
@@ -117,7 +117,7 @@ export type FormComponent<T> = (props: {
  * its own errors.
  *
  * The component registers once, at mount, with the kind of validator and
- * the options it finds then. When the prop is reactive and later gives
+ * the timing tags it finds then. When the prop is reactive and later gives
  * another function, each run calls the function the prop gives when the run
  * starts, without registering again. A schema is read at mount only.
  */

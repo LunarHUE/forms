@@ -16,6 +16,7 @@ import { For, Match, Show, Switch, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
+  debounced,
   Items,
   createDisabledErrors,
   createField,
@@ -590,8 +591,8 @@ describe("registered field components", () => {
         }}
       />
     );
-    void (<form.NumberField name="age" label="Age" validate={{ validate: (value) => (value === undefined ? { message: "Required" } : null), debounce: 300 }} />);
-    void (<form.Field name="age" validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null), debounce: 300 }}>{() => null}</form.Field>);
+    void (<form.NumberField name="age" label="Age" validate={debounced((value) => (value === undefined ? { message: "Required" } : null), 300)} />);
+    void (<form.Field name="age" validate={debounced((value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null), 300)}>{() => null}</form.Field>);
     void (<form.Field name="name" validate={false}>{() => null}</form.Field>);
     void (<billing.TextField name="city" label="City" validate={(value) => (expectTypeOf(value).toEqualTypeOf<string>(), null)} />);
     void (<billing.Field name="geo.lat" validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>{() => null}</billing.Field>);

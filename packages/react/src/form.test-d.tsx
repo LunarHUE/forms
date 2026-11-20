@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { ComponentProps } from "react";
 import {
+  debounced,
   Items,
   useItems,
   createForms,
@@ -241,8 +242,8 @@ function ValidateProps() {
           return null;
         }}
       />
-      <form.NumberField name="age" label="Age" validate={{ validate: (value) => (value === undefined ? { message: "Required" } : null), debounce: 300 }} />
-      <form.Field name="age" validate={{ validate: (value: number | undefined) => (value === 0 ? { message: "Zero" } : null), debounce: 300 }}>
+      <form.NumberField name="age" label="Age" validate={debounced((value) => (value === undefined ? { message: "Required" } : null), 300)} />
+      <form.Field name="age" validate={debounced((value: number | undefined) => (value === 0 ? { message: "Zero" } : null), 300)}>
         {(field) => <input {...inputProps(field, { kind: "number" })} />}
       </form.Field>
       <form.Field handle={qty} validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>

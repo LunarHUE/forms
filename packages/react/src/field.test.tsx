@@ -2,12 +2,15 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  debounced,
+  validateOn,
   Items,
   createForms,
   type FieldApi,
   type FormOf,
   inputProps,
   type LeafHandle,
+  type StandardSchemaV1,
   useField,
   useForm,
   useFormState,
@@ -159,7 +162,7 @@ function Name(props: { readonly validator: Check; readonly debounce?: number }) 
   const form = useForm(signup);
   const name = form.root.at("name");
   const input: ValidatorInput<string> =
-    props.debounce === undefined ? (value) => toError(props.validator(value)) : { validate: (value) => toError(props.validator(value)), debounce: props.debounce };
+    props.debounce === undefined ? (value) => toError(props.validator(value)) : debounced((value) => toError(props.validator(value)), props.debounce);
   useValidator(name, input);
   const errors = useField(name, (snapshot) => snapshot.errors.map((error) => error.message).join(","));
   return (
@@ -173,7 +176,34 @@ function Name(props: { readonly validator: Check; readonly debounce?: number }) 
   );
 }
 
+/** Writes a new schema object on every render and wraps it inline. */
+function InlineSchema(props: { readonly validate: (value: unknown) => StandardSchemaV1.Result<unknown> }) {
+  const form = useForm(signup);
+  const name = form.root.at("name");
+  const schema: StandardSchemaV1<string, unknown> = { "~standard": { version: 1, vendor: "test", validate: props.validate } };
+  useValidator(name, validateOn(schema, "blur"));
+  const errors = useField(name, (snapshot) => snapshot.errors.map((error) => error.message).join(","));
+  return (
+    <>
+      <input aria-label="name" {...useInputProps(name)} />
+      <p role="status">{errors}</p>
+    </>
+  );
+}
+
 describe("useValidator", () => {
+  it("registers once for a schema wrapped inline", () => {
+    const validate = vi.fn<(value: unknown) => StandardSchemaV1.Result<unknown>>((value) => (value === "" ? { issues: [{ message: "required" }] } : { value }));
+    render(<InlineSchema validate={validate} />);
+    const input = screen.getByLabelText("name");
+    fireEvent.change(input, { target: { value: "a" } });
+    fireEvent.blur(input);
+    // The blur armed the registration. Had a render registered it again, typing would run nothing.
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByRole("status").textContent).toBe("required");
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
+
   it("registers once for an inline function and calls the latest one", async () => {
     const first = vi.fn<Check>((value) => (value === "" ? "first" : undefined));
     const second = vi.fn<Check>((value) => (value === "" ? "second" : undefined));

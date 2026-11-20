@@ -3,7 +3,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import type { FormError } from "@lunarhue/forms-core";
-import { createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf } from "./index.js";
+import { debounced, createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -33,7 +33,7 @@ describe("with no plugins", () => {
           {(field) => field.value}
         </form.Field>
         <form.TextField name="name" label="Name" validate={required} />
-        <scope.TextField name="name" label="Name" validate={{ validate: required, debounce: 100 }} />
+        <scope.TextField name="name" label="Name" validate={debounced(required, 100)} />
       </>
     );
   }

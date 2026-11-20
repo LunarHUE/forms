@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { ReactNode } from "react";
 import {
+  debounced,
   type Choice,
   createForms,
   type FieldApi,
@@ -142,7 +143,7 @@ function ValidateUses() {
       <form.CheckboxGroupField
         name="channels"
         options={[{ value: "sms", label: "SMS" }]}
-        validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), debounce: 300 }}
+        validate={debounced((value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), 300)}
       />
       <form.SelectField
         handle={form.root.at("country")}
