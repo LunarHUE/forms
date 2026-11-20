@@ -161,6 +161,19 @@ describe("Fields", () => {
     expect(row(root, ["name"])?.textContent).toContain('"Grace"');
   });
 
+  it("shows a write that lands after the tab renders but before its effects run", async () => {
+    const store = form({ name: "Ada" });
+    const root = await open();
+    button(root, "Fields").click();
+    // Preact renders on a microtask and runs effects a frame later.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(row(root, ["name"])?.textContent).toContain('"Ada"');
+    store.root.at("name").setValue("Grace");
+    await frame();
+    expect(row(root, ["name"])?.textContent).toContain('"Grace"');
+  });
+
   it("walks into a row only once it is expanded, with array items by key", async () => {
     const store = form({ address: { city: "London" }, tags: ["a", "b"] });
     const root = await open();
