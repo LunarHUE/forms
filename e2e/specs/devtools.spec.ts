@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { basicScenario, devtoolsParam, type ScenarioId, scenarios, testIds } from "../contract/index.js";
+import { basicScenario, devtoolsParam, inspectScenario, type ScenarioId, scenarios, testIds } from "../contract/index.js";
 import { consoleProblems, expect, input, open, test } from "./fixtures.js";
 
 // The apps install `devtools()` with an `enabled` that reads `?devtools`. They
@@ -11,6 +11,9 @@ const host = (page: Page): Locator => page.locator("[data-lunarhue-forms-devtool
 
 /** A row of the Fields tab by its stable path. */
 const row = (page: Page, path: readonly string[]): Locator => page.locator(`[data-path='${JSON.stringify(path)}']`);
+
+/** The hover card for the field named `name`. */
+const card = (page: Page, name: string): Locator => page.getByRole("region", { name: `Field ${name}` });
 
 /** Opens a scenario's page with the devtools on and waits for it to hydrate and for the panel. */
 async function openWithDevtools(page: Page, id: ScenarioId): Promise<void> {
@@ -57,5 +60,52 @@ test.describe("devtools", () => {
     await input(page, labels.name).blur();
     await expect(row(page, ["name"])).toContainText("invalid");
     await expect(row(page, ["name"])).toContainText(basicScenario.errors.name);
+  });
+
+  test("the hover card finds a radio group's field from either radio, and a click pins it", async ({ page }) => {
+    const { labels } = inspectScenario;
+    await openWithDevtools(page, "inspect");
+    await page.getByRole("button", { name: "Inspect fields on the page" }).click();
+    await page.getByLabel(labels.pro).hover();
+    await expect(card(page, "plan")).toContainText('"free"');
+    await page.getByLabel(labels.free).hover();
+    await expect(card(page, "plan")).toBeVisible();
+    await expect(page.locator(".outline.field")).toHaveCount(2);
+    // The click pins the card and never reaches the radio.
+    await page.getByLabel(labels.pro).click();
+    await expect(page.getByRole("button", { name: "Unpin the field card" })).toBeVisible();
+    await expect(page.getByLabel(labels.pro)).not.toBeChecked();
+    await expect(row(page, ["plan"])).toHaveAttribute("aria-current", "true");
+    await page.getByRole("button", { name: "Unpin the field card" }).click();
+    await expect(card(page, "plan")).toHaveCount(0);
+  });
+
+  test("holding Alt shows the hover card for a custom input that records itself with a field ref", async ({ page }) => {
+    const { labels } = inspectScenario;
+    await openWithDevtools(page, "inspect");
+    const meter = page.getByRole("meter", { name: labels.rating });
+    await page.keyboard.down("Alt");
+    await meter.hover();
+    await expect(card(page, "rating")).toContainText("3");
+    await page.keyboard.up("Alt");
+    await expect(card(page, "rating")).toHaveCount(0);
+    // With Alt up the page gets its clicks, and the card would follow the value.
+    await page.getByRole("button", { name: labels.raise }).click();
+    await expect(meter).toHaveText("4");
+    await page.keyboard.down("Alt");
+    await meter.hover({ position: { x: 1, y: 1 } });
+    await expect(card(page, "rating")).toContainText("4");
+    await page.keyboard.up("Alt");
+  });
+
+  test("hovering a row of the Fields tab outlines the field's elements", async ({ page }) => {
+    await openWithDevtools(page, "inspect");
+    await page.getByRole("tab", { name: "Fields" }).click();
+    await row(page, ["plan"]).hover();
+    await expect(page.locator(".outline.field")).toHaveCount(2);
+    await row(page, ["rating"]).hover();
+    await expect(page.locator(".outline.field")).toHaveCount(1);
+    await page.mouse.move(0, 0);
+    await expect(page.locator(".outline.field")).toHaveCount(0);
   });
 });
