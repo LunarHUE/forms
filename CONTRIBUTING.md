@@ -110,6 +110,68 @@ tarballs in dependency order. It skips versions already on npm, so it is safe
 to run again after a failure. Never run `npm publish` inside a package
 folder. That ships `workspace:` versions nobody can install.
 
+Pushing the tags also deploys the docs for the release. See below.
+
+## Docs deploys
+
+The docs site is the Cloudflare Pages project `lunarhue-forms-docs`.
+
+| Where | What | When |
+| --- | --- | --- |
+| forms.lunarhue.dev | the latest release | a push of a `@lunarhue/forms-core@<version>` tag |
+| next.forms.lunarhue.dev | `main` | every push to `main` that touches the docs or packages |
+| `<branch>.lunarhue-forms-docs.pages.dev` | a pull request | every push to a pull request from this repo |
+
+Production shows the latest release because `main` documents APIs that
+aren't on npm yet. The packages release together, so the core package's tag
+stands for the release. A prerelease tag, or a tag older than the newest
+release, deploys nothing.
+
+A production deploy builds the tag once and uploads the build to the
+`release-candidate` alias. `apps/docs/scripts/smoke.ts` then checks that
+deployment, and only if it passes does the same build go to production. A
+deploy of `main` runs the same test against `next` and only reports the
+result, as a warning on the run. To run the test yourself, against a
+deployment or a local `bun run preview`:
+
+```sh
+cd apps/docs
+bun run smoke https://next.lunarhue-forms-docs.pages.dev
+```
+
+**Redeploy.** Run "Docs production" from the Actions tab. It deploys the
+latest release tag and uses the smoke test from the branch you run it on, so
+a fix to the test on `main` applies without a new release. "Docs deploy" can
+be run by hand on `main` to redeploy `next`.
+
+**Roll back.** In the Cloudflare dashboard, open Workers & Pages,
+`lunarhue-forms-docs`, Deployments, find an earlier production deployment
+and choose "Rollback to this deployment". The API does the same:
+
+```sh
+npx wrangler pages deployment list --project-name=lunarhue-forms-docs --environment=production
+curl -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/lunarhue-forms-docs/deployments/<deployment-id>/rollback"
+```
+
+A rollback lasts until the next release tag or manual run deploys again.
+
+**Setup.** Until both secrets exist, every deploy skips with a notice.
+
+- Repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The
+  token needs one permission: Account, Cloudflare Pages, Edit, scoped to
+  the account that owns the project.
+- The Pages project's production branch is `main`. The workflows deploy to
+  it only from a release tag.
+- Custom domain `forms.lunarhue.dev` on the project, for production.
+- Custom domain `next.forms.lunarhue.dev` on the project, with its DNS
+  record changed to a CNAME to `next.lunarhue-forms-docs.pages.dev`, so it
+  serves the `next` alias instead of production.
+- Required status checks on `main`: `checks`, `docs`, `e2e (chromium)` and
+  `changeset`. Don't require "Docs deploy": it only runs when the docs or
+  packages change, so a required check would never report on other pull
+  requests.
+
 ## Size
 
 Each entry point has a limit in its package's `size-limit` list, and
