@@ -25,7 +25,7 @@ Working examples:
 [Zustand](https://forms.lunarhue.dev/react/integrations/zustand) and
 [Solid signals](https://forms.lunarhue.dev/solid/integrations/solid-signals) on the docs site.
 
-To bind to anything else, use `bind()` from your adapter's `plugins/bind`
+To bind to anything else, use `bind()` from your adapter's `plugins`
 entry. The [main README](https://github.com/LunarHUE/forms#readme) has the plugin guide.
 
 MIT licensed.
