@@ -191,7 +191,6 @@ spec is skipped, and the reason shows in the run's list of skips.
 | Capability | Lacked by | Why |
 | --- | --- | --- |
 | `generatedIds` | `react16`, `react17` | React before 18 has no `useId`, so a form with no `id` gets a different id on the server and the client. The React pages pass `serverId(scenario.id)` to `useForm`, which gives the form an `id` before 18, as the adapter's docs say, and leaves it out from 18. The one spec that checks generated ids skips on 16 and 17. |
-| `focusedMoves` | `solid1` | Solid 1's `For` moves a row's DOM nodes with `insertBefore`, which takes the focused input out of the document and blurs it. Solid 2 moves them with `moveBefore`, which keeps focus. The focus half of the row-move spec skips on Solid 1. The half that checks the input and key still runs. |
 
 Use a capability for something the major can't do. A spec that should pass
 and doesn't is a known failure, below.

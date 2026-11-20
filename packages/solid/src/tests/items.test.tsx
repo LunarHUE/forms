@@ -77,6 +77,25 @@ describe("Items", () => {
     expect(new Set(rowBodies).size).toBe(4);
   });
 
+  it("keeps focus on a row's input when the row moves", async () => {
+    const { form, host } = mountList();
+    const rows = form.root.at("rows");
+    const [, b] = rowInputs(host);
+    if (!b) throw new Error("Expected three rows.");
+    b.focus();
+
+    // jsdom has no moveBefore, so both majors move the row with insertBefore, which blurs it.
+    rows.move(1, 0);
+    await settle();
+    expect(rowInputs(host)[0]).toBe(b);
+    expect(document.activeElement).toBe(b);
+
+    rows.move(0, 2);
+    await settle();
+    expect(rowInputs(host)[2]).toBe(b);
+    expect(document.activeElement).toBe(b);
+  });
+
   it("shows the fallback while the array is empty", async () => {
     const { form, host } = mountList();
     form.root.at("rows").setValue([]);

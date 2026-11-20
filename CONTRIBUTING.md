@@ -146,7 +146,9 @@ oxlint enforces most of it. The rest:
 
 - Unit tests sit next to the file they test as `*.test.ts`. Type tests are
   `*.test-d.ts`.
-- A bug fix comes with a test that fails without the fix.
+- A bug fix comes with a regression test that fails without the fix. If a
+  user can hit the bug while using a form in a browser, it also needs an e2e
+  spec, as well as the unit test.
 - Behaviour a user can see in a browser belongs in the `e2e` suite, written
   once and run against every adapter. If a spec passes on one adapter and
   fails on another, that is a bug, not a difference to document.
