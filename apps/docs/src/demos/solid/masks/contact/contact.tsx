@@ -1,26 +1,14 @@
-import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
-import { digits, mask, masked } from "@lunarhue/forms-solid/plugins";
-import { PhoneInput } from "./PhoneInput";
+import { createForm, createForms } from "@lunarhue/forms-solid";
+import { mask } from "@lunarhue/forms-solid/plugins";
+import { PhoneField } from "./PhoneField";
 import { docsDevtools } from "@/devtools/enabled";
 
-// "5551234567" shows as "(555) 123-4567".
-function formatPhone(value: string) {
-  const area = value.slice(0, 3);
-  const prefix = value.slice(3, 6);
-  const line = value.slice(6, 10);
-  if (value.length > 6) return `(${area}) ${prefix}-${line}`;
-  if (value.length > 3) return `(${area}) ${prefix}`;
-  return area;
-}
-
-// Every PhoneField stores digits and shows them formatted. The store only
-// ever holds digits, so `onSubmit` gets digits.
-const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
-
+// PhoneField brings its mask part. The form only installs the plugin.
 const forms = createForms({ plugins: [mask(), docsDevtools], fields: { PhoneField } });
 
 const contact = forms.define({
   defaultValues: { phone: "" },
+  // The store only ever holds digits, so `onSubmit` gets digits.
   onSubmit: (value) => value.phone,
 });
 
