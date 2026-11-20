@@ -54,6 +54,16 @@ button that opens a bottom sheet.
   turns on.
 - The Plugins tab lists every plugin on the form in the order their hooks
   run, with each one's form meta and the keys of its API on `store.plugins`.
+- The inspect button, or holding Alt, shows a card with a field's facts for
+  the input under the pointer. A radio group's radios all find their one
+  field, and a custom input finds its field once it has the adapter's field
+  ref (`useFieldRef` in React, `fieldRef` in Solid). Click to pin the card
+  and select the field's row. The click never reaches the page. Escape ends
+  inspecting and unpins.
+- Hovering a row of the Fields tab outlines the field's elements on the page.
+
+Vue doesn't record elements yet, so a Vue form has no inspect button and no
+outlines.
 
 An error that one of our packages raised shows as its code, linked to its
 entry on the [errors page](https://forms.lunarhue.dev/errors).
