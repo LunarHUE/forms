@@ -61,6 +61,14 @@ button that opens a bottom sheet.
   and select the field's row. The click never reaches the page. Escape ends
   inspecting and unpins.
 - Hovering a row of the Fields tab outlines the field's elements on the page.
+- The Bundle tab lists the parts the form uses: core, the adapter, then
+  every plugin, third-party ones too. Sizes come from your production build,
+  so the column stays empty until a bundler plugin measures it. The Vite
+  plugin, `@lunarhue/forms-devtools/vite`, is coming. It defines
+  `__LUNARHUE_FORMS_SIZES__` as the URL of a `SizeReport`, which the tab
+  fetches the first time it opens and matches to its rows by `kind` and
+  `name`. Each part shows minified bytes. Compressed bytes don't add up
+  across parts, so only the whole app's total has a gzip size.
 
 Vue doesn't record elements yet, so a Vue form has no inspect button and no
 outlines.
