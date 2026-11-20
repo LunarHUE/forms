@@ -119,12 +119,20 @@ const onStorage = (event: StorageEvent): void => {
   emit();
 };
 
+// A client-side navigation can change the last-used framework (the boot
+// script saves the new page's), so read storage again after each swap.
+const onSwap = (): void => {
+  state = readStorage();
+  emit();
+};
+
 /** The current state. Reads localStorage on first use; on the server it is always `DEFAULT_STATE`. */
 export const getState = (): DocsState => {
   if (typeof window === "undefined") return DEFAULT_STATE;
   if (!state) {
     state = readStorage();
     window.addEventListener("storage", onStorage);
+    document.addEventListener("astro:after-swap", onSwap);
   }
   return state;
 };
@@ -169,7 +177,10 @@ export const setDevtools = (devtools: boolean): void => setState({ devtools });
 
 /** Test helper: forgets the cached state and listeners. */
 export const resetStoreForTests = (): void => {
-  if (typeof window !== "undefined") window.removeEventListener("storage", onStorage);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("storage", onStorage);
+    document.removeEventListener("astro:after-swap", onSwap);
+  }
   state = undefined;
   listeners.clear();
 };
