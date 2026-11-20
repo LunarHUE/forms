@@ -1,6 +1,6 @@
 import { type AnyFieldHandle, attach, type FieldSnapshot, type ValidatorInput } from "@lunarhue/forms-core";
 import { type ComponentType, createElement, Fragment, type ReactElement, type ReactNode } from "react";
-import { type FieldView, fieldViewSource } from "./field-api.js";
+import { type FieldView, fieldViewSource, pickApi } from "./field-api.js";
 import { type IsEqual, useValidator } from "./field.js";
 import type { FieldComponentMap } from "./scope.js";
 import { useSelected } from "./select.js";
@@ -35,8 +35,6 @@ function targetOf(root: AnyHandle, props: Target): AnyHandle {
   for (const segment of (props.name ?? "").split(".")) handle = handle.at(segment);
   return handle;
 }
-
-const pickApi = (view: FieldView): unknown => view.api;
 
 /**
  * Makes the bound components rooted at `root`. Callers cache the result per

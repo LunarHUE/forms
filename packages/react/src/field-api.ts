@@ -22,6 +22,9 @@ const notCommands = new Set(["peek", "registerValidator"]);
 const commandCache = new WeakMap<HandleLike, Readonly<Record<string, unknown>>>();
 const viewSources = new WeakMap<HandleLike, Source<FieldView>>();
 
+/** Picks the field object from a view. */
+export const pickApi = (view: FieldView): unknown => view.api;
+
 /** The handle's commands, copied once. Core's commands are closures, so they need no binding. */
 const commandsOf = (handle: HandleLike): Readonly<Record<string, unknown>> =>
   cached(commandCache, handle, () =>

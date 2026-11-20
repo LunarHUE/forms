@@ -11,8 +11,10 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import { useEffect, useRef } from "react";
+import { type FieldView, fieldViewSource, pickApi } from "./field-api.js";
+import type { FieldApiOf } from "./scope.js";
 import { useSelected } from "./select.js";
-import { fieldSource, formSource, storeOf } from "./sources.js";
+import { formSource, storeOf } from "./sources.js";
 
 /**
  * What the hooks need from a handle: its id, its stable path, and a store to
@@ -43,26 +45,34 @@ export type IsEqual<T> = (previous: T, next: T) => boolean;
 export const whole = <S>(snapshot: S): S => snapshot;
 
 /**
- * Reads a field's snapshot and re-renders when it changes. It reads through
+ * Reads a field and re-renders when it changes. It reads through
  * `useSyncExternalStore` on the handle's store, with the store's server
  * snapshot for server rendering and hydration.
  *
- * With `select`, the component gets what `select` returns and re-renders only
- * when that changes by `isEqual`. `select` may be an inline function. It must
- * return the same value, by `isEqual`, for the same snapshot.
+ * Without `select`, it returns the field object, the same one `form.Field`
+ * gives its children: the snapshot's members, the handle's commands and the
+ * pieces that bind an element. Pass it to a props function such as
+ * `inputProps`.
+ *
+ * With `select`, the component gets what `select` returns from the snapshot
+ * and re-renders only when that changes by `isEqual`. `select` may be an
+ * inline function. It must return the same value, by `isEqual`, for the same
+ * snapshot.
  */
 export const useField: {
-  <H extends HandleLike>(handle: H): SnapshotOf<H>;
+  <H extends HandleLike>(handle: H): FieldApiOf<H>;
   <H extends HandleLike, T>(handle: H, select: (snapshot: SnapshotOf<H>) => T, isEqual?: IsEqual<T>): T;
 } = <H extends HandleLike, T>(
   handle: H,
   select?: (snapshot: SnapshotOf<H>) => T,
   isEqual?: IsEqual<T>,
 ) => {
-  // Snapshots of `handle` are its value and error types, which `~types` records.
+  // Snapshots of `handle` are its value and error types, which `~types` records,
+  // and without `select` the overloads type the field object.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const pick = (select ?? whole) as (snapshot: FieldSnapshot<unknown, unknown>) => T;
-  return useSelected(fieldSource(handle), pick, isEqual);
+  const pick = select as ((snapshot: FieldSnapshot<unknown, unknown>) => T) | undefined;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return useSelected(fieldViewSource(handle), pick === undefined ? (pickApi as (view: FieldView) => T) : (view: FieldView) => pick(view.snapshot), isEqual);
 };
 
 /** What `useFormState` needs from a store. Every `FormStore` fits. `Installed` is the names of its plugins. */
