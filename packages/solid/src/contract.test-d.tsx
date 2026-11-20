@@ -4,6 +4,7 @@ import type {
   FieldHandle,
   FormError,
   FormStore,
+  HandleBase,
   ItemHandle,
   LeafHandle,
   ObjectHandle,
@@ -221,7 +222,27 @@ function SignupPage() {
   );
 }
 
-// A second form with a wider object that the same fieldset fits.
+// A fieldset generic in the value, so it takes handles of wider objects too.
+function AnyAddressFields<A extends Address>(props: { field: HandleOf<typeof AddressShape, A>; title: string }) {
+  const scope = AddressShape.scope(props.field);
+  // A child that A's constraint names reads as the constraint's type.
+  // (A plain assignment: expectTypeOf can't check a type that depends on A.)
+  const street: LeafHandle<string> = props.field.at("street");
+  void street;
+  return (
+    <fieldset>
+      <legend>{props.title}</legend>
+      <scope.TextField name="street" label="Street" />
+      <scope.TextField handle={props.field.at("city")} label="City" />
+      <scope.Field name="zip">{(field) => <input {...inputProps(field)} />}</scope.Field>
+      <scope.Field name="geo.lat">{(field) => <span>{field.value}</span>}</scope.Field>
+      {/* @ts-expect-error: A's geo may be wider than Geo, so it needs a generic fieldset too */}
+      <GeoFields field={props.field.at("geo")} />
+    </fieldset>
+  );
+}
+
+// A second form with a wider object that only the generic fieldset fits.
 interface Office extends Address {
   phone: string;
 }
@@ -235,6 +256,8 @@ function CompanyPage() {
   const form = createForm(Company);
   return (
     <form.Form>
+      <AnyAddressFields field={form.root.at("office")} title="Office" />
+      {/* @ts-expect-error: an office has a phone the address fieldset would drop on a write */}
       <AddressFields field={form.root.at("office")} title="Office" />
       <SubmitButton label="Save" />
     </form.Form>
@@ -621,8 +644,8 @@ describe("scopes and fieldsets", () => {
     expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<Address>>();
     expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
     // A fieldset types the scope, with the shared plugins: `scope` takes the handle and nothing else.
-    expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: FieldHandle<Address>]>();
-    expectTypeOf<ReturnType<typeof AddressShape.scope>>().toEqualTypeOf<Scope<Address, FormError, Fields, "valibot" | "arrays">>();
+    expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: HandleBase<Address>]>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope<FieldHandle<Address>>>>().toEqualTypeOf<Scope<Address, FormError, Fields, "valibot" | "arrays">>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {

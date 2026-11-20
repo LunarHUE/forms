@@ -4,6 +4,7 @@ import type {
   Draft,
   ErrorOf,
   FieldHandle,
+  HandleBase,
   FieldSnapshot,
   FormError,
   HandleTypes,
@@ -366,10 +367,14 @@ export type BoundFieldComponents<V, E, F extends FieldComponentMap, Installed ex
   >;
 };
 
-/** The members every scope has besides the registered components. */
-export interface ScopeMembers<V, E, Installed extends string = never> {
+/**
+ * The members every scope has besides the registered components. `R` is the
+ * root handle's value type: a fieldset's scope types names by its shape `V`
+ * and keeps the handle it was given as `root`.
+ */
+export interface ScopeMembers<V, E, Installed extends string = never, R = V> {
   /** The scope's object handle. `name` paths start here. */
-  readonly root: FieldHandle<V, E, Installed>;
+  readonly root: FieldHandle<R, E, Installed>;
   /** Renders one field of this scope. */
   readonly Field: BoundField<V, E, Installed>;
 }
@@ -380,10 +385,11 @@ export interface ScopeMembers<V, E, Installed extends string = never> {
  * The form is the scope at its root plus the submit members. `Installed`
  * is the names of the form's plugins, see `ExactFieldApi`.
  */
-export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never> = ScopeMembers<
+export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never, R = V> = ScopeMembers<
   V,
   E,
-  Installed
+  Installed,
+  R
 > &
   BoundFieldComponents<V, E, F, Installed>;
 
@@ -405,8 +411,16 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
    * Returns the scope of `handle`, the same object `forms.scope` returns,
    * typed to the shape. The first call for a handle attaches the parts at
    * it. A cached lookup, not a hook.
+   *
+   * The handle's value may be any subtype of the shape, as in a component
+   * generic in it. Names and bound components are typed by the shape, and
+   * `root` keeps the handle's own value type, so writes through it still
+   * take the whole value.
    */
-  scope(handle: FieldHandle<V, E, N>): Scope<V, E, F, Installed | N>;
+  // It infers the handle, not W: a deferred FieldHandle<T> from a generic
+  // component isn't assignable to FieldHandle<W> on a method of an
+  // instantiated interface. HandleBase is covariant in its value.
+  scope<H extends HandleBase<V, E, N>>(handle: H): Scope<V, E, F, Installed | N, ValueOf<H>>;
   /**
    * The parts pinned at the dotted name `name`, for `define` to attach when
    * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
@@ -416,11 +430,14 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
 }
 
 /**
- * The handle type a fieldset component takes as a prop. A handle fits when
- * it is assignable to it, the rule core's handles follow: the same leaves,
- * and objects with at least the keys the shape has. So a handle of a wider
- * object, an item handle, or a handle from another form of the same
- * `createForms` fits, and a handle with a leaf of another type does not. A
+ * The handle type a fieldset component takes as a prop. Handles are exact
+ * in their value type, so `HandleOf<typeof Shape>` takes a handle whose
+ * value is the shape: an item handle or a field of another form of the same
+ * `createForms` fits, a handle of an object with more keys doesn't. A
  * fieldset with parts takes handles of forms that have their plugins.
+ *
+ * For a component that takes wider objects too, make it generic and pass
+ * the value type as `V`:
+ * `function AddressFields<A extends Address>(props: { field: HandleOf<typeof Shape, A> })`.
  */
-export type HandleOf<T> = FieldHandle<ValueOf<T>, ErrorOf<T>, PluginsOf<T>>;
+export type HandleOf<T, V extends ValueOf<T> = ValueOf<T>> = FieldHandle<V, ErrorOf<T>, PluginsOf<T>>;
