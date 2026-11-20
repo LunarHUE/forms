@@ -9,7 +9,6 @@ export const SECTION_IDS = [
   "plugins",
   "plugin-composition",
   "writing-plugins",
-  // No pages yet. Empty sections stay out of the sidebar.
   "compared",
   "integrations",
   "reference",
