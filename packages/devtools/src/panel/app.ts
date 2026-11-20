@@ -1,7 +1,7 @@
 import type { Path } from "@lunarhue/forms-core";
 import { Fragment, h, type JSX, type TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { Hook } from "../hook.js";
+import type { FormEntry, Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
 import { Bundle } from "./bundle.js";
 import { Fields } from "./fields.js";
@@ -81,10 +81,11 @@ interface View {
   readonly form: number;
   readonly expanded: ReadonlySet<string>;
   readonly row: Path | null;
+  readonly filter: string;
   readonly invalidOnly: boolean;
 }
 
-const fresh = (form: number): View => ({ form, expanded: new Set(), row: null, invalidOnly: false });
+const fresh = (form: number): View => ({ form, expanded: new Set(), row: null, filter: "", invalidOnly: false });
 
 export interface AppProps {
   readonly hook: Hook;
@@ -144,6 +145,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
       form: found.form.id,
       expanded: new Set([...(previous.form === found.form.id ? previous.expanded : []), ...ancestors(found.path)]),
       row: found.path,
+      filter: "",
       invalidOnly: false,
     }));
   };
@@ -202,9 +204,19 @@ export function App({ hook, host }: AppProps): JSX.Element {
         }),
       row: current.row,
       onRow: (row) => updateView(() => ({ row })),
+      filter: current.filter,
+      onFilter: (filter) => updateView(() => ({ filter })),
       invalidOnly: current.invalidOnly,
-      onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly, row: null })),
+      onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly })),
       onHover: shown.entry.adapter === undefined ? undefined : setRowHover,
+      onInspect:
+        shown.entry.adapter === undefined
+          ? undefined
+          : (path) => {
+              const handle = handleOf(shown, path);
+              (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+              setRowHover(path);
+            },
     });
   };
 
@@ -227,6 +239,8 @@ export function App({ hook, host }: AppProps): JSX.Element {
     // The clear button takes the chevron's place.
     selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null,
   );
+
+  const status = selected ? h(SubmitStatus, { entry: selected.entry }) : null;
 
   const formsMenu = h(
     "div",
@@ -333,6 +347,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
               "div",
               { class: "sheet-head", ref: menuButtons },
               chip,
+              status,
               inspectButton,
               h("div", { class: "end" }, onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null, iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })),
               openMenu,
@@ -368,12 +383,27 @@ export function App({ hook, host }: AppProps): JSX.Element {
           onClick: (event) => toggleMenu("dock", event),
         }),
         chip,
+        status,
         h("div", { class: "divider", "aria-hidden": "true" }),
         inspectButton,
         tabList(tab, openTab),
         openMenu,
       ),
     ),
+  );
+}
+
+/** The form's last submission, as `submit failed` and the like. Nothing before the first. */
+function SubmitStatus({ entry }: { readonly entry: FormEntry }): JSX.Element | null {
+  const last = () => entry.submissions.items[entry.submissions.items.length - 1]?.status;
+  const status = last();
+  useFrame(() => [last()]);
+  if (status === undefined) return null;
+  return h(
+    "span",
+    { class: "status", "data-status": status },
+    "submit ",
+    h("span", { class: status === "failed" || status === "invalid" ? "error" : "soft" }, status === "open" ? "running" : status),
   );
 }
 

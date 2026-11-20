@@ -3,7 +3,7 @@ import { Fragment, h, type JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
 import { fieldFacts } from "./fields.js";
-import { hasPlugin, type Listed } from "./forms.js";
+import type { Listed } from "./forms.js";
 import { useFrame } from "./frame.js";
 import { iconButton } from "./icons.js";
 import { pathKey } from "./values.js";
@@ -147,13 +147,12 @@ export interface FieldCardProps {
   readonly onClose?: (() => void) | undefined;
 }
 
-/** The hover card: a field's facts in a card next to its element. */
+/** The hover card: a field's value, baseline and writes in a card next to its element. */
 export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | null {
   const { form, path, element } = found;
   const { entry } = form;
   const connected = element.isConnected;
   const snapshot = entry.store.getSnapshot(path);
-  const dirty = hasPlugin(entry, "dirty");
   useFrame(() => [
     entry.store.getSnapshot(path),
     entry.ctx.baseline.read(path)?.value,
@@ -182,6 +181,6 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
       h("span", { class: "muted truncate" }, form.label),
       onClose ? iconButton("Unpin the field card", "close", { class: "icon small", onClick: onClose }) : null,
     ),
-    h("dl", { class: "facts" }, ...fieldFacts(entry, path, snapshot, dirty)),
+    fieldFacts(entry, path, snapshot),
   );
 }

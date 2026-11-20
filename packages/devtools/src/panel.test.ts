@@ -228,7 +228,7 @@ describe("Fields", () => {
     expect(row(root, ["tags", keys[1] ?? ""])?.textContent).toContain('1 "b"');
   });
 
-  it("shows flags, with dirty only when the form has dirty()", async () => {
+  it("shows flags as icons, with dirty only when the form has dirty()", async () => {
     const store = form({ name: "" });
     const root = await open();
     button(root, "Fields").click();
@@ -236,41 +236,80 @@ describe("Fields", () => {
     store.root.at("name").setValue("x");
     store.root.at("name").setTouched(true);
     await frame();
-    expect(row(root, ["name"])?.querySelector(".flags")?.textContent).not.toContain("dirty");
-    expect(row(root, ["name"])?.querySelector(".flags")?.textContent).toContain("edited");
+    const flags = [...(row(root, ["name"])?.querySelectorAll(".flag") ?? [])].map((flag) => flag.getAttribute("aria-label"));
+    expect(flags).toEqual(["edited: Changed by the user since the last reset", "touched: Blurred since the last reset"]);
   });
 
-  it("filters to invalid fields and shows the selected field's errors by source", async () => {
+  it("shows a flag's detail in a hover card: the errors by source for invalid, the last write for edited", async () => {
     const store = form({ name: "", email: "" });
-    store.setErrors({ fields: { email: { message: "Taken." } } });
     const root = await open();
     button(root, "Fields").click();
     await frame();
-    const filter = root.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    filter?.click();
+    store.root.at("email").setValue("a@b");
+    store.setErrors({ fields: { email: { message: "Taken." } } });
     await frame();
-    expect(row(root, ["name"])).toBeNull();
-    expect(row(root, ["email"])?.textContent).toContain("Taken.");
-    row(root, ["email"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
+    row(root, ["email"])?.querySelector(".flag.invalid")?.dispatchEvent(new Event("pointerenter"));
     await frame();
-    const detail = root.querySelector('[aria-label="Field detail"]');
-    expect(detail?.textContent).toContain("setErrors Taken.");
-    expect(detail?.textContent).toContain('["email"]');
+    expect(root.querySelector(".hovercard")?.textContent).toBe("InvalidHas errorssetErrorsTaken.");
+    row(root, ["email"])?.querySelector(".flag.invalid")?.dispatchEvent(new Event("pointerleave"));
+    row(root, ["email"])?.querySelector(".flag.edited")?.dispatchEvent(new Event("pointerenter"));
+    await frame();
+    expect(root.querySelector(".hovercard")?.textContent).toContain('"""a@b"user');
   });
 
-  it("shows the last write with its cause and the baseline", async () => {
+  it("filters by name into a flat list, and to the fields with errors", async () => {
+    const store = form({ name: "", address: { city: "", zip: "" } });
+    store.setErrors({ fields: { "address.zip": { message: "No." } } });
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    const box = root.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!box) throw new Error("No filter box.");
+    box.value = "CI";
+    box.dispatchEvent(new Event("input"));
+    await frame();
+    expect([...root.querySelectorAll("[data-path]")].map((item) => item.getAttribute("data-path"))).toEqual(['["address","city"]']);
+    expect(row(root, ["address", "city"])?.textContent).toContain("address.city");
+    box.value = "";
+    box.dispatchEvent(new Event("input"));
+    button(root, "Only fields with errors").click();
+    await frame();
+    expect([...root.querySelectorAll("[data-path]")].map((item) => item.getAttribute("data-path"))).toEqual(['["address","zip"]']);
+    box.value = "name";
+    box.dispatchEvent(new Event("input"));
+    await frame();
+    expect(root.textContent).toContain("No field has an error.");
+  });
+
+  it("shows the selected field's value, baseline and writes with their causes", async () => {
     const store = form({ name: "Ada" });
     const root = await open();
     button(root, "Fields").click();
     await frame();
     row(root, ["name"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
     await frame();
-    expect(root.querySelector('[aria-label="Field detail"]')?.textContent).toContain("same as value");
+    const detail = () => root.querySelector('[aria-label="Field detail"]')?.textContent ?? "";
+    expect(detail()).toBe('namevalue"Ada"baseline"Ada"writesnone logged');
     store.root.at("name").setValue("Grace");
+    store.root.at("name").setValue("Grace Hopper");
     await frame();
-    const detail = root.querySelector('[aria-label="Field detail"]')?.textContent ?? "";
-    expect(detail).toContain("value by user");
-    expect(detail).toContain('"Ada" → "Grace"');
+    expect(detail()).toBe('namevalue"Grace Hopper"baseline"Ada"writes"Grace""Grace Hopper"user"Ada""Grace"user');
+  });
+});
+
+describe("bar", () => {
+  it("shows how the selected form's last submission went", async () => {
+    const store = createFormsCore({ plugins: [devtools()] })
+      .define({ defaultValues: { name: "" }, onSubmit: () => Promise.reject(new Error("Down.")) })
+      .createStore(undefined, { id: "checkout" });
+    cleanups.push(store.subscribeForm(() => {}));
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    expect(root.querySelector(".status")).toBeNull();
+    await store.submit().catch(() => {});
+    await frame();
+    expect(root.querySelector(".status")?.textContent).toBe("submit failed");
   });
 });
 
@@ -401,7 +440,7 @@ describe("inspect", () => {
     expect(clicks).toBe(0);
     expect(card(root)?.querySelector('[aria-label="Unpin the field card"]')).not.toBeNull();
     expect(row(root, ["address", "city"])?.getAttribute("aria-current")).toBe("true");
-    expect(root.querySelector('[aria-label="Field detail"]')?.textContent).toContain('["address","city"]');
+    expect(root.querySelector('[aria-label="Field detail"] strong')?.textContent).toBe("address.city");
     button(root, "Unpin the field card").click();
     await frame();
     expect(card(root)).toBeNull();
@@ -460,6 +499,18 @@ describe("inspect", () => {
     expect(card(root)?.getAttribute("aria-label")).toBe("Field email");
   });
 
+  it("scrolls a field's element into view from its row's show button", async () => {
+    const store = form({ name: "" });
+    const input = field(store, ["name"]);
+    const scroll = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+    input.scrollIntoView = scroll;
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    button(root, "Show name on the page").click();
+    expect(scroll).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+  });
+
   it("outlines a field's elements while the pointer is over its row", async () => {
     const store = form({ name: "" });
     field(store, ["name"]);
@@ -479,7 +530,7 @@ describe("inspect", () => {
 /** The global a bundler plugin defines as the size report's URL. */
 const sizesKey = "__LUNARHUE_FORMS_SIZES__";
 
-/** The size the Bundle tab shows for a part, by its `kind:name`. */
+/** The size the Bundle tab shows for a part, by its `kind:name`: in kB in the graph, in bytes in the run order. */
 const sizeOf = (root: ShadowRoot, part: string) => root.querySelector(`[data-part="${part}"] .num`)?.textContent;
 
 describe("Bundle", () => {
@@ -500,7 +551,7 @@ describe("Bundle", () => {
     return store;
   }
 
-  it("lists core, the adapter and every plugin with no sizes until a bundler plugin measures the build", async () => {
+  it("shows core, the adapter and every plugin with no sizes until a bundler plugin measures the build", async () => {
     tracked();
     const root = await open();
     button(root, "Bundle").click();
@@ -534,12 +585,14 @@ describe("Bundle", () => {
     await frame();
     expect(fetch).toHaveBeenCalledWith("/sizes-joined.json");
     expect(root.querySelector(".note")?.textContent).toContain("measured, from the build at");
-    expect(sizeOf(root, "core:@lunarhue/forms-core")).toBe("21.34 kB");
-    expect(sizeOf(root, "adapter:test")).toBe("6.10 kB");
+    expect(sizeOf(root, "core:@lunarhue/forms-core")).toBe("21.3");
+    expect(sizeOf(root, "adapter:test")).toBe("6.1");
     expect(sizeOf(root, "plugin:thirdParty")).toBe("840 B");
-    // The report has no devtools part, so that row keeps its dash.
-    expect(sizeOf(root, "devtools:devtools")).toBe("–");
-    expect(root.querySelector("tfoot")?.textContent).toContain("182.40 kB");
+    // The report has no devtools part, which a production build leaves out.
+    expect(sizeOf(root, "devtools:devtools")).toBe("dev only");
+    // The graph's top bar is what the forms packages add up to.
+    expect(root.querySelector(".bar-part .num")?.textContent).toBe("28.3");
+    expect(root.querySelector(".graph-head")?.textContent).toContain("182.40 kB");
     button(root, "Fields").click();
     await frame();
     button(root, "Bundle").click();

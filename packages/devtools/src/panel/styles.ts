@@ -340,34 +340,37 @@ svg {
   color: var(--muted);
 }
 
-.toolbar {
+.filter {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   height: 40px;
-  padding: 0 16px;
+  padding: 0 8px 0 16px;
   border-bottom: 1px solid var(--border);
-  font: 12px/20px var(--sans);
   color: var(--muted);
 }
 
-.toolbar label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.toolbar input {
+.filter svg,
+.write svg {
   width: 14px;
   height: 14px;
-  margin: 0;
-  accent-color: var(--brand);
 }
 
-.toolbar .count {
-  margin-left: auto;
+.filter input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  font: 13px var(--sans);
+  color: var(--fg);
+  outline: none;
+}
+
+.filter [aria-pressed="true"] {
+  background: rgb(240 113 106 / 0.16);
+  color: var(--error);
 }
 
 .scroll {
@@ -386,9 +389,10 @@ svg {
 
 .row {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 4px 16px 4px calc(10px + var(--depth, 0) * 16px);
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px 0 calc(12px + var(--depth, 0) * 16px);
 }
 
 .row:hover {
@@ -398,6 +402,14 @@ svg {
 .row[aria-current="true"] {
   background: var(--active);
   box-shadow: inset 2px 0 var(--brand);
+}
+
+.row .icon {
+  background: var(--raised);
+}
+
+.row:not(:hover) > .icon {
+  visibility: hidden;
 }
 
 .twisty {
@@ -422,37 +434,75 @@ svg {
 }
 
 .row-main {
-  display: grid;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 12px;
   min-width: 0;
   text-align: left;
 }
 
-.row-value {
-  color: var(--muted);
-}
-
 .flags {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  font: 12px/20px var(--sans);
-  color: var(--muted);
+  gap: 4px;
 }
 
-.flag-invalid {
+.flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--soft);
+}
+
+.flag svg {
+  width: 12px;
+  height: 12px;
+}
+
+.flag.invalid {
+  background: rgb(240 113 106 / 0.16);
   color: var(--error);
 }
 
-.flag-validating {
-  color: var(--fg);
+.flag.validating,
+.flag.dirty {
+  color: var(--brand);
 }
 
-.row-error {
-  grid-column: 1 / -1;
-  font: 12px/18px var(--sans);
+.flag.dirty svg {
+  fill: currentColor;
+}
+
+.flag.validating svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hovercard {
+  position: fixed;
+  z-index: 2147483002;
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 12px 16px 0;
+  background: var(--raised);
+  font: 12px/20px var(--sans);
+  pointer-events: none;
+}
+
+.hovercard .facts {
+  padding: 8px 0 12px;
+}
+
+.hovercard strong {
+  font-weight: 500;
+  font-size: 13px;
 }
 
 .detail {
@@ -471,36 +521,65 @@ svg {
 }
 
 .detail-head strong {
+  flex: 1;
   font-weight: 500;
 }
 
-.detail-head .icon {
-  margin-left: auto;
-}
-
 .facts {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 6px 12px;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px 16px;
 }
 
-.facts dt {
+.facts:empty {
+  display: none;
+}
+
+.facts + .facts {
+  border-top: 1px solid var(--border);
+}
+
+.fact {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.term {
+  flex-shrink: 0;
+  min-width: 64px;
+  white-space: nowrap;
   font: 12px/20px var(--sans);
   color: var(--muted);
 }
 
-.facts dd {
-  margin: 0;
+.writes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 
-.facts ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.write {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.write svg {
+  color: var(--muted);
+}
+
+.cause {
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: var(--sans);
+  color: var(--muted);
 }
 
 pre {
@@ -508,12 +587,6 @@ pre {
   font: inherit;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.source {
-  font-family: var(--sans);
-  font-size: 12px;
-  color: var(--muted);
 }
 
 /* Log and Plugins */
@@ -576,32 +649,85 @@ code {
   color: var(--brand);
 }
 
-.sizes {
-  width: 100%;
-  margin-top: 4px;
-  border-collapse: collapse;
+.graph {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.sizes th,
-.sizes td {
+.graph-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font: 12px/20px var(--sans);
+}
+
+.fg {
+  font-family: var(--mono);
+  color: var(--fg);
+}
+
+.bar-row {
+  display: flex;
+  gap: 2px;
+}
+
+.bar-part {
+  display: flex;
+  flex-basis: 0;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #262f4d;
+  font: 12px/16px var(--sans);
+}
+
+.bar-row + .bar-row .bar-part {
+  background: #2f3c69;
+}
+
+.wedge + .bar-row .bar-part {
+  background: #3b4d8a;
+}
+
+.bar-part .num {
+  font-family: var(--mono);
+  color: #a9b6dc;
+}
+
+.wedge {
+  width: 100%;
+  height: 10px;
+  fill: #232a3d;
+  stroke: none;
+}
+
+.runs {
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.runs li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   height: 28px;
   padding: 0 16px;
-  text-align: left;
-  font-weight: normal;
 }
 
-.sizes thead th {
-  font: 12px/20px var(--sans);
-  color: var(--muted);
+.runs .runs-head {
+  font: 500 12px/16px var(--sans);
 }
 
-.sizes tfoot th,
-.sizes tfoot td {
-  border-top: 1px solid var(--border);
-}
-
-.sizes .num {
-  text-align: right;
+.runs .num {
+  margin-left: auto;
   white-space: nowrap;
 }
 
@@ -672,6 +798,18 @@ code {
   flex-direction: column;
   max-height: min(420px, calc(100vh - 16px));
   overflow: auto;
+}
+
+.status {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font: 13px/20px var(--sans);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.soft {
+  color: var(--soft);
 }
 
 .card .detail-head .muted {

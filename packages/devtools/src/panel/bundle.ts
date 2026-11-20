@@ -93,51 +93,89 @@ function source(url: string | undefined, result: Load | undefined): JSX.Element 
   );
 }
 
-const dash = (title: string) => h("span", { class: "muted", title }, "–");
+const sum = (items: readonly ({ readonly size: number | undefined } | undefined)[]) => items.reduce((total, item) => total + (item?.size ?? 0), 0);
 
-/** The Bundle tab: the parts the form uses and, once a bundler plugin measured the build, the bytes each adds. */
+/** A bar of the graph, as wide as its share of its row. */
+const bar = (label: string, size: number | undefined, grow: number, part?: string) =>
+  h(
+    "div",
+    { class: "bar-part", style: `flex-grow: ${grow}`, "data-part": part, "data-tip": size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}` },
+    h("span", { class: "truncate" }, label),
+    h("span", { class: "num" }, size === undefined ? "–" : (size / 1000).toFixed(1)),
+  );
+
+/**
+ * The Bundle tab: a graph of the bytes the forms packages add, core, the
+ * adapter and the plugins under their total and each plugin under the
+ * plugins, then the plugins in the order their hooks run. The sizes come from
+ * a bundler plugin's report; until one measured the build, the bars are
+ * even and show no sizes.
+ */
 export function Bundle({ entry }: { readonly entry: FormEntry }): JSX.Element {
   const url = sizesUrl();
   const result = useReport(url);
   const report = result?.state === "done" ? result.report : undefined;
-  const missing = report
-    ? "The report has no part with this kind and name."
-    : "Sizes come from your production build. Add @lunarhue/forms-devtools/vite to measure them.";
+  const rows = bundleRows(entry);
+  const sized = rows.map((row) => ({ row, size: partFor(report, row)?.minified }));
+  // devtools() is for development, so the graph leaves it out.
+  const [core, adapter, ...plugins] = sized;
+  const shipped = plugins.filter(({ row }) => row.kind === "plugin");
+  const pluginBytes = sum(shipped);
+  const total = sum([core, adapter]) + pluginBytes;
+  // Without sizes every bar weighs the same.
+  const weigh = (size: number | undefined) => (report ? (size ?? 0) : 1);
+  const top = [core, adapter].map((item) => weigh(item?.size));
+  const pluginsWeight = report ? pluginBytes : 1;
+  const start = (100 * ((top[0] ?? 0) + (top[1] ?? 0))) / ((top[0] ?? 0) + (top[1] ?? 0) + pluginsWeight || 1);
   return h(
     "div",
     { class: "bundle scroll" },
     source(url, result),
     h(
-      "table",
-      { class: "sizes", "aria-label": "Bundle" },
-      h("thead", null, h("tr", null, h("th", null, "part"), h("th", null, "kind"), h("th", { class: "num" }, "minified"))),
+      "div",
+      { class: "graph", "aria-label": "Bundle" },
       h(
-        "tbody",
-        null,
-        bundleRows(entry).map((row) => {
-          const part = partFor(report, row);
-          return h(
-            "tr",
-            { key: `${row.kind}:${row.label}`, "data-part": `${row.kind}:${row.name ?? ""}` },
-            h("td", null, row.name === undefined ? h("span", { class: "muted" }, "adapter not reported") : row.label),
-            h("td", { class: "muted" }, row.kind),
-            h("td", { class: "num" }, part ? h("span", { title: part.chunks.join("\n") }, bytes(part.minified)) : dash(missing)),
-          );
-        }),
+        "div",
+        { class: "graph-head" },
+        h("span", { class: "muted" }, "forms packages"),
+        report ? h("span", { class: "muted" }, "whole app ", h("span", { class: "fg" }, bytes(report.total.minified)), ` · ${bytes(report.total.gzip)} gzip`) : null,
       ),
-      report
-        ? h(
-            "tfoot",
-            null,
+      h("div", { class: "bar-row" }, bar("minified", report ? total : undefined, 1)),
+      h(
+        "div",
+        { class: "bar-row" },
+        core ? bar("core", core.size, top[0] ?? 1, `core:${core.row.name ?? ""}`) : null,
+        adapter ? bar(adapter.row.name ?? "adapter", adapter.size, top[1] ?? 1, `adapter:${adapter.row.name ?? ""}`) : null,
+        shipped.length > 0 ? bar("plugins", report ? pluginBytes : undefined, pluginsWeight) : null,
+      ),
+      shipped.length > 0
+        ? [
+            h("svg", { class: "wedge", viewBox: "0 0 100 10", preserveAspectRatio: "none", "aria-hidden": "true" }, h("path", { d: `M${start} 0H100V10H0z` })),
             h(
-              "tr",
-              null,
-              h("th", null, "whole app"),
-              h("td", { class: "muted" }, `${bytes(report.total.gzip)} gzip`),
-              h("td", { class: "num" }, bytes(report.total.minified)),
+              "div",
+              { class: "bar-row" },
+              shipped.map(({ row, size }) => bar(row.name ?? "", size, weigh(size))),
             ),
-          )
+          ]
         : null,
+    ),
+    h(
+      "ol",
+      { class: "runs", "aria-label": "Run order" },
+      h("li", { class: "runs-head muted" }, "Run order"),
+      plugins.map(({ row, size }, index) =>
+        h(
+          "li",
+          { key: row.label, "data-part": `${row.kind}:${row.name ?? ""}` },
+          h("span", { class: "muted" }, index + 1),
+          h("span", { class: "truncate" }, row.name),
+          h(
+            "span",
+            { class: "num" },
+            size !== undefined ? bytes(size) : row.kind === "devtools" && report ? h("span", { class: "muted" }, "dev only") : h("span", { class: "muted", title: report ? "The report has no part with this kind and name." : "Not measured" }, "–"),
+          ),
+        ),
+      ),
     ),
   );
 }
