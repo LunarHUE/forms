@@ -9,6 +9,7 @@
   "dependencies": {
     "@lunarhue/forms-bind": "workspace:*",
     "@lunarhue/forms-core": "workspace:*",
+    "@lunarhue/forms-devtools": "workspace:*",
     "@lunarhue/forms-schema": "workspace:*",
     "valibot": "catalog:",
     "zustand": "catalog:"

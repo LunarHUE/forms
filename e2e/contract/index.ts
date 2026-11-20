@@ -2,7 +2,9 @@
 // framework: apps import it to render the same forms, specs import it to
 // find them.
 import { valibot } from "@lunarhue/forms-schema/valibot";
+import { devtoolsPlugin } from "./devtools.js";
 
+export { devtoolsParam, devtoolsPlugin } from "./devtools.js";
 export { delays, fakeServer, takenNames, type ServerCall } from "./fake-server.js";
 export { type Capability, type Framework, frameworkNamed, frameworks } from "./frameworks.js";
 export {
@@ -31,4 +33,4 @@ export { type Delivery, rulesScenario } from "./scenarios/rules.js";
 export { saveScenario } from "./scenarios/save.js";
 
 /** The plugins every app passes to its one `createForms`. */
-export const sharedPlugins = [valibot()] as const;
+export const sharedPlugins = [valibot(), devtoolsPlugin] as const;
