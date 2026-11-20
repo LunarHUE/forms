@@ -5,7 +5,7 @@ import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import { hadKey, indexOfKey, initialIndex, initialKeys, keyAt, keysView, type KeyList } from "./keys.js";
-import { childOf, isPlainObject, setAt } from "./tree.js";
+import { childOf, hasOwn, isPlainObject, setAt } from "./tree.js";
 
 export type { Snapshot } from "./entries.js";
 
@@ -151,17 +151,19 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /**
    * The stable path of the field with dotted name `name` (`rows.0.title`),
    * or undefined when an index is out of range or a step goes into a leaf.
+   * With `strict`, also undefined when a step names a key its object lacks,
+   * unless something subscribes to or validates the field there or below.
    */
-  pathOf(name: string): Path | undefined;
+  pathOf(name: string, strict?: boolean): Path | undefined;
   /** True when state can be set at `path`: it names a field and its item wasn't removed. */
   isLive(path: Path): boolean;
   /**
    * Says, for each segment of `path`, whether it names an array item.
    * Undefined when the path can't name a field: a step goes into a leaf, or
    * names an item key its array never had. A removed item's key counts as
-   * had. Makes no nodes.
+   * had. With `strict`, also undefined where `pathOf` would be. Makes no nodes.
    */
-  itemSteps(path: Path): readonly boolean[] | undefined;
+  itemSteps(path: Path, strict?: boolean): readonly boolean[] | undefined;
   /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
   invalidAt(path: Path): boolean;
   /** The stable path of the first enabled field, in value order, with a validation error. */
@@ -516,6 +518,11 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   };
 
   const syncKeys = (node: Node<E>) => kit?.[0](node);
+
+  // True when something subscribes to or validates the field at `node` or
+  // below it, so its name counts as known though the value lacks the key.
+  const used = (node: Node<E> | undefined): boolean =>
+    !!node && (!!node.subscriptions || !!node.validating || node.validation.length > 0 || [...(node.children?.values() ?? [])].some(used));
 
   const createNode = (parent: Node<E> | undefined, seg: string): Node<E> => {
     const node: Node<E> = {
@@ -956,7 +963,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       };
       if (root) visit(root);
     },
-    pathOf(name) {
+    pathOf(name, strict) {
       // A property name that contains a dot can't be told apart from two
       // steps, so such a field resolves to the wrong path or to none.
       if (name === "") return [];
@@ -972,6 +979,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
           seg = keyAt(node?.list, at);
           value = value[at];
         } else if (isPlainObject(value)) {
+          if (strict && !hasOwn(value, part) && !used(node?.children?.get(part))) return undefined;
           seg = part;
           value = childOf(value, part);
         } else if (value === undefined || value === null) {
@@ -985,7 +993,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       return path;
     },
     isLive: (path) => fieldAt(path) !== undefined,
-    itemSteps(path) {
+    itemSteps(path, strict) {
       const steps: boolean[] = [];
       let value = current;
       let node = root;
@@ -1003,6 +1011,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
           else if (child) value = child.value;
           else known = false;
         } else if (isPlainObject(value)) {
+          if (strict && !hasOwn(value, seg) && !used(child)) return undefined;
           steps.push(false);
           value = childOf(value, seg);
         } else if (value === undefined || value === null) steps.push(false);

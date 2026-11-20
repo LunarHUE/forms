@@ -1,6 +1,7 @@
 import type { AnyFieldHandle } from "../handle.js";
 import type { Plugin, PluginContext, WriteRecord } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
+import { reach } from "../store/handles.js";
 import { createTiming } from "../store/timing.js";
 
 /** The API of `history`, as `form.plugins.history`. */
@@ -77,8 +78,7 @@ export function history(limit = 100): Plugin<HistoryApi, "history", never, Histo
           for (const record of list) {
             // Array records come only from a store with arrays(), so its handles have the commands.
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            const field = store.fieldAt(record.path) as AnyFieldHandle<unknown, "arrays"> | undefined;
-            if (!field) continue;
+            const field = reach(store, record.path) as AnyFieldHandle<unknown, "arrays">;
             if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
             else if (record.type === "move") field.move(back ? record.to : record.from, back ? record.from : record.to);
             // Undoing an insert and redoing a remove both take the item out.

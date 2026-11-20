@@ -3,6 +3,7 @@ import type { PluginContext } from "../plugin.js";
 import { ownKeys } from "./baseline/equality.js";
 import { sameList } from "./entries.js";
 import { freeze } from "./freeze.js";
+import { reach } from "./handles.js";
 import { childOf, isPlainObject } from "./tree.js";
 
 /** One leaf whose current value differs from the incoming one. `Resolve` decides what it becomes. */
@@ -61,7 +62,7 @@ export function rebaseTo(ctx: Pick<PluginContext, "store" | "baseline">, path: s
     }
     const written = choice === "take" ? next : choice.value;
     // A function would be read as an updater, so it goes through one.
-    store.fieldAt(at)?.setValue(() => written, { replace: true, edited: false });
+    reach(store, at).setValue(() => written, { replace: true, edited: false });
     taken.push(freeze(at));
   };
 

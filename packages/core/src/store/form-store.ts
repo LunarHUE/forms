@@ -150,6 +150,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     reset: (resetOptions) => reset([], resetOptions),
     registerValidator: validation.register,
     fieldAt: handles.fieldAt,
+    pathOf: (name) => core.pathOf(name, true),
     // Without `dirty()` the types have no `changes`. Development throws for callers without types.
     changes:
       typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !createDirty

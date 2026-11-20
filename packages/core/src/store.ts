@@ -124,8 +124,10 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
 
   /**
    * Replaces user errors across the form. Errors under `fields` land on the
-   * field with that dotted name. User errors don't block submit and clear
-   * when the field's value is next written as a user edit.
+   * field with that dotted name. A name `pathOf` doesn't resolve sends its
+   * errors to the root, after the `form` errors, and development warns
+   * (`errors:unknown`). User errors don't block submit and clear when the
+   * field's value is next written as a user edit.
    */
   setErrors(errors: ErrorMap<E>): void;
   /**
@@ -147,10 +149,20 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
 
   /**
    * Returns the handle at stable path `path`, the same object `at` and
-   * `item` return. Returns `undefined` when the path can't name a field: a
-   * segment goes into a leaf, or names an item key the array never had.
+   * `item` return. Returns `undefined` when the path names no field: a
+   * segment goes into a leaf, names an item key the array never had, or
+   * names a key its object doesn't have while nothing subscribes to or
+   * validates a field there. Fields under a missing object count, since the
+   * value can't say which keys it would have.
    */
   fieldAt(path: Path): AnyFieldHandle<E, N> | undefined;
+  /**
+   * Returns the stable path of the field with dotted name `name`, such as
+   * `rows.0.title`, by the rule `fieldAt` uses. Returns `undefined` when no
+   * field has that name, so a caller can send server errors for a renamed
+   * field somewhere visible before `setErrors` puts them on the root.
+   */
+  pathOf(name: string): Path | undefined;
   /**
    * Returns the first enabled field, in value order, that has a validation
    * error, for the adapter to focus after an invalid submit. Read-only fields

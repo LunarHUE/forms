@@ -7,7 +7,7 @@ import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
 import type { PluginHost } from "./plugins.js";
-import { addErrors, type Placed } from "./placed.js";
+import { addErrors, addNamed, type Placed } from "./placed.js";
 import type { Validation } from "./runner.js";
 
 // Core has no DOM or node types, so this declares the platform global submit uses.
@@ -123,8 +123,7 @@ export function createSubmit<V, E, I, R, O = V>(
       const lists: Placed<E> = new Map();
       if (errors.form !== undefined) addErrors(lists, [], errorList(errors.form));
       // A name that resolves to no field lands on the root after the form errors, as validation does.
-      for (const [name, entry] of Object.entries(errors.fields ?? {}))
-        if (entry !== undefined) addErrors(lists, core.pathOf(name) ?? [], errorList(entry));
+      for (const [name, entry] of Object.entries(errors.fields ?? {})) if (entry !== undefined) addNamed(lists, core, name, errorList(entry));
       core.batch(() => {
         core.clearUserErrors([]);
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);

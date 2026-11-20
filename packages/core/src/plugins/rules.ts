@@ -1,6 +1,7 @@
 import type { FieldPath, Path } from "../path.js";
 import type { Part, Plugin, PluginContext } from "../plugin.js";
 import { defineHooks } from "../store/define.js";
+import { reach } from "../store/handles.js";
 import { createParts } from "../store/parts.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
@@ -64,7 +65,7 @@ export const rules: Rules = /* @__PURE__ */ Object.assign(
           for (const [at, rule] of list) {
             const { disabled, hidden } = rule(value);
             const snapshot = store.getSnapshot(at);
-            if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => store.fieldAt(at)?.setDisabled(disabled));
+            if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => reach(store, at).setDisabled(disabled));
             if (hidden !== undefined && meta(snapshot).hidden !== hidden) ctx.setMeta(at, { hidden });
           }
         };

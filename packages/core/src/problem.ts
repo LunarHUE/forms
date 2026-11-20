@@ -23,7 +23,8 @@ export type Code =
   | "rebase:store"
   | "dirty:missing"
   | "arrays:missing"
-  | "submit:unseen";
+  | "submit:unseen"
+  | "errors:unknown";
 
 /**
  * The message for `code`: the package, then what went wrong. Development
@@ -54,6 +55,7 @@ export function problem(code: Code, value = ""): string {
         'This form changed the length or order of an array, but it has no `arrays()`. Add `arrays()` from "@lunarhue/forms-core/plugins" to `plugins`.',
       "submit:unseen": (where) =>
         `A submit failed on errors at ${where}, and nothing on the page reads them, so the user sees no error. Render the form's root errors, and the errors of object and array fields.`,
+      "errors:unknown": (name) => `No field is named "${name}", so its errors went to the form's root. Check the name, and render the root errors.`,
     };
     text = `${sentences[code](value)} ${docs}${code}`;
   }
