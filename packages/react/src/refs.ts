@@ -4,9 +4,19 @@ import type { FocusOnInvalid } from "./forms.js";
 import type { FieldRef } from "./input.js";
 import { cached } from "./select.js";
 
+// The package has no node types, so this declares the global the development check reads.
+declare const process: { readonly env: { readonly NODE_ENV?: string } };
+
 // Both keyed by field handle for field elements and by store for `<form>` elements.
 const elements = new WeakMap<object, Set<HTMLElement>>();
 const refs = new WeakMap<object, FieldRef>();
+
+/**
+ * The field handle of each field element, for `fieldOf`. Only development
+ * fills it. A bundler folds the checks around it to false in production and
+ * drops the map with them.
+ */
+export const fields = /* @__PURE__ */ new WeakMap<Element, object>();
 
 /** Drops the elements that left the document, so the set can't grow without bound. */
 function connected(set: Set<HTMLElement>): Set<HTMLElement> {
@@ -57,11 +67,23 @@ export function refFor(key: object): FieldRef {
     showRendered(element);
     const set = connected(cached(elements, key, () => new Set<HTMLElement>()));
     set.add(element);
+    // A store's elements are `<form>` elements, which aren't fields. Handles have a path.
+    if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && "path" in key) fields.set(element, key);
     if (!refCleanups) return undefined;
     return () => {
       set.delete(element);
+      if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && fields.get(element) === key) fields.delete(element);
     };
   });
+}
+
+/** The connected elements recorded for `key`, in document order. */
+export function elementsFor(key: object): HTMLElement[] {
+  // A copy, sorted in place. `toSorted` is past the ES2020 the package targets.
+  // oxlint-disable-next-line unicorn/no-array-sort
+  return [...connected(elements.get(key) ?? new Set())].sort((a, b) =>
+    (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING) === 0 ? -1 : 1,
+  );
 }
 
 /** The first connected element, in document order, recorded for `key`. */
