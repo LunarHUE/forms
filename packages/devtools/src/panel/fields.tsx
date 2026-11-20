@@ -454,12 +454,16 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
   const set = new Set(flagsOf(row.snapshot, dirty));
   return (
     <li
-      class="group flex items-center gap-1.5 h-7 pr-3 pl-[calc(12px+var(--depth,0)*16px)] hover:bg-row-hover aria-[current=true]:bg-active aria-[current=true]:shadow-[inset_2px_0_var(--color-brand)]"
+      class="group flex items-center cursor-pointer gap-1.5 h-7 pr-3 pl-[calc(12px+var(--depth,0)*16px)] hover:bg-row-hover aria-[current=true]:bg-active aria-[current=true]:shadow-[inset_2px_0_var(--color-brand)]"
       style={`--depth: ${row.depth}`}
       data-path={key}
       aria-current={selected ? "true" : undefined}
       onPointerEnter={() => onHover?.(row.path)}
       onPointerLeave={() => onHover?.(null)}
+      // The whole row selects the field, its indent included. Its buttons and flags do their own thing.
+      onClick={(event) => {
+        if (!(event.target instanceof Element && event.target.closest("button, .flag"))) onSelect();
+      }}
     >
       {row.branch ? (
         <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon={ChevronDown}
