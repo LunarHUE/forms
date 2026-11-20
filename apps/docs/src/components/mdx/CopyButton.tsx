@@ -3,6 +3,7 @@ import { cn } from "cn";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { IconSwap } from "@/components/ui/icon-swap";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface CopyButtonProps {
@@ -55,7 +56,7 @@ export function CopyButton({ text, label = "Copy", className }: CopyButtonProps)
           />
         }
       >
-        {copied ? <CheckIcon className="text-brand" /> : <CopyIcon />}
+        <IconSwap swapped={copied} from={<CopyIcon />} to={<CheckIcon className="text-brand" />} />
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied" : label}</TooltipContent>
     </Tooltip>

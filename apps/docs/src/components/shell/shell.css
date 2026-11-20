@@ -45,3 +45,24 @@ html[data-framework="solid"] [data-sidebar-for="react"] {
     transition: none;
   }
 }
+
+/* Nav groups open and fold with a height transition where the browser can
+   animate to `auto` (Chromium); elsewhere they snap, as before. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-nav-group] {
+    interpolate-size: allow-keywords;
+  }
+  [data-nav-group]::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 200ms ease-out,
+      content-visibility 200ms allow-discrete;
+  }
+  [data-nav-group][open]::details-content {
+    height: auto;
+  }
+  [data-nav-group]:not([open])::details-content {
+    transition-duration: 160ms;
+  }
+}

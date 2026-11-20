@@ -2,6 +2,7 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { useState } from "react";
 
 import { usePackageManager } from "@/components/hooks/store";
+import { IconSwap } from "@/components/ui/icon-swap";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PACKAGE_MANAGERS, setPackageManager } from "@/lib/store";
 
@@ -65,11 +66,11 @@ export default function Install({ packages }: InstallProps) {
             onClick={() => void copy(installCommand(pm, packages))}
             className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            {copied ? (
-              <CheckIcon className="size-4 text-brand" strokeWidth={1.5} />
-            ) : (
-              <CopyIcon className="size-4" strokeWidth={1.5} />
-            )}
+            <IconSwap
+              swapped={copied}
+              from={<CopyIcon className="size-4" strokeWidth={1.5} />}
+              to={<CheckIcon className="size-4 text-brand" strokeWidth={1.5} />}
+            />
           </TooltipTrigger>
           <TooltipContent sideOffset={6}>{copied ? "Copied" : "Copy"}</TooltipContent>
         </Tooltip>

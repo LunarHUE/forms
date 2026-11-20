@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { IconSwap } from "@/components/ui/icon-swap";
 import { Hint, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { assistantLinks, type Assistant } from "./assistants";
@@ -95,7 +96,7 @@ export function CopyPage({ markdownHref, markdownUrl }: CopyPageProps) {
             />
           }
         >
-          {copied ? <CheckIcon className="text-brand" /> : <CopyIcon />}
+          <IconSwap swapped={copied} from={<CopyIcon />} to={<CheckIcon className="text-brand" />} />
           Copy page
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={6}>
