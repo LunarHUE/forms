@@ -56,6 +56,7 @@ export type CreateArrays = <E>(
   bump: (from: Node<E> | undefined, count: Count, delta: number) => void,
   withErrors: Set<Node<E>>,
   ownerNodes: Map<string, Set<Node<E>>>,
+  invalidChanged: () => void,
 ) => ArrayKit<E>;
 
 /**
@@ -166,7 +167,7 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   itemSteps(path: Path, strict?: boolean): readonly boolean[] | undefined;
   /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
   invalidAt(path: Path): boolean;
-  /** The stable paths of the fields with an error of either kind, in value order. Makes no nodes. */
+  /** The stable paths of the fields with an error of either kind, in value order. Visits every node. Makes no nodes. */
   invalid(): Path[];
   /**
    * Calls `listener` after a write that changes which fields have errors,
@@ -206,11 +207,8 @@ interface Flag {
 
 type FlagKind = "disabled" | "readOnly";
 
-/**
- * Counts of nodes at and below a node that are edited, have a validation
- * error, have an error of either kind, or are validating.
- */
-export type Count = "editedCount" | "invalidCount" | "errorCount" | "validatingCount";
+/** Counts of nodes at and below a node that are edited, invalid or validating. */
+export type Count = "editedCount" | "invalidCount" | "validatingCount";
 
 /**
  * One stable path the store knows about. A node exists once something read,
@@ -243,7 +241,6 @@ export interface Node<E> extends Cell<Snapshot<E>> {
   marked: boolean;
   editedCount: number;
   invalidCount: number;
-  errorCount: number;
   validatingCount: number;
   disabled: Flag;
   readOnly: Flag;
@@ -334,11 +331,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let formMeta: Meta;
   // True once `submit:unseen` was logged for this store.
   let warnedUnseen = false;
-  // Wakes `subscribeInvalid` listeners. Its snapshot is a counter, made on the first subscribe.
-  let invalidCell: Cell<number> | undefined;
-  const invalidChanged = () => {
-    if (invalidCell) replace(invalidCell, invalidCell.snapshot + 1);
-  };
+  // Wakes `subscribeInvalid` listeners. Its snapshot is a counter.
+  const invalidCell: Cell<number> = { snapshot: 0, before: undefined, subscriptions: undefined };
+  const invalidChanged = () => replace(invalidCell, invalidCell.snapshot + 1);
 
   // The index of item key `seg` in the array at `node` of `length` items, or -1.
   const indexIn = (node: Node<E> | undefined, seg: string, length: number) =>
@@ -468,7 +463,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   // edited state flips gets a new snapshot. The other counts only show on the form.
   const bump = (from: Node<E> | undefined, count: Count, delta: number) => {
     if (delta === 0) return;
-    if (count === "errorCount") invalidChanged();
     for (let n = from; n; n = n.parent) {
       const was = n[count] > 0;
       n[count] += delta;
@@ -528,10 +522,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const joined = [...validation, ...user];
       if (!sameList(joined, node.errors)) node.errors = freeze(joined);
     }
-    if (node.errors !== errors) {
-      invalidChanged();
-      bump(node, "errorCount", Number(node.errors.length > 0) - Number(errors.length > 0));
-    }
+    if (node.errors !== errors) invalidChanged();
     rebuild(node);
   };
 
@@ -562,7 +553,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       marked: false,
       editedCount: 0,
       invalidCount: 0,
-      errorCount: 0,
       validatingCount: 0,
       disabled: parent ? flagUnder(parent.disabled, seg) : flagFrom(options.disabled, false),
       readOnly: parent ? flagUnder(parent.readOnly, seg) : flagFrom(options.readOnly, false),
@@ -807,7 +797,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     };
   };
 
-  const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes);
+  const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes, invalidChanged);
 
   const form = (): Cell<FormSnapshot<I, R, "dirty">> =>
     (formCell ??= {
@@ -1049,14 +1039,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     invalid() {
       const paths: Path[] = [];
       const visit = (node: Node<E>) => {
-        if (node.errorCount === 0) return;
         if (node.errors.length > 0) paths.push(pathOf(node, false));
         for (const child of inValueOrder(node)) visit(child);
       };
       if (root) visit(root);
       return paths;
     },
-    subscribeInvalid: (listener) => listen((invalidCell ??= { snapshot: 0, before: undefined, subscriptions: undefined }), listener),
+    subscribeInvalid: (listener) => listen(invalidCell, listener),
 
     stats() {
       let nodes = 0;

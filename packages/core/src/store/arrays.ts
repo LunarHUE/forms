@@ -16,11 +16,14 @@ export function createArrays<E>(
   bump: (from: Node<E> | undefined, count: Count, delta: number) => void,
   withErrors: Set<Node<E>>,
   ownerNodes: Map<string, Set<Node<E>>>,
+  invalidChanged: () => void,
 ): ArrayKit<E> {
   // Marks `node` and its subtree dead and drops them from the store-wide indexes.
   const bury = (node: Node<E>) => {
     node.dead = true;
     withErrors.delete(node);
+    // A removed field with errors leaves the invalid list.
+    if (node.errors.length > 0) invalidChanged();
     if (node.validating) for (const owner of node.validating) ownerNodes.get(owner)?.delete(node);
     if (node.byOwner) for (const owner of node.byOwner.keys()) ownerNodes.get(owner)?.delete(node);
     node.children?.forEach(bury);
@@ -36,7 +39,6 @@ export function createArrays<E>(
     (node.removed ??= new Map()).set(key, child);
     bump(node, "editedCount", -child.editedCount);
     bump(node, "invalidCount", -child.invalidCount);
-    bump(node, "errorCount", -child.errorCount);
     bump(node, "validatingCount", -child.validatingCount);
     bury(child);
   };
