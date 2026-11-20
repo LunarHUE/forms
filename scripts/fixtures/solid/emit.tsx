@@ -5,7 +5,6 @@ import {
   createField,
   createForm,
   createForms,
-  createInputProps,
   createItems,
   defineField,
   type Choice,
@@ -14,6 +13,9 @@ import {
   type FormOf,
   type HandleOf,
   useFormContext,
+  checkboxProps,
+  numberPieces,
+  numberProps,
 } from "@lunarhue/forms-solid";
 import { arrays, digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
@@ -93,11 +95,15 @@ export function createQty(form: OrderForm) {
 }
 
 export function createQtyInput(form: OrderForm) {
-  return createInputProps(form.root.at("qty"), { kind: "number" });
+  return numberProps(createField(form.root.at("qty")));
+}
+
+export function createQtyPieces(form: OrderForm) {
+  return numberPieces(createField(form.root.at("qty")));
 }
 
 export function createPickupInput(form: OrderForm) {
-  return createInputProps(form.root.at("pickup"), { kind: "checkbox" });
+  return checkboxProps(createField(form.root.at("pickup")));
 }
 
 export function createLines(form: OrderForm) {

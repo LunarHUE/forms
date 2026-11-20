@@ -17,6 +17,8 @@ import {
   type FormError,
   inputProps,
   useFormContext,
+  checkboxProps,
+  numberProps,
 } from "@lunarhue/forms-solid";
 import * as solid from "solid-js";
 import { For, onCleanup } from "solid-js";
@@ -118,7 +120,7 @@ function NumberField(props: FieldProps<number>) {
   return (
     <div class="field">
       <label for={props.field.id}>{props.label}</label>
-      <input {...inputProps(props.field, { kind: "number" })} />
+      <input {...numberProps(props.field)} />
       <ErrorList id={props.field.errorId} errors={props.field.shownErrors} />
       <Renders id={props.field.name} />
     </div>
@@ -129,7 +131,7 @@ function Checkbox(props: FieldProps<boolean | undefined>) {
   return (
     <div class="field">
       <label>
-        <input {...inputProps(props.field, { kind: "checkbox" })} />
+        <input {...checkboxProps(props.field)} />
         {props.label}
       </label>
       <ErrorList id={props.field.errorId} errors={props.field.shownErrors} />
