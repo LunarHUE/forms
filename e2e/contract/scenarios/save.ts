@@ -13,10 +13,14 @@ const labels = { name: "Name", email: "Email", formErrors: "Form errors" };
 /** The email the fake server refuses to save. */
 const takenEmail = "taken@example.com";
 
+/** A name the fake server refuses with an error under a field name the form doesn't have. */
+const renamedName = "Grace Hopper";
+
 const messages = {
   email: "This email already has an account.",
   form: "The server refused the save. Fix the errors and try again.",
   refused: "The server refused the save.",
+  renamed: "Use your full legal name.",
 };
 
 /** What `onSubmit` uses of its context. */
@@ -31,6 +35,7 @@ export const saveScenario = {
   }),
   labels,
   takenEmail,
+  renamedName,
   messages,
   submit: { idle: "Save", busy: "Saving..." },
   sources: { server: fakeServer },
@@ -41,6 +46,11 @@ export const saveScenario = {
       const count = await fakeServer.save(value);
       if (value.email === takenEmail) {
         store.setErrors({ form: { message: messages.form }, fields: { email: { message: messages.email } } });
+        return messages.refused;
+      }
+      if (value.name === renamedName) {
+        // The server still calls the name field by an old name, which no field has.
+        store.setErrors({ fields: { fullName: { message: messages.renamed } } });
         return messages.refused;
       }
       store.setErrors({});

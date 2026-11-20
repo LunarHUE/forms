@@ -33,3 +33,13 @@ test("a refused save puts the server's errors on the field and the form, and the
   await expect(formErrors).toHaveText("");
   await expect.poll(async () => (await probe(page)).fields[""]?.errors).toEqual([]);
 });
+
+test("a server error under a name the form doesn't have shows with the form's errors", async ({ page }) => {
+  const formErrors = page.getByRole("list", { name: labels.formErrors });
+  await input(page, labels.name).fill(scenario.renamedName);
+  await page.getByRole("button", { name: submit.idle }).click();
+  await expect(page.getByRole("status")).toHaveText(messages.refused);
+  await expect(formErrors).toHaveText(messages.renamed);
+  const refused = await probe(page);
+  expect(refused.fields[""]?.shown).toEqual([messages.renamed]);
+});
