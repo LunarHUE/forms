@@ -392,10 +392,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const touched = node.touched;
     const submitted = submitCount > 0;
     if (typeof show === "function") return show({ touched, edited: node.editedCount > 0, dirty, submitCount });
-    if (show === "always") return true;
-    if (show === "touched") return touched;
-    if (show === "submitted") return submitted;
-    return touched || submitted;
+    return show === "always" || (show !== "submitted" && touched) || (show !== "touched" && submitted);
   };
 
   const build = (node: Node<E>): Snapshot<E> => {
