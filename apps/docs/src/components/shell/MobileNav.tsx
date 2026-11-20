@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { ExternalLinkIcon, MenuIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useLastFramework } from "@/components/hooks/store";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import type { Framework } from "@/lib/frameworks";
 import { FrameworkPicker } from "./FrameworkPicker";
 import { GITHUB_URL, GitHubIcon } from "./icons";
 import { NavTree } from "./NavTree";
+import { attachNav } from "./rail";
 import type { SidebarData } from "./sidebar";
 
 /*
@@ -36,6 +37,11 @@ export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
     document.addEventListener("astro:after-swap", close);
     return () => document.removeEventListener("astro:after-swap", close);
   }, []);
+  // The drawer's nav mounts each time it opens.
+  const rail = useCallback((element: HTMLElement | null) => {
+    const nav = element?.querySelector<HTMLElement>("[data-nav]");
+    return nav ? attachNav(nav) : undefined;
+  }, []);
   const sidebar = pick(sidebars, last);
   if (!sidebar) return null;
   return (
@@ -60,7 +66,7 @@ export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
               </SheetClose>
             </Hint>
           </div>
-          <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-4">
+          <div ref={rail} className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-4">
             <NavTree groups={sidebar.groups} currentSlug={currentSlug} compact />
           </div>
           <a

@@ -1,6 +1,7 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
+import { useStagger } from "@/components/hooks/use-stagger";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { TocList, useActiveSections, type TocItem } from "./toc-list";
@@ -20,6 +21,8 @@ export default function MobileToc({ items, children }: MobileTocProps) {
   const [open, setOpen] = useState(false);
   const active = useActiveSections(items);
   const trigger = useRef<HTMLButtonElement>(null);
+  // The panel mounts on open, so the rows drop in each time it opens.
+  const stagger = useStagger("li");
 
   // Escape closes the list. Focus inside it goes back to the toggle.
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function MobileToc({ items, children }: MobileTocProps) {
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <nav aria-label="On this page" className="pt-3 pb-4">
+        <nav ref={stagger} aria-label="On this page" className="pt-3 pb-4">
           <TocList items={items} active={active} onClick={jump} linkClassName="py-2 text-[15px] leading-5" />
         </nav>
       </CollapsibleContent>

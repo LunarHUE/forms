@@ -22,3 +22,26 @@ html[data-framework="solid"] [data-sidebar-for="react"] {
 :root {
   --docs-header-height: 3.5rem;
 }
+
+/* The sidebar rail's sliding bar (rail.ts). Once it runs, the bar replaces
+   the links' own left borders. */
+[data-rail] a[href] {
+  border-left-color: transparent !important;
+}
+
+[data-rail] [data-nav-marker][data-shown] {
+  opacity: 1;
+}
+
+[data-nav-marker][data-sliding] {
+  transition:
+    transform 200ms ease-out,
+    height 200ms ease-out,
+    background-color 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-nav-marker][data-sliding] {
+    transition: none;
+  }
+}
