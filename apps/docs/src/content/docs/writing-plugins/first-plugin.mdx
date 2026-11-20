@@ -317,6 +317,38 @@ path when the part attaches and returns the value to keep there, which is how
 record, and the baseline moves with it while the field isn't dirty, so the
 form doesn't start dirty.
 
+## Schema adapters
+
+`definePlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin for
+any [Standard Schema](https://standardschema.dev) library when you give it a
+`name` and a `schema` adapter. Validation and types already go through
+Standard Schema, so the adapter only says which schemas it accepts and what
+values they start from. It has:
+
+- `vendor`: the library's name, matched against `schema["~standard"].vendor`.
+- `defaultValue(schema)`: the value a form starts from when `defaultValues`
+  leaves it out.
+- `itemValue(schema, path)`: the value `push` or `insert` gives a new item of
+  the array at `path` when it gets none.
+
+```ts
+import type { SchemaAdapter } from "@lunarhue/forms-core";
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { defaultOf, itemDefaultOf, type ArkSchema } from "./ark-defaults";
+
+const adapter: SchemaAdapter<ArkSchema> = {
+  vendor: "arktype",
+  defaultValue: (schema) => defaultOf(schema),
+  itemValue: (schema, path) => itemDefaultOf(schema, path),
+};
+
+export const ark = () => definePlugin({ name: "ark", schema: adapter });
+```
+
+With `ark()` in a form's plugins, `defaultValues` becomes optional for an
+`ArkSchema`. Without it, `defaultValues` is required and complete. `zod()` and
+`valibot()` are schema plugins of the same shape.
+
 ## Third party
 
 A plugin that needs another library lives in its own package in this repo,
@@ -325,7 +357,7 @@ you install only the ones you use. Adapters don't re-export these.
 
 The schema plugins are in `@lunarhue/forms-schema`. They give their library's
 schemas default values. Every form validates on its own, so that is all they
-add. [Schemas](../plugins/schemas) shows how to make one for another library.
+add. [Schema adapters](#schema-adapters) shows how to make one for another library.
 
 ```ts
 import { valibot } from "@lunarhue/forms-schema/valibot";
