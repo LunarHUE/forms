@@ -30,6 +30,10 @@ type error. So is a form that renders `PhoneField` without `mask()` in its
 plugins: the error reads `Add mask() to this form's plugins: PhoneField uses
 it`.
 
+A field type's parts attach the first time it renders a field. To attach
+one earlier, pin it on the definition. See
+[Parts on field components](../plugin-composition/field-parts).
+
 ## Display text
 
 A cleaner changes what the store holds, not what the input shows. Give the
@@ -52,19 +56,6 @@ write with `field.setText(text, event)`. See
 
 A plugin of your own can give a field display text too. See
 [Writing a plugin](../writing-plugins/first-plugin#display-text-from-a-plugin).
-
-## Fields that haven't rendered
-
-A field type's parts attach the first time it renders a field, and the
-field's value is cleaned then. A value that matters before that, such as a
-field on a step the user hasn't reached, can be pinned on the definition:
-
-```ts
-const contact = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
-```
-
-The mask then attaches when the store is made. Rendering the field later
-doesn't attach it twice.
 
 ## Caret
 

@@ -1,0 +1,50 @@
+---
+title: Parts on field components
+description: Give a field component a plugin's config once, and every field it renders gets it.
+section: plugin-composition
+order: 1
+navTitle: Field components
+---
+
+A part is a plugin's config for one place. Put one on a field type and every
+field that type renders gets it, so the phone format lives with the phone
+input instead of on each form. One component makes all three field types
+below.
+
+<Demo name="field-parts/contact" />
+
+## Field types with parts
+
+`defineField` takes the component and any number of parts:
+
+```ts
+const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
+const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
+
+const forms = createForms({ plugins: [mask()], fields: { TextInput, PhoneField, CodeField } });
+```
+
+`<form.PhoneField name="phone" />` stores digits and shows them formatted.
+`<form.TextInput name="name" />` is the same component with no mask.
+
+A part's type says which plugin it needs and which values it fits. Two
+mistakes fail to compile:
+
+- A part on a component whose value it doesn't fit: `masked` takes string
+  fields, so `defineField(NumberInput, masked(...))` is a type error.
+- A form that renders the field type without the plugin. The error reads
+  `Add mask() to this form's plugins: PhoneField uses it`.
+
+## When parts attach
+
+A field type's parts attach the first time it renders a field. Until then the
+field has no mask, so its value isn't cleaned. A value that matters before
+that, such as a field on a step the user hasn't reached, can be pinned on the
+definition:
+
+```ts
+const contact = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
+```
+
+The part then attaches when the store is made, so it is in the server HTML
+too. Rendering the field later doesn't attach it twice.
