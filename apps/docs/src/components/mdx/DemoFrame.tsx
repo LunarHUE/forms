@@ -85,7 +85,7 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
         <div
           role="tablist"
           aria-label="Demo"
-          className="flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]"
+          className="scroll-fade-x flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]"
           onKeyDown={arrowKeys(tabs, tab, setTab)}
         >
           {tabs.map((item) => (

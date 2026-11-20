@@ -52,7 +52,7 @@ export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
               </SheetClose>
             </Hint>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-4">
+          <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-4">
             <NavTree groups={sidebar.groups} currentSlug={currentSlug} compact />
           </div>
           <a

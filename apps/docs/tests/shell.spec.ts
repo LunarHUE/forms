@@ -63,3 +63,38 @@ test("a moved page's old URL redirects to its new one", async ({ page }) => {
   await page.waitForURL("**/solid/basics/fields");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
+
+test.describe("sidebar", () => {
+  test("a folded group stays folded on the next page, and the current page's group stays open", async ({ page }) => {
+    await page.goto("/react/plugins/masks");
+    const basics = sidebar(page).locator('[data-nav-group="basics"]');
+    await expect(basics.getByRole("link", { name: "First form" })).toBeVisible();
+    await basics.locator("summary").click();
+    await expect(basics.getByRole("link", { name: "First form" })).toBeHidden();
+
+    await page.goto("/react/install");
+    await expect(basics.getByRole("link", { name: "First form" })).toBeHidden();
+    await page.goto("/react/basics/first-form");
+    await expect(basics.getByRole("link", { name: "First form" })).toBeVisible();
+  });
+
+  test("the current page is scrolled into view", async ({ page }) => {
+    await page.goto("/react/plugins/masks");
+    await expect(sidebar(page).locator('a[aria-current="page"]')).toBeInViewport({ ratio: 1 });
+  });
+});
+
+test("On this page marks every section in the window", async ({ page }) => {
+  await page.goto("/react/plugins/masks");
+  await hydrated(page, "astro-island:has(#toc-label)");
+  const toc = page.getByRole("navigation", { name: "On this page" });
+  const marked = toc.locator("a[data-active]");
+  // The top of the page shows the title's section and the start of the next.
+  await expect(marked.first()).toHaveText("Masks");
+
+  // Put "Caret" at the top: its section and the ones after it in view are marked.
+  await page.locator("#caret").evaluate((heading) => heading.scrollIntoView());
+  await expect(marked.first()).toHaveText("Caret");
+  await expect(toc.locator('a[aria-current="location"]')).toHaveText("Caret");
+  await expect(toc.getByRole("link", { name: "Masks", exact: true })).not.toHaveAttribute("data-active");
+});
