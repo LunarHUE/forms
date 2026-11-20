@@ -1,4 +1,4 @@
-import { type Choice, type FieldApi, type FormError, inputProps } from "@lunarhue/forms-react";
+import { checkboxProps, type Choice, type FieldApi, type FormError, inputProps, selectProps, textareaProps } from "@lunarhue/forms-react";
 import { rules } from "@lunarhue/forms-react/plugins";
 import type { HTMLAttributes } from "react";
 import { CheckShell, FieldShell } from "../../shared/ui.tsx";
@@ -28,7 +28,7 @@ export function TextArea({ field, label }: TextProps) {
   if (rules.meta(field).hidden) return null;
   return (
     <FieldShell id={field.id} errorId={field.errorId} label={label} errors={messages(field)} changed={field.dirty}>
-      <textarea rows={3} {...inputProps(field, { kind: "textarea" })} />
+      <textarea rows={3} {...textareaProps(field)} />
     </FieldShell>
   );
 }
@@ -55,7 +55,7 @@ interface SelectProps {
 export function Select({ field, label, options }: SelectProps) {
   return (
     <FieldShell id={field.id} errorId={field.errorId} label={label} errors={messages(field)} changed={field.dirty}>
-      <select {...inputProps(field, { kind: "select" })}>
+      <select {...selectProps(field)}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -69,7 +69,7 @@ export function Select({ field, label, options }: SelectProps) {
 export function Checkbox({ field, label }: { readonly field: DirtyField<boolean>; readonly label: string }) {
   return (
     <CheckShell errorId={field.errorId} errors={messages(field)} changed={field.dirty}>
-      <input {...inputProps(field, { kind: "checkbox" })} />
+      <input {...checkboxProps(field)} />
       {label}
     </CheckShell>
   );

@@ -1,4 +1,4 @@
-import { type FieldApi, inputProps, type TextInputType } from "@lunarhue/forms-react";
+import { checkboxProps, type FieldApi, inputProps, type TextInputType } from "@lunarhue/forms-react";
 import { CheckShell, FieldShell } from "../../shared/ui.tsx";
 
 interface TextFieldProps {
@@ -29,7 +29,7 @@ interface CheckboxProps {
 export function Checkbox({ field, label }: CheckboxProps) {
   return (
     <CheckShell errorId={field.errorId} errors={field.shownErrors.map((error) => error.message)}>
-      <input {...inputProps(field, { kind: "checkbox" })} />
+      <input {...checkboxProps(field)} />
       {label}
     </CheckShell>
   );
