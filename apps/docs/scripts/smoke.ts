@@ -27,6 +27,7 @@ const PAGES: readonly Page[] = [
   { path: "/react/introduction", title: `Introduction · React · ${SITE}` },
   { path: "/react/install", title: `Install · React · ${SITE}` },
   { path: "/react/plugins/masks", title: `Masks · React · ${SITE}` },
+  { path: "/react/compared/signup", title: `Sign-up form · React · ${SITE}` },
   { path: "/solid/introduction", title: `Introduction · Solid · ${SITE}` },
   { path: "/solid/basics/first-form", title: `Your first form · Solid · ${SITE}` },
   { path: "/solid/integrations/solid-signals", title: `Solid signals · Solid · ${SITE}` },
@@ -40,7 +41,7 @@ const PAGES: readonly Page[] = [
  * routes are on main, add them here, e.g. "/llms.txt", "/agents.txt" and
  * "/react/introduction.md".
  */
-const FILES: readonly string[] = ["/pagefind/pagefind.js"];
+const FILES: readonly string[] = ["/pagefind/pagefind.js", "/compare/signup/lunarhue", "/compare/signup/tanstack"];
 
 /** Pagefind's manifest. A build that indexed nothing still writes it, so the page count is checked too. */
 const SEARCH_ENTRY = "/pagefind/pagefind-entry.json";
