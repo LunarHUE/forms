@@ -98,6 +98,7 @@ function CommandList({
     <CommandPrimitive.List
       ref={stagger}
       data-slot="command-list"
+      data-edge-fade="y"
       className={cn(
         "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
         className

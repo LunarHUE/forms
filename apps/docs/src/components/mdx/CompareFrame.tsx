@@ -248,6 +248,7 @@ function CompareSizes({ builds, sizes, elementId }: CompareSizesProps) {
         role="tabpanel"
         id={elementId("sizes")}
         aria-labelledby={elementId(`size-${compression}`)}
+        data-edge-fade="x"
         className="overflow-x-auto"
       >
         <table className="w-full text-[13px] tabular-nums">
@@ -322,7 +323,7 @@ function CompareCode({ build, elementId }: CompareCodeProps) {
         )}
       </div>
       {file && (
-        <div role="tabpanel" id={panel} aria-labelledby={tabId(file.name)} className="max-h-144 overflow-y-auto">
+        <div role="tabpanel" id={panel} aria-labelledby={tabId(file.name)} data-edge-fade="y" className="max-h-144 overflow-y-auto">
           <CodeBlock
             html={file.html}
             lang={file.name.split(".").at(-1)}

@@ -164,5 +164,13 @@ export async function highlight(code: string, lang = "text"): Promise<string> {
     lang: known ? lang : "text",
     themes: { light: lightTheme, dark: darkTheme },
     defaultColor: false,
+    // Long lines scroll sideways; lib/edge-fade.ts softens the cut-off edge.
+    transformers: [
+      {
+        pre(node) {
+          node.properties["data-edge-fade"] = "x";
+        },
+      },
+    ],
   });
 }

@@ -34,7 +34,7 @@ export default function Install({ packages }: InstallProps) {
       data-install
       className="not-prose my-4 flex flex-col overflow-hidden rounded-lg border bg-sidebar text-foreground sm:h-13 sm:flex-row sm:items-center sm:gap-3 sm:pr-2.5 sm:pl-4"
     >
-      <div className="scroll-fade-x order-2 min-w-0 flex-1 overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 sm:order-1 sm:p-0">
+      <div data-edge-fade="x" className="order-2 min-w-0 flex-1 overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 sm:order-1 sm:p-0">
         <code className="whitespace-pre">
           {PACKAGE_MANAGERS.map((id) => (
             <span key={id} data-pm-command={id}>

@@ -30,7 +30,7 @@ const tokens = cn(
 
 /** The `<pre>` scrolls sideways; long lines don't wrap. */
 const pre = cn(
-  "[&_pre]:scroll-fade-x [&_pre]:overflow-x-auto [&_pre]:px-5 [&_pre]:py-4 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-[22px]",
+  "[&_pre]:overflow-x-auto [&_pre]:px-5 [&_pre]:py-4 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-[22px]",
   "[&_pre]:outline-none [&_pre]:focus-visible:ring-2 [&_pre]:focus-visible:ring-ring/50 [&_pre]:focus-visible:ring-inset",
 );
 
