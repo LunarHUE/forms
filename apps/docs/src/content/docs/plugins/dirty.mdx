@@ -5,6 +5,11 @@ section: plugins
 order: 2
 ---
 
+Which fields did the user change? A Save button that stays disabled until
+something changed, a "you have unsaved changes" prompt and a PATCH that sends
+only the changed fields all need that answer. `dirty()` gives it. Change a
+field, then change it back.
+
 <Demo name="dirty/profile" />
 
 With `dirty()` installed, each field and the form get `dirty`, true while the

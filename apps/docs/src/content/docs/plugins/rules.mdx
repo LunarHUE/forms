@@ -5,6 +5,10 @@ section: plugins
 order: 9
 ---
 
+Some fields depend on others: no street when the order is picked up, no
+gift message unless it is a gift. `rules()` sets fields disabled or hidden
+from the rest of the value, in the same render as the change.
+
 <Demo name="rules/delivery" />
 
 Put `rules()` in the form's plugins, and a `ruled(...)` part after the

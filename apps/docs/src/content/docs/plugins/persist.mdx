@@ -5,10 +5,12 @@ section: plugins
 order: 5
 ---
 
+A reload, a crash or a closed tab loses what the user typed. `persist()`
+keeps a draft in storage and puts it back.
+
 <Demo name="persist/feedback" />
 
-Type something, then reload the page or press the demo's reset button. The
-draft comes back.
+Type something, then reload the page or press the demo's reset button.
 
 `persist("feedback-draft")` saves the form value as JSON in `localStorage`
 under that key, once the page is idle after a write. Pass other storage as

@@ -5,6 +5,10 @@ section: plugins
 order: 4
 ---
 
+The user is editing a record when a fresher copy arrives from the server.
+Taking it whole loses their typing, and ignoring it leaves stale values in
+the fields they didn't touch. `rebase` merges the two, field by field.
+
 <Demo name="rebase/profile" />
 
 Edit the name, then press Refresh. The name keeps your text and the email

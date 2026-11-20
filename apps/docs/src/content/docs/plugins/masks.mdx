@@ -5,6 +5,10 @@ section: plugins
 order: 8
 ---
 
+A phone number should be stored as digits but read as `(555) 123-4567`.
+`mask()` cleans what a field stores and chooses what its input shows. Type a
+phone number, then type in the middle of it.
+
 <Demo name="masks/contact" />
 
 A mask cleans a field's value before the store takes it. Put `mask()` in the
