@@ -47,7 +47,7 @@ export default libraryBuild().flatMap((build): UserConfig[] => {
       unbundle: false,
       clean: false,
       plugins: [minifyCss, ...[build.plugins ?? []].flat()],
-      deps: { neverBundle: [/^@lunarhue\/forms-core(\/|$)/], alwaysBundle: [/^preact(\/|$)/], onlyBundle: [/^preact(\/|$)/] },
+      deps: { neverBundle: [/^@lunarhue\/forms-core(\/|$)/], alwaysBundle: [/^preact(\/|$)/, /^lucide-preact$/], onlyBundle: [/^preact(\/|$)/, /^lucide-preact$/] },
     },
   ];
 });

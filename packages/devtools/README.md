@@ -92,6 +92,7 @@ An error that one of our packages raised shows as its code, linked to its
 entry on the [errors page](https://forms.lunarhue.dev/errors).
 
 The panel renders in a shadow root, so the page's styles and its own stay
-apart. It is one chunk, with Preact bundled in, and an app doesn't install
-Preact. While it's open it reads the forms on each animation frame and never
-subscribes to a store, so it never keeps a plugin's `onActive` running.
+apart. It is one chunk, with Preact and the Lucide icons it uses bundled in,
+and an app installs neither. While it's open it reads the forms on each
+animation frame and never subscribes to a store, so it never keeps a plugin's
+`onActive` running.

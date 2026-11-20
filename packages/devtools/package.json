@@ -39,6 +39,7 @@
   "devDependencies": {
     "@lunarhue/forms-core": "workspace:^",
     "jsdom": "catalog:",
+    "lucide-preact": "catalog:",
     "preact": "catalog:"
   },
   "publishConfig": {

@@ -1,11 +1,26 @@
 /** @jsxImportSource preact */
 import { errorsByKind, type FieldSnapshot, invalidFields, type Path } from "@lunarhue/forms-core";
+import {
+  ArrowRight,
+  Ban,
+  Check,
+  ChevronDown,
+  CircleSmall,
+  LoaderCircle,
+  Lock,
+  type LucideIcon,
+  MousePointer2,
+  Search,
+  TextCursor,
+  TriangleAlert,
+  X,
+} from "lucide-preact";
 import type { ComponentChildren, JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { FormEntry, LoggedWrite } from "../hook.js";
 import { hasPlugin } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { Icon, IconButton } from "./icons.js";
+import { IconButton } from "./icons.js";
 import { causeText, clock, errorsPage, pathKey, preview, readError, shapeOf } from "./values.js";
 
 type Snapshot = FieldSnapshot<unknown, unknown>;
@@ -85,6 +100,17 @@ export const flagText: Record<Flag, string> = {
   "read-only": "Read-only, here or above",
 };
 
+/** The icon each flag shows on a row. */
+const flagIcons: Record<Flag, LucideIcon> = {
+  invalid: TriangleAlert,
+  validating: LoaderCircle,
+  dirty: CircleSmall,
+  edited: TextCursor,
+  touched: Check,
+  disabled: Ban,
+  "read-only": Lock,
+};
+
 /** The flags a field has set, in the order rows show them. `dirty` only counts when the form has `dirty()`. */
 export function flagsOf(snapshot: Snapshot, dirty: boolean): Flag[] {
   const flags: Flag[] = [];
@@ -162,7 +188,7 @@ function WriteLine({ write: { record } }: WriteLineProps): JSX.Element {
       {record.type === "value" ? (
         <>
           <span class="muted">{preview(record.before)}</span>
-          <Icon name="arrow" />
+          <ArrowRight />
           {preview(record.after)}
         </>
       ) : (
@@ -285,7 +311,7 @@ interface ShowButtonProps {
 
 /** The button that shows a field's elements on the page. */
 function ShowButton({ path, name, onInspect }: ShowButtonProps): JSX.Element {
-  return <IconButton label={`Show ${name} on the page`} icon="pointer" class="icon small" data-tip="Show on the page" onClick={() => onInspect(path)} />;
+  return <IconButton label={`Show ${name} on the page`} icon={MousePointer2} class="icon small" data-tip="Show on the page" onClick={() => onInspect(path)} />;
 }
 
 interface FilterBoxProps {
@@ -299,11 +325,11 @@ interface FilterBoxProps {
 function FilterBox({ filter, onFilter, invalidOnly, onInvalidOnly }: FilterBoxProps): JSX.Element {
   return (
     <div class="filter">
-      <Icon name="search" />
+      <Search />
       <input type="search" placeholder="Filter" aria-label="Filter fields by name" value={filter} onInput={(event) => onFilter(event.currentTarget.value)} />
       <IconButton
         label="Only fields with errors"
-        icon="invalid"
+        icon={TriangleAlert}
         class="icon small"
         aria-pressed={invalidOnly ? "true" : "false"}
         onClick={() => onInvalidOnly(!invalidOnly)}
@@ -320,6 +346,7 @@ interface FlagIconProps {
 
 /** One flag on a row, which shows its hover card while pointed at or focused. */
 function FlagIcon({ flag, onHint }: FlagIconProps): JSX.Element {
+  const FlagGlyph = flagIcons[flag];
   const show = (event: { currentTarget: Element }) => onHint(event.currentTarget.getBoundingClientRect());
   return (
     <span
@@ -332,7 +359,7 @@ function FlagIcon({ flag, onHint }: FlagIconProps): JSX.Element {
       onPointerLeave={() => onHint(null)}
       onBlur={() => onHint(null)}
     >
-      <Icon name={flag} />
+      <FlagGlyph />
     </span>
   );
 }
@@ -363,7 +390,7 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
       onPointerLeave={() => onHover?.(null)}
     >
       {row.branch ? (
-        <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon="chevron" class="twisty" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
+        <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon={ChevronDown} class="twisty" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
       ) : (
         <span class="leaf" />
       )}
@@ -392,7 +419,7 @@ function FieldDetail({ entry, path, snapshot, onClose, onInspect }: FieldDetailP
       <div class="detail-head">
         <strong class="truncate">{snapshot.name || "(form)"}</strong>
         {onInspect ? <ShowButton path={path} name={snapshot.name} onInspect={onInspect} /> : null}
-        <IconButton label="Close the field detail" icon="close" class="icon small" onClick={onClose} />
+        <IconButton label="Close the field detail" icon={X} class="icon small" onClick={onClose} />
       </div>
       <FieldFacts entry={entry} path={path} snapshot={snapshot} />
     </section>

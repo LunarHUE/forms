@@ -1,5 +1,6 @@
 /** @jsxImportSource preact */
 import type { Path } from "@lunarhue/forms-core";
+import { X } from "lucide-preact";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
@@ -172,7 +173,7 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
       <div class="detail-head">
         <strong class="truncate">{snapshot.name || "(form)"}</strong>
         <span class="muted truncate">{form.label}</span>
-        {onClose ? <IconButton label="Unpin the field card" icon="close" class="icon small" onClick={onClose} /> : null}
+        {onClose ? <IconButton label="Unpin the field card" icon={X} class="icon small" onClick={onClose} /> : null}
       </div>
       <FieldFacts entry={entry} path={path} snapshot={snapshot} />
     </section>

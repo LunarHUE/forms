@@ -1,5 +1,6 @@
 /** @jsxImportSource preact */
 import type { Path } from "@lunarhue/forms-core";
+import { Check, ChevronDown, EyeOff, Locate, SquareEqual, X } from "lucide-preact";
 import type { JSX, Ref, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { FormEntry, Hook } from "../hook.js";
@@ -8,7 +9,7 @@ import { Bundle } from "./bundle.js";
 import { Fields, type FieldsProps } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { Icon, IconButton } from "./icons.js";
+import { IconButton } from "./icons.js";
 import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
@@ -263,8 +264,8 @@ export function App({ hook, host }: AppProps): JSX.Element {
               {status}
               {inspectButton}
               <div class="end">
-                {onDisable ? <IconButton label="Turn off devtools" icon="off" onClick={turnOff} /> : null}
-                <IconButton label="Close the devtools" icon="close" onClick={() => setSheetOpen(false)} />
+                {onDisable ? <IconButton label="Turn off devtools" icon={EyeOff} onClick={turnOff} /> : null}
+                <IconButton label="Close the devtools" icon={X} onClick={() => setSheetOpen(false)} />
               </div>
               {openMenu}
             </div>
@@ -276,7 +277,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
         ) : (
           <IconButton
             label="Open the forms devtools"
-            icon="panel"
+            icon={SquareEqual}
             class="fab icon surface"
             onClick={() => {
               if (selected === undefined && shown) setSelectedId(shown.id);
@@ -300,7 +301,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
         <div class="bar surface" role="toolbar" aria-label="Forms devtools" ref={menuButtons}>
           <IconButton
             label="Devtools menu"
-            icon="panel"
+            icon={SquareEqual}
             aria-haspopup="menu"
             aria-expanded={menu?.kind === "dock" ? "true" : "false"}
             data-tip="Dock position and turning off"
@@ -378,10 +379,10 @@ function FormChip({ selected, empty, menuOpen, onMenu, onClear }: FormChipProps)
       >
         <span class={selected ? "swatch on" : "swatch"} aria-hidden="true" />
         <span class={selected ? "truncate" : "truncate muted"}>{selected?.label ?? (empty ? "No forms" : "No form")}</span>
-        {selected ? null : <Icon name="chevron" />}
+        {selected ? null : <ChevronDown />}
       </button>
       {/* The clear button takes the chevron's place. */}
-      {selected ? <IconButton label={`Clear selection ${selected.label}`} icon="close" class="icon small" data-tip="Clear selection" onClick={onClear} /> : null}
+      {selected ? <IconButton label={`Clear selection ${selected.label}`} icon={X} class="icon small" data-tip="Clear selection" onClick={onClear} /> : null}
     </div>
   );
 }
@@ -410,7 +411,7 @@ function FormsMenu({ menuRef, left, forms, selectedId, onSelect }: FormsMenuProp
           <button key={form.id} class="menu-item" role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => onSelect(form.id)}>
             <span class={form.id === selectedId ? "swatch on" : "swatch"} aria-hidden="true" />
             <span class="truncate">{form.label}</span>
-            {form.id === selectedId ? <Icon name="check" class="check" /> : null}
+            {form.id === selectedId ? <Check class="check" /> : null}
           </button>
         ))
       )}
@@ -433,13 +434,13 @@ function DockMenu({ menuRef, left, corner, onMove, onTurnOff }: DockMenuProps): 
       {corners.map((option) => (
         <button key={option} class="menu-item" role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => onMove(option)}>
           {cornerLabels[option]}
-          {option === corner ? <Icon name="check" class="check" /> : null}
+          {option === corner ? <Check class="check" /> : null}
         </button>
       ))}
       {onTurnOff ? <div class="menu-separator" role="separator" /> : null}
       {onTurnOff ? (
         <button class="menu-item" role="menuitem" onClick={onTurnOff}>
-          <Icon name="off" />
+          <EyeOff />
           Turn off devtools
         </button>
       ) : null}
@@ -457,7 +458,7 @@ function InspectButton({ inspecting, onToggle }: InspectButtonProps): JSX.Elemen
   return (
     <IconButton
       label="Inspect fields on the page"
-      icon="inspect"
+      icon={Locate}
       aria-pressed={inspecting ? "true" : "false"}
       data-tip={inspecting ? "Stop inspecting" : "Inspect fields. Or hold Alt"}
       onClick={onToggle}
@@ -523,7 +524,7 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
             aria-pressed={form.id === selectedId ? "true" : "false"}
             onClick={() => onPick(form.id)}
           >
-            <Icon name="panel" />
+            <SquareEqual />
             <span class="truncate">{form.label}</span>
           </button>
         </div>
