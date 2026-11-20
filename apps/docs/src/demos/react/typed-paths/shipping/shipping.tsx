@@ -1,7 +1,8 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField } });
 
 const order = forms.define({
   defaultValues: {
@@ -12,7 +13,7 @@ const order = forms.define({
 });
 
 export default function ShippingForm() {
-  const form = useForm(order);
+  const form = useForm(order, { id: "shipping" });
   // Handles: typed, stable objects for one part of the value.
   const shipping = form.root.at("shipping");
   const billing = form.root.at("billing");

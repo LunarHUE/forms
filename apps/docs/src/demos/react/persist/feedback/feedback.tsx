@@ -1,8 +1,9 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { persist } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField } });
 
 const feedback = forms.define({
   defaultValues: { subject: "", message: "" },
@@ -13,7 +14,7 @@ const feedback = forms.define({
 });
 
 export default function FeedbackForm() {
-  const form = useForm(feedback);
+  const form = useForm(feedback, { id: "feedback" });
   return (
     <form.Form>
       {(formProps) => (

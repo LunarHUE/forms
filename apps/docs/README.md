@@ -24,7 +24,8 @@ This works for both React and Solid 2, in `astro build` + `astro preview` and in
 
 1. Write the demo for each framework the page lists in `frameworks`: `src/demos/react/<page>/<demo>/<demo>.tsx` and `src/demos/solid/<page>/<demo>/<demo>.tsx`, each with a default export. Other files in the folder (`PhoneField.tsx`) show up as tabs in the Code view; the entry file comes first.
 2. Use bare `<form>`, `<label>`, `<input>` and `<button>`. `src/styles/demo.css` styles them.
-3. In the MDX page, write `<Demo name="<page>/<demo>" />`. Add `form="..."` if the devtools tag should show a name other than the folder's.
+3. Install the forms devtools: add `docsDevtools` from `@/devtools/enabled` last in `createForms`' `plugins`, and give the form an `id` unique on its page, such as `useForm(contact, { id: "contact" })`. The Code view hides the import and the plugin entry (`src/components/mdx/demo/devtools.ts`), so readers see the plain example, and the build fails if it can't.
+4. In the MDX page, write `<Demo name="<page>/<demo>" />`. Add `form="..."` if the devtools tag should show a name other than the folder's.
 
 The `demos` MDX plugin (`src/lib/mdx/demos.ts`) turns that into imports and one `client:visible` slot per framework. If a framework the page lists has no demo folder, the build fails with the file and line of the `<Demo>`.
 

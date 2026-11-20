@@ -2,8 +2,9 @@ import { zustand } from "@lunarhue/forms-bind/zustand";
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { useAppStore } from "./store";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField } });
 
 const settingsForm = forms.define({
   // `useForm` checks this type against the slice the binding picks.
@@ -29,6 +30,7 @@ export default function SettingsForm() {
   // The form starts from the store's slice. Errors, touched and the
   // rest stay in the form. Only the value is copied.
   const form = useForm(settingsForm, {
+    id: "settings",
     plugins: [
       zustand(useAppStore, {
         select: (state) => state.settings,

@@ -1,8 +1,9 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
 import { ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { Checkbox, TextField } from "./fields";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [rules()], fields: { TextField, Checkbox } });
+const forms = createForms({ plugins: [rules(), docsDevtools], fields: { TextField, Checkbox } });
 
 const order = forms.define(
   {
@@ -17,7 +18,7 @@ const order = forms.define(
 );
 
 export default function DeliveryForm() {
-  const form = createForm(order);
+  const form = createForm(order, { id: "delivery" });
   return (
     <form.Form>
       {(formProps) => (

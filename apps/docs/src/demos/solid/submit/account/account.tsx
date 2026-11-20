@@ -2,8 +2,9 @@ import { createForm, createForms, useFormContext } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { saveAccount } from "./server";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const account = forms.define({
   defaultValues: { name: "", email: "" },
@@ -36,7 +37,7 @@ function SubmitButton() {
 }
 
 export default function AccountForm() {
-  const form = createForm(account);
+  const form = createForm(account, { id: "account" });
   return (
     <form.Form>
       {(formProps) => (

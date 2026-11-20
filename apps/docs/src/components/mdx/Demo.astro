@@ -6,7 +6,8 @@
  * React page ships no Solid code.
  *
  * The Code tab shows every file in the demo folder, read with `?raw`, so it
- * is the code that runs. The entry file (`contact.tsx`) comes first.
+ * is the code that runs, minus the docs' devtools wiring (demo/devtools.ts).
+ * The entry file (`contact.tsx`) comes first.
  *
  * Reset: the slot renders once. The live copy goes in the stage, and a copy
  * without <script> tags goes in a <template>. DemoFrame swaps a clone of the
@@ -17,6 +18,7 @@ import { AVAILABLE_FRAMEWORKS, isFramework } from "@/lib/frameworks";
 import { highlight } from "@/lib/highlight";
 
 import { DemoFrame, type DemoFile } from "./DemoFrame";
+import { hideDevtools } from "./demo/devtools";
 import { demoId } from "./demo/ids";
 import "@/styles/demo.css";
 
@@ -49,7 +51,7 @@ const entry = `${leaf}.tsx`;
 const files: DemoFile[] = await Promise.all(
   Object.entries(sources)
     .filter(([path]) => path.startsWith(folder))
-    .map(([path, code]) => [path.slice(folder.length), code.replace(/\n$/, "")] as const)
+    .map(([path, code]) => [path.slice(folder.length), hideDevtools(code).replace(/\n$/, "")] as const)
     .toSorted(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a.localeCompare(b)))
     .map(async ([file, code]) => ({ name: file, code, html: await highlight(code, file.split(".").at(-1)) })),
 );

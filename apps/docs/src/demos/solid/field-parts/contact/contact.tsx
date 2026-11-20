@@ -1,6 +1,7 @@
 import { createForm, createForms, defineField } from "@lunarhue/forms-solid";
 import { digits, mask, masked, upper } from "@lunarhue/forms-solid/plugins";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
 // "5551234567" shows as "(555) 123-4567".
 function formatPhone(value: string) {
@@ -13,7 +14,7 @@ function formatPhone(value: string) {
 const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
 const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
 
-const forms = createForms({ plugins: [mask()], fields: { TextInput, PhoneField, CodeField } });
+const forms = createForms({ plugins: [mask(), docsDevtools], fields: { TextInput, PhoneField, CodeField } });
 
 const contact = forms.define({
   defaultValues: { name: "", phone: "", referral: "" },
@@ -21,7 +22,7 @@ const contact = forms.define({
 });
 
 export default function ContactForm() {
-  const form = createForm(contact);
+  const form = createForm(contact, { id: "contact" });
   return (
     <form.Form>
       {(formProps) => (

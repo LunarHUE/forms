@@ -11,7 +11,7 @@ const profile = forms.define({
 });
 
 export default function SkillsForm() {
-  const form = useForm(profile);
+  const form = useForm(profile, { id: "skills" });
   return (
     <form.Form>
       {(formProps) => (

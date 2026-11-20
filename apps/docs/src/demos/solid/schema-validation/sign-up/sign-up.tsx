@@ -2,9 +2,10 @@ import { createForm, createForms } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { z } from "zod";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
 // Still no plugins. Any Standard Schema validates.
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const SignUp = z.object({
   username: z.string().min(3, "Use at least 3 characters."),
@@ -25,7 +26,7 @@ const signUp = forms.define({
 });
 
 export default function SignUpForm() {
-  const form = createForm(signUp);
+  const form = createForm(signUp, { id: "sign-up" });
   return (
     <form.Form>
       {(formProps) => (

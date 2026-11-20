@@ -13,7 +13,7 @@ const order = forms.define({
 });
 
 export default function OrderForm() {
-  const form = useForm(order);
+  const form = useForm(order, { id: "order" });
   return (
     <form.Form>
       {(formProps) => (

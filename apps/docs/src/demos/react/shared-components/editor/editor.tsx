@@ -8,7 +8,7 @@ const post = forms.define({
 });
 
 export default function PostEditor() {
-  const form = useForm(post);
+  const form = useForm(post, { id: "editor" });
   return (
     <form.Form>
       {(formProps) => (

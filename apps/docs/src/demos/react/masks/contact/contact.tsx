@@ -1,6 +1,7 @@
 import { createForms, defineField, useForm } from "@lunarhue/forms-react";
 import { digits, mask, masked } from "@lunarhue/forms-react/plugins";
 import { PhoneInput } from "./PhoneInput";
+import { docsDevtools } from "@/devtools/enabled";
 
 // "5551234567" shows as "(555) 123-4567".
 function formatPhone(value: string) {
@@ -16,7 +17,7 @@ function formatPhone(value: string) {
 // ever holds digits, so `onSubmit` gets digits.
 const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 
-const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
+const forms = createForms({ plugins: [mask(), docsDevtools], fields: { PhoneField } });
 
 const contact = forms.define({
   defaultValues: { phone: "" },
@@ -24,7 +25,7 @@ const contact = forms.define({
 });
 
 export default function ContactForm() {
-  const form = useForm(contact);
+  const form = useForm(contact, { id: "contact" });
   return (
     <form.Form>
       {(formProps) => (

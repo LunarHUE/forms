@@ -1,9 +1,10 @@
 import { Items, createForms, useForm } from "@lunarhue/forms-react";
 import { arrays } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
 // arrays() brings Items and the array commands: push, insert, remove, move.
-const forms = createForms({ plugins: [arrays()], fields: { TextField } });
+const forms = createForms({ plugins: [arrays(), docsDevtools], fields: { TextField } });
 
 // With no schema, `defaultValues` types the form.
 const checklist = forms.define({
@@ -14,7 +15,7 @@ const checklist = forms.define({
 });
 
 export default function ChecklistForm() {
-  const form = useForm(checklist);
+  const form = useForm(checklist, { id: "checklist" });
   // A handle to the array. Its commands change the list.
   const tasks = form.root.at("tasks");
   return (

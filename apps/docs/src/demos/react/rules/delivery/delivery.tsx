@@ -1,8 +1,9 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { ruled, rules } from "@lunarhue/forms-react/plugins";
 import { Checkbox, TextField } from "./fields";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [rules()], fields: { TextField, Checkbox } });
+const forms = createForms({ plugins: [rules(), docsDevtools], fields: { TextField, Checkbox } });
 
 const order = forms.define(
   {
@@ -17,7 +18,7 @@ const order = forms.define(
 );
 
 export default function DeliveryForm() {
-  const form = useForm(order);
+  const form = useForm(order, { id: "delivery" });
   return (
     <form.Form>
       {(formProps) => (

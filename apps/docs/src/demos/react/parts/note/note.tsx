@@ -1,11 +1,12 @@
 import { createForms, defineField, useForm } from "@lunarhue/forms-react";
 import { limit, limited } from "./limit";
 import { NoteInput } from "./NoteInput";
+import { docsDevtools } from "@/devtools/enabled";
 
 // The part rides on the field type. Plain NoteInput fields have no limit.
 const ShortNote = defineField(NoteInput, limited(20));
 
-const forms = createForms({ plugins: [limit()], fields: { NoteInput, ShortNote } });
+const forms = createForms({ plugins: [limit(), docsDevtools], fields: { NoteInput, ShortNote } });
 
 const note = forms.define({
   defaultValues: { headline: "", body: "" },
@@ -13,7 +14,7 @@ const note = forms.define({
 });
 
 export default function NoteForm() {
-  const form = useForm(note);
+  const form = useForm(note, { id: "note" });
   return (
     <form.Form>
       {(formProps) => (

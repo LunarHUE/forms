@@ -1,8 +1,9 @@
 import { createForms } from "@lunarhue/forms-solid";
 import { ruled, rules } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-export const forms = createForms({ plugins: [rules()], fields: { TextField } });
+export const forms = createForms({ plugins: [rules(), docsDevtools], fields: { TextField } });
 
 export interface Address {
   street: string;

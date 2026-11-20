@@ -1,7 +1,8 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { CheckboxField, NumberField, TextField } from "./fields";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const order = forms.define({
   defaultValues: { name: "", quantity: undefined as number | undefined, terms: false },
@@ -17,7 +18,7 @@ const order = forms.define({
 });
 
 export default function OrderForm() {
-  const form = useForm(order);
+  const form = useForm(order, { id: "primitives" });
   return (
     <form.Form>
       {(formProps) => (

@@ -1,8 +1,9 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { CheckboxField, NumberField, TextField } from "./fields";
+import { docsDevtools } from "@/devtools/enabled";
 
 // Registered once. Every form from `forms` gets `form.TextField` and the rest.
-const forms = createForms({ fields: { TextField, NumberField, CheckboxField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField, NumberField, CheckboxField } });
 
 interface Profile {
   name: string;
@@ -22,7 +23,7 @@ const profile = forms.define<Profile>({
 });
 
 export default function ProfileForm() {
-  const form = useForm(profile);
+  const form = useForm(profile, { id: "profile" });
   return (
     <form.Form>
       {(formProps) => (

@@ -1,8 +1,9 @@
 import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
 import { For, Show } from "solid-js";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const signUp = forms.define({
   defaultValues: { username: "", password: "", confirm: "", terms: false },
@@ -20,7 +21,7 @@ const signUp = forms.define({
 });
 
 export default function SignUpForm() {
-  const form = createForm(signUp);
+  const form = createForm(signUp, { id: "sign-up" });
   return (
     <form.Form>
       {(formProps) => (
