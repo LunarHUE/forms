@@ -83,6 +83,15 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * component may write `undefined` into a field typed `number`, and the type
  * checker won't catch it.
  *
+ * For a text input or checkbox that renders optional fields too, write
+ * `FieldApi<string | undefined>` or `FieldApi<boolean | undefined>`. The
+ * component then fits required and optional fields of that type, and
+ * `field.value` reads `undefined` where the field can hold it. A
+ * `FieldApi<string>` component fits required fields only, so its
+ * `field.value` stays a `string`. The loose side is the same as above: the
+ * component may write `undefined` into a required field. `null` works the
+ * same way.
+ *
  * For a select, radio group or checkbox group, write `FieldApi<Choice>` or
  * `FieldApi<Choice[]>` and use `Choice` for the option values in the other
  * props. The component then fits any field of string options, and each use
@@ -227,14 +236,19 @@ export type FieldValueOf<C> = AcceptedValues<FieldPropOf<C>> extends { readonly 
 /**
  * The value types a registered component's field accepts, each wrapped as
  * `{ value: T }` so a union of them stays apart. A `FieldApi<T>` accepts
- * `Draft<T>` and `T`. A field object typed another way, such as
+ * `Draft<T>` and `T`, and both again with `undefined`, `null` or both taken
+ * out of `T`. So a `FieldApi<string | undefined>` component takes required
+ * and optional string fields. A field object typed another way, such as
  * `FieldApiOf<H>`, accepts its value type only.
  */
 export type AcceptedValues<A> = "~fits" extends keyof A
   ? A extends { readonly "~fits"?: { readonly value: infer T } }
-    ? { readonly value: Draft<T> } | { readonly value: T }
+    ? DraftOrExact<T> | DraftOrExact<Exclude<T, undefined>> | DraftOrExact<Exclude<T, null>> | DraftOrExact<NonNullable<T>>
     : never
   : { readonly value: ValueOf<A> };
+
+/** `Draft<T>` and `T`, each wrapped as `{ value }`. Nothing for `never`. */
+type DraftOrExact<T> = [T] extends [never] ? never : { readonly value: Draft<T> } | { readonly value: T };
 
 /**
  * The handles a component that accepts `A` (see `AcceptedValues`) takes,
