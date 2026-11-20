@@ -48,6 +48,19 @@ for (const framework of frameworks) {
 }
 
 for (const framework of frameworks) {
+  test(`${framework}: the devtools pick the masks demo's form`, async ({ page }) => {
+    const demo = await openMasks(page, framework);
+    await page.getByRole("button", { name: "Pick a form on the page" }).click();
+    await page.getByRole("button", { name: "Pick form contact" }).click();
+    await expect(page.getByRole("button", { name: "Form contact. Choose a form" })).toBeVisible();
+
+    // Picking opens the Fields tab, which follows typing.
+    await expect(page.getByRole("region", { name: "Devtools fields" })).toBeVisible();
+    const phone = page.locator(`[data-path='["phone"]']`);
+    await demo.getByRole("textbox").pressSequentially("555");
+    await expect(phone).toContainText('"555"');
+  });
+
   test(`${framework}: the demo code hides the devtools wiring`, async ({ page }) => {
     const demo = await openMasks(page, framework);
     await demo.getByRole("tab", { name: "Code" }).click();

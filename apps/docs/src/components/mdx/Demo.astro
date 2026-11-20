@@ -25,8 +25,6 @@ import "@/styles/demo.css";
 interface Props {
   /** The demo's folder under `src/demos/<framework>/`, like `masks/contact`. */
   name: string;
-  /** The form's name on the devtools tag. Default: the last part of `name`. */
-  form?: string;
 }
 
 const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
@@ -37,7 +35,6 @@ const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
 
 const { name } = Astro.props;
 const leaf = name.split("/").at(-1)!;
-const form = Astro.props.form ?? leaf;
 const framework = Astro.params.framework;
 if (!framework || !isFramework(framework)) {
   throw new Error(`<Demo name="${name}"> needs a framework page, got ${Astro.url.pathname}.`);
@@ -84,7 +81,7 @@ const loader = others
 <Fragment set:html={loader} />
 <!-- Search skips the demo: its labels and source would crowd the page's prose in results. -->
 <div data-pagefind-ignore>
-  <DemoFrame client:visible id={id} name={name} form={form} files={files}>
+  <DemoFrame client:visible id={id} name={name} files={files}>
     <div data-demo-live><Fragment set:html={html} /></div>
     <template data-demo-initial><Fragment set:html={initial} /></template>
   </DemoFrame>

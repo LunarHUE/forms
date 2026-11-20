@@ -53,28 +53,35 @@ test("the dark theme survives a reload and applies before hydration", async ({ p
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
 });
 
-test("the devtools turn off from the dock, stay off after a reload and come back from the header", async ({ page }) => {
+test("the devtools panel turns off from its menu, stays off after a reload and comes back from the header", async ({
+  page,
+}) => {
   await page.goto("/react/plugins/masks");
-  const dock = page.getByRole("toolbar", { name: "Forms devtools" });
-  const tag = page.locator('[data-demo="masks/contact"] [data-form-tag]');
-  await expect(dock).toBeVisible();
-  await expect(tag).toBeVisible();
+  // The panel mounts once a demo's form, which installs the devtools, hydrates.
+  await page.locator('[data-demo="masks/contact"]').scrollIntoViewIfNeeded();
+  const panel = page.getByRole("toolbar", { name: "Forms devtools" });
+  const host = page.locator("[data-lunarhue-forms-devtools]");
+  await expect(panel).toBeVisible();
 
-  await dock.getByRole("button", { name: "Devtools menu" }).click();
+  await panel.getByRole("button", { name: "Devtools menu" }).click();
   await page.getByRole("menuitem", { name: "Turn off devtools" }).click();
-  await expect(dock).toBeHidden();
-  await expect(tag).toBeHidden();
+  await expect(host).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-devtools", "off");
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-devtools", "off");
-  await expect(tag).toBeHidden();
+  await page.locator('[data-demo="masks/contact"]').scrollIntoViewIfNeeded();
+  await hydrated(page, '[data-demo="masks/contact"] [data-demo-live] astro-island');
+  await expect(host).toHaveCount(0);
   const toggle = page.getByRole("button", { name: "Forms devtools" });
   await hydrated(page, "astro-island:has([aria-label='Forms devtools'])");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await expect(dock).toBeVisible();
-  await expect(tag).toBeVisible();
+  await expect(panel).toBeVisible();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(host).toHaveCount(0);
 });
