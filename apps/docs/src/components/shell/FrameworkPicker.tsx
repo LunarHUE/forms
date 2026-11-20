@@ -1,4 +1,5 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
+import { navigate } from "astro:transitions/client";
 import { ChevronsUpDownIcon } from "lucide-react";
 
 import {
@@ -32,21 +33,19 @@ const itemClass =
 
 /** Follows the item's link, or switches the last-used framework when it has none. */
 function go(item: PickerItem): void {
-  if (item.href) window.location.assign(item.href);
+  if (item.href) void navigate(item.href);
   else if (item.group === "framework" && isFramework(item.value)) setFramework(item.value);
 }
 
-export function FrameworkPicker({
-  items,
-  framework,
-  version,
-  onNavigate = go,
-}: {
+interface FrameworkPickerProps {
   items: PickerItem[];
   framework: string;
   version: string;
+  /** What picking an item does. Default: follow its link, see `go`. */
   onNavigate?: (item: PickerItem) => void;
-}) {
+}
+
+export function FrameworkPicker({ items, framework, version, onNavigate = go }: FrameworkPickerProps) {
   const selected = items.filter(
     (item) =>
       (item.group === "framework" && item.value === framework) ||

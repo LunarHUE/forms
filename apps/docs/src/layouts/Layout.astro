@@ -18,11 +18,20 @@
  *
  * Slots: default (the body), `head` (extra tags at the end of <head>).
  *
+ * Astro's client router swaps pages in place, so the stylesheet and fonts
+ * load once. Shell marks the header's and sidebar's islands with
+ * `transition:persist`. The two Latin font files are preloaded so the first
+ * load shows the right fonts sooner.
+ *
  * The inline boot script (lib/boot.ts) sets html.dark, data-theme, data-pm,
  * data-framework and data-devtools from localStorage before first paint. The server
  * markup carries the defaults (data-pm="bun", data-theme="system") so the
  * page also reads right without JavaScript.
  */
+import { ClientRouter } from "astro:transitions";
+import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url";
+
 import type { Framework } from "@/lib/frameworks";
 import { bootScript } from "@/lib/boot";
 import { DEFAULT_STATE } from "@/lib/store";
@@ -46,6 +55,7 @@ const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
 
 <html
   lang="en"
+  transition:animate="none"
   data-theme={DEFAULT_STATE.theme}
   data-pm={DEFAULT_STATE.pm}
   data-devtools="on"
@@ -61,7 +71,10 @@ const canonical = Astro.site ? new URL(pathname, Astro.site).href : undefined;
     <meta property="og:title" content={fullTitle} />
     {description && <meta property="og:description" content={description} />}
     <meta property="og:site_name" content={SITE_NAME} />
+    <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={geistMonoLatin} as="font" type="font/woff2" crossorigin />
     <script is:inline set:html={bootScript(framework ?? null)} />
+    <ClientRouter />
     <slot name="head" />
   </head>
   <body class={bodyClass}>
