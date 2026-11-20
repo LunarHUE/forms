@@ -1,6 +1,6 @@
 import { createFormsCore, type Path, tracking } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cornerKey } from "./panel/corner.js";
 import { type Hook, hookKey } from "./hook.js";
 import { devtools } from "./index.js";
@@ -23,6 +23,10 @@ afterEach(() => {
   document.body.replaceChildren();
   localStorage.clear();
 });
+
+// Preact runs effects after a paint, with a 35ms timeout in case no frame comes, and the timeout calls
+// `cancelAnimationFrame`. Waiting it out keeps it from firing after jsdom is gone.
+afterAll(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
 /** A form with devtools, subscribed the way an adapter's form is. */
 function form<V extends object>(defaultValues: V, id = "form") {
