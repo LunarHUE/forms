@@ -1,0 +1,27 @@
+{
+  "name": "@lunarhue/forms-compare",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The same forms built with @lunarhue/forms and with TanStack Form, for a side-by-side comparison of code and bundle size.",
+  "dependencies": {
+    "@lunarhue/forms-react": "workspace:*",
+    "@lunarhue/forms-schema": "workspace:*",
+    "@tanstack/react-form": "1.33.5",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "vite": "catalog:"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:e2e": "playwright test"
+  }
+}

@@ -101,31 +101,100 @@ if (framework) {
       ))
     }
     <script is:inline>
-      // Keep the sidebar's scroll position across page loads, and make sure the
-      // current item is in view. Runs before paint, right after the sidebar.
+      // Sidebar state. Runs before paint, right after the sidebar, on a full
+      // load only (the client router doesn't rerun an inline script it has
+      // seen), so it also hooks the router's events:
+      // - Folded groups are remembered for the session. The current page's
+      //   group stays open.
+      // - The scroll position survives a full reload. Client-side navigations
+      //   keep the nav itself (transition:persist in Sidebar.astro), scroll
+      //   and all, so before the swap the kept nav takes the new page's
+      //   current-page mark. Moving it resets its scrollTop, so that is put
+      //   back after the swap.
+      // - The current item is scrolled into view.
       (() => {
-        const key = "forms:sidebar-scroll";
-        const asides = [...document.querySelectorAll("[data-sidebar]")];
-        let saved = null;
-        try {
-          saved = sessionStorage.getItem(key);
-        } catch {}
-        for (const aside of asides) {
-          if (saved !== null) aside.scrollTop = Number(saved);
-          const current = aside.querySelector('[aria-current="page"]');
-          if (!current) continue;
-          const top = current.offsetTop;
-          const bottom = top + current.offsetHeight;
-          if (top < aside.scrollTop || bottom > aside.scrollTop + aside.clientHeight) {
-            aside.scrollTop = top - aside.clientHeight / 2;
+        const scrollKey = "forms:sidebar-scroll";
+        const foldKey = "forms:sidebar-folded";
+        // The IIFE is the scope; there is nothing outside it to move helpers to.
+        /* oxlint-disable unicorn/consistent-function-scoping */
+        const read = (key) => {
+          try {
+            return sessionStorage.getItem(key);
+          } catch {
+            return null;
           }
+        };
+        const write = (key, value) => {
+          try {
+            sessionStorage.setItem(key, value);
+          } catch {}
+        };
+        let folded = [];
+        try {
+          folded = JSON.parse(read(foldKey) ?? "[]");
+        } catch {}
+        const scrollers = () => [...document.querySelectorAll("[data-sidebar-scroll]")];
+
+        const setUp = (scroller) => {
+          if (scroller.dataset.ready !== undefined) return;
+          scroller.dataset.ready = "";
+          for (const group of scroller.querySelectorAll("[data-nav-group]")) {
+            if (folded.includes(group.dataset.navGroup)) group.open = false;
+            group.addEventListener("toggle", () => {
+              const name = group.dataset.navGroup;
+              folded = folded.filter((other) => other !== name);
+              if (!group.open) folded.push(name);
+              write(foldKey, JSON.stringify(folded));
+            });
+          }
+        };
+        const reveal = (scroller) => {
+          const current = scroller.querySelector('[aria-current="page"]');
+          if (!current) return;
+          const group = current.closest("[data-nav-group]");
+          if (group) group.open = true;
+          const top = current.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+          const bottom = top + current.offsetHeight;
+          if (top < scroller.scrollTop || bottom > scroller.scrollTop + scroller.clientHeight) {
+            scroller.scrollTop = top - scroller.clientHeight / 2;
+          }
+        };
+
+        /* oxlint-enable unicorn/consistent-function-scoping */
+
+        const saved = read(scrollKey);
+        for (const scroller of scrollers()) {
+          setUp(scroller);
+          if (saved !== null) scroller.scrollTop = Number(saved);
+          reveal(scroller);
         }
         addEventListener("pagehide", () => {
-          const visible = asides.find((aside) => aside.getClientRects().length > 0);
-          if (!visible) return;
-          try {
-            sessionStorage.setItem(key, String(visible.scrollTop));
-          } catch {}
+          const visible = scrollers().find((scroller) => scroller.getClientRects().length > 0);
+          if (visible) write(scrollKey, String(visible.scrollTop));
+        });
+
+        const kept = new Map();
+        document.addEventListener("astro:before-swap", (event) => {
+          kept.clear();
+          for (const scroller of scrollers()) {
+            kept.set(scroller, scroller.scrollTop);
+            const id = scroller.getAttribute("data-astro-transition-persist");
+            const next = event.newDocument.querySelector(`[data-astro-transition-persist="${id}"]`);
+            if (!next) continue;
+            const href = next.querySelector('[aria-current="page"]')?.getAttribute("href");
+            for (const link of scroller.querySelectorAll("a[href]")) {
+              if (link.getAttribute("href") === href) link.setAttribute("aria-current", "page");
+              else link.removeAttribute("aria-current");
+            }
+          }
+        });
+        document.addEventListener("astro:after-swap", () => {
+          for (const scroller of scrollers()) {
+            setUp(scroller);
+            if (kept.has(scroller)) scroller.scrollTop = kept.get(scroller);
+            reveal(scroller);
+          }
+          kept.clear();
         });
       })();
     </script>

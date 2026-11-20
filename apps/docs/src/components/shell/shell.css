@@ -13,7 +13,7 @@ html[data-framework="solid"] [data-sidebar-for="react"] {
 
 @media (min-width: 1024px) {
   html[data-framework="solid"] [data-sidebar-for="solid"] {
-    display: block !important;
+    display: flex !important;
   }
 }
 
