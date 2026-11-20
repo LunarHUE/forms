@@ -530,7 +530,7 @@ describe("inspect", () => {
 /** The global a bundler plugin defines as the size report's URL. */
 const sizesKey = "__LUNARHUE_FORMS_SIZES__";
 
-/** The size the Bundle tab shows for a part, by its `kind:name`. */
+/** The size the Bundle tab shows for a part, by its `kind:name`: in kB in the graph, in bytes in the run order. */
 const sizeOf = (root: ShadowRoot, part: string) => root.querySelector(`[data-part="${part}"] .num`)?.textContent;
 
 describe("Bundle", () => {
@@ -551,7 +551,7 @@ describe("Bundle", () => {
     return store;
   }
 
-  it("lists core, the adapter and every plugin with no sizes until a bundler plugin measures the build", async () => {
+  it("shows core, the adapter and every plugin with no sizes until a bundler plugin measures the build", async () => {
     tracked();
     const root = await open();
     button(root, "Bundle").click();
@@ -585,12 +585,14 @@ describe("Bundle", () => {
     await frame();
     expect(fetch).toHaveBeenCalledWith("/sizes-joined.json");
     expect(root.querySelector(".note")?.textContent).toContain("measured, from the build at");
-    expect(sizeOf(root, "core:@lunarhue/forms-core")).toBe("21.34 kB");
-    expect(sizeOf(root, "adapter:test")).toBe("6.10 kB");
+    expect(sizeOf(root, "core:@lunarhue/forms-core")).toBe("21.3");
+    expect(sizeOf(root, "adapter:test")).toBe("6.1");
     expect(sizeOf(root, "plugin:thirdParty")).toBe("840 B");
-    // The report has no devtools part, so that row keeps its dash.
-    expect(sizeOf(root, "devtools:devtools")).toBe("–");
-    expect(root.querySelector("tfoot")?.textContent).toContain("182.40 kB");
+    // The report has no devtools part, which a production build leaves out.
+    expect(sizeOf(root, "devtools:devtools")).toBe("dev only");
+    // The graph's top bar is what the forms packages add up to.
+    expect(root.querySelector(".bar-part .num")?.textContent).toBe("28.3");
+    expect(root.querySelector(".graph-head")?.textContent).toContain("182.40 kB");
     button(root, "Fields").click();
     await frame();
     button(root, "Bundle").click();
