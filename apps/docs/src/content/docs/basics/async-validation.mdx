@@ -1,0 +1,62 @@
+---
+title: Async validation
+description: Check a field against your server while the user types.
+section: basics
+order: 4
+---
+
+A validator that returns a promise is async. Try `ada` as the username.
+
+<Demo name="async-validation/username" />
+
+```ts
+const account = forms.define({
+  defaultValues: { username: "" },
+  validate: {
+    fields: {
+      username: {
+        validate: async (name, { signal }) =>
+          (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+        debounce: 400,
+        on: "input",
+      },
+    },
+  },
+  show: "always",
+});
+```
+
+An object with `validate` takes options: `debounce` waits for a pause in
+typing, and `on` sets when it first runs. The same object works in a
+`validate` prop. Errors show once the field is blurred by default, so
+`show: "always"` lets the answer appear while the user is still typing. See
+[Showing errors](./validation#showing-errors).
+
+## Newer runs win
+
+When the user types again, the older run's `signal` aborts and its result is
+dropped, so a slow answer never wins over a newer one. Pass the signal to
+`fetch`. It also aborts when the field is reset or the validator is removed.
+
+## While it runs
+
+`field.validating` is true while a validator on the field runs, and the form
+state's `validating` while any does. Show it next to the input:
+
+```tsx
+<form.Field name="username">
+  {(field) => (
+    <>
+      <input {...inputProps(field)} />
+      {field.validating ? <p role="status">Checking...</p> : null}
+    </>
+  )}
+</form.Field>
+```
+
+## On submit
+
+A submit skips the debounce. It waits for a check that is still running and
+goes on only if it passed. A check whose result is still current doesn't run
+again. Set `recheckOnSubmit: true` on the validator to run it on every submit
+anyway, as for a check that can go stale.
