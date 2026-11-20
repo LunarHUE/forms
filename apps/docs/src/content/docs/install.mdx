@@ -37,7 +37,7 @@ Keeps a form in step with a Solid signal.
 
 |                         |                     |
 | ----------------------- | ------------------- |
-| @lunarhue/forms-react   | React 16.8 and later |
+| @lunarhue/forms-react   | React 18 and later, or 16.8 and 17 with the condition below |
 | @lunarhue/forms-schema  | Zod 4 or Valibot 1  |
 | @lunarhue/forms-bind    | Zustand 5           |
 
@@ -50,5 +50,84 @@ Keeps a form in step with a Solid signal.
 | @lunarhue/forms-solid   | Solid 2            |
 | @lunarhue/forms-schema  | Zod 4 or Valibot 1 |
 | @lunarhue/forms-bind    | Solid 2            |
+
+</Only>
+
+<Only framework="react">
+
+## React 16.8 and 17
+
+The adapter's default build calls React's own `useSyncExternalStore` and
+`useId`, which React 18 added. React 16.8 and 17 need its legacy build, which
+has fallbacks for both. Your bundler picks it when it resolves with the
+`@lunarhue/react-legacy` condition. Without it, a development build on
+React 17 throws `react:legacy` on load. A production build skips that check
+and breaks on the first form instead.
+
+Vite:
+
+```ts
+// vite.config.ts
+import { defaultClientConditions, defaultServerConditions, defineConfig } from "vite";
+
+export default defineConfig({
+  resolve: { conditions: ["@lunarhue/react-legacy", ...defaultClientConditions] },
+  ssr: {
+    resolve: {
+      conditions: ["@lunarhue/react-legacy", ...defaultServerConditions],
+      externalConditions: ["@lunarhue/react-legacy"],
+    },
+  },
+});
+```
+
+webpack and Rspack, where `"..."` keeps the default conditions:
+
+```js
+// webpack.config.js or rspack.config.js
+module.exports = {
+  resolve: { conditionNames: ["@lunarhue/react-legacy", "..."] },
+};
+```
+
+esbuild. Setting `conditions` drops the default `module` condition, so list
+it again:
+
+```js
+await esbuild.build({
+  conditions: ["@lunarhue/react-legacy", "module"],
+});
+```
+
+Next with webpack:
+
+```js
+// next.config.js
+module.exports = {
+  webpack(config) {
+    config.resolve.conditionNames = ["@lunarhue/react-legacy", ...(config.resolve.conditionNames ?? ["..."])];
+    return config;
+  },
+};
+```
+
+Turbopack has no setting for conditions, so alias the adapter's internal
+import to its legacy entry:
+
+```js
+// next.config.js
+module.exports = {
+  turbopack: {
+    resolveAlias: { "#lunarhue/react": "@lunarhue/forms-react/legacy" },
+  },
+};
+```
+
+When Node loads the adapter itself, as a server that leaves `node_modules`
+unbundled does, start Node with the condition too:
+`NODE_OPTIONS=--conditions=@lunarhue/react-legacy`.
+
+The legacy build works on React 18 and 19 too, so a library that supports
+every version can set the condition and drop it later.
 
 </Only>

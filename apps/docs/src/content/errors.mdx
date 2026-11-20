@@ -268,6 +268,19 @@ definitions.
 
 `useFormContext(definition)` found no form made from that definition.
 
+<a id="react:react:legacy"></a>
+
+### `react:legacy`
+
+> this build needs React 18 or later. On React 16.8 or 17, add the `@lunarhue/react-legacy` condition to your bundler's resolve conditions.
+
+Thrown when the adapter loads, in development only. The default build uses
+React 18's `useSyncExternalStore` and `useId`, and the React the app loaded
+has neither. Add the `@lunarhue/react-legacy` condition to the bundler's
+resolve conditions, or on Turbopack alias `#lunarhue/react` to
+`@lunarhue/forms-react/legacy`. [Install](/react/install#react-168-and-17) has the
+setting for each bundler.
+
 <a id="react:id:server"></a>
 
 ### `id:server`
