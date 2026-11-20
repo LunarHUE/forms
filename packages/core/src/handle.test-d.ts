@@ -206,11 +206,11 @@ describe("discriminated unions", () => {
 });
 
 describe("scopes", () => {
-  it("a handle for a wider object fits where a narrower shape is asked for", () => {
-    expectTypeOf<ObjectHandle<{ a: string; b: number }>>().toExtend<ObjectHandle<{ a: string }>>();
-    expectTypeOf<FieldHandle<{ a: string; b: number }>>().toExtend<FieldHandle<{ a: string }>>();
-    expectTypeOf<FieldHandle<{ inner: { a: string; b: number } }>>().toExtend<FieldHandle<{ inner: { a: string } }>>();
-    expectTypeOf<FieldHandle<{ rows: { a: string; b: number }[] }>>().toExtend<FieldHandle<{ rows: { a: string }[] }>>();
+  it("a handle for a wider object does not fit where a narrower shape is asked for", () => {
+    expectTypeOf<ObjectHandle<{ a: string; b: number }>>().not.toExtend<ObjectHandle<{ a: string }>>();
+    expectTypeOf<FieldHandle<{ a: string; b: number }>>().not.toExtend<FieldHandle<{ a: string }>>();
+    expectTypeOf<FieldHandle<{ inner: { a: string; b: number } }>>().not.toExtend<FieldHandle<{ inner: { a: string } }>>();
+    expectTypeOf<FieldHandle<{ rows: { a: string; b: number }[] }>>().not.toExtend<FieldHandle<{ rows: { a: string }[] }>>();
   });
 
   it("a narrower object does not fit where a wider one is asked for", () => {
@@ -347,5 +347,76 @@ describe("writing back a value read from a snapshot", () => {
     // @ts-expect-error: the snapshot's array is readonly, so the helper's signature has to say so
     takesList(tags.peek().value);
     expectTypeOf(tags.peek().value).not.toExtend<string[]>();
+  });
+});
+
+interface Tag {
+  id: number;
+  name: string;
+}
+
+interface WideTag extends Tag {
+  enabled: boolean;
+}
+
+describe("writes are strict in the value type", () => {
+  const store = createFormsCore({ plugins: [arrays()] })
+    .define<{ tags: WideTag[]; one: WideTag }>({ defaultValues: { tags: [], one: { id: 0, name: "", enabled: true } } })
+    .createStore();
+
+  it("a narrow array handle does not take the form's wider one", () => {
+    // Its push and setValue would store items without `enabled`.
+    expectTypeOf(store.root.at("tags")).not.toExtend<ArrayHandle<Tag[], FormError, "arrays">>();
+    expectTypeOf(store.root.at("tags")).not.toExtend<ArrayHandle<Tag[]>>();
+    expectTypeOf<ArrayHandle<WideTag[]>>().not.toExtend<ArrayHandle<Tag[]>>();
+  });
+
+  it("a narrow object or item handle does not take a wider one", () => {
+    expectTypeOf(store.root.at("one")).not.toExtend<ObjectHandle<Tag, FormError, "arrays">>();
+    expectTypeOf(store.root.at("tags").item("k")).not.toExtend<ObjectHandle<Tag, FormError, "arrays">>();
+    expectTypeOf<ItemHandle<WideTag>>().not.toExtend<ItemHandle<Tag>>();
+  });
+
+  it("a handle of a form with more plugins still fits one asking for fewer", () => {
+    expectTypeOf<ArrayHandle<WideTag[], FormError, "arrays" | "dirty">>().toExtend<ArrayHandle<WideTag[], FormError, "arrays">>();
+    expectTypeOf<ObjectHandle<WideTag, FormError, "arrays" | "dirty">>().toExtend<ObjectHandle<WideTag>>();
+    expectTypeOf(store.root.at("tags")).toExtend<ArrayHandle<WideTag[]>>();
+    expectTypeOf<ArrayHandle<WideTag[]>>().not.toExtend<ArrayHandle<WideTag[], FormError, "arrays">>();
+  });
+
+  it("unions keep one handle for the whole value", () => {
+    expectTypeOf<FieldHandle<boolean>>().toEqualTypeOf<LeafHandle<boolean>>();
+    expectTypeOf<FieldHandle<undefined>>().toEqualTypeOf<LeafHandle<undefined>>();
+    expectTypeOf<FieldHandle<null | undefined>>().toEqualTypeOf<LeafHandle<null | undefined>>();
+    expectTypeOf<FieldHandle<string[] | undefined>>().toEqualTypeOf<ArrayHandle<string[] | undefined>>();
+    expectTypeOf<FieldHandle<Address | Row[]>>().toEqualTypeOf<ObjectHandle<Address | Row[]>>();
+    expectTypeOf<FieldHandle<string[] | number>>().toEqualTypeOf<LeafHandle<string[] | number>>();
+  });
+});
+
+// A reusable list, generic in its item type so it takes items with more keys.
+function tagList<T extends Tag>(tags: ArrayHandle<T[], FormError, "arrays">, create: (base: Tag) => T) {
+  const tag = tags.item("k");
+  // Children that T's constraint names read as the constraint's types. These
+  // are plain assignments: expectTypeOf can't check a type that depends on T.
+  const name: LeafHandle<string, FormError, "arrays"> = tag.at("name");
+  const id: FieldHandle<number> = tag.at("id");
+  const same: ObjectHandle<T, FormError, "arrays"> = tag;
+  tags.push(create({ id: 1, name: "a" }));
+  // @ts-expect-error: a Tag may lack T's other keys
+  tags.push({ id: 1, name: "a" });
+  // @ts-expect-error: so may a whole value
+  tag.setValue({ id: 1, name: "a" }, { replace: true });
+  return [name, id, same];
+}
+
+describe("generic components", () => {
+  it("take handles of wider items and read the children their constraint names", () => {
+    const store = createFormsCore({ plugins: [arrays()] })
+      .define<{ tags: WideTag[] }>({ defaultValues: { tags: [] } })
+      .createStore();
+    expectTypeOf(tagList(store.root.at("tags"), (base) => ({ ...base, enabled: true }))).toBeArray();
+    // @ts-expect-error: create has to return the form's item type
+    tagList(store.root.at("tags"), (base) => base);
   });
 });

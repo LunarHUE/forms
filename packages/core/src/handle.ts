@@ -3,7 +3,7 @@ import type { Path, PathSegment } from "./path.js";
 import type { FieldSnapshot } from "./snapshot.js";
 import type { AnyFormStore } from "./store.js";
 import type { ValidatorInput } from "./validator.js";
-import type { ChildValue, DeepReadonly, IsLiteralUnion, ItemOf, KeysOf, ShapeOf } from "./value.js";
+import type { ChildValue, DeepReadonly, IsLiteralUnion, ItemOf, KeysOf, LeafValue } from "./value.js";
 
 /**
  * Options every write command takes. Every write counts as a user edit
@@ -135,13 +135,23 @@ export interface ObjectHandle<V, E = FormError, N extends string = never> extend
   // also takes the readonly value a snapshot holds. The NoInfer keeps write
   // parameters out of inference. Without it, a function that infers V from
   // an item handle gets the value and its readonly copy as V.
-  /** Replaces the whole value. */
-  setValue(value: NoInfer<V | DeepReadonly<V>>, options: ReplaceOptions): void;
   /**
    * Merges `patch` into the current value, one level deep. Merging into a
-   * missing object starts from an empty one.
+   * missing object starts from an empty one. With `replace: true` it
+   * replaces the whole value instead.
    */
-  setValue(patch: NoInfer<Patch<V | DeepReadonly<V>>>, options?: MergeOptions): void;
+  // A property, not a method, so strictFunctionTypes keeps object handles
+  // invariant in V: a handle of a wider object doesn't fit one asking for a
+  // narrower shape, which could then drop the keys it doesn't know.
+  readonly setValue: {
+    /** Replaces the whole value. */
+    (value: NoInfer<V | DeepReadonly<V>>, options: ReplaceOptions): void;
+    /**
+     * Merges `patch` into the current value, one level deep. Merging into a
+     * missing object starts from an empty one.
+     */
+    (patch: NoInfer<Patch<V | DeepReadonly<V>>>, options?: MergeOptions): void;
+  };
   /**
    * Returns the handle of the child at `key`. It reads no state: it returns
    * the same handle object for the same key on every call, whether or not
@@ -149,7 +159,9 @@ export interface ObjectHandle<V, E = FormError, N extends string = never> extend
    * accepted, and the child's value type includes `undefined` for members
    * that lack the key.
    */
-  at<K extends KeysOf<V>>(key: K): ChildHandles<V, E, N>[K];
+  // `keyof V` takes the keys a generic V's constraint names, which KeysOf,
+  // a deferred conditional type for a generic V, doesn't.
+  at<K extends KeysOf<V> | (keyof V & (string | number))>(key: K): FieldHandle<ChildValue<V, K>, E, N>;
   /**
    * Type information only, always undefined at runtime. It makes TypeScript
    * compare child handles when one object handle is assigned to another, so
@@ -195,9 +207,11 @@ export interface ArrayCommands<V, T> {
    * value, or `undefined` when there is no adapter. An array of a union of
    * literals has no empty item, so it needs the item. See `ItemArgs`.
    */
-  push(this: T, ...args: ItemArgs<ItemOf<V>>): void;
+  // `push` and `insert` are properties, not methods, so strictFunctionTypes
+  // keeps array handles invariant in V. See `ArrayHandle.setValue`.
+  readonly push: (this: T, ...args: ItemArgs<ItemOf<V>>) => void;
   /** Adds an item before `index`. With no item it behaves as `push` does. */
-  insert(this: T, index: number, ...args: ItemArgs<ItemOf<V>>): void;
+  readonly insert: (this: T, index: number, ...args: ItemArgs<ItemOf<V>>) => void;
   /**
    * Removes the item at `index`. Its handle keeps returning its last
    * snapshot, so a component that is still unmounting can read it. The store
@@ -223,7 +237,10 @@ export interface ArrayHandle<V, E = FormError, N extends string = never> extends
       void | Omit<{ readonly "Add arrays() to this form's plugins": never }, { readonly [K in "arrays"]: "Add arrays() to this form's plugins" }["arrays" & N]>
     > {
   /** Replaces the whole array. A readonly array, such as a snapshot's value, works too. */
-  setValue(value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions): void;
+  // A property, not a method, so strictFunctionTypes keeps array handles
+  // invariant in V: a handle of wider items doesn't fit one asking for
+  // narrower items, which could then write items missing keys.
+  readonly setValue: (value: NoInfer<V | DeepReadonly<V>>, options?: WriteOptions) => void;
   /**
    * Returns the handle of the item with stable key `key`. It reads no state:
    * it returns the same handle object for the same key on every call. The
@@ -276,17 +293,54 @@ export interface LooseArrayCommands<T> {
  * The handle for a value of type `V`. Arrays get `ArrayHandle`, plain
  * objects get `ObjectHandle`, everything else gets `LeafHandle`. `null` and
  * `undefined` in `V` don't change the choice: `Address | undefined` gets an
- * object handle whose children read `undefined` while it is missing.
+ * object handle whose children read `undefined` while it is missing. A
+ * union that mixes leaves with objects or arrays gets a leaf handle.
  * `unknown` and `any` get `AnyFieldHandle`.
+ *
+ * In a component generic in `T extends Tag`, the handle of `T["name"]`
+ * reads as the handle of `Tag["name"]`, so it fits a field component for a
+ * string. See `HandleFor`.
  */
-export type FieldHandle<V, E = FormError, N extends string = never> =
-  ShapeOf<V> extends "any"
+export type FieldHandle<V, E = FormError, N extends string = never> = HandleFor<V, V, E, N>;
+
+/**
+ * Picks the handle for `All`, one member `V` of it at a time.
+ *
+ * It distributes over `V` for generic values. TypeScript reads a deferred
+ * conditional type that distributes over its check type through that
+ * type's constraint, so for `T["name"]` with `T extends { name: string }`
+ * the branch for `string` applies. Each branch takes its value type from
+ * `All`, the whole value, so a union still gets one handle for all of it.
+ * A leaf takes `V | All`, which is `All` for a concrete union and the
+ * constraint for a generic value. A branch for a member that doesn't decide
+ * the handle kind gives `never`.
+ */
+export type HandleFor<V, All, E, N extends string> = V extends null | undefined
+  ? [KindsOf<All>] extends [never]
+    ? LeafHandle<All, E, N>
+    : never
+  : 0 extends 1 & V
     ? AnyFieldHandle<E, N>
-    : ShapeOf<V> extends "array"
-      ? ArrayHandle<V, E, N>
-      : ShapeOf<V> extends "object"
-        ? ObjectHandle<V, E, N>
-        : LeafHandle<V, E, N>;
+    : V extends LeafValue
+      ? LeafHandle<V | All, E, N>
+      : V extends readonly unknown[]
+        ? [KindsOf<All>] extends ["array"]
+          ? ArrayHandle<All, E, N>
+          : never
+        : // Not `unknown extends V`: for a constraint TypeScript keeps a true
+          // branch whose extends type its check type might hold, which would
+          // add AnyFieldHandle to every object handle.
+          V extends object
+          ? // "leaf" is checked against the kinds, not the other way, so a
+            // generic `All` leaves both branches open and the deferred type
+            // is assignable where `ObjectHandle<All>` is.
+            "leaf" extends KindsOf<All>
+            ? never
+            : ObjectHandle<All, E, N>
+          : AnyFieldHandle<E, N>;
+
+/** The handle kinds the members of `V` ask for, ignoring `null` and `undefined`. */
+type KindsOf<V> = V extends null | undefined ? never : V extends LeafValue ? "leaf" : V extends readonly unknown[] ? "array" : "object";
 
 /** The value type of a handle type. */
 export type ValueOf<H> = H extends { readonly "~types"?: HandleTypes<infer V, unknown> } ? V : never;
