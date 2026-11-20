@@ -7,6 +7,7 @@ import type { FormStore } from "../store.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
 import { invalidFields, subscribeInvalid } from "../invalid.js";
 import { arrays } from "../plugins/arrays.js";
+import { fieldValidators, formValidator } from "../index.js";
 
 // Core declares no timer globals, so the tests declare the one they use.
 declare function setTimeout(run: () => void, ms: number): unknown;
@@ -76,7 +77,7 @@ describe("submit", () => {
   });
 
   for (const [label, validate] of [
-    ["a validator", { fields: { name: () => undefined } }],
+    ["a validator", { fields: fieldValidators<Value>({ name: () => undefined }) }],
     ["no validator", undefined],
   ] as const) {
     it(`lets onSubmit change the value without touching the store, with ${label}`, async () => {
@@ -171,7 +172,7 @@ describe("submit", () => {
 describe("validation on submit", () => {
   it("ends invalid without calling onSubmit, and counts the submit", async () => {
     const onSubmit = vi.fn<() => void>();
-    const { store } = make({ onSubmit, validate: { fields: { name: required } } }, { ...initial, name: "" });
+    const { store } = make({ onSubmit, validate: { fields: fieldValidators({ name: required }) } }, { ...initial, name: "" });
     const submission = await store.submit();
     expect(submission).toEqual({ status: "invalid" });
     expect(store.getFormSnapshot().submission).toBe(submission);
@@ -183,7 +184,7 @@ describe("validation on submit", () => {
   it("waits for async validators before it decides", async () => {
     const gate = deferred<FormError | undefined>();
     const onSubmit = vi.fn<() => void>();
-    const { store } = make({ onSubmit, validate: { fields: { name: () => gate.promise } } });
+    const { store } = make({ onSubmit, validate: { fields: fieldValidators({ name: () => gate.promise }) } });
     const done = store.submit();
     await flush();
     expect(store.getFormSnapshot().validating).toBe(true);
@@ -195,7 +196,7 @@ describe("validation on submit", () => {
 
   it("is blocked by a validation error on a disabled field, which firstInvalid skips", async () => {
     const onSubmit = vi.fn<() => void>();
-    const { store } = make({ onSubmit, disabled: { name: true }, validate: { fields: { name: required } } }, { ...initial, name: "" });
+    const { store } = make({ onSubmit, disabled: { name: true }, validate: { fields: fieldValidators({ name: required }) } }, { ...initial, name: "" });
     expect(await store.submit()).toEqual({ status: "invalid" });
     expect(onSubmit).not.toHaveBeenCalled();
     expect(store.firstInvalid()).toBeUndefined();
@@ -211,7 +212,7 @@ describe("validation on submit", () => {
 
   it("counts every submit, and the submitted show modes wait for the first", async () => {
     for (const show of ["submitted", "touched-or-submitted"] satisfies ShowMode[]) {
-      const { store } = make({ show, validate: { on: "input", fields: { name: required } } });
+      const { store } = make({ show, timing: "input", validate: { fields: fieldValidators({ name: required }) } });
       store.root.at("name").setValue("");
       expect(store.getSnapshot(["name"]).errors).toEqual([err("Required")]);
       expect(store.getSnapshot(["name"]).shownErrors).toEqual([]);
@@ -376,7 +377,7 @@ describe("abort on reset", () => {
   it("never calls onSubmit when the reset comes while validators run", async () => {
     const gate = deferred<undefined>();
     const onSubmit = vi.fn<() => void>();
-    const { store } = make({ onSubmit, validate: { fields: { name: () => gate.promise } } });
+    const { store } = make({ onSubmit, validate: { fields: fieldValidators({ name: () => gate.promise }) } });
     const done = store.submit();
     store.reset();
     gate.resolve(undefined);
@@ -418,8 +419,8 @@ describe("abort on reset", () => {
 describe("submit after a field reset", () => {
   // Both validators sit above the reset field, so they already ran, and the reset clears their errors on it.
   const above: Options<unknown>[] = [
-    { validate: { form: (value) => (value.name === "" ? { fields: { name: err("Required") } } : undefined) } },
-    { validate: { fields: { rows: (rows) => (rows.some((row) => row.title === "") ? err("Untitled") : undefined) } } },
+    { validate: { form: formValidator((value) => (value.name === "" ? { fields: { name: err("Required") } } : undefined)) } },
+    { validate: { fields: fieldValidators({ rows: (rows) => (rows.some((row) => row.title === "") ? err("Untitled") : undefined) }) } },
   ];
 
   it.each(above)("runs the validators above the field again when its baseline is invalid (%#)", async (options) => {
@@ -488,7 +489,7 @@ describe("user errors and submit", () => {
 });
 
 describe("firstInvalid", () => {
-  const options: Options<unknown> = { validate: { fields: { name: required, rows: [{ title: required }] } } };
+  const options: Options<unknown> = { validate: { fields: fieldValidators({ name: required, rows: [{ title: required }] }) } };
 
   it("is the first enabled field with a validation error after an invalid submit, in value order", async () => {
     const { store } = make(options, { name: "ok", rows: [{ title: "" }, { title: "" }] });
@@ -516,7 +517,7 @@ describe("firstInvalid", () => {
 
 describe("errors from setErrors", () => {
   it("count for firstInvalid, so focus can follow a server's errors", async () => {
-    const { store } = make({ validate: { fields: { name: required } } }, { name: "", rows: [{ title: "a" }] });
+    const { store } = make({ validate: { fields: fieldValidators({ name: required }) } }, { name: "", rows: [{ title: "a" }] });
     store.root.at("name").setValue("Ada");
     await store.validate();
     store.setErrors({ fields: { "rows.0.title": err("Taken") } });
@@ -530,7 +531,7 @@ describe("errors from setErrors", () => {
 describe("invalidFields", () => {
   it("lists every field with errors in value order, validation and user errors alike, disabled ones too", async () => {
     const { store } = make(
-      { validate: { fields: { name: required, rows: [{ title: required }] } }, disabled: { rows: true } },
+      { validate: { fields: fieldValidators({ name: required, rows: [{ title: required }] }) }, disabled: { rows: true } },
       { name: "", rows: [{ title: "" }, { title: "b" }] },
     );
     expect(invalidFields(store)).toEqual([]);
@@ -576,7 +577,7 @@ describe("subscribeInvalid", () => {
 const title = (store: FormStore<Value, FormError, Intent>, i: number) => store.root.at("rows").item(keys(store)[i] ?? "").at("title");
 
 describe("disabledInvalid", () => {
-  const options: Options<unknown> = { validate: { fields: { name: required, rows: [{ title: required }] } } };
+  const options: Options<unknown> = { validate: { fields: fieldValidators({ name: required, rows: [{ title: required }] }) } };
 
   it("lists the only invalid fields when they are disabled, with errors the show setting hides", async () => {
     const onSubmit = vi.fn<() => void>();
@@ -666,7 +667,7 @@ describe("disabledInvalid", () => {
 describe("store rules", () => {
   it("wakes each subscription once per phase", async () => {
     const gate = deferred<string>();
-    const { store } = make({ onSubmit: () => gate.promise, validate: { fields: { name: required } } });
+    const { store } = make({ onSubmit: () => gate.promise, validate: { fields: fieldValidators({ name: required }) } });
     store.setErrors({ fields: { name: err("user"), "rows.0.title": err("user") } });
     store.getFormSnapshot();
     const runs = count(store, [["name"], ["rows", keys(store)[0] ?? "", "title"], ["rows"]]);

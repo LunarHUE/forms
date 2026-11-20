@@ -9,6 +9,7 @@ import { persist } from "./persist.js";
 import { rebase } from "./rebase.js";
 import { testStore } from "./testing.js";
 import { arrays } from "./arrays.js";
+import { fieldValidators } from "../index.js";
 
 const profile = () => ({ name: "ada", email: "ada@example.com" });
 const list = () => ({ tags: ["a", "b"] });
@@ -69,7 +70,7 @@ describe("baselineOnSubmit", () => {
     const { store } = testStore({
       defaultValues: profile(),
       plugins: [arrays(), dirty(), baselineOnSubmit()],
-      validate: { fields: { email: () => checking.promise.then(() => undefined) } },
+      validate: { fields: fieldValidators({ email: () => checking.promise.then(() => undefined) }) },
       onSubmit: (value) => void (sent = value),
     });
     const done = store.submit();
@@ -87,7 +88,7 @@ describe("baselineOnSubmit", () => {
       testStore({
         defaultValues: profile(),
         plugins: [arrays(), dirty(), baselineOnSubmit()],
-        validate: { fields: { email: (value) => (value.includes("@") ? undefined : { message: "Email" }) } },
+        validate: { fields: fieldValidators({ email: (value) => (value.includes("@") ? undefined : { message: "Email" }) }) },
       }),
       testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit(), refusing] }),
       testStore({

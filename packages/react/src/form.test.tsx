@@ -15,6 +15,7 @@ import {
   useForm,
   useFormContext,
   useFormState,
+  fieldValidators,
 } from "./index.js";
 import { settle } from "./test/helpers.js";
 import { arrays, dirty as dirtyPlugin } from "./plugins.js";
@@ -34,7 +35,7 @@ const required = (value: string) => (value === "" ? { message: "required" } : un
 const saved: { value: unknown; intent: unknown }[] = [];
 const account = forms.define({
   defaultValues: { name: "", email: "", code: "" },
-  validate: { fields: { name: required, email: required, code: required } },
+  validate: { fields: fieldValidators({ name: required, email: required, code: required }) },
   disabled: { code: true },
   onSubmit: (value, ctx: { intent: "save" | "publish" | undefined }) => {
     saved.push({ value, intent: ctx.intent });
@@ -439,7 +440,7 @@ describe("the form object without form.Form", () => {
   it("binds fields, items, refs and submit with no provider", async () => {
     const list = forms.define({
       defaultValues: { title: "", rows: [{ label: "a" }] },
-      validate: { fields: { title: required } },
+      validate: { fields: fieldValidators({ title: required }) },
     });
     const box: { form?: FormOf<typeof list> } = {};
     function Bare() {
@@ -474,7 +475,7 @@ describe("the form object without form.Form", () => {
 });
 
 describe("one field on two elements", () => {
-  const titled = forms.define({ defaultValues: { title: "" }, validate: { fields: { title: required } } });
+  const titled = forms.define({ defaultValues: { title: "" }, validate: { fields: fieldValidators({ title: required }) } });
   type TitledForm = FormOf<typeof titled>;
   const box: { form?: TitledForm; ref?: FieldRef } = {};
   const form = (): TitledForm => {

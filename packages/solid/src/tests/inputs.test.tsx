@@ -2,7 +2,7 @@ import { errorId as coreErrorId } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf, inputProps } from "../index.js";
+import { createForm, createForms, createInputProps, errorId, fieldRef, type FormOf, inputProps, fieldValidators } from "../index.js";
 import { choose, click, get, getAs, mount, settle, typeText } from "./dom.js";
 
 const forms = createForms({ plugins: [valibot()] });
@@ -273,7 +273,7 @@ function labelled(host: HTMLElement, text: string): HTMLElement | null | undefin
 describe("ids", () => {
   const Picker = forms.define({
     defaultValues: { size: "", picks: ["a"] as string[] },
-    validate: { fields: { size: (value: string) => (value === "" ? { message: "Required" } : undefined) } },
+    validate: { fields: fieldValidators({ size: (value: string) => (value === "" ? { message: "Required" } : undefined) }) },
   });
 
   /**

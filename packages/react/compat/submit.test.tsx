@@ -1,6 +1,6 @@
 import { fireEvent } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
-import { createForms, useForm, useFormContext, useFormState, useInputProps } from "../src/index.js";
+import { createForms, useForm, useFormContext, useFormState, useInputProps, fieldValidators } from "../src/index.js";
 import { settle } from "../src/test/helpers.js";
 import { act, render } from "./render.js";
 
@@ -8,7 +8,7 @@ const required = (value: string) => (value === "" ? { message: "required" } : un
 const saved: unknown[] = [];
 const account = createForms().define({
   defaultValues: { name: "", email: "" },
-  validate: { fields: { name: required, email: required } },
+  validate: { fields: fieldValidators({ name: required, email: required }) },
   onSubmit: (value) => {
     saved.push(value);
     return "ok";

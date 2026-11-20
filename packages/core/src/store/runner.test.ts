@@ -6,6 +6,7 @@ import { rebase } from "../plugins/rebase.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import { definePlugin } from "../plugins.js";
 import type { SchemaAdapter } from "../schema-adapter.js";
+import { fieldValidators } from "../index.js";
 
 interface Contact {
   name: string;
@@ -86,7 +87,7 @@ describe("a form with no plugins", () => {
   it("runs a definition's validators, blocks the submit and lets a fixed value through", async () => {
     const onSubmit = vi.fn<(value: Contact) => void>();
     const store = createFormsCore()
-      .define({ defaultValues: contact(), validate: { fields: { name: required } }, onSubmit })
+      .define({ defaultValues: contact(), validate: { fields: fieldValidators({ name: required }) }, onSubmit })
       .createStore();
     expect(await store.submit()).toEqual({ status: "invalid" });
     expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Required")], invalid: true });
@@ -114,7 +115,7 @@ describe("a form with no plugins", () => {
   it("validates in production too", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const store = createFormsCore()
-      .define({ defaultValues: contact(), validate: { fields: { name: required } } })
+      .define({ defaultValues: contact(), validate: { fields: fieldValidators({ name: required }) } })
       .createStore();
     expect(await store.root.at("name").validate()).toBe(false);
     expect(store.getSnapshot(["name"]).errors).toEqual([err("Required")]);
@@ -196,7 +197,7 @@ describe("a form with a schema plugin", () => {
     const digits = definePlugin({ name: "digits", schema: adapter });
     const onSubmit = vi.fn<(value: { age: number }) => void>();
     const store = createFormsCore({ plugins: [digits] })
-      .define({ schema, validate: { fields: { age: (value) => (value === "0" ? err("Not zero") : undefined) } }, onSubmit })
+      .define({ schema, validate: { fields: fieldValidators({ age: (value) => (value === "0" ? err("Not zero") : undefined) }) }, onSubmit })
       .createStore();
     expect(await store.submit()).toEqual({ status: "invalid" });
     expect(store.getSnapshot(["age"]).errors).toEqual([err("Digits")]);

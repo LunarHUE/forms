@@ -7,6 +7,7 @@ import type { Validator } from "../validator.js";
 import { dirty } from "../plugins/dirty.js";
 import { createFormStore, type FormStoreOptions } from "./form-store.js";
 import { arrays } from "../plugins/arrays.js";
+import { fieldValidators } from "../index.js";
 
 interface Value {
   name: string;
@@ -39,7 +40,7 @@ describe("error type", () => {
     const store = make({
       schema: failing({ message: "Bad name", path: ["name"] }),
       validate: {
-        fields: {
+        fields: fieldValidators({
           rows: [
             {
               title: () => {
@@ -47,7 +48,7 @@ describe("error type", () => {
               },
             },
           ],
-        },
+        }),
       },
     });
     await store.validate();
@@ -117,12 +118,12 @@ describe("mapError", () => {
     const store = make({
       mapError,
       validate: {
-        fields: {
+        fields: fieldValidators({
           name: () => {
             throw thrown;
           },
           rows: [{ title: () => Promise.reject(rejected) }],
-        },
+        }),
       },
     });
     await store.validate();
@@ -139,7 +140,7 @@ describe("mapError", () => {
 
   it("is not asked for errors a validator returns or the app sets", async () => {
     const mapError = vi.fn<MapError<FormError>>((raw) => ({ message: raw.message }));
-    const store = make({ mapError, validate: { fields: { name: required } } });
+    const store = make({ mapError, validate: { fields: fieldValidators({ name: required }) } });
     await store.validate();
     store.setErrors({ form: err("app") });
     store.root.at("name").setErrors(err("app"));
@@ -149,7 +150,7 @@ describe("mapError", () => {
 
 describe("two sources", () => {
   it("lists validation errors first, then user errors, and counts only validation errors against the form", async () => {
-    const store = make({ validate: { fields: { name: required } } });
+    const store = make({ validate: { fields: fieldValidators({ name: required }) } });
     store.root.at("name").setErrors([err("user 1"), err("user 2")]);
     expect(store.getSnapshot(["name"])).toMatchObject({ invalid: true });
     expect(store.getFormSnapshot().valid).toBe(true);
@@ -167,7 +168,7 @@ describe("two sources", () => {
 
   it("lets validation errors block submit and user errors not", async () => {
     const onSubmit = vi.fn<() => void>();
-    const store = make({ onSubmit, validate: { fields: { name: required } } }, { ...initial, name: "ok" });
+    const store = make({ onSubmit, validate: { fields: fieldValidators({ name: required }) } }, { ...initial, name: "ok" });
     store.setErrors({ fields: { name: err("user") } });
     expect((await store.submit()).status).toBe("succeeded");
     store.root.at("name").setValue("");
@@ -251,7 +252,7 @@ describe("shown errors", () => {
       const seen: boolean[] = [];
       for (const [touch, submit] of states) {
         // Validators run on submit so a blur alone puts no error anywhere else.
-        const store = make({ show, validate: { on: "submit", fields: { name: required } } });
+        const store = make({ show, timing: "submit", validate: { fields: fieldValidators({ name: required }) } });
         await store.validate();
         if (touch) store.root.at("name").handleBlur();
         if (submit) await store.submit();
@@ -264,7 +265,7 @@ describe("shown errors", () => {
     });
 
   it("shows user errors beside hidden validation errors", async () => {
-    const store = make({ show: "submitted", validate: { fields: { name: required } } });
+    const store = make({ show: "submitted", validate: { fields: fieldValidators({ name: required }) } });
     await store.validate();
     store.root.at("name").setErrors(err("user"));
     expect(store.getSnapshot(["name"]).errors).toEqual([err("Required"), err("user")]);
@@ -273,7 +274,7 @@ describe("shown errors", () => {
 
   it("asks a show function with the field's context, again when an input changes", async () => {
     const show = vi.fn<(ctx: ShowContext) => boolean>((ctx) => ctx.touched || ctx.submitCount > 0);
-    const store = make({ show, validate: { fields: { name: required } } });
+    const store = make({ show, validate: { fields: fieldValidators({ name: required }) } });
     const name = store.root.at("name");
     await store.validate();
     expect(store.getSnapshot(["name"]).shownErrors).toEqual([]);
@@ -286,7 +287,7 @@ describe("shown errors", () => {
     expect(show).toHaveBeenLastCalledWith({ touched: true, edited: true, dirty: false, submitCount: 0 });
     expect(store.getSnapshot(["name"]).shownErrors).toEqual([err("Required")]);
 
-    const other = make({ show, validate: { fields: { name: required } } });
+    const other = make({ show, validate: { fields: fieldValidators({ name: required }) } });
     await other.validate();
     expect(other.getSnapshot(["name"]).shownErrors).toEqual([]);
     other.root.at("name").setValue("b", { edited: false });
@@ -298,7 +299,7 @@ describe("shown errors", () => {
   });
 
   it("uses a show function to hide errors too", async () => {
-    const store = make({ show: (ctx) => ctx.edited, validate: { fields: { name: required } } });
+    const store = make({ show: (ctx) => ctx.edited, validate: { fields: fieldValidators({ name: required }) } });
     await store.validate();
     expect(store.getSnapshot(["name"]).shownErrors).toEqual([]);
     store.root.at("name").setValue("a");

@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { debounced, validateOn, type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput } from "../index.js";
+import { debounced, validateOn, type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput, fieldValidators } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
@@ -20,7 +20,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
 const forms = createForms({ fields: { TextField } });
 const Signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
-  validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
+  validate: { fields: fieldValidators({ name: (value) => (value === "" ? { message: "definition" } : undefined) }) },
 });
 type SignupForm = FormOf<typeof Signup>;
 

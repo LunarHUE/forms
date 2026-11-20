@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { debounced, validateOn, type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput } from "./index.js";
+import { debounced, validateOn, type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput, fieldValidators } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -23,7 +23,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 const forms = createForms({ fields: { TextField } });
 const signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
-  validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
+  validate: { fields: fieldValidators({ name: (value) => (value === "" ? { message: "definition" } : undefined) }) },
 });
 type SignupForm = FormOf<typeof signup>;
 

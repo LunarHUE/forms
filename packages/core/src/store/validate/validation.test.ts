@@ -6,6 +6,7 @@ import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { PlatformAbortSignal } from "../../value.js";
 import { createFormInternals, type FormStoreOptions } from "../form-store.js";
 import { arrays } from "../../plugins/arrays.js";
+import { fieldValidators, formValidator } from "../../index.js";
 
 type Options<V> = Omit<FormStoreOptions<V>, "id" | "initial">;
 
@@ -53,7 +54,7 @@ describe("no side effects", () => {
           check("");
           return issues(["No"]);
         }),
-        validate: { form: debounced(formCheck, 50), fields: { name: check, rows: [{ t: debounced(check, 10) }] } },
+        validate: { form: formValidator(debounced(formCheck, 50)), fields: fieldValidators({ name: check, rows: [{ t: debounced(check, 10) }] }) },
       },
     );
     const remove = root.at("name").registerValidator(debounced(validateOn(check, "input"), 10));
@@ -110,10 +111,10 @@ describe("timing", () => {
     expect(messages(["name"])).toEqual([]);
   });
 
-  it("lets validate.on override the shared timing, and a validator's on override both", () => {
+  it("lets a validator's validateOn override the shared timing", () => {
     const { root, messages } = make(
       { a: "x", b: "x" },
-      { timing: "submit", validate: { on: "input", fields: { a: required, b: validateOn(required, "blur") } } },
+      { timing: "input", validate: { fields: fieldValidators({ a: required, b: validateOn(required, "blur") }) } },
     );
     root.at("a").setValue("");
     root.at("b").setValue("");
@@ -147,7 +148,7 @@ describe("timing", () => {
 
 describe("batching", () => {
   it("puts sync errors in the snapshot within the write, one wake per subscription", () => {
-    const { store, root } = make({ name: "a" }, { timing: "input", validate: { form: () => ({ form: err("Form") }) } });
+    const { store, root } = make({ name: "a" }, { timing: "input", validate: { form: formValidator(() => ({ form: err("Form") })) } });
     root.at("name").registerValidator(required);
     const seen: string[][] = [];
     const listener = vi.fn<() => void>(() => void seen.push(store.getSnapshot(["name"]).errors.map((e) => e.message)));
@@ -363,7 +364,7 @@ describe("standard schema", () => {
       {
         timing: "input",
         schema: schema(() => issues(["Root"], ["Empty", ["rows", 1, "t"]])),
-        validate: { form: schema(() => issues(["Also", ["rows", 1, "t"]])) },
+        validate: { form: formValidator(schema<{ rows: { t: string }[] }>(() => issues(["Also", ["rows", 1, "t"]]))) },
       },
     );
     root.at("rows").move(1, 0);
@@ -415,7 +416,7 @@ describe("form validator results", () => {
       {
         timing: "input",
         validate: {
-          form: () => ({ form: err("Form"), fields: { a: [err("A1"), err("A2")], "rows.0.t": err("T"), "rows.5.t": err("Gone"), b: undefined } }),
+          form: formValidator(() => ({ form: err("Form"), fields: { a: [err("A1"), err("A2")], "rows.0.t": err("T"), "rows.5.t": err("Gone"), b: undefined } })),
         },
       },
     );
@@ -428,7 +429,7 @@ describe("form validator results", () => {
   it("puts a name the value lacks on the root, not on a field nothing renders, and warns once", () => {
     const warn = vi.fn<(message: string) => void>();
     vi.stubGlobal("console", { warn });
-    const { store, root, messages } = make({ a: "" }, { timing: "input", validate: { form: () => ({ fields: { nope: err("Renamed") } }) } });
+    const { store, root, messages } = make({ a: "" }, { timing: "input", validate: { form: formValidator(() => ({ fields: { nope: err("Renamed") } })) } });
     root.at("a").setValue("x");
     root.at("a").setValue("y");
     vi.unstubAllGlobals();
@@ -440,7 +441,7 @@ describe("form validator results", () => {
   });
 
   it("keeps the form invalid when its only error is under a name that resolves to nothing", () => {
-    const { store, root, messages } = make({ a: "", rows: [] }, { timing: "input", validate: { form: () => ({ fields: { "rows.0.t": err("Stale") } }) } });
+    const { store, root, messages } = make({ a: "", rows: [] }, { timing: "input", validate: { form: formValidator(() => ({ fields: { "rows.0.t": err("Stale") } })) } });
     root.at("a").setValue("x");
     expect(messages([])).toEqual(["Stale"]);
     expect(store.peek().valid).toBe(false);
@@ -450,7 +451,7 @@ describe("form validator results", () => {
     let round = 0;
     const { root, messages } = make(
       { a: "", b: "" },
-      { timing: "input", validate: { form: () => (round++ === 0 ? { fields: { a: err("A"), b: err("B") } } : { fields: { a: err("A") } }) } },
+      { timing: "input", validate: { form: formValidator(() => (round++ === 0 ? { fields: { a: err("A"), b: err("B") } } : { fields: { a: err("A") } })) } },
     );
     root.at("b").registerValidator(() => err("Own"));
     root.setValue({ a: "x", b: "x" });
@@ -459,5 +460,30 @@ describe("form validator results", () => {
     root.at("a").setValue("y");
     expect(messages(["a"])).toEqual(["A"]);
     expect(messages(["b"])).toEqual(["Own"]);
+  });
+});
+
+describe("fieldValidators and formValidator", () => {
+  it("serve every store a definition makes, each with its own runs", () => {
+    const check = vi.fn<Check>(required);
+    const formCheck = vi.fn<(value: { name: string }) => ErrorMap<FormError> | undefined>((value) =>
+      value.name === "" ? { form: err("Empty") } : undefined,
+    );
+    const validate = { fields: fieldValidators<{ name: string }>({ name: check }), form: formValidator(formCheck) };
+    const a = make({ name: "" }, { timing: "input", validate });
+    const b = make({ name: "x" }, { timing: "input", validate });
+    a.root.at("name").setValue("y");
+    a.root.at("name").setValue("");
+    expect(a.messages(["name"])).toEqual(["Required"]);
+    expect(a.messages([])).toEqual(["Empty"]);
+    expect(b.messages(["name"])).toEqual([]);
+    expect(b.messages([])).toEqual([]);
+    b.root.at("name").setValue("");
+    expect(b.messages(["name"])).toEqual(["Required"]);
+  });
+
+  it("takes an empty validate object", async () => {
+    const { store } = make({ name: "" }, { validate: {} });
+    expect(await store.validate()).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { definePlugin, refuse } from "../plugins.js";
 import { testStore } from "./testing.js";
 import { arrays } from "./arrays.js";
+import { fieldValidators } from "../index.js";
 
 const contact = () => ({ phone: "", code: "" });
 
@@ -118,7 +119,7 @@ describe("testStore", () => {
     const { store, errors } = testStore({
       defaultValues: contact(),
       plugins: [arrays(), watch],
-      validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } },
+      validate: { fields: fieldValidators({ phone: (value) => (value === "" ? { message: "Required" } : undefined) }) },
       onSubmit: (value) => value.phone,
     });
     expect(await store.submit()).toEqual({ status: "invalid" });

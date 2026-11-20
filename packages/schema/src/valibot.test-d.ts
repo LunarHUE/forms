@@ -7,6 +7,7 @@ import {
   type Plugins,
   type SchemaDefinition,
   type StandardSchemaV1,
+  fieldValidators,
 } from "@lunarhue/forms-core";
 import { arrays } from "@lunarhue/forms-core/plugins";
 import * as v from "valibot";
@@ -104,8 +105,8 @@ describe("valibot()", () => {
 
   it("leaves validate to core", () => {
     const core = createFormsCore({ plugins: [valibot()] });
-    core.define({ schema: user, validate: { fields: { name: (value) => (value ? undefined : { message: "Required" }) } } });
-    const plain = createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: { name: (value) => (value ? undefined : { message: "Required" }) } } });
+    core.define({ schema: user, validate: { fields: fieldValidators({ name: (value) => (value ? undefined : { message: "Required" }) }) } });
+    const plain = createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: fieldValidators({ name: (value) => (value ? undefined : { message: "Required" }) }) } });
     expectTypeOf(plain.createStore()).toEqualTypeOf<FormStore<{ name: string }>>();
   });
 });

@@ -3,6 +3,7 @@ import type { FormError } from "./errors.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { createFormInternals, type FormStoreOptions } from "./store/form-store.js";
 import { debounced, recheckOnSubmit, validateOn } from "./validate-timing.js";
+import { formValidator } from "./index.js";
 
 const make = <V>(initial: V, options: Omit<FormStoreOptions<V>, "id" | "initial"> = {}) => {
   const parts = createFormInternals<V>({ id: "f", initial, ...options });
@@ -107,7 +108,7 @@ describe("wrappers nest in any order", () => {
 describe("validateOn", () => {
   it("overrides the form's timing for a form validator", () => {
     const form = vi.fn<(value: { a: string }) => { fields: { a: FormError } } | undefined>((value) => (value.a === "" ? { fields: { a: err("A") } } : undefined));
-    const { root, messages } = make({ a: "x" }, { timing: "submit", validate: { form: validateOn(form, "input") } });
+    const { root, messages } = make({ a: "x" }, { timing: "submit", validate: { form: formValidator(validateOn(form, "input")) } });
     root.at("a").setValue("");
     expect(messages(["a"])).toEqual(["A"]);
   });

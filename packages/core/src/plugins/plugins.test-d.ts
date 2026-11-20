@@ -1,7 +1,7 @@
 import type { FieldSnapshot, Part, Path, Plugin, PluginContext } from "@lunarhue/forms-core";
 import { definePlugin, dirty, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
-import { createFormsCore } from "../index.js";
+import { createFormsCore, fieldValidators } from "../index.js";
 
 interface UploadMeta {
   readonly progress: number;
@@ -163,8 +163,8 @@ describe("plugin types", () => {
   });
 
   it("takes validate whatever plugins are installed", () => {
-    createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
-    createFormsCore().define({ defaultValues: { name: "" }, plugins: [upload], validate: { fields: { name: required } } });
+    createFormsCore().define({ defaultValues: { name: "" }, validate: { fields: fieldValidators({ name: required }) } });
+    createFormsCore().define({ defaultValues: { name: "" }, plugins: [upload], validate: { fields: fieldValidators({ name: required }) } });
     expectTypeOf(required).toBeFunction();
   });
 });
