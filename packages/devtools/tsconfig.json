@@ -2,11 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["es2020", "dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "types": ["node"],
     "noEmit": true,
     "customConditions": ["@lunarhue/source"]
   },
-  "include": ["src"],
-  // The Vite plugin's test app is plain Vite code, not part of the package.
-  "exclude": ["src/**/fixtures"]
+  "include": ["src"]
 }

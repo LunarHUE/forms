@@ -5,9 +5,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
-// From source like the rest of the library: Astro loads this config without
-// the source condition, so the package name would need a package build first.
-import { formsDevtools } from "../../packages/devtools/src/vite";
 import { pagefindIndex } from "./integrations/pagefind";
 // Swap for `@astrojs/solid-js` once 8.x (Solid 2) is on npm.
 import solid from "./integrations/solid";
@@ -15,6 +12,7 @@ import { codeFences } from "./src/lib/mdx/code-fences";
 import { demos } from "./src/lib/mdx/demos";
 import { frameworkBlocks } from "./src/lib/mdx/framework-blocks";
 import { docRedirects } from "./src/lib/redirects";
+import { panelCss } from "../../packages/devtools/panel-css.ts";
 import { CHANNEL_URLS, type Channel } from "./src/lib/site";
 
 // Workspace packages export their source under this condition, so the docs
@@ -55,8 +53,8 @@ export default defineConfig({
   vite: {
     // Vite only exposes PUBLIC_ variables, and this one reaches client code too.
     define: { "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel) },
-    // Measures the forms packages for the devtools' Bundle tab.
-    plugins: [tailwindcss(), formsDevtools()],
+    // The devtools panel builds from source here, its stylesheet included.
+    plugins: [tailwindcss(), panelCss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: {
       resolve: { conditions: [sourceCondition, ...defaultServerConditions] },

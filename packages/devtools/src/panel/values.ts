@@ -13,9 +13,9 @@ export function shapeOf(value: unknown): "array" | "object" | "leaf" {
 
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
-/** A value in one short line, as a tree row shows it. */
-export function preview(value: unknown): string {
-  if (typeof value === "string") return clip(JSON.stringify(value), 60);
+/** A value in one short line, as a tree row shows it. A string is clipped to `max` characters. */
+export function preview(value: unknown, max = 60): string {
+  if (typeof value === "string") return clip(JSON.stringify(value), max);
   if (typeof value === "bigint") return `${value}n`;
   if (typeof value === "function") return "function";
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? "Invalid Date" : value.toISOString();

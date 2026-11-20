@@ -202,6 +202,14 @@ if (framework) {
         });
       })();
     </script>
+    <script>
+      import { attachNav } from "./rail";
+
+      // Every page load, the first one too. A nav the router kept is already attached.
+      document.addEventListener("astro:page-load", () => {
+        for (const nav of document.querySelectorAll<HTMLElement>("[data-sidebar] [data-nav]")) attachNav(nav);
+      });
+    </script>
     <div id="content" class="min-w-0 flex-1">
       <slot />
       <Footer framework={framework} />

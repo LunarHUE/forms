@@ -241,18 +241,17 @@
       "version": "0.1.1",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
+        "@tailwindcss/node": "4.3.5",
+        "@tailwindcss/oxide": "4.3.5",
         "@types/node": "catalog:",
         "jsdom": "catalog:",
+        "lucide-preact": "catalog:",
         "preact": "catalog:",
-        "vite": "catalog:",
+        "tailwindcss": "4.3.5",
       },
       "peerDependencies": {
         "@lunarhue/forms-core": "workspace:^",
-        "vite": "^8.0.0",
       },
-      "optionalPeers": [
-        "vite",
-      ],
     },
     "packages/react": {
       "name": "@lunarhue/forms-react",
@@ -403,6 +402,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "jsdom": "31.0.0",
+    "lucide-preact": "1.75.0",
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
     "pkg-pr-new": "0.0.93",
@@ -1687,6 +1687,8 @@
     "loose-envify": ["loose-envify@1.4.0", "", { "dependencies": { "js-tokens": "^3.0.0 || ^4.0.0" }, "bin": { "loose-envify": "cli.js" } }, "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q=="],
 
     "lru-cache": ["lru-cache@11.5.3", "", {}, "sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg=="],
+
+    "lucide-preact": ["lucide-preact@1.75.0", "", { "peerDependencies": { "preact": "^10.27.2 || ^11.0.0-0" } }, "sha512-0LEiGFM//4GYZdGEmSPUHvleB+wfamFxylTL9ZK+QgXapTvFiPYJ3AV9GN3OADNe0fI3qk2yAkE5vWd41CTEiA=="],
 
     "lucide-react": ["lucide-react@1.75.0", "", { "peerDependencies": { "@types/react": "*", "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-piesXAZIXru9d5lHBoM6cPHOBs5+QkMx+3EXwG3xWJ7qdViuz92JtYN0u9jMB6jt+2WbQrwhvJGdMwGnL3EOfA=="],
 
