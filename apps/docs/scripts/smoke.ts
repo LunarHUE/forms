@@ -6,7 +6,9 @@
  *   bun scripts/smoke.ts https://next.lunarhue-forms-docs.pages.dev
  *
  * It checks that each page in PAGES returns 200 with its title, that the
- * search index loads, and that no internal link on those pages is broken.
+ * search index loads, that no internal link on those pages is broken, and
+ * that the pages are kept out of search only if robots.txt disallows the
+ * whole site, as the next site does.
  * It uses only fetch and Node built-ins, so CI can run a copy of it from
  * outside the checkout.
  */
@@ -105,8 +107,15 @@ function internalLinks(html: string, from: string): string[] {
   return links;
 }
 
+/** Whether robots.txt keeps crawlers off the whole site. */
+async function siteHidden(): Promise<boolean> {
+  const response = await get("/robots.txt");
+  return response.status === 200 && /^Disallow: \/\s*$/m.test(await response.text());
+}
+
 async function checkPages(): Promise<Map<string, string>> {
-  console.log("Pages");
+  const hidden = await siteHidden();
+  console.log(hidden ? "Pages (robots.txt hides the site)" : "Pages");
   // Each linked path, with the first page that links to it.
   const links = new Map<string, string>();
   for (const page of PAGES) {
@@ -119,6 +128,10 @@ async function checkPages(): Promise<Map<string, string>> {
     const title = decode(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "");
     if (title !== page.title) {
       fail(`${page.path} has title "${title}", expected "${page.title}"`);
+      continue;
+    }
+    if (/<meta name="robots" content="noindex"/.test(html) !== hidden) {
+      fail(`${page.path} ${hidden ? "lacks" : "has"} robots noindex`);
       continue;
     }
     pass(page.path);
