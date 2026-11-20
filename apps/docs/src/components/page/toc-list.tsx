@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 
 /** One "On this page" row. `slug` is the id of the element it jumps to. */
 export interface TocItem {
@@ -77,26 +77,80 @@ interface TocListProps {
   linkClassName?: string;
 }
 
+/** Where the range marker sits, in px from the top of the list. */
+interface Range {
+  top: number;
+  height: number;
+}
+
+/**
+ * Measures the span from the first marked row to the last. Null until the
+ * list has been measured, and when nothing is marked.
+ */
+function useRange(list: RefObject<HTMLUListElement | null>, items: readonly TocItem[], active: readonly string[]) {
+  const [range, setRange] = useState<Range | null>(null);
+
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!element) return undefined;
+    const measure = () => {
+      const rows = [...element.querySelectorAll<HTMLElement>(":scope > li")];
+      const marked = rows.filter((_, index) => active.includes(items[index]?.slug ?? ""));
+      const first = marked[0];
+      const last = marked.at(-1);
+      setRange((previous) => {
+        if (!first || !last) return null;
+        const next = { top: first.offsetTop, height: last.offsetTop + last.offsetHeight - first.offsetTop };
+        return previous?.top === next.top && previous.height === next.height ? previous : next;
+      });
+    };
+    measure();
+    // Rows rewrap when the rail or the drawer changes width.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [list, items, active]);
+
+  return range;
+}
+
 /**
  * The rows: a 1px rule down the left. Every row whose section is in the
- * window turns the accent and draws a 2px bar over the rule, and the bars of
- * neighbouring rows join into one range. The first marked row gets
+ * window turns the accent, and a 2px bar over the rule spans those rows. The
+ * bar slides and stretches as the range changes. The first marked row gets
  * aria-current. Third-level headings sit one step in.
+ *
+ * The server HTML can't measure, so until hydration each marked row draws its
+ * own piece of the bar.
  */
 export function TocList({ items, active, onClick, className, linkClassName }: TocListProps) {
+  const list = useRef<HTMLUListElement>(null);
+  const range = useRange(list, items, active);
+  // The bar lands without sliding the first time, then slides from there on.
+  const [sliding, setSliding] = useState(false);
+  useEffect(() => {
+    if (!range || sliding) return undefined;
+    const frame = requestAnimationFrame(() => setSliding(true));
+    return () => cancelAnimationFrame(frame);
+  }, [range, sliding]);
+
   return (
-    <ul className={cn("flex flex-col border-l", className)}>
+    <ul ref={list} className={cn("relative flex flex-col border-l", className)}>
+      {range && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute top-0 -left-px w-0.5 bg-brand motion-reduce:transition-none",
+            sliding && "transition-[transform,height] duration-200 ease-out",
+          )}
+          style={{ transform: `translateY(${range.top}px)`, height: range.height }}
+        />
+      )}
       {items.map((item) => {
         const marked = active.includes(item.slug);
         return (
           <li key={item.slug} className="relative flex">
-            <span
-              aria-hidden
-              className={cn(
-                "absolute inset-y-0 -left-px w-0.5 bg-brand opacity-0 transition-opacity duration-150 motion-reduce:transition-none",
-                marked && "opacity-100",
-              )}
-            />
+            {!range && marked && <span aria-hidden className="absolute inset-y-0 -left-px w-0.5 bg-brand" />}
             <a
               href={`#${item.slug}`}
               aria-current={item.slug === active[0] ? "location" : undefined}
