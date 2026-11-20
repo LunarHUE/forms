@@ -7,9 +7,12 @@ import Article from "@/components/page/Article.astro";
 import Shell from "@/components/shell/Shell.astro";
 import { getDocs, toNavPage, type DocEntry } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, frameworkLabel, type Framework } from "@/lib/frameworks";
+import { lastCommitDate } from "@/lib/git";
 import { headingsFor } from "@/lib/mdx/framework-blocks";
 import { alternates, pagination, SECTION_LABELS, sidebar } from "@/lib/nav";
+import { markdownHref } from "@/lib/pages";
 import { docHref } from "@/lib/routes";
+import { docData, type PageMeta } from "@/lib/seo";
 import { LATEST_VERSION, VERSIONS } from "@/lib/versions";
 
 export const getStaticPaths = (async () => {
@@ -55,11 +58,33 @@ const { title, description, section } = entry.data;
 // Search (integrations/pagefind.ts) indexes the latest version only. The
 // framework filter keeps a React search to React pages; the section names the
 // result's path, as in "Plugins / Masks".
+
+// Each framework's page is its own canonical: the prose matches but the code
+// differs, and a Solid search should land on the Solid page. An older
+// version points at the latest copy of its page.
+const latest = docHref({ framework, slug: entry.id });
+const lastUpdated = entry.filePath ? lastCommitDate(entry.filePath) : undefined;
+const markdown = version === LATEST_VERSION ? markdownHref(latest) : undefined;
+const meta: PageMeta = {
+  canonical: latest,
+  markdown,
+  type: "article",
+  modified: lastUpdated,
+  structuredData: docData({
+    title,
+    description,
+    href: latest,
+    framework,
+    section: SECTION_LABELS[section],
+    modified: lastUpdated,
+  }),
+};
 ---
 
 <Shell
   title={`${title} · ${frameworkLabel(framework)}`}
   description={description}
+  meta={meta}
   framework={framework}
   version={version}
   groups={groups}
@@ -78,6 +103,8 @@ const { title, description, section } = entry.data;
       headings={headingsFor(framework, headings, remarkPluginFrontmatter)}
       previous={previous}
       next={next}
+      markdown={markdown}
+      lastUpdated={lastUpdated}
     >
       <Content components={mdxComponents} />
     </Article>
