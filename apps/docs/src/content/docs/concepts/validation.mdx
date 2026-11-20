@@ -108,3 +108,24 @@ you set yourself with `setErrors`, such as a server's answer. Those also sit
 in `field.userErrors`, and they don't block a submit: the form's `valid`
 only counts validation errors. The next user edit clears them.
 [Submit](submit) shows how to put server errors on fields.
+
+`errors` lists validation errors in a fixed order: the schema's, then the
+form validator's, then field validators' in the order they were added. To
+tell them apart, pass a handle to `errorsByKind`. It returns
+`{ schema, form, field }`, each a list of errors, and leaves out what
+`setErrors` set. A thrown validator's error goes under that validator's
+kind. It reads once, so call it again when the field's `errors` change:
+
+```ts framework=react
+import { errorsByKind } from "@lunarhue/forms-react";
+
+const { schema, form, field } = errorsByKind(store.root.at("email"));
+```
+
+```ts framework=solid
+import { errorsByKind } from "@lunarhue/forms-solid";
+
+const { schema, form, field } = errorsByKind(store.root.at("email"));
+```
+
+A form that never calls it doesn't ship it.
