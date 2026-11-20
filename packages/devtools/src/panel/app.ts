@@ -1,5 +1,5 @@
 import type { Path } from "@lunarhue/forms-core";
-import { Fragment, h, type JSX } from "preact";
+import { Fragment, h, type JSX, type TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
@@ -7,7 +7,7 @@ import { Bundle } from "./bundle.js";
 import { Fields } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { icon } from "./icons.js";
+import { icon, iconButton } from "./icons.js";
 import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
@@ -100,8 +100,8 @@ export function App({ hook, host }: AppProps): JSX.Element {
   const shown = selected ?? forms[0];
   const [tab, setTab] = useState<Tab | null>(null);
   const [corner, setCorner] = useState<Corner>(readCorner);
-  const [menu, setMenu] = useState<"dock" | "forms" | null>(null);
-  const [picking, setPicking] = useState(false);
+  // The open menu, and its left edge: the left edge of the button that opened it.
+  const [menu, setMenu] = useState<{ readonly kind: "dock" | "forms"; readonly left: number } | null>(null);
   const phone = useMedia(phoneQuery);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [view, setView] = useState<View>(() => fresh(-1));
@@ -119,47 +119,27 @@ export function App({ hook, host }: AppProps): JSX.Element {
   // Vue records no elements, so its forms never get an adapter and offer no inspecting.
   const tracked = forms.some((form) => form.entry.adapter !== undefined);
 
+  const root = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtons = useRef<HTMLDivElement>(null);
   useDismiss(menu !== null, () => [menuRef.current, menuButtons.current], () => setMenu(null));
 
-  // Pick mode ends on Escape and on a click anywhere but an outline, which the outline handles.
+  // Escape unpins the card. Inspecting goes on until its toggle turns it off.
   useEffect(() => {
-    if (!picking) return undefined;
-    const onClick = (event: MouseEvent) => {
-      if (!event.composedPath().includes(host)) setPicking(false);
-    };
+    if (pinned === null) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPicking(false);
-    };
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClick, true);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [picking, host]);
-
-  // Escape ends inspecting and unpins the card.
-  useEffect(() => {
-    if (!inspecting && pinned === null) return undefined;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setInspecting(false);
-      setPinned(null);
+      if (event.key === "Escape") setPinned(null);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [inspecting, pinned]);
+  }, [pinned]);
 
   /** Pins the card for a field the inspector clicked, and selects its row in the Fields tab. */
   const pin = (found: Found) => {
     setPinned(found);
-    setInspecting(false);
     setSelectedId(found.form.id);
     setMenu(null);
     setTab("fields");
-    if (phone) setSheetOpen(true);
     setView((previous) => ({
       form: found.form.id,
       expanded: new Set([...(previous.form === found.form.id ? previous.expanded : []), ...ancestors(found.path)]),
@@ -179,6 +159,16 @@ export function App({ hook, host }: AppProps): JSX.Element {
     }
     setTab((open) => open ?? "fields");
     if (phone) setSheetOpen(true);
+  };
+
+  /** Opens the `kind` menu under the button of `event`, or closes it when it is open. */
+  const toggleMenu = (kind: "dock" | "forms", event: TargetedMouseEvent<HTMLElement>) =>
+    setMenu(menu?.kind === kind ? null : { kind, left: event.currentTarget.offsetLeft });
+
+  /** Opens a tab, or closes the open one. A tab opened with no form selected selects the form it shows. */
+  const openTab = (next: Tab) => {
+    if (selected === undefined && shown) setSelectedId(shown.id);
+    setTab(tab === next ? null : next);
   };
 
   const move = (next: Corner) => {
@@ -219,22 +209,28 @@ export function App({ hook, host }: AppProps): JSX.Element {
   };
 
   const chip = h(
-    "button",
-    {
-      class: "chip",
-      "aria-haspopup": "menu",
-      "aria-expanded": menu === "forms" ? "true" : "false",
-      "aria-label": selected ? `Form ${selected.label}. Choose a form` : "Choose a form",
-      onClick: () => setMenu(menu === "forms" ? null : "forms"),
-    },
-    h("span", { class: selected ? "swatch on" : "swatch", "aria-hidden": "true" }),
-    h("span", { class: shown ? "truncate" : "truncate muted" }, shown?.label ?? "No forms"),
-    icon("chevron"),
+    "div",
+    { class: "chip" },
+    h(
+      "button",
+      {
+        class: "chip-main",
+        "aria-haspopup": "menu",
+        "aria-expanded": menu?.kind === "forms" ? "true" : "false",
+        "aria-label": selected ? `Form ${selected.label}. Choose a form` : "Choose a form",
+        onClick: (event: TargetedMouseEvent<HTMLElement>) => toggleMenu("forms", event),
+      },
+      h("span", { class: selected ? "swatch on" : "swatch", "aria-hidden": "true" }),
+      h("span", { class: selected ? "truncate" : "truncate muted" }, selected?.label ?? (forms.length === 0 ? "No forms" : "No form")),
+      selected ? null : icon("chevron"),
+    ),
+    // The clear button takes the chevron's place.
+    selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null,
   );
 
   const formsMenu = h(
     "div",
-    { class: "menu surface", role: "menu", "aria-label": "Forms on this page", ref: menuRef },
+    { class: "menu surface", role: "menu", "aria-label": "Forms on this page", ref: menuRef, style: `left: ${menu?.left ?? 0}px` },
     h("div", { class: "menu-label" }, "Forms on this page"),
     forms.length === 0
       ? h("div", { class: "menu-item muted" }, "None yet")
@@ -257,7 +253,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
 
   const dockMenu = h(
     "div",
-    { class: "menu surface", role: "menu", "aria-label": "Devtools menu", ref: menuRef },
+    { class: "menu surface", role: "menu", "aria-label": "Devtools menu", ref: menuRef, style: `left: ${menu?.left ?? 0}px` },
     h("div", { class: "menu-label" }, "Dock position"),
     corners.map((option) =>
       h(
@@ -280,7 +276,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
   const tabList = (active: Tab | null, onTab: (tab: Tab) => void) =>
     h(
       "div",
-      { role: "tablist", "aria-label": "Devtools tabs", style: "display: flex; gap: 2px" },
+      { class: "tabs", role: "tablist", "aria-label": "Devtools tabs" },
       tabs.map((item) =>
         h(
           "button",
@@ -290,29 +286,12 @@ export function App({ hook, host }: AppProps): JSX.Element {
       ),
     );
 
-  const pickButton = h(
-    "button",
-    {
-      class: "icon",
-      "aria-label": "Pick a form on the page",
-      "aria-pressed": picking ? "true" : "false",
-      onClick: () => setPicking(!picking),
-    },
-    icon("pick"),
-  );
-
   const inspectButton = tracked
-    ? h(
-        "button",
-        {
-          class: "icon",
-          "aria-label": "Inspect fields on the page",
-          "aria-pressed": inspecting ? "true" : "false",
-          title: "Inspect fields on the page. Or hold Alt.",
-          onClick: () => setInspecting(!inspecting),
-        },
-        icon("inspect"),
-      )
+    ? iconButton("Inspect fields on the page", "inspect", {
+        "aria-pressed": inspecting ? "true" : "false",
+        "data-tip": inspecting ? "Stop inspecting" : "Inspect fields. Or hold Alt",
+        onClick: () => setInspecting(!inspecting),
+      })
     : null;
 
   // The elements of the field under the pointer, or of the hovered row.
@@ -329,25 +308,22 @@ export function App({ hook, host }: AppProps): JSX.Element {
     card ? h(FieldCard, { key: card === pinned ? "pinned" : "hover", found: card, onClose: card === pinned ? () => setPinned(null) : undefined }) : null,
   );
 
-  const outlines = picking
-    ? h(FormOutlines, {
-        hook,
-        forms,
-        selectedId,
-        onPick: (id: number) => {
-          setPicking(false);
-          select(id);
-        },
-      })
-    : null;
+  const layers = h(
+    Fragment,
+    null,
+    h(FormOutlines, { hook, forms, selectedId, onPick: select }),
+    fieldLayer,
+    h(Tip, { root }),
+  );
+
+  const openMenu = menu?.kind === "dock" ? dockMenu : menu?.kind === "forms" ? formsMenu : null;
 
   if (phone) {
     const open = tab ?? "fields";
     return h(
       "div",
-      { class: "root" },
-      outlines,
-      fieldLayer,
+      { class: "root", ref: root },
+      layers,
       sheetOpen
         ? h(
             "div",
@@ -357,31 +333,27 @@ export function App({ hook, host }: AppProps): JSX.Element {
               "div",
               { class: "sheet-head", ref: menuButtons },
               chip,
-              pickButton,
-              menu === "forms" ? formsMenu : null,
-              h(
-                "div",
-                { class: "end" },
-                tabList(open, setTab),
-                onDisable ? h("button", { class: "icon", "aria-label": "Turn off devtools", onClick: turnOff }, icon("off")) : null,
-                h("button", { class: "icon", "aria-label": "Close the devtools", onClick: () => setSheetOpen(false) }, icon("close")),
-              ),
+              inspectButton,
+              h("div", { class: "end" }, onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null, iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })),
+              openMenu,
             ),
+            tabList(open, setTab),
             h("section", { class: "panel", "aria-label": `Devtools ${open}` }, content(open)),
           )
-        : h(
-            "button",
-            { class: "fab surface", "aria-label": "Open the forms devtools", onClick: () => setSheetOpen(true) },
-            icon("panel"),
-          ),
+        : iconButton("Open the forms devtools", "panel", {
+            class: "fab icon surface",
+            onClick: () => {
+              if (selected === undefined && shown) setSelectedId(shown.id);
+              setSheetOpen(true);
+            },
+          }),
     );
   }
 
   return h(
     "div",
-    { class: "root" },
-    outlines,
-    fieldLayer,
+    { class: "root", ref: root },
+    layers,
     h(
       "div",
       { class: "dock", "data-corner": corner },
@@ -389,26 +361,17 @@ export function App({ hook, host }: AppProps): JSX.Element {
       h(
         "div",
         { class: "bar surface", role: "toolbar", "aria-label": "Forms devtools", ref: menuButtons },
-        h(
-          "button",
-          {
-            class: "icon",
-            "aria-label": "Devtools menu",
-            "aria-haspopup": "menu",
-            "aria-expanded": menu === "dock" ? "true" : "false",
-            onClick: () => setMenu(menu === "dock" ? null : "dock"),
-          },
-          icon("panel"),
-        ),
+        iconButton("Devtools menu", "panel", {
+          "aria-haspopup": "menu",
+          "aria-expanded": menu?.kind === "dock" ? "true" : "false",
+          "data-tip": "Dock position and turning off",
+          onClick: (event) => toggleMenu("dock", event),
+        }),
         chip,
-        selected
-          ? h("button", { class: "icon small", "aria-label": `Clear selection ${selected.label}`, onClick: () => select(null) }, icon("close"))
-          : null,
         h("div", { class: "divider", "aria-hidden": "true" }),
-        pickButton,
         inspectButton,
-        tabList(tab, (next) => setTab(tab === next ? null : next)),
-        menu === "dock" ? dockMenu : menu === "forms" ? formsMenu : null,
+        tabList(tab, openTab),
+        openMenu,
       ),
     ),
   );
@@ -421,7 +384,14 @@ interface FormOutlinesProps {
   readonly onPick: (id: number) => void;
 }
 
-/** Pick mode's dashed outline and name tag over each form's `<form>` element. Clicking one picks that form. */
+/** How far a form's outline stands off its element. */
+const pad = 8;
+
+/**
+ * A dashed outline around each form's `<form>` element, with the form's name
+ * on a tag above it. The outline lets the pointer through; clicking the tag
+ * selects the form. The selected form's outline is solid.
+ */
 function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): JSX.Element {
   const boxes = forms.flatMap((form) => hook.elementsOf(form.entry.store).map((element) => ({ form, rect: element.getBoundingClientRect() })));
   // The outlines follow the forms as the page scrolls or reflows.
@@ -438,16 +408,83 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
     null,
     boxes.map(({ form, rect }, index) =>
       h(
-        "button",
+        "div",
         {
           key: index,
           class: form.id === selectedId ? "outline form on" : "outline form",
-          style: `left: ${rect.left}px; top: ${rect.top}px; width: ${rect.width}px; height: ${rect.height}px`,
-          "aria-label": `Pick form ${form.label}`,
-          onClick: () => onPick(form.id),
+          style: `left: ${rect.left - pad}px; top: ${rect.top - pad}px; width: ${rect.width + 2 * pad}px; height: ${rect.height + 2 * pad}px`,
         },
-        h("span", { class: "tag truncate", "aria-hidden": "true" }, form.label),
+        h(
+          "button",
+          {
+            // With no room above the form, the tag sits inside its top edge.
+            class: rect.top - pad < 24 ? "tag inside" : "tag",
+            "aria-label": `Select form ${form.label}`,
+            "aria-pressed": form.id === selectedId ? "true" : "false",
+            onClick: () => onPick(form.id),
+          },
+          icon("panel"),
+          h("span", { class: "truncate" }, form.label),
+        ),
       ),
     ),
+  );
+}
+
+/** How long the pointer rests on a control before its tooltip shows. */
+const tipDelay = 400;
+
+/**
+ * The tooltip of the control with a `data-tip` under the pointer or with the
+ * keyboard focus. It is fixed to the window, so a scrolling list or the
+ * panel's edge never clips it.
+ */
+function Tip({ root }: { readonly root: { readonly current: HTMLElement | null } }): JSX.Element | null {
+  const [shown, setShown] = useState<{ readonly text: string; readonly rect: DOMRect } | null>(null);
+  useEffect(() => {
+    const element = root.current;
+    if (element === null) return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const target = (event: Event) => (event.target instanceof Element ? event.target.closest("[data-tip]") : null);
+    const show = (found: Element | null) => {
+      clearTimeout(timer);
+      const text = found?.getAttribute("data-tip");
+      setShown(found && text ? { text, rect: found.getBoundingClientRect() } : null);
+    };
+    const onOver = (event: Event) => {
+      const found = target(event);
+      clearTimeout(timer);
+      if (found === null) return setShown(null);
+      timer = setTimeout(() => show(found), tipDelay);
+    };
+    const onFocus = (event: Event) => show(event.target instanceof Element && event.target.matches(":focus-visible") ? target(event) : null);
+    const hide = () => show(null);
+    element.addEventListener("pointerover", onOver);
+    element.addEventListener("pointerleave", hide);
+    element.addEventListener("pointerdown", hide);
+    element.addEventListener("focusin", onFocus);
+    element.addEventListener("focusout", hide);
+    return () => {
+      clearTimeout(timer);
+      element.removeEventListener("pointerover", onOver);
+      element.removeEventListener("pointerleave", hide);
+      element.removeEventListener("pointerdown", hide);
+      element.removeEventListener("focusin", onFocus);
+      element.removeEventListener("focusout", hide);
+    };
+  }, [root]);
+  if (shown === null) return null;
+  const { text, rect } = shown;
+  // Above the control, or below it near the top of the window; kept off the window's sides.
+  const above = rect.top > 40;
+  const x = Math.max(80, Math.min(rect.left + rect.width / 2, innerWidth - 80));
+  return h(
+    "div",
+    {
+      class: above ? "tip" : "tip below",
+      "aria-hidden": "true",
+      style: `left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`,
+    },
+    text,
   );
 }

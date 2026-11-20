@@ -37,13 +37,17 @@ test.describe("devtools", () => {
     expect(problems).toEqual([]);
   });
 
-  test("pick mode outlines the form, and clicking the outline selects it", async ({ page }) => {
+  test("every form has an outline with a tag, and clicking the tag selects the form", async ({ page }) => {
     await openWithDevtools(page, "basic");
-    await page.getByRole("button", { name: "Pick a form on the page" }).click();
-    const outline = page.getByRole("button", { name: /^Pick form / });
-    await expect(outline).toHaveCount(1);
-    await outline.click();
-    await expect(outline).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /pick/i })).toHaveCount(0);
+    await expect(page.locator(".outline.form")).toHaveCount(1);
+    const tag = page.getByRole("button", { name: /^Select form / });
+    // A form with no id of its own is named by its place on the page, not by the id React made up.
+    await expect(tag).toHaveText(/^(form 1|basic)$/);
+    // The outline lets the pointer through to the form.
+    await input(page, basicScenario.labels.name).click();
+    await tag.click();
+    await expect(page.locator(".outline.form.on")).toHaveCount(1);
     await expect(page.getByRole("button", { name: /^Form .+\. Choose a form$/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Devtools fields" })).toBeVisible();
   });
@@ -76,8 +80,24 @@ test.describe("devtools", () => {
     await expect(page.getByRole("button", { name: "Unpin the field card" })).toBeVisible();
     await expect(page.getByLabel(labels.pro)).not.toBeChecked();
     await expect(row(page, ["plan"])).toHaveAttribute("aria-current", "true");
+    // Inspecting stays on, so the next click is the inspector's too.
+    await expect(page.getByRole("button", { name: "Inspect fields on the page" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByLabel(labels.free).hover();
+    await page.getByLabel(labels.pro).click();
+    await expect(page.getByLabel(labels.pro)).not.toBeChecked();
     await page.getByRole("button", { name: "Unpin the field card" }).click();
     await expect(card(page, "plan")).toHaveCount(0);
+    await page.getByRole("button", { name: "Inspect fields on the page" }).click();
+    await page.getByLabel(labels.pro).click();
+    await expect(page.getByLabel(labels.pro)).toBeChecked();
+  });
+
+  test("hovering a label shows the hover card of the field it labels", async ({ page }) => {
+    const { labels } = inspectScenario;
+    await openWithDevtools(page, "inspect");
+    await page.getByRole("button", { name: "Inspect fields on the page" }).click();
+    await page.getByText(labels.pro, { exact: true }).hover();
+    await expect(card(page, "plan")).toBeVisible();
   });
 
   test("holding Alt shows the hover card for a custom input that records itself with a field ref", async ({ page }) => {

@@ -3,7 +3,7 @@ import { Fragment, h, type JSX } from "preact";
 import type { FormEntry } from "../hook.js";
 import { hasPlugin } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { icon } from "./icons.js";
+import { iconButton } from "./icons.js";
 import { causeText, clock, errorsPage, format, pathKey, preview, readError, shapeOf } from "./values.js";
 
 type Snapshot = FieldSnapshot<unknown, unknown>;
@@ -152,16 +152,11 @@ export function Fields(props: FieldsProps): JSX.Element {
                 onPointerLeave: () => props.onHover?.(null),
               },
               item.branch
-                ? h(
-                    "button",
-                    {
-                      class: "twisty",
-                      "aria-expanded": open ? "true" : "false",
-                      "aria-label": `${open ? "Collapse" : "Expand"} ${item.snapshot.name || item.label}`,
-                      onClick: () => props.onToggle(key),
-                    },
-                    icon("chevron"),
-                  )
+                ? iconButton(`${open ? "Collapse" : "Expand"} ${item.snapshot.name || item.label}`, "chevron", {
+                    class: "twisty",
+                    "aria-expanded": open ? "true" : "false",
+                    onClick: () => props.onToggle(key),
+                  })
                 : h("span", { class: "leaf" }),
               h(
                 "button",
@@ -281,7 +276,7 @@ function Detail({ entry, path, snapshot, dirty, onClose }: DetailProps): JSX.Ele
       "div",
       { class: "detail-head" },
       h("strong", { class: "truncate" }, snapshot.name || "(form)"),
-      h("button", { class: "icon small", "aria-label": "Close the field detail", onClick: onClose }, icon("close")),
+      iconButton("Close the field detail", "close", { class: "icon small", onClick: onClose }),
     ),
     h("dl", { class: "facts" }, ...fieldFacts(entry, path, snapshot, dirty)),
   );

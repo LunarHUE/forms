@@ -5,7 +5,7 @@ import type { Hook } from "../hook.js";
 import { fieldFacts } from "./fields.js";
 import { hasPlugin, type Listed } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { icon } from "./icons.js";
+import { iconButton } from "./icons.js";
 import { pathKey } from "./values.js";
 
 /** A field found on the page: its form, its stable path and the element the pointer is over. */
@@ -19,18 +19,30 @@ export interface Found {
 const isHandle = (key: object): key is { readonly store: object; readonly path: Path } => "path" in key && "store" in key;
 
 /**
+ * The elements a label stands for: its control, the element its `for` names
+ * when that isn't labelable, such as a custom input, and what it wraps.
+ */
+function labelled(label: HTMLLabelElement): Element[] {
+  const root = label.getRootNode();
+  const named = label.htmlFor && (root instanceof Document || root instanceof ShadowRoot) ? root.getElementById(label.htmlFor) : null;
+  return [label.control, named, ...label.querySelectorAll("*")].filter((element): element is Element => element !== null);
+}
+
+/**
  * The field under an event, from the first element on its composed path that
- * a ref recorded. Undefined for an event inside the panel, or over no field
- * of a listed form.
+ * a ref recorded. A label counts as the field it labels. Undefined for an
+ * event inside the panel, or over no field of a listed form.
  */
 export function fieldAt(hook: Hook, forms: readonly Listed[], host: Element, path: readonly EventTarget[]): Found | undefined {
   if (path.includes(host)) return undefined;
   for (const target of path) {
     if (!(target instanceof Element)) continue;
-    const key = hook.keyOf(target);
-    if (key === undefined || !isHandle(key)) continue;
-    const form = forms.find((listed) => listed.entry.store === key.store);
-    if (form) return { form, path: key.path, element: target };
+    for (const element of target instanceof HTMLLabelElement ? [target, ...labelled(target)] : [target]) {
+      const key = hook.keyOf(element);
+      if (key === undefined || !isHandle(key)) continue;
+      const form = forms.find((listed) => listed.entry.store === key.store);
+      if (form) return { form, path: key.path, element };
+    }
   }
   return undefined;
 }
@@ -168,7 +180,7 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
       { class: "detail-head" },
       h("strong", { class: "truncate" }, snapshot.name || "(form)"),
       h("span", { class: "muted truncate" }, form.label),
-      onClose ? h("button", { class: "icon small", "aria-label": "Unpin the field card", onClick: onClose }, icon("close")) : null,
+      onClose ? iconButton("Unpin the field card", "close", { class: "icon small", onClick: onClose }) : null,
     ),
     h("dl", { class: "facts" }, ...fieldFacts(entry, path, snapshot, dirty)),
   );
