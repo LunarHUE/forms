@@ -487,6 +487,52 @@ pre {
   padding: 8px 12px 0;
 }
 
+.bundle {
+  padding-bottom: 8px;
+}
+
+.note {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.note.error {
+  color: var(--error);
+}
+
+code {
+  font: inherit;
+  color: var(--brand);
+}
+
+.sizes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sizes th,
+.sizes td {
+  padding: 4px 12px;
+  text-align: left;
+  font-weight: normal;
+}
+
+.sizes thead th {
+  color: var(--muted);
+}
+
+.sizes tfoot th,
+.sizes tfoot td {
+  border-top: 1px solid var(--border);
+}
+
+.sizes .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
 .outline {
   position: fixed;
   z-index: 2147482999;

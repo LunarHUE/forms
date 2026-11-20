@@ -72,7 +72,7 @@
       "path": "dist/esm/panel.js",
       "ignore": ["@lunarhue/forms-core"],
       "brotli": false,
-      "limit": "42.5 kB"
+      "limit": "45.5 kB"
     }
   ]
 }

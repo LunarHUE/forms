@@ -3,6 +3,7 @@ import { Fragment, h, type JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
+import { Bundle } from "./bundle.js";
 import { Fields } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
@@ -11,12 +12,13 @@ import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspec
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
 
-export type Tab = "fields" | "log" | "plugins";
+export type Tab = "fields" | "log" | "plugins" | "bundle";
 
 const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
   { id: "fields", label: "Fields" },
   { id: "log", label: "Log" },
   { id: "plugins", label: "Plugins" },
+  { id: "bundle", label: "Bundle" },
 ];
 
 /** At this width and below the dock is a button that opens a bottom sheet. */
@@ -197,6 +199,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
     if (shown === undefined) return h("p", { class: "empty" }, "No form with devtools() is mounted on this page.");
     if (open === "log") return h(Log, { key: `${open}${shown.id}`, entry: shown.entry });
     if (open === "plugins") return h(Plugins, { key: `${open}${shown.id}`, entry: shown.entry });
+    if (open === "bundle") return h(Bundle, { key: `${open}${shown.id}`, entry: shown.entry });
     return h(Fields, {
       key: `${open}${shown.id}`,
       entry: shown.entry,
