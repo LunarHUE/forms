@@ -1,0 +1,155 @@
+name: Docs production
+
+# Deploys the docs of the latest release to production (forms.lunarhue.dev).
+# Production follows releases because main documents APIs that aren't on npm
+# yet; main goes to `next` (docs-deploy.yml).
+#
+# The packages release as one fixed group, so the core package's tag marks
+# every release. Pushing it, after `bun run release`, runs this. A manual run
+# redeploys the latest release tag, to pick up a fix to this workflow or the
+# smoke test, or to re-run a failed deploy.
+#
+# The gate: build once, upload the build to the `release-candidate` branch
+# alias, smoke-test that deployment, and only then upload the same dist to
+# the production branch.
+on:
+  push:
+    tags:
+      - "@lunarhue/forms-core@*"
+      # Prereleases don't replace the stable docs.
+      - "!@lunarhue/forms-core@*-*"
+  workflow_dispatch:
+
+permissions: {}
+
+# Production deploys queue and never cancel each other halfway. A run that is
+# still waiting can be replaced by a newer one, which deploys the latest tag
+# anyway.
+concurrency:
+  group: docs-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Forks get a copy of this workflow; only the real repo deploys.
+    if: github.repository == 'LunarHUE/forms'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Brings every tag, to find the latest release, and the history each
+          # page's "last updated" date comes from.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Until the Cloudflare secrets are set, skip the deploy with a notice
+      # instead of failing every run.
+      - id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID isn't set, so the docs aren't deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Production shows the newest stable release. A tag pushed for an older
+      # line, such as a backported patch, would roll the docs back, so that
+      # run stops here.
+      - id: release
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          latest=$(git tag --list '@lunarhue/forms-core@*' --sort=-version:refname | { grep -v '@[0-9.]*-' || true; } | sed -n 1p)
+          if [ -z "$latest" ]; then
+            echo "::error::No @lunarhue/forms-core release tag found."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_NAME" != "$latest" ]; then
+            echo "::notice::$GITHUB_REF_NAME isn't the latest release ($latest), so production stays as it is."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tag=$latest" >> "$GITHUB_OUTPUT"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      # The smoke test comes from the commit this workflow runs from, so a
+      # manual run uses main's copy and a fix to the test reaches the next
+      # re-run without a release. It reads only fetch and Node built-ins.
+      # Then the release itself is checked out to build.
+      - if: steps.release.outputs.deploy == 'true'
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          git show "$GITHUB_SHA:apps/docs/scripts/smoke.ts" > "$RUNNER_TEMP/smoke.ts"
+          git checkout --detach "refs/tags/$TAG"
+
+      - if: steps.release.outputs.deploy == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # The packageManager field pins Bun.
+          bun-version-file: package.json
+      - if: steps.release.outputs.deploy == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - if: steps.release.outputs.deploy == 'true'
+        run: bun install --frozen-lockfile
+      - if: steps.release.outputs.deploy == 'true'
+        working-directory: apps/docs
+        run: bun run build
+
+      - id: candidate
+        if: steps.release.outputs.deploy == 'true'
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.165.0"
+          command: pages deploy apps/docs/dist --project-name=lunarhue-forms-docs --branch=release-candidate
+
+      # The deployment's own URL, not the alias, so the test reads exactly this build.
+      - if: steps.release.outputs.deploy == 'true'
+        env:
+          URL: ${{ steps.candidate.outputs.deployment-url }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          {
+            echo "Release: $TAG"
+            echo ""
+            echo "Candidate: $URL"
+            echo ""
+            echo "### Smoke test"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          bun "$RUNNER_TEMP/smoke.ts" "$URL" | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::The smoke test failed, so production stays as it is."
+          fi
+          exit "$status"
+
+      # main is the Pages project's production branch.
+      - id: production
+        if: steps.release.outputs.deploy == 'true'
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.165.0"
+          command: pages deploy apps/docs/dist --project-name=lunarhue-forms-docs --branch=main
+
+      - if: steps.release.outputs.deploy == 'true'
+        env:
+          URL: ${{ steps.production.outputs.deployment-url }}
+        run: |
+          {
+            echo ""
+            echo "Deployed to production: $URL"
+          } >> "$GITHUB_STEP_SUMMARY"
