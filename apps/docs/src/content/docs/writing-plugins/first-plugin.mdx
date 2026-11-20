@@ -1,22 +1,42 @@
 ---
-title: Writing a plugin
-description: Hooks, meta, writes and tests for a plugin of your own.
+title: Your first plugin
+description: definePlugin, setup hooks, and how a plugin writes to the form.
 section: writing-plugins
 order: 1
+navTitle: First plugin
 ---
 
-Make a plugin with `definePlugin` from `@lunarhue/forms-core/plugins`. Its
-`setup` runs once per store and returns hooks that see the whole form. Its
-`attach` runs once for each field a part of it is put on, and returns hooks
-for that field. A plugin can have either or both.
+When no plugin does what your forms need, write one. Say pasted text keeps
+arriving with doubled spaces. A plugin can collapse them in every string
+field, on every form that installs it. Type two spaces in a row below.
 
-Writes go through `ctx.write`, which runs after every plugin in the round has
-run. Their records have `cause: { plugin: name }`. A plugin that moves the
-baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pass
-`"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
-plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
-write to every plugin with its cause, and each plugin decides what to do with
-it. `mask`, for one, skips rebases.
+<Demo name="first-plugin/note" />
+
+## definePlugin
+
+Make a plugin with `definePlugin`, from `@lunarhue/forms-core/plugins` or the
+same entry under your adapter. Wrap it in a function so each `createForms`
+call gets its own:
+
+```ts
+import { definePlugin } from "@lunarhue/forms-core/plugins";
+
+export const collapseSpaces = () =>
+  definePlugin({
+    name: "collapseSpaces",
+    setup: () => ({
+      beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
+    }),
+  });
+
+const forms = createForms({ plugins: [collapseSpaces()] });
+```
+
+`setup` runs once per store and returns hooks that see the whole form. Here
+`beforeWrite` gets every value write and returns the value to store. A
+plugin can also have an `attach`, which runs once for each field a
+[part](./parts) of it is put on and returns hooks for that field. A plugin
+can have either or both.
 
 ## Setup
 
@@ -32,178 +52,13 @@ store's starting state:
   written to, as on the server, starts no timer.
 - It doesn't move the baseline. A value written in setup is dirty against the
   defaults. To start from a value without making the form dirty, use
-  [`initial`](#starting-values).
+  [`initial`](./submit#starting-values).
 
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
 `onActive`, which runs when the store gets its first listener. The server
 never listens, so it never runs there. [`persist`](../plugins/persist) restores in
 `onActive`.
-
-## Parts
-
-A part is a plugin's config for one place. A field type, a fieldset or a
-definition carries it, and the plugin's `attach` gets it with the path it
-landed on. Write a typed constructor for your parts, so each one names the
-plugin and the values it fits:
-
-```ts
-import type { Part, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-
-interface Limit {
-  readonly max: number;
-}
-
-export const limit = () =>
-  definePlugin({
-    name: "limit",
-    attach: (_ctx: PluginContext, { max }: Limit) => ({
-      beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
-    }),
-  });
-
-// Fits string fields only.
-export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit", config: { max } });
-```
-
-An app puts `limit()` in the form's plugins and `limited(...)` where it
-applies: `defineField(NoteInput, limited(140))` for every field a component
-renders, `forms.fieldset(Address, part)` for a fieldset, or
-`forms.define(config, part)` for the form. `Part<"limit", string>` makes two
-things type errors: a part on a field type whose value isn't a string, and a
-form that uses the field type without `limit()` in its plugins.
-
-`ctx.path` is the stable path the part attached at. The hooks `attach`
-returns get only the writes that reach that path. A write above it arrives
-walked down to the path, and a refuse there refuses the whole write. A write
-below it arrives as it is. When the field goes away, as when its array item
-is removed, its hooks go too.
-
-A field type's parts attach the first time it renders a field. A fieldset's
-attach the first time its scope is read, and a definition's when the store
-is made. Before the store has listeners, `attach` runs at once and what it
-writes is part of the starting state, as in setup. After that it runs on a
-microtask, so its writes don't land while a framework is rendering. Either
-way its writes make no records.
-
-## Plugins a plugin requires
-
-A plugin that calls another one's API names it in `requires`, as a factory
-or a plugin:
-
-```ts
-const autosave = () =>
-  definePlugin({
-    name: "autosave",
-    requires: () => [dirty],
-    setup(ctx) {
-      // ctx.plugins.dirty is typed.
-      return {};
-    },
-  });
-```
-
-`requires` doesn't install anything. A form whose plugins list lacks one is a
-type error, `Add dirty() to the plugins: autosave requires it`, and without
-types the store throws [`plugins:missing`](/errors#core:plugins:missing) in
-development. The
-plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
-APIs. To run after a plugin without needing it, name it in `after`.
-
-`ctx.store` is typed with the names in `requires` too. A plugin that adds
-rows with `push` requires `arrays`, and one that reads `dirty` requires
-`dirty`.
-
-## Other plugins
-
-`ctx.installed` lists the store's plugins in the order their hooks run.
-`ctx.attachments(path)` lists the parts attached at a path and above it, in
-hook order, each as `{ name, path }`. A plugin can read them to stay out of
-another's way, such as a formatter that does nothing where a mask is
-attached.
-
-## Meta
-
-`ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field or
-on the form. Annotate the parameter of `setup` or `attach` as `PluginContext<M, F>` to type
-them, and read them back with the plugin's `meta` and `formMeta` readers.
-
-A plugin with meta gives its starting value as `initialMeta` for fields or
-`initialFormMeta` for the form. Leaving it out is a type error. The reader
-returns it until the plugin sets its own, so a reader never returns undefined
-unless `undefined` is part of the meta type. The reader works it out from the
-snapshot alone, so the server and the first client render read the same value.
-`history` starts from `{ canUndo: false, canRedo: false }`:
-
-```ts
-definePlugin({
-  name: "history",
-  initialFormMeta: { canUndo: false, canRedo: false },
-  setup(ctx: PluginContext<never, HistoryMeta>) {
-    // ...
-  },
-});
-```
-
-Every field shares the one `initialMeta` value. Freeze it and keep it in one
-place, so a selector that returns it gets the same object each time. `rules`
-starts every field as shown:
-
-```ts
-const shown: RulesMeta = Object.freeze({ hidden: false });
-
-definePlugin({
-  name: "rules",
-  initialMeta: shown,
-  setup(ctx: PluginContext<RulesMeta>) {
-    // ...
-  },
-});
-```
-
-Meta with no sensible start says so in its type, as `M | undefined` with
-`initialMeta: undefined`.
-
-`definePlugin` returns a `Plugin<A, N, M, F>`: the API, the name, the field
-meta and the form meta. `history()` is a
-`Plugin<HistoryApi, "history", never, HistoryMeta>`.
-
-### Display text from a plugin
-
-A plugin can change what a field's text inputs show, as [`mask`](../plugins/masks) does.
-Return these hooks from `attach`:
-
-- `display(value)`: the text to show for the stored value.
-- `edit(input, value, event)`, optional: the adapter calls it after each edit
-  in the input, once the typed text went to the store. `input` still holds the
-  typed text and its caret, and `value` is the field's value now. Put the
-  display text in `input` and place the caret.
-
-When several parts on one field give a `display`, the first in hook order
-wins. A display from a part that attaches before the store has listeners is
-in the server HTML.
-
-For `edit`, reuse `replaceText` from `@lunarhue/forms-core/plugins`, or
-the same path under your adapter. It takes the input, the text to show, a
-cleaner and the input event, and keeps the caret the way `mask` does. Pass the
-cleaner your `beforeWrite` runs, so the caret counts the characters the store
-keeps:
-
-```ts
-import { definePlugin, replaceText } from "@lunarhue/forms-core/plugins";
-
-const text = (value: unknown) => formatCard(String(value ?? ""));
-
-definePlugin({
-  name: "card",
-  attach: () => ({
-    beforeWrite: (write) => cleanCard(String(write.value ?? "")),
-    display: text,
-    edit: (input, value, event) => replaceText(input, text(value), cleanCard, event),
-  }),
-});
-```
 
 ## Writes
 
@@ -223,6 +78,14 @@ paths they change. A plugin that writes many paths in one `ctx.write` reruns
 each validator once, after the last write. A form validator over those paths
 runs once, and an async one isn't restarted.
 
+A plugin's own writes go through `ctx.write`, which runs after every plugin
+in the round has run. Their records have `cause: { plugin: name }`. A plugin that moves the
+baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pass
+`"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
+plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
+write to every plugin with its cause, and each plugin decides what to do with
+it. `mask`, for one, skips rebases.
+
 ## Writes after an `await`
 
 Code after an `await` runs once the hook has returned, so the host can't tell
@@ -240,307 +103,3 @@ async onSubmit() {
   ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
 }
 ```
-
-## Refusing a submit
-
-A throw or a rejected promise in `onSubmit` is a bug. It goes to
-`onPluginError` and the submit carries on. To stop a submit on purpose, return
-`refuse`, directly or from the promise. The definition's `onSubmit` isn't
-called, the submission ends `"invalid"` as it does when validation fails, and
-`onSubmitted` gets it. Set a form error first so the user sees why:
-
-```ts
-import { definePlugin, refuse } from "@lunarhue/forms-core/plugins";
-
-const captcha = definePlugin({
-  name: "captcha",
-  setup: (ctx) => ({
-    async onSubmit() {
-      try {
-        const token = await fetchToken();
-        ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
-        return undefined;
-      } catch {
-        ctx.store.root.setErrors({ message: "We couldn't check the form. Try again." });
-        return refuse;
-      }
-    },
-  }),
-});
-```
-
-`refuse` returned directly stops the plugins after this one from running their
-`onSubmit`. Returned from a promise it can't, since every `onSubmit` started
-when the submit did. A plugin doesn't know the form's error type, so the error
-it sets must fit the form's `mapError`, if it has one.
-
-## After a submit
-
-`onSubmitted(submission, input)` runs once a submit ends. `input` is the form
-value the definition's `onSubmit` got as `ctx.input`, read when validation
-finished, so it holds edits the user made while validation ran. It is
-undefined when the submit ended `"invalid"`. A submit that a reset stops never
-reaches `onSubmitted`.
-
-To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
-Each array in `value` pairs its items with the current items by index. `keep`
-changes that for one array, by its stable path: return `true` to keep the old
-baseline's pairing, or a list of item keys to pair with. `baselineOnSubmit`
-passes the keys each array had when the value was sent.
-
-## Starting values
-
-A plugin can give the form its starting value with `initial`. It runs before
-the store is made, gets the value the store would start from, and returns the
-value to start from instead, or undefined to keep it:
-
-```ts
-// Starts the form from a value the server and the client both have.
-const startFrom = (value: Profile) => definePlugin({ name: "start", initial: () => value, setup: () => ({}) });
-```
-
-The store, its baseline and its server snapshot all start from that value.
-Nothing is written, so the form isn't dirty and no plugin sees a record. When
-several plugins have `initial`, each gets the value the one before returned,
-so the last one in the list wins.
-
-The value replaces the store's starting value whole. It isn't merged with a
-schema plugin's defaults the way `defaultValues` is, though `initial` gets
-those merged defaults and can merge into them itself. A value that differs
-between server and client, such as one read from browser storage, makes
-hydration fail. Read those in `onActive` and write them with `ctx.write`, as
-`persist` does.
-
-`attach` can return an `initial` hook too. It gets the value at the part's
-path when the part attaches and returns the value to keep there, which is how
-`mask` cleans a field's starting value. The store keeps it with no write
-record, and the baseline moves with it while the field isn't dirty, so the
-form doesn't start dirty.
-
-## Schema adapters
-
-`definePlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin for
-any [Standard Schema](https://standardschema.dev) library when you give it a
-`name` and a `schema` adapter. Validation and types already go through
-Standard Schema, so the adapter only says which schemas it accepts and what
-values they start from. It has:
-
-- `vendor`: the library's name, matched against `schema["~standard"].vendor`.
-- `defaultValue(schema)`: the value a form starts from when `defaultValues`
-  leaves it out.
-- `itemValue(schema, path)`: the value `push` or `insert` gives a new item of
-  the array at `path` when it gets none.
-
-```ts
-import type { SchemaAdapter } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { defaultOf, itemDefaultOf, type ArkSchema } from "./ark-defaults";
-
-const adapter: SchemaAdapter<ArkSchema> = {
-  vendor: "arktype",
-  defaultValue: (schema) => defaultOf(schema),
-  itemValue: (schema, path) => itemDefaultOf(schema, path),
-};
-
-export const ark = () => definePlugin({ name: "ark", schema: adapter });
-```
-
-With `ark()` in a form's plugins, `defaultValues` becomes optional for an
-`ArkSchema`. Without it, `defaultValues` is required and complete. `zod()` and
-`valibot()` are schema plugins of the same shape.
-
-## Third party
-
-A plugin that needs another library lives in its own package in this repo,
-with one entry per library. The library is an optional peer dependency, so
-you install only the ones you use. Adapters don't re-export these.
-
-The schema plugins are in `@lunarhue/forms-schema`. They give their library's
-schemas default values. Every form validates on its own, so that is all they
-add. [Schema adapters](#schema-adapters) shows how to make one for another library.
-
-```ts
-import { valibot } from "@lunarhue/forms-schema/valibot";
-import { zod } from "@lunarhue/forms-schema/zod";
-```
-
-The bindings to state libraries are in `@lunarhue/forms-bind`. Each one
-returns `bind` set up for its library.
-
-<Only framework="react">
-
-```ts
-import { zustand } from "@lunarhue/forms-bind/zustand";
-
-// The whole state is the form value.
-const form = useForm(profile, { plugins: [zustand(useProfileStore)] });
-
-// One slice of it.
-zustand(useAppStore, { select: (state) => state.profile, update: (profile) => ({ profile }) });
-```
-
-`zustand` takes the hook `create` returns or a vanilla store. A form write
-merges the value into the state with `setState`, so bind the whole state only
-when the store has no actions. On a form's own `plugins`, the store's type
-must be the form's value type. On `createForms` and on a definition it isn't
-checked. [Zustand](../integrations/zustand) has the full example.
-
-</Only>
-
-<Only framework="solid">
-
-`signal` binds a Solid 2 signal. Pass the getter and setter `createSignal`
-returns:
-
-```ts
-import { signal } from "@lunarhue/forms-bind/solid";
-
-const [settings, setSettings] = createSignal({ displayName: "Ada", timezone: "Europe/London" });
-const form = createForm(settingsForm, { plugins: [signal(settings, setSettings)] });
-```
-
-A form write sets the signal. A change to the signal reaches the form when
-Solid runs its effects. The binding makes the effect that watches the signal
-in a root of its own when the form gets its first listener, and disposes it
-when the form loses its last, so you write no `createRoot` or `createEffect`.
-On the server no effect runs. On a form's own `plugins`, the signal's type must
-be the form's value type. On `createForms` and on a definition it isn't
-checked. [Solid signals](../integrations/solid-signals) has the full example.
-
-</Only>
-
-`@lunarhue/forms-schema` and `@lunarhue/forms-bind` take
-`@lunarhue/forms-core` as a peer dependency. A plugin runs on the core copy it
-was made with, so the app must have one copy of core. In development, a store
-whose plugins come from two copies logs a warning.
-
-### TS2353 from `define` in a function generic over the schema
-
-A helper that takes any schema and returns a definition fails to compile when
-its type parameter is the schema type:
-
-```ts
-const forms = createFormsCore({ plugins: [zod()] });
-
-export function makeForm<S extends z.ZodObject>(schema: S) {
-  return forms.define({ schema });
-}
-```
-
-```text
-error TS2353: Object literal may only specify known properties, and 'schema' does not exist in type
-'(options: void) => WithPlugins<Definition<never, S, readonly [Plugin<undefined, "zod", never, never, ZodSchema>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<...>>>'.
-```
-
-`define` uses conditional types to ask two things about the schema: is there
-one at all, and does an installed schema plugin accept it? While `S` is a type
-parameter, TypeScript can't answer either, so the config matches no case. A
-bound of `S extends StandardSchemaV1`, explicit type arguments such as
-`define<never, S>`, and the function form `define(() => ({ schema }))` fail
-the same way. The adapters' `define` takes the same config, so React and Solid
-show the same error.
-
-Make the helper generic over the schema's values instead. Then the schema type
-is concrete and TypeScript can tell the zod plugin accepts it. The form gets
-the same types an ordinary `define` gives it. These two compile:
-
-```ts
-import { createFormsCore, type StandardSchemaV1 } from "@lunarhue/forms-core";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { z } from "zod";
-
-const forms = createFormsCore({ plugins: [zod()] });
-
-// I is the schema's input and O its output.
-export function makeForm<I extends object, O>(schema: z.ZodType<O, I>, onSubmit: (value: O) => void) {
-  return forms.define({ schema, onSubmit });
-}
-
-// Any Standard Schema. No schema plugin accepts this type, so it needs defaultValues.
-export function makeStandard<V extends object>(schema: StandardSchemaV1<V>, defaultValues: V) {
-  return forms.define({ schema, defaultValues });
-}
-```
-
-## Community
-
-Anyone can publish a plugin. Name the package `forms-plugin-<name>` and build
-it with `definePlugin` from `@lunarhue/forms-core/plugins`. We may list
-community plugins, but a listing doesn't mean we reviewed the code.
-
-A plugin takes `@lunarhue/forms-core` as a peer dependency and never imports
-an adapter. Every adapter wraps the same core store, so a plugin written
-against core works under React, Solid and any adapter to come. One that
-imports `@lunarhue/forms-react` only works in React apps.
-
-```json
-{
-  "name": "forms-plugin-trim",
-  "peerDependencies": { "@lunarhue/forms-core": "^1.0.0" },
-  "devDependencies": { "@lunarhue/forms-core": "^1.0.0" }
-}
-```
-
-The dev dependency gives your own tests a copy of core.
-
-### Testing a plugin
-
-Test against core too, with `testStore` from
-`@lunarhue/forms-core/plugins/testing`. It makes a store from a form
-definition with your plugin in its `plugins`, records what each timing
-delivers, and collects what your hooks throw. It imports no test runner, so it
-works with Vitest, Jest, `node:test` or Bun's runner. Its entry is separate
-from the others, so it never ends up in an app bundle.
-
-```ts
-import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { testStore } from "@lunarhue/forms-core/plugins/testing";
-import { expect, it } from "vitest";
-
-// Trims the ends of every string written at `fields`.
-const trim = (...fields: string[]) =>
-  definePlugin({
-    name: "trim",
-    setup: () => ({
-      beforeWrite: (write) =>
-        typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value,
-    }),
-  });
-
-it("trims the fields it names", () => {
-  const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
-  store.root.at("name").setValue("  Ada ");
-  store.root.at("note").setValue(" hi ");
-  expect(store.root.peek().value).toEqual({ name: "Ada", note: " hi " });
-  expect(records.sync[0]).toMatchObject({ path: ["name"], after: "Ada", cause: "user" });
-  expect(errors).toEqual([]);
-});
-```
-
-`testStore` takes what `define` takes (`defaultValues` or a `schema`,
-`validate`, `onSubmit` and the rest) with the plugins under test in `plugins`.
-Put `dirty()` or a schema plugin there too when the test needs them.
-Validators work without one. It returns:
-
-- `store`: the store, typed as an app's would be, so `store.plugins.<name>`
-  has your plugin's API. Drive it as an app would. `store.root.at("name")`
-  writes, `store.submit()` runs `onSubmit` and `onSubmitted`, and
-  `store.reset()` or a field's `reset()` runs `onReset`.
-- `records`: the write records each timing delivered, as `records.sync`,
-  `records.deferred` and `records.idle`. Three recording plugins run after
-  yours to fill them. Empty one with `records.sync.length = 0`.
-- `errors`: what plugin hooks threw, as `{ plugin, error }`. Nothing is
-  rethrown, so end a test with `expect(errors).toEqual([])`.
-- `flush()`: delivers the waiting `deferred` and `idle` records now, with no
-  timers, real or fake. A `deferred` delivery also comes on its own after
-  `await Promise.resolve()`, as it does in an app.
-- `listen()`: gives the store a listener, as a mounted component does, so
-  `onActive` runs. Call the function it returns to remove the listener and
-  run the cleanup.
-- `server()`: the server snapshots, as `{ form, fields }`, with `fields` keyed
-  by each field's dotted name and the root under `""`. Setup must give the
-  same result on the server and the client, so check it with
-  `expect(testStore(config).server()).toEqual(testStore(config).server())`.
-
-`testStore` runs no framework. To see your plugin in a rendered form, test it
-there as well.
