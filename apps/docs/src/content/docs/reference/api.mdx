@@ -204,7 +204,8 @@ Each throws when no matching `form.Form` is above.
 | `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 | `elementsOf(handle)` | The field's elements in the document, in document order. |
-| `fieldOf(element)` | The handle of the field whose ref got `element`. Development only: production returns `undefined`. |
+| `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
+| `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
 
 </Only>
 
@@ -217,7 +218,8 @@ Each throws when no matching `form.Form` is above.
 | `fieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 | `elementsOf(handle)` | The field's elements in the document, in document order. |
-| `fieldOf(element)` | The handle of the field whose ref got `element`. Development only: production returns `undefined`. |
+| `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
+| `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
 
 </Only>
 
