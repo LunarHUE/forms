@@ -4,7 +4,7 @@
 // type its declarations name has to come from the adapter. The adapters
 // bundle core's declarations into their own for that (see typesBuild in
 // tsdown.base.ts), and this also checks that their entries share one copy.
-// The schema and bind plugins bundle core's declarations the same way, so a
+// The schema, bind and devtools plugins bundle core's declarations the same way, so a
 // consumer of an adapter and those plugins needs no core either.
 //
 // For each consumer, it links the built packages and their peers into a
@@ -53,16 +53,17 @@ export const order = forms.define(
 export const undoLimit = history(10);
 `;
 
-// Valibot and zustand with React, zod and a signal with Solid, so each of the
-// four plugin entries shows up in one consumer.
+// Valibot, zustand and devtools with React, zod and a signal with Solid, so
+// each of the five plugin entries shows up in one consumer.
 const reactSchemaBind = `
 import { createForms } from "@lunarhue/forms-react";
+import { devtools } from "@lunarhue/forms-devtools";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import { zustand } from "@lunarhue/forms-bind/zustand";
 import { createStore } from "zustand/vanilla";
 import * as v from "valibot";
 
-export const forms = createForms({ plugins: [valibot()] });
+export const forms = createForms({ plugins: [valibot(), devtools({ enabled: () => true })] });
 
 const store = createStore(() => ({ email: "", name: "" }));
 
@@ -105,6 +106,7 @@ const consumers: readonly Consumer[] = [
       ...react,
       ...ours("schema"),
       ...ours("bind"),
+      ...ours("devtools"),
       valibot: "packages/schema/node_modules/valibot",
       zustand: "packages/bind/node_modules/zustand",
     },

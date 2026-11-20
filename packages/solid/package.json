@@ -111,13 +111,13 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.75 kB"
+      "limit": "12.88 kB"
     },
     {
       "name": "./v1",
       "path": "dist/v1/esm/index.js",
       "import": "*",
-      "limit": "12.8 kB"
+      "limit": "12.92 kB"
     },
     {
       "name": "solid + valibot()",
@@ -125,7 +125,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.2 kB"
+      "limit": "13.33 kB"
     },
     {
       "name": "solid + dirty()",
@@ -133,7 +133,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.35 kB"
+      "limit": "13.48 kB"
     },
     {
       "name": "solid, everything on",

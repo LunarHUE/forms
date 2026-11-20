@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createForm, createForms, createInputProps, elementsOf, fieldOf, fieldRef, type FormOf } from "../index.js";
+import { createForm, createForms, createInputProps, elementsOf, fieldOf, fieldRef, type FormOf, trackElements } from "../index.js";
 import { get, getAs, mount, settle } from "./dom.js";
 
 const forms = createForms();
@@ -96,5 +96,42 @@ describe("elementsOf", () => {
     vi.stubEnv("NODE_ENV", "production");
     const { form, host } = mountProfile();
     expect(elementsOf(form.root.at("name"))).toEqual([get(host, "[data-name]")]);
+  });
+});
+
+// Last, since tracking stays on once `trackElements` runs.
+describe("trackElements", () => {
+  type Event = [element: object, key: object, added: boolean, adapter: string];
+  const events: Event[] = [];
+
+  it("lets fieldOf find fields in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    trackElements((...event) => events.push(event));
+    const { form, host } = mountProfile();
+    expect(fieldOf(get(host, "[data-name]"))).toBe(form.root.at("name"));
+    expect(fieldOf(get(host, '[data-plan="pro"]'))).toBe(form.root.at("plan"));
+    expect(fieldOf(getAs(host, "[data-bio]", HTMLDivElement))).toBe(form.root.at("bio"));
+    expect(fieldOf(getAs(host, "[data-form]", HTMLFormElement))).toBeUndefined();
+  });
+
+  it("reports the form element with its store as the key", () => {
+    events.length = 0;
+    const { form, host } = mountProfile();
+    expect(events).toContainEqual([getAs(host, "[data-form]", HTMLFormElement), form.store, true, "solid"]);
+    expect(events).toContainEqual([get(host, "[data-name]"), form.root.at("name"), true, "solid"]);
+  });
+
+  it("reports an element whose owner is disposed, and fieldOf forgets it", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const { form, host, setEarly } = mountProfile();
+    setEarly(true);
+    await settle();
+    const team = get(host, '[data-plan="team"]');
+    expect(fieldOf(team)).toBe(form.root.at("plan"));
+    events.length = 0;
+    setEarly(false);
+    await settle();
+    expect(events).toEqual([[team, form.root.at("plan"), false, "solid"]]);
+    expect(fieldOf(team)).toBeUndefined();
   });
 });

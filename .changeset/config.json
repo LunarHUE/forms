@@ -9,7 +9,8 @@
       "@lunarhue/forms-react",
       "@lunarhue/forms-solid",
       "@lunarhue/forms-schema",
-      "@lunarhue/forms-bind"
+      "@lunarhue/forms-bind",
+      "@lunarhue/forms-devtools"
     ]
   ],
   "linked": [],
