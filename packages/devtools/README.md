@@ -46,11 +46,17 @@ button that opens a bottom sheet.
   when two share one. A form whose `id` the adapter made up, such as React's
   `useId`, shows as `form 2` for the second form on the page. Give each store
   an `id` to name it.
-- The Fields tab shows the value tree, with each field's flags (`dirty` only
-  when the form has `dirty()`). Select a row to see its stable path, value
-  against baseline, display text, errors by where they came from, the
-  plugins attached there and its last write. "Invalid only" lists just the
-  fields with errors.
+- The Fields tab shows the value tree. Each row's flags are icons: invalid,
+  validating, dirty (only when the form has `dirty()`), edited, touched,
+  disabled and read-only. Hover or focus one to see what it means and its
+  detail: errors by where they came from for invalid, baseline against value
+  for dirty, the last write for edited. The pointer button on a row scrolls
+  the field's element into view. Select a row to see its value, its baseline
+  and its last writes, each with its cause. The filter box above the tree
+  lists the fields whose name contains the text, and its toggle lists just
+  the fields with errors.
+- The bar shows how the selected form's last submission went, such as
+  `submit failed`, once the form has submitted.
 - The Log tab lists the form's writes and submissions in the order they
   happened, newest first, each write with its cause: `user`, `reset`,
   `rebase` or the plugin's name. A submission that a reset ended shows as
@@ -58,23 +64,26 @@ button that opens a bottom sheet.
   turns on.
 - The Plugins tab lists every plugin on the form in the order their hooks
   run, with each one's form meta and the keys of its API on `store.plugins`.
-- The inspect button, or holding Alt, shows a card with a field's facts for
-  the input under the pointer. A radio group's radios all find their one
-  field, and a custom input finds its field once it has the adapter's field
-  ref (`useFieldRef` in React, `fieldRef` in Solid). Hovering a field's
-  label counts as hovering the field. Click to pin the card and select the
-  field's row. The click never reaches the page, and inspecting stays on, so
-  the next click pins another field. Escape unpins the card; the inspect
-  button turns inspecting off.
+- The inspect button, or holding Alt, shows a card with a field's value,
+  baseline and writes for the input under the pointer. A radio group's
+  radios all find their one field, and a custom input finds its field once
+  it has the adapter's field ref (`useFieldRef` in React, `fieldRef` in
+  Solid). Hovering a field's label counts as hovering the field. Click to
+  pin the card and select the field's row. The click never reaches the page,
+  and inspecting stays on, so the next click pins another field. Escape
+  unpins the card; the inspect button turns inspecting off.
 - Hovering a row of the Fields tab outlines the field's elements on the page.
-- The Bundle tab lists the parts the form uses: core, the adapter, then
-  every plugin, third-party ones too. Sizes come from your production build,
-  so the column stays empty until a bundler plugin measures it. The Vite
-  plugin, `@lunarhue/forms-devtools/vite`, is coming. It defines
+- The Bundle tab draws what the forms packages add to the build as bars:
+  their total, then core, the adapter and the plugins, then each plugin.
+  Below that it lists the plugins in the order their hooks run. Sizes come
+  from your production build, so the bars are even and show no sizes until a
+  bundler plugin measures it. The Vite plugin,
+  `@lunarhue/forms-devtools/vite`, is coming. It defines
   `__LUNARHUE_FORMS_SIZES__` as the URL of a `SizeReport`, which the tab
-  fetches the first time it opens and matches to its rows by `kind` and
+  fetches the first time it opens and matches to its parts by `kind` and
   `name`. Each part shows minified bytes. Compressed bytes don't add up
-  across parts, so only the whole app's total has a gzip size.
+  across parts, so only the whole app's total has a gzip size. `devtools()`
+  stays out of the bars, since a production build usually leaves it out.
 
 Vue doesn't record elements yet, so a Vue form has no inspect button and no
 outlines.
