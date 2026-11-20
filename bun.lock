@@ -222,9 +222,13 @@
       "version": "0.1.1",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
+        "@tailwindcss/node": "4.3.5",
+        "@tailwindcss/oxide": "4.3.5",
+        "@types/node": "catalog:",
         "jsdom": "catalog:",
         "lucide-preact": "catalog:",
         "preact": "catalog:",
+        "tailwindcss": "4.3.5",
       },
       "peerDependencies": {
         "@lunarhue/forms-core": "workspace:^",

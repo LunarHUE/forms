@@ -136,11 +136,11 @@ describe("dock", () => {
     // What an adapter's ref reports for the form element.
     tracking.record?.(element, store, true, "test");
     const root = await open();
-    expect(root.querySelectorAll(".outline.form")).toHaveLength(1);
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(1);
     expect(button(root, "Choose a form").textContent).toContain("No form");
     button(root, "Select form signup").click();
     await frame();
-    expect(root.querySelector(".outline.form")?.classList.contains("on")).toBe(true);
+    expect(root.querySelector(".form-outline")?.classList.contains("on")).toBe(true);
     expect(button(root, "Form signup. Choose a form")).toBeDefined();
     expect(root.querySelector('[aria-label="Devtools fields"]')).not.toBeNull();
   });
@@ -405,7 +405,7 @@ describe("inspect", () => {
     await frame();
     expect(card(root)?.getAttribute("aria-label")).toBe("Field name");
     expect(card(root)?.textContent).toContain('"Ada"');
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(1);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(1);
     store.root.at("name").setValue("Grace");
     await frame();
     expect(card(root)?.textContent).toContain('"Grace"');
@@ -520,10 +520,10 @@ describe("inspect", () => {
     await frame();
     row(root, ["name"])?.dispatchEvent(new Event("pointerenter"));
     await frame();
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(2);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(2);
     row(root, ["name"])?.dispatchEvent(new Event("pointerleave"));
     await frame();
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(0);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(0);
   });
 });
 

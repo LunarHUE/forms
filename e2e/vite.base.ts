@@ -1,5 +1,6 @@
 import { isAbsolute, join } from "node:path";
 import { defaultClientConditions, defaultServerConditions, type Plugin, type PluginOption, type UserConfig } from "vite";
+import { panelCss } from "../packages/devtools/panel-css.ts";
 
 // Workspace packages export their source under this condition, so the apps
 // build the library from source and need no package build first.
@@ -57,7 +58,8 @@ export const notSolid = [/\/node_modules\//, /\/packages\/devtools\/src\//];
  */
 export function appConfig(plugins: PluginOption[], ssrBuild: boolean): UserConfig {
   return {
-    plugins,
+    // The devtools panel builds from source too, its stylesheet included.
+    plugins: [panelCss(), ...plugins],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: { resolve: { conditions: [sourceCondition, ...defaultServerConditions] } },
     build: ssrBuild

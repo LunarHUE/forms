@@ -5,6 +5,8 @@
     "types": ["node"],
     // The devtools panel, which the contract reaches from source, is TSX with its own @jsxImportSource.
     "jsx": "react-jsx",
+    // vite.base.ts imports the devtools panel's stylesheet plugin from its .ts source.
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "customConditions": ["@lunarhue/source"]
   },

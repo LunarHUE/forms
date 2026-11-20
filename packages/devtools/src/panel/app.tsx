@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { FormEntry, Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
 import { Bundle } from "./bundle.js";
+import { empty, panelRoot, surface } from "./classes.js";
 import { Fields, type FieldsProps } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { IconButton } from "./icons.js";
+import { IconButton, iconTone, smallBox } from "./icons.js";
 import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
@@ -25,6 +26,22 @@ const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
 
 /** At this width and below the dock is a button that opens a bottom sheet. */
 const phoneQuery = "(max-width: 640px)";
+
+/** Where the dock sits, and which way it stacks the panel and the bar: the panel goes on the far side from the corner. */
+export function dock(corner: Corner): string {
+  return [
+    "fixed z-[2147483000] flex gap-2 max-w-[calc(100vw-48px)]",
+    corner.startsWith("bottom") ? "bottom-6 flex-col" : "top-6 flex-col-reverse",
+    corner.endsWith("left") ? "left-6" : "right-6",
+  ].join(" ");
+}
+
+/** A menu, under its button or above it, over the panel. */
+const menuClass = (below: boolean) => `${surface} absolute z-2 flex flex-col w-[220px] p-1 ${below ? "top-[calc(100%+4px)]" : "bottom-[calc(100%+4px)]"}`;
+const menuLabel = "pt-1.5 px-2 pb-0.5 font-sans text-xs/5 text-muted";
+const menuItem = "flex items-center gap-2 h-8 px-2 rounded-sm font-sans text-left hover:bg-hover focus-visible:bg-hover focus-visible:outline-none";
+const checkIcon = "size-3.5 ml-auto text-brand";
+const swatch = (on: boolean) => `size-3 shrink-0 border-[1.5px] rounded-xs ${on ? "border-brand" : "border-muted"}`;
 
 /** The handle at `path` in `form`, for its elements. */
 const handleOf = (form: Listed | undefined, path: Path | null) => (form && path ? form.entry.store.fieldAt(path) : undefined);
@@ -214,8 +231,11 @@ export function App({ hook, host }: AppProps): JSX.Element {
           },
   };
 
+  // Menus open under their button on a phone and in a top corner, else above it.
+  const menuBelow = phone || corner.startsWith("top");
+
   const chip = (
-    <FormChip selected={selected} empty={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
+    <FormChip phone={phone} selected={selected} noForms={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
   );
 
   const status = selected ? <SubmitStatus entry={selected.entry} /> : null;
@@ -246,31 +266,35 @@ export function App({ hook, host }: AppProps): JSX.Element {
 
   const openMenu =
     menu?.kind === "dock" ? (
-      <DockMenu menuRef={menuRef} left={menu.left} corner={corner} onMove={move} onTurnOff={onDisable ? turnOff : undefined} />
+      <DockMenu below={menuBelow} menuRef={menuRef} left={menu.left} corner={corner} onMove={move} onTurnOff={onDisable ? turnOff : undefined} />
     ) : menu?.kind === "forms" ? (
-      <FormsMenu menuRef={menuRef} left={menu.left} forms={forms} selectedId={selectedId} onSelect={select} />
+      <FormsMenu below={menuBelow} menuRef={menuRef} left={menu.left} forms={forms} selectedId={selectedId} onSelect={select} />
     ) : null;
 
   if (phone) {
     const open = tab ?? "fields";
     return (
-      <div class="root" ref={root}>
+      <div class={panelRoot} ref={root}>
         {layers}
         {sheetOpen ? (
-          <div class="sheet surface" role="dialog" aria-label="Forms devtools">
-            <div class="grip" aria-hidden="true" />
-            <div class="sheet-head" ref={menuButtons}>
+          <div
+            class="fixed inset-x-0 bottom-0 z-[2147483000] flex flex-col max-h-[70vh] bg-surface border-t border-line rounded-t-xl shadow-panel"
+            role="dialog"
+            aria-label="Forms devtools"
+          >
+            <div class="w-9 h-1 mt-2 mx-auto rounded-[2px] bg-thumb" aria-hidden="true" />
+            <div class="relative flex items-center gap-0.5 h-12 px-2" ref={menuButtons}>
               {chip}
               {status}
               {inspectButton}
-              <div class="end">
+              <div class="flex ml-auto">
                 {onDisable ? <IconButton label="Turn off devtools" icon={EyeOff} onClick={turnOff} /> : null}
                 <IconButton label="Close the devtools" icon={X} onClick={() => setSheetOpen(false)} />
               </div>
               {openMenu}
             </div>
-            <TabList active={open} onTab={setTab} />
-            <section class="panel" aria-label={`Devtools ${open}`}>
+            <TabList phone active={open} onTab={setTab} />
+            <section class="flex flex-col w-0 min-w-full min-h-32 overflow-hidden" aria-label={`Devtools ${open}`}>
               <TabContent tab={open} form={shown} fields={fields} />
             </section>
           </div>
@@ -278,7 +302,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
           <IconButton
             label="Open the forms devtools"
             icon={SquareEqual}
-            class="fab icon surface"
+            class={`fixed right-4 bottom-4 z-[2147483000] inline-flex items-center justify-center size-12 rounded-full bg-surface border border-line shadow-panel ${iconTone} [&_svg]:size-5`}
             onClick={() => {
               if (selected === undefined && shown) setSelectedId(shown.id);
               setSheetOpen(true);
@@ -290,15 +314,15 @@ export function App({ hook, host }: AppProps): JSX.Element {
   }
 
   return (
-    <div class="root" ref={root}>
+    <div class={panelRoot} ref={root}>
       {layers}
-      <div class="dock" data-corner={corner}>
+      <div class={`dock ${dock(corner)}`} data-corner={corner}>
         {tab ? (
-          <section class="panel surface" aria-label={`Devtools ${tab}`}>
+          <section class={`${surface} flex flex-col w-0 min-w-full max-h-[min(560px,calc(100vh-120px))] overflow-hidden`} aria-label={`Devtools ${tab}`}>
             <TabContent tab={tab} form={shown} fields={fields} />
           </section>
         ) : null}
-        <div class="bar surface" role="toolbar" aria-label="Forms devtools" ref={menuButtons}>
+        <div class={`${surface} relative flex items-center gap-0.5 h-10 px-[3px]`} role="toolbar" aria-label="Forms devtools" ref={menuButtons}>
           <IconButton
             label="Devtools menu"
             icon={SquareEqual}
@@ -309,9 +333,9 @@ export function App({ hook, host }: AppProps): JSX.Element {
           />
           {chip}
           {status}
-          <div class="divider" aria-hidden="true" />
+          <div class="shrink-0 w-px h-4 mx-1 bg-line" aria-hidden="true" />
           {inspectButton}
-          <TabList active={tab} onTab={openTab} />
+          <TabList phone={false} active={tab} onTab={openTab} />
           {openMenu}
         </div>
       </div>
@@ -331,7 +355,7 @@ interface TabContentProps {
 
 /** The open tab's content for the shown form. */
 function TabContent({ tab, form, fields }: TabContentProps): JSX.Element {
-  if (form === undefined || fields === undefined) return <p class="empty">No form with devtools() is mounted on this page.</p>;
+  if (form === undefined || fields === undefined) return <p class={empty}>No form with devtools() is mounted on this page.</p>;
   const key = `${tab}${form.id}`;
   if (tab === "log") return <Log key={key} entry={form.entry} />;
   if (tab === "plugins") return <Plugins key={key} entry={form.entry} />;
@@ -340,16 +364,21 @@ function TabContent({ tab, form, fields }: TabContentProps): JSX.Element {
 }
 
 interface TabListProps {
+  /** On a phone the tabs share the sheet's width. */
+  readonly phone: boolean;
   readonly active: Tab | null;
   readonly onTab: (tab: Tab) => void;
 }
 
 /** The row of tabs. */
-function TabList({ active, onTab }: TabListProps): JSX.Element {
+function TabList({ phone, active, onTab }: TabListProps): JSX.Element {
   return (
-    <div class="tabs" role="tablist" aria-label="Devtools tabs">
+    <div class={phone ? "flex gap-0.5 px-2 pb-2 border-b border-line" : "flex gap-0.5"} role="tablist" aria-label="Devtools tabs">
       {tabs.map((item) => (
-        <button key={item.id} class="tab" role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
+        <button
+          key={item.id}
+          class={`${phone ? "flex-1 " : ""}h-8 px-2.5 rounded-md font-sans text-sm/5 text-soft whitespace-nowrap hover:text-fg hover:bg-hover aria-selected:bg-active aria-selected:text-fg`}
+          role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
           {item.label}
         </button>
       ))}
@@ -358,36 +387,48 @@ function TabList({ active, onTab }: TabListProps): JSX.Element {
 }
 
 interface FormChipProps {
+  /** On a phone the chip takes the room it needs. */
+  readonly phone: boolean;
   readonly selected: Listed | undefined;
   /** True when the page has no forms. */
-  readonly empty: boolean;
+  readonly noForms: boolean;
   readonly menuOpen: boolean;
   readonly onMenu: (event: TargetedMouseEvent<HTMLElement>) => void;
   readonly onClear: () => void;
 }
 
 /** The selected form's name, which opens the forms menu, and the button that clears the selection. */
-function FormChip({ selected, empty, menuOpen, onMenu, onClear }: FormChipProps): JSX.Element {
+function FormChip({ phone, selected, noForms, menuOpen, onMenu, onClear }: FormChipProps): JSX.Element {
   return (
-    <div class="chip">
+    <div class={`flex items-center min-w-0 ${phone ? "max-w-none" : "max-w-[180px]"} h-8 pr-1.5 rounded-md hover:bg-hover has-[[aria-expanded=true]]:bg-hover`}>
       <button
-        class="chip-main"
+        class="chip-main flex items-center gap-1.5 min-w-0 h-full pl-2"
         aria-haspopup="menu"
         aria-expanded={menuOpen ? "true" : "false"}
         aria-label={selected ? `Form ${selected.label}. Choose a form` : "Choose a form"}
         onClick={onMenu}
       >
-        <span class={selected ? "swatch on" : "swatch"} aria-hidden="true" />
-        <span class={selected ? "truncate" : "truncate muted"}>{selected?.label ?? (empty ? "No forms" : "No form")}</span>
-        {selected ? null : <ChevronDown />}
+        <span class={swatch(selected !== undefined)} aria-hidden="true" />
+        <span class={selected ? "truncate" : "truncate text-muted"}>{selected?.label ?? (noForms ? "No forms" : "No form")}</span>
+        {selected ? null : <ChevronDown class="size-3 text-muted" />}
       </button>
       {/* The clear button takes the chevron's place. */}
-      {selected ? <IconButton label={`Clear selection ${selected.label}`} icon={X} class="icon small" data-tip="Clear selection" onClick={onClear} /> : null}
+      {selected ? (
+        <IconButton
+          label={`Clear selection ${selected.label}`}
+          icon={X}
+          class={`${smallBox} ml-0.5 text-muted hover:bg-hover`}
+          data-tip="Clear selection"
+          onClick={onClear}
+        />
+      ) : null}
     </div>
   );
 }
 
 interface MenuProps {
+  /** Opens the menu under its button rather than above it. */
+  readonly below: boolean;
   readonly menuRef: Ref<HTMLDivElement>;
   /** The menu's left edge: the left edge of the button that opened it. */
   readonly left: number;
@@ -400,18 +441,18 @@ interface FormsMenuProps extends MenuProps {
 }
 
 /** The menu of the forms on the page. */
-function FormsMenu({ menuRef, left, forms, selectedId, onSelect }: FormsMenuProps): JSX.Element {
+function FormsMenu({ below, menuRef, left, forms, selectedId, onSelect }: FormsMenuProps): JSX.Element {
   return (
-    <div class="menu surface" role="menu" aria-label="Forms on this page" ref={menuRef} style={`left: ${left}px`}>
-      <div class="menu-label">Forms on this page</div>
+    <div class={menuClass(below)} role="menu" aria-label="Forms on this page" ref={menuRef} style={`left: ${left}px`}>
+      <div class={menuLabel}>Forms on this page</div>
       {forms.length === 0 ? (
-        <div class="menu-item muted">None yet</div>
+        <div class={`${menuItem} text-muted`}>None yet</div>
       ) : (
         forms.map((form) => (
-          <button key={form.id} class="menu-item" role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => onSelect(form.id)}>
-            <span class={form.id === selectedId ? "swatch on" : "swatch"} aria-hidden="true" />
+          <button key={form.id} class={menuItem} role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => onSelect(form.id)}>
+            <span class={swatch(form.id === selectedId)} aria-hidden="true" />
             <span class="truncate">{form.label}</span>
-            {form.id === selectedId ? <Check class="check" /> : null}
+            {form.id === selectedId ? <Check class={checkIcon} /> : null}
           </button>
         ))
       )}
@@ -427,20 +468,20 @@ interface DockMenuProps extends MenuProps {
 }
 
 /** The dock's menu: the corner it sits in, and turning the devtools off. */
-function DockMenu({ menuRef, left, corner, onMove, onTurnOff }: DockMenuProps): JSX.Element {
+function DockMenu({ below, menuRef, left, corner, onMove, onTurnOff }: DockMenuProps): JSX.Element {
   return (
-    <div class="menu surface" role="menu" aria-label="Devtools menu" ref={menuRef} style={`left: ${left}px`}>
-      <div class="menu-label">Dock position</div>
+    <div class={menuClass(below)} role="menu" aria-label="Devtools menu" ref={menuRef} style={`left: ${left}px`}>
+      <div class={menuLabel}>Dock position</div>
       {corners.map((option) => (
-        <button key={option} class="menu-item" role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => onMove(option)}>
+        <button key={option} class={menuItem} role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => onMove(option)}>
           {cornerLabels[option]}
-          {option === corner ? <Check class="check" /> : null}
+          {option === corner ? <Check class={checkIcon} /> : null}
         </button>
       ))}
-      {onTurnOff ? <div class="menu-separator" role="separator" /> : null}
+      {onTurnOff ? <div class="h-px -mx-1 my-1 bg-line" role="separator" /> : null}
       {onTurnOff ? (
-        <button class="menu-item" role="menuitem" onClick={onTurnOff}>
-          <EyeOff />
+        <button class={menuItem} role="menuitem" onClick={onTurnOff}>
+          <EyeOff class="size-3.5 text-muted" />
           Turn off devtools
         </button>
       ) : null}
@@ -477,8 +518,8 @@ function SubmitStatus({ entry }: SubmitStatusProps): JSX.Element | null {
   useFrame(() => [last()]);
   if (status === undefined) return null;
   return (
-    <span class="status" data-status={status}>
-      submit <span class={status === "failed" || status === "invalid" ? "error" : "soft"}>{status === "open" ? "running" : status}</span>
+    <span class="status shrink-0 px-1.5 font-sans text-sm/5 text-muted whitespace-nowrap" data-status={status}>
+      submit <span class={status === "failed" || status === "invalid" ? "text-error" : "text-soft"}>{status === "open" ? "running" : status}</span>
     </span>
   );
 }
@@ -514,17 +555,21 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
       {boxes.map(({ form, rect }, index) => (
         <div
           key={index}
-          class={form.id === selectedId ? "outline form on" : "outline form"}
+          class={`form-outline fixed z-[2147482999] pointer-events-none border rounded-[0_6px_6px_6px] ${
+            form.id === selectedId ? "on border-brand" : "border-dashed border-outline has-[button:hover]:border-brand"
+          }`}
           style={`left: ${rect.left - pad}px; top: ${rect.top - pad}px; width: ${rect.width + 2 * pad}px; height: ${rect.height + 2 * pad}px`}
         >
           <button
             // With no room above the form, the tag sits inside its top edge.
-            class={rect.top - pad < 24 ? "tag inside" : "tag"}
+            class={`absolute -left-px flex items-center gap-1.5 max-w-[calc(100%+2px)] h-6 px-2 font-mono text-xs/4 text-white pointer-events-auto hover:bg-brand ${
+              form.id === selectedId ? "bg-brand" : "bg-surface"
+            } ${rect.top - pad < 24 ? "-top-px rounded-[0_0_4px_0]" : "bottom-full rounded-t-sm"}`}
             aria-label={`Select form ${form.label}`}
             aria-pressed={form.id === selectedId ? "true" : "false"}
             onClick={() => onPick(form.id)}
           >
-            <SquareEqual />
+            <SquareEqual class="size-3" />
             <span class="truncate">{form.label}</span>
           </button>
         </div>
@@ -585,7 +630,11 @@ function Tip({ root }: TipProps): JSX.Element | null {
   const above = rect.top > 40;
   const x = Math.max(80, Math.min(rect.left + rect.width / 2, innerWidth - 80));
   return (
-    <div class={above ? "tip" : "tip below"} aria-hidden="true" style={`left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`}>
+    <div
+      class={`fixed z-[2147483002] max-w-[220px] py-1 px-2 border border-line rounded-md bg-raised font-sans text-xs/4 text-fg pointer-events-none -translate-x-1/2 ${above ? "-translate-y-full" : ""}`}
+      aria-hidden="true"
+      style={`left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`}
+    >
       {text}
     </div>
   );

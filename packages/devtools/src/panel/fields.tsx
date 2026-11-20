@@ -20,7 +20,8 @@ import { useState } from "preact/hooks";
 import type { FormEntry, LoggedWrite } from "../hook.js";
 import { hasPlugin } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { IconButton } from "./icons.js";
+import { empty, scroll } from "./classes.js";
+import { IconButton, iconTone, smallBox } from "./icons.js";
 import { causeText, clock, errorsPage, pathKey, preview, readError, shapeOf } from "./values.js";
 
 type Snapshot = FieldSnapshot<unknown, unknown>;
@@ -111,6 +112,19 @@ const flagIcons: Record<Flag, LucideIcon> = {
   "read-only": Lock,
 };
 
+const flagBox = "inline-flex items-center justify-center size-5 rounded-sm [&_svg]:size-3";
+
+/** Each flag's icon box: errors in red, the brand colour for work in progress and for a value off its baseline. */
+const flagClass: Record<Flag, string> = {
+  invalid: `${flagBox} bg-error-tint text-error`,
+  validating: `${flagBox} text-brand [&_svg]:animate-spin`,
+  dirty: `${flagBox} text-brand [&_svg]:fill-current`,
+  edited: `${flagBox} text-soft`,
+  touched: `${flagBox} text-soft`,
+  disabled: `${flagBox} text-soft`,
+  "read-only": `${flagBox} text-soft`,
+};
+
 /** The flags a field has set, in the order rows show them. `dirty` only counts when the form has `dirty()`. */
 export function flagsOf(snapshot: Snapshot, dirty: boolean): Flag[] {
   const flags: Flag[] = [];
@@ -132,7 +146,7 @@ export interface ErrorViewProps {
 export function ErrorView({ error }: ErrorViewProps): JSX.Element {
   const shown = readError(error);
   return shown.code === undefined
-    ? <span class="error">{shown.text}</span>
+    ? <span class="text-error">{shown.text}</span>
     : <a href={`${errorsPage}${shown.code}`} target="_blank" rel="noreferrer">{shown.code}</a>;
 }
 
@@ -162,6 +176,16 @@ export function writesAt(entry: FormEntry, path: Path, max = 5): LoggedWrite[] {
   return found;
 }
 
+/** A card's list of terms and descriptions. */
+export const facts = "flex flex-col gap-1.5 py-3 px-4 empty:hidden";
+
+/** The head of a field card: the field's name, then buttons. */
+export const detailHead = "flex items-center gap-2 h-11 pr-3 pl-4 border-b border-line";
+export const detailName = "flex-1 font-medium truncate";
+
+const termClass = "shrink-0 min-w-16 whitespace-nowrap font-sans text-xs/5 text-muted";
+const factClass = "flex gap-3 min-w-0";
+
 export interface FactProps {
   readonly term: string;
   readonly children?: ComponentChildren;
@@ -170,8 +194,8 @@ export interface FactProps {
 /** A term and its description, one line of a card. */
 export function Fact({ term, children }: FactProps): JSX.Element {
   return (
-    <div class="fact">
-      <span class="term">{term}</span>
+    <div class={factClass}>
+      <span class={termClass}>{term}</span>
       {children}
     </div>
   );
@@ -184,17 +208,17 @@ interface WriteLineProps {
 /** One logged write: before → after and its cause, or what kind of write it was. */
 function WriteLine({ write: { record } }: WriteLineProps): JSX.Element {
   return (
-    <div class="write">
+    <div class="write flex flex-1 items-center gap-2 min-w-0 whitespace-nowrap">
       {record.type === "value" ? (
         <>
-          <span class="muted">{preview(record.before)}</span>
-          <ArrowRight />
+          <span class="text-muted">{preview(record.before)}</span>
+          <ArrowRight class="size-3.5 text-muted" />
           {preview(record.after)}
         </>
       ) : (
         `${record.type} ${preview(record.after)}`
       )}
-      <span class="cause">{causeText(record.cause)}</span>
+      <span class="ml-auto pl-2 font-sans text-muted">{causeText(record.cause)}</span>
     </div>
   );
 }
@@ -214,7 +238,7 @@ function ValueFacts({ entry, path, snapshot }: FieldProps): JSX.Element {
         <span class="truncate">{preview(snapshot.value)}</span>
       </Fact>
       <Fact term="baseline">
-        <span class="muted truncate">{baseline === undefined ? "none" : preview(baseline.value)}</span>
+        <span class="text-muted truncate">{baseline === undefined ? "none" : preview(baseline.value)}</span>
       </Fact>
     </>
   );
@@ -227,14 +251,14 @@ export function FieldFacts({ entry, path, snapshot }: FieldFactsProps): JSX.Elem
   const writes = writesAt(entry, path);
   return (
     <>
-      <div class="facts">
+      <div class={facts}>
         <ValueFacts entry={entry} path={path} snapshot={snapshot} />
       </div>
-      <div class="facts">
-        <div class="fact">
-          <span class="term">writes</span>
-          <div class="writes">
-            {writes.length === 0 ? <span class="muted">none logged</span> : writes.map((write) => <WriteLine key={write.seq} write={write} />)}
+      <div class={`${facts} border-t border-line`}>
+        <div class={factClass}>
+          <span class={termClass}>writes</span>
+          <div class="flex flex-1 flex-col gap-1.5 min-w-0">
+            {writes.length === 0 ? <span class="text-muted">none logged</span> : writes.map((write) => <WriteLine key={write.seq} write={write} />)}
           </div>
         </div>
       </div>
@@ -290,13 +314,17 @@ function FlagCard({ entry, path, flag, rect }: FlagCardProps): JSX.Element {
   const below = rect.bottom < innerHeight / 2;
   const right = Math.max(8, innerWidth - rect.right);
   return (
-    <div class="hovercard surface" role="tooltip" style={`right: ${right}px; ${below ? `top: ${rect.bottom + 6}px` : `bottom: ${innerHeight - rect.top + 6}px`}`}>
-      <strong>
+    <div
+      class="hovercard fixed z-[2147483002] flex flex-col w-[280px] max-w-[calc(100vw-16px)] pt-3 px-4 pb-0 bg-raised border border-line rounded-lg shadow-panel font-sans text-xs/5 pointer-events-none"
+      role="tooltip"
+      style={`right: ${right}px; ${below ? `top: ${rect.bottom + 6}px` : `bottom: ${innerHeight - rect.top + 6}px`}`}
+    >
+      <strong class="font-medium text-sm">
         {flag[0]?.toUpperCase()}
         {flag.slice(1)}
       </strong>
-      <span class="muted">{flagText[flag]}</span>
-      <div class="facts">
+      <span class="text-muted">{flagText[flag]}</span>
+      <div class="flex flex-col gap-1.5 pt-2 pb-3 empty:hidden">
         <FlagDetail entry={entry} path={path} snapshot={snapshot} flag={flag} />
       </div>
     </div>
@@ -304,14 +332,24 @@ function FlagCard({ entry, path, flag, rect }: FlagCardProps): JSX.Element {
 }
 
 interface ShowButtonProps {
+  /** In a row, the button shows only while the row is hovered. */
+  readonly inRow?: boolean;
   readonly path: Path;
   readonly name: string;
   readonly onInspect: (path: Path) => void;
 }
 
 /** The button that shows a field's elements on the page. */
-function ShowButton({ path, name, onInspect }: ShowButtonProps): JSX.Element {
-  return <IconButton label={`Show ${name} on the page`} icon={MousePointer2} class="icon small" data-tip="Show on the page" onClick={() => onInspect(path)} />;
+function ShowButton({ inRow = false, path, name, onInspect }: ShowButtonProps): JSX.Element {
+  return (
+    <IconButton
+      label={`Show ${name} on the page`}
+      icon={MousePointer2}
+      class={`${smallBox} ${iconTone}${inRow ? " bg-raised hover:bg-raised invisible group-hover:visible" : ""}`}
+      data-tip="Show on the page"
+      onClick={() => onInspect(path)}
+    />
+  );
 }
 
 interface FilterBoxProps {
@@ -324,13 +362,15 @@ interface FilterBoxProps {
 /** The filter box over the tree, with the toggle for fields with errors. */
 function FilterBox({ filter, onFilter, invalidOnly, onInvalidOnly }: FilterBoxProps): JSX.Element {
   return (
-    <div class="filter">
-      <Search />
-      <input type="search" placeholder="Filter" aria-label="Filter fields by name" value={filter} onInput={(event) => onFilter(event.currentTarget.value)} />
+    <div class="flex shrink-0 items-center gap-2 h-10 pr-2 pl-4 border-b border-line text-muted">
+      <Search class="size-3.5" />
+      <input
+        class="flex-1 min-w-0 h-full border-0 bg-transparent font-sans text-sm leading-[normal] text-fg outline-none"
+        type="search" placeholder="Filter" aria-label="Filter fields by name" value={filter} onInput={(event) => onFilter(event.currentTarget.value)} />
       <IconButton
         label="Only fields with errors"
         icon={TriangleAlert}
-        class="icon small"
+        class={`${smallBox} text-soft hover:bg-hover hover:text-fg aria-pressed:bg-error-tint aria-pressed:text-error`}
         aria-pressed={invalidOnly ? "true" : "false"}
         onClick={() => onInvalidOnly(!invalidOnly)}
       />
@@ -350,7 +390,7 @@ function FlagIcon({ flag, onHint }: FlagIconProps): JSX.Element {
   const show = (event: { currentTarget: Element }) => onHint(event.currentTarget.getBoundingClientRect());
   return (
     <span
-      class={`flag ${flag}`}
+      class={`flag ${flag} ${flagClass[flag]}`}
       tabIndex={0}
       role="img"
       aria-label={`${flag}: ${flagText[flag]}`}
@@ -382,7 +422,7 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
   const name = row.snapshot.name || row.label;
   return (
     <li
-      class="row"
+      class="group flex items-center gap-1.5 h-7 pr-3 pl-[calc(12px+var(--depth,0)*16px)] hover:bg-row-hover aria-[current=true]:bg-active aria-[current=true]:shadow-[inset_2px_0_var(--color-brand)]"
       style={`--depth: ${row.depth}`}
       data-path={key}
       aria-current={selected ? "true" : undefined}
@@ -390,15 +430,16 @@ function FieldRow({ row, open, selected, dirty, onToggle, onSelect, onHover, onI
       onPointerLeave={() => onHover?.(null)}
     >
       {row.branch ? (
-        <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon={ChevronDown} class="twisty" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
+        <IconButton label={`${open ? "Collapse" : "Expand"} ${name}`} icon={ChevronDown}
+          class="w-4 h-5 rounded-sm text-muted [&_svg]:size-3.5 [&[aria-expanded=false]_svg]:-rotate-90" aria-expanded={open ? "true" : "false"} onClick={onToggle} />
       ) : (
-        <span class="leaf" />
+        <span class="shrink-0 w-4" />
       )}
-      <button class="row-main truncate" onClick={onSelect}>
-        {row.label} <span class="muted">{preview(row.snapshot.value)}</span>
+      <button class="row-main flex-1 min-w-0 text-left truncate" onClick={onSelect}>
+        {row.label} <span class="text-muted">{preview(row.snapshot.value)}</span>
       </button>
-      {onInspect ? <ShowButton path={row.path} name={name} onInspect={onInspect} /> : null}
-      <span class="flags">
+      {onInspect ? <ShowButton inRow path={row.path} name={name} onInspect={onInspect} /> : null}
+      <span class="flex gap-1">
         {flagsOf(row.snapshot, dirty).map((flag) => (
           <FlagIcon key={flag} flag={flag} onHint={(rect) => onHint(rect ? { path: row.path, flag, rect } : null)} />
         ))}
@@ -415,11 +456,11 @@ interface FieldDetailProps extends FieldProps {
 /** The selected field's card under the tree. */
 function FieldDetail({ entry, path, snapshot, onClose, onInspect }: FieldDetailProps): JSX.Element {
   return (
-    <section class="detail scroll" aria-label="Field detail">
-      <div class="detail-head">
-        <strong class="truncate">{snapshot.name || "(form)"}</strong>
+    <section class={`${scroll} flex-[0_0_auto] max-h-1/2 border-t border-line`} aria-label="Field detail">
+      <div class={detailHead}>
+        <strong class={detailName}>{snapshot.name || "(form)"}</strong>
         {onInspect ? <ShowButton path={path} name={snapshot.name} onInspect={onInspect} /> : null}
-        <IconButton label="Close the field detail" icon={X} class="icon small" onClick={onClose} />
+        <IconButton label="Close the field detail" icon={X} class={`${smallBox} ${iconTone}`} onClick={onClose} />
       </div>
       <FieldFacts entry={entry} path={path} snapshot={snapshot} />
     </section>
@@ -461,9 +502,9 @@ export function Fields({ entry, expanded, onToggle, row, onRow, filter, onFilter
   return (
     <>
       <FilterBox filter={filter} onFilter={onFilter} invalidOnly={invalidOnly} onInvalidOnly={onInvalidOnly} />
-      <ul class="tree scroll" aria-label="Fields" onScroll={() => setHint(null)}>
+      <ul class={`${scroll} flex-[1_1_auto] m-0 py-2 px-0 list-none`} aria-label="Fields" onScroll={() => setHint(null)}>
         {rows.length === 0 ? (
-          <li class="empty">{invalidOnly ? "No field has an error." : filter ? "No field matches." : "The form has no fields."}</li>
+          <li class={empty}>{invalidOnly ? "No field has an error." : filter ? "No field matches." : "The form has no fields."}</li>
         ) : (
           rows.map((item) => {
             const key = pathKey(item.path);

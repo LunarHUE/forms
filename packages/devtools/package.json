@@ -38,9 +38,13 @@
   },
   "devDependencies": {
     "@lunarhue/forms-core": "workspace:^",
+    "@tailwindcss/node": "4.3.5",
+    "@tailwindcss/oxide": "4.3.5",
+    "@types/node": "catalog:",
     "jsdom": "catalog:",
     "lucide-preact": "catalog:",
-    "preact": "catalog:"
+    "preact": "catalog:",
+    "tailwindcss": "4.3.5"
   },
   "publishConfig": {
     "access": "public"

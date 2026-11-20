@@ -12,6 +12,7 @@ import { codeFences } from "./src/lib/mdx/code-fences";
 import { demos } from "./src/lib/mdx/demos";
 import { frameworkBlocks } from "./src/lib/mdx/framework-blocks";
 import { docRedirects } from "./src/lib/redirects";
+import { panelCss } from "../../packages/devtools/panel-css.ts";
 
 // Workspace packages export their source under this condition, so the docs
 // build the library from source and need no package build first.
@@ -46,7 +47,8 @@ export default defineConfig({
     pagefindIndex(),
   ],
   vite: {
-    plugins: [tailwindcss()],
+    // The devtools panel builds from source here, its stylesheet included.
+    plugins: [tailwindcss(), panelCss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     ssr: {
       resolve: { conditions: [sourceCondition, ...defaultServerConditions] },

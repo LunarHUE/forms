@@ -4,10 +4,11 @@ import { X } from "lucide-preact";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
-import { FieldFacts } from "./fields.js";
+import { surface } from "./classes.js";
+import { detailHead, detailName, FieldFacts } from "./fields.js";
 import type { Listed } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { IconButton } from "./icons.js";
+import { IconButton, iconTone, smallBox } from "./icons.js";
 import { pathKey } from "./values.js";
 
 /** A field found on the page: its form, its stable path and the element the pointer is over. */
@@ -132,7 +133,14 @@ export function Outlines({ elements }: OutlinesProps): JSX.Element {
     <>
       {elements.map((element, index) => {
         const [left, top, width, height] = rectOf(element);
-        return <div key={index} class="outline field" style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`} aria-hidden="true" />;
+        return (
+          <div
+            key={index}
+            class="field-outline fixed z-[2147482999] pointer-events-none border-2 border-brand rounded-sm bg-brand-tint"
+            style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`}
+            aria-hidden="true"
+          />
+        );
       })}
     </>
   );
@@ -169,11 +177,11 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
   const below = rect.top + rect.height / 2 < innerHeight / 2;
   const place = below ? `top: ${rect.bottom + gap}px` : `bottom: ${innerHeight - rect.top + gap}px`;
   return (
-    <section class={onClose ? "card surface pinned" : "card surface"} style={`left: ${left}px; width: ${width}px; ${place}`} aria-label={`Field ${snapshot.name || "(form)"}`}>
-      <div class="detail-head">
-        <strong class="truncate">{snapshot.name || "(form)"}</strong>
-        <span class="muted truncate">{form.label}</span>
-        {onClose ? <IconButton label="Unpin the field card" icon={X} class="icon small" onClick={onClose} /> : null}
+    <section class={`card ${surface} fixed z-[2147483001] flex flex-col max-h-[min(420px,calc(100vh-16px))] overflow-auto`} style={`left: ${left}px; width: ${width}px; ${place}`} aria-label={`Field ${snapshot.name || "(form)"}`}>
+      <div class={detailHead}>
+        <strong class={detailName}>{snapshot.name || "(form)"}</strong>
+        <span class="font-sans text-xs/5 text-muted truncate">{form.label}</span>
+        {onClose ? <IconButton label="Unpin the field card" icon={X} class={`${smallBox} ${iconTone}`} onClick={onClose} /> : null}
       </div>
       <FieldFacts entry={entry} path={path} snapshot={snapshot} />
     </section>

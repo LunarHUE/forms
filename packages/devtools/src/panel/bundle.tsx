@@ -3,6 +3,7 @@ import type { JSX } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { FormEntry } from "../hook.js";
 import { type SizePart, type SizeReport, sizesUrl } from "../sizes.js";
+import { scroll } from "./classes.js";
 
 /** A row of the Bundle tab: a part the form uses, by the `kind` and `name` a report names it with. */
 export interface BundleRow {
@@ -71,6 +72,8 @@ function useReport(url: string | undefined): Load | undefined {
   return result;
 }
 
+const note = "note m-0 py-2.5 px-4 border-b border-line font-sans text-xs/4.5";
+
 interface SourceProps {
   readonly url: string | undefined;
   readonly result: Load | undefined;
@@ -80,26 +83,30 @@ interface SourceProps {
 function Source({ url, result }: SourceProps): JSX.Element {
   if (url === undefined || result === undefined) {
     return (
-      <p class="note">
+      <p class={note}>
         Sizes come from your production build. Add <code>@lunarhue/forms-devtools/vite</code> to your Vite config to measure them.
       </p>
     );
   }
-  if (result.state === "loading") return <p class="note">Reading the size report...</p>;
-  if (result.state === "failed") return <p class="note error">{`Couldn't read the size report at ${url}: ${result.reason}.`}</p>;
+  if (result.state === "loading") return <p class={note}>Reading the size report...</p>;
+  if (result.state === "failed") return <p class={`${note} error text-error`}>{`Couldn't read the size report at ${url}: ${result.reason}.`}</p>;
   const { report } = result;
   const built = new Date(report.builtAt);
   return (
-    <p class="note">
+    <p class={note}>
       {`measured, from the build at ${Number.isNaN(built.getTime()) ? report.builtAt : built.toLocaleString()}`}
-      <span class="muted">{` by ${report.bundler}`}</span>
+      <span class="text-muted">{` by ${report.bundler}`}</span>
     </p>
   );
 }
 
 const sum = (items: readonly ({ readonly size: number | undefined } | undefined)[]) => items.reduce((total, item) => total + (item?.size ?? 0), 0);
 
+/** The bars' colours, a shade lighter on each row. */
+const tones = ["bg-bar-1", "bg-bar-2", "bg-bar-3"] as const;
+
 interface BarProps {
+  readonly tone: (typeof tones)[number];
   readonly label: string;
   readonly size: number | undefined;
   /** Its share of the row. */
@@ -109,16 +116,16 @@ interface BarProps {
 }
 
 /** A bar of the graph, as wide as its share of its row. */
-function Bar({ label, size, grow, part }: BarProps): JSX.Element {
+function Bar({ tone, label, size, grow, part }: BarProps): JSX.Element {
   return (
     <div
-      class="bar-part"
+      class={`bar-part flex basis-0 items-center gap-1.5 min-w-0 h-6 px-1.5 rounded-xs overflow-hidden ${tone} font-sans text-xs/4`}
       style={`flex-grow: ${grow}`}
       data-part={part}
       data-tip={size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}`}
     >
       <span class="truncate">{label}</span>
-      <span class="num">{size === undefined ? "–" : (size / 1000).toFixed(1)}</span>
+      <span class="num font-mono text-bar-num">{size === undefined ? "–" : (size / 1000).toFixed(1)}</span>
     </div>
   );
 }
@@ -151,50 +158,50 @@ export function Bundle({ entry }: BundleProps): JSX.Element {
   const pluginsWeight = report ? pluginBytes : 1;
   const start = (100 * ((top[0] ?? 0) + (top[1] ?? 0))) / ((top[0] ?? 0) + (top[1] ?? 0) + pluginsWeight || 1);
   return (
-    <div class="bundle scroll">
+    <div class={`${scroll} pb-2`}>
       <Source url={url} result={result} />
-      <div class="graph" aria-label="Bundle">
-        <div class="graph-head">
-          <span class="muted">forms packages</span>
+      <div class="flex flex-col gap-0.5 pt-3 px-4 pb-4 border-b border-line" aria-label="Bundle">
+        <div class="graph-head flex justify-between mb-2.5 font-sans text-xs/5">
+          <span class="text-muted">forms packages</span>
           {report ? (
-            <span class="muted">
-              whole app <span class="fg">{bytes(report.total.minified)}</span>
+            <span class="text-muted">
+              whole app <span class="font-mono text-fg">{bytes(report.total.minified)}</span>
               {` · ${bytes(report.total.gzip)} gzip`}
             </span>
           ) : null}
         </div>
-        <div class="bar-row"><Bar label="minified" size={report ? total : undefined} grow={1} /></div>
-        <div class="bar-row">
-          {core ? <Bar label="core" size={core.size} grow={top[0] ?? 1} part={`core:${core.row.name ?? ""}`} /> : null}
-          {adapter ? <Bar label={adapter.row.name ?? "adapter"} size={adapter.size} grow={top[1] ?? 1} part={`adapter:${adapter.row.name ?? ""}`} /> : null}
-          {shipped.length > 0 ? <Bar label="plugins" size={report ? pluginBytes : undefined} grow={pluginsWeight} /> : null}
+        <div class="flex gap-0.5"><Bar tone={tones[0]} label="minified" size={report ? total : undefined} grow={1} /></div>
+        <div class="flex gap-0.5">
+          {core ? <Bar tone={tones[1]} label="core" size={core.size} grow={top[0] ?? 1} part={`core:${core.row.name ?? ""}`} /> : null}
+          {adapter ? <Bar tone={tones[1]} label={adapter.row.name ?? "adapter"} size={adapter.size} grow={top[1] ?? 1} part={`adapter:${adapter.row.name ?? ""}`} /> : null}
+          {shipped.length > 0 ? <Bar tone={tones[1]} label="plugins" size={report ? pluginBytes : undefined} grow={pluginsWeight} /> : null}
         </div>
         {shipped.length > 0 ? (
           <>
-            <svg class="wedge" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+            <svg class="w-full h-2.5 fill-wedge stroke-none" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
               <path d={`M${start} 0H100V10H0z`} />
             </svg>
-            <div class="bar-row">
+            <div class="flex gap-0.5">
               {shipped.map(({ row, size }) => (
-                <Bar label={row.name ?? ""} size={size} grow={weigh(size)} />
+                <Bar tone={tones[2]} label={row.name ?? ""} size={size} grow={weigh(size)} />
               ))}
             </div>
           </>
         ) : null}
       </div>
-      <ol class="runs" aria-label="Run order">
-        <li class="runs-head muted">Run order</li>
+      <ol class="m-0 py-2 px-0 list-none [&>li]:flex [&>li]:items-center [&>li]:gap-3 [&>li]:h-7 [&>li]:px-4" aria-label="Run order">
+        <li class="font-sans font-medium text-xs/4 text-muted">Run order</li>
         {plugins.map(({ row, size }, index) => (
           <li key={row.label} data-part={`${row.kind}:${row.name ?? ""}`}>
-            <span class="muted">{index + 1}</span>
+            <span class="text-muted">{index + 1}</span>
             <span class="truncate">{row.name}</span>
-            <span class="num">
+            <span class="num ml-auto whitespace-nowrap">
               {size !== undefined ? (
                 bytes(size)
               ) : row.kind === "devtools" && report ? (
-                <span class="muted">dev only</span>
+                <span class="text-muted">dev only</span>
               ) : (
-                <span class="muted" title={report ? "The report has no part with this kind and name." : "Not measured"}>
+                <span class="text-muted" title={report ? "The report has no part with this kind and name." : "Not measured"}>
                   –
                 </span>
               )}

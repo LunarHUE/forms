@@ -1,8 +1,13 @@
 /** @jsxImportSource preact */
+// The docs, the e2e apps and vitest typecheck the panel from source, so the
+// declaration of the stylesheet's virtual module comes with it.
+// oxlint-disable-next-line typescript/triple-slash-reference
+/// <reference path="./panel/styles.d.ts" />
 import { type JSX, render } from "preact";
 import type { Hook } from "./hook.js";
-import { App } from "./panel/app.js";
-import { css } from "./panel/styles.js";
+import { App, dock } from "./panel/app.js";
+import { panelRoot } from "./panel/classes.js";
+import css from "virtual:lunarhue/panel-css";
 
 /** The hook version this panel reads. */
 const version = 1;
@@ -50,9 +55,9 @@ interface VersionNoticeProps {
 /** What the panel shows in place of itself for a hook of another version. */
 function VersionNotice({ found }: VersionNoticeProps): JSX.Element {
   return (
-    <div class="root">
-      <div class="dock" data-corner="bottom-left">
-        <p class="bar notice surface" role="status">
+    <div class={panelRoot}>
+      <div class={`dock ${dock("bottom-left")}`} data-corner="bottom-left">
+        <p class="relative flex items-center gap-0.5 h-10 px-3 font-sans text-sm/5 bg-surface border border-line rounded-lg shadow-panel" role="status">
           {`Forms devtools: the page's devtools are version ${found} and this panel reads version ${version}. Install one version of @lunarhue/forms-devtools.`}
         </p>
       </div>
