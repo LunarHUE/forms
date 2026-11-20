@@ -1,6 +1,10 @@
 import type { Path, Plugin } from "@lunarhue/forms-core";
 import { getDefault, type GenericSchema, type GenericSchemaAsync } from "valibot";
 
+// The declarations bundle core's types, so a consumer's emitted declarations
+// can name the type valibot() returns only through this entry.
+export type { Plugin };
+
 /** A valibot schema, sync or async. */
 export type ValibotSchema = GenericSchema | GenericSchemaAsync;
 

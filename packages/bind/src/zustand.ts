@@ -1,5 +1,9 @@
 import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins";
 
+// The declarations bundle core's types, so a consumer's emitted declarations
+// can name the type zustand() returns only through this entry.
+export type { BindPlugin };
+
 /**
  * The part of a zustand store the binding uses. The hook `create` returns
  * fits, and so does a vanilla store from `createStore`.

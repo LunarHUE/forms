@@ -1,6 +1,10 @@
 import { bind, type BindOptions, type BindPlugin } from "@lunarhue/forms-core/plugins";
 import { createEffect, createRoot, runWithOwner, untrack, type Accessor, type Setter } from "solid-js";
 
+// The declarations bundle core's types, so a consumer's emitted declarations
+// can name the type signal() returns only through this entry.
+export type { BindPlugin };
+
 /** What every `signal` call takes: `bind`'s `incoming` and `initial`. */
 export type SolidOptions = Pick<BindOptions<unknown>, "incoming" | "initial">;
 
