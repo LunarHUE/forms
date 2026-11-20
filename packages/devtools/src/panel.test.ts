@@ -297,6 +297,50 @@ describe("Fields", () => {
   });
 });
 
+describe("Fields rows", () => {
+  it("selects a field from anywhere on its row, its indent included, and not from its buttons", async () => {
+    form({ address: { city: "" } });
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    button(root, "Expand address").click();
+    await frame();
+    const city = row(root, ["address", "city"]);
+    city?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await frame();
+    expect(row(root, ["address", "city"])?.getAttribute("aria-current")).toBe("true");
+    button(root, "Collapse address").click();
+    await frame();
+    expect(row(root, ["address"])?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("keeps a slot for every flag, so a flag coming or going moves nothing", async () => {
+    const store = form({ name: "" });
+    field(store, ["name"]);
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    const slots = () => row(root, ["name"])?.lastElementChild?.children.length;
+    const before = slots();
+    store.root.at("name").setTouched(true);
+    await frame();
+    expect(root.querySelector(".flag.touched")).not.toBeNull();
+    expect(slots()).toBe(before);
+  });
+
+  it("uses the styled tooltip, never a native title", async () => {
+    const store = form({ name: "" });
+    field(store, ["name"]);
+    store.root.at("name").setValue("Ada");
+    const root = await open();
+    for (const tab of ["Fields", "Log", "Plugins", "Bundle"]) {
+      button(root, tab).click();
+      await frame();
+      expect(root.querySelector("[title]")).toBeNull();
+    }
+  });
+});
+
 describe("Log", () => {
   it("lists writes and submissions newest first, with causes and aborted submissions marked", async () => {
     let finish: (() => void) | undefined;
