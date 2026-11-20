@@ -105,8 +105,8 @@ export type FormComponent<T> = (props: {
 /**
  * The `validate` prop of `Field` and of the bound registered components. It
  * takes what `createValidator` takes, typed from the field: a validator
- * function, a Standard Schema, or either one with options such as
- * `debounce`. `undefined`, `null` or `false` add none.
+ * function, a Standard Schema, or either one wrapped by `debounced`,
+ * `validateOn` or `recheckOnSubmit`. `undefined`, `null` or `false` add none.
  *
  * The validator runs only while the component is mounted. When the
  * component's owner is disposed it is removed along with the errors it set.
@@ -117,7 +117,7 @@ export type FormComponent<T> = (props: {
  * its own errors.
  *
  * The component registers once, at mount, with the kind of validator and
- * the options it finds then. When the prop is reactive and later gives
+ * the timing tags it finds then. When the prop is reactive and later gives
  * another function, each run calls the function the prop gives when the run
  * starts, without registering again. A schema is read at mount only.
  */
@@ -650,7 +650,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
   readonly "~form"?: AnyForm<P, E, F>;
   /** Defines a form. See core's `FormsCore.define`. Its own `plugins` join the shared ones. */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
-    config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    config: DefineConfig<V, S, O, P, E, I, R, D>,
     ...parts: readonly DefineParts<V, S, P, D>[]
   ): SolidFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**

@@ -1,4 +1,4 @@
-import type { FieldApi, FormError } from "@lunarhue/forms-solid";
+import { type FieldApi, type FormError, numberPieces } from "@lunarhue/forms-solid";
 import { For } from "solid-js";
 
 interface FieldProps<T> {
@@ -36,6 +36,7 @@ export function TextField(props: FieldProps<string>) {
 }
 
 export function NumberField(props: FieldProps<number>) {
+  const number = numberPieces(props.field);
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
@@ -44,9 +45,9 @@ export function NumberField(props: FieldProps<number>) {
         inputmode="decimal"
         ref={props.field.ref}
         // Keeps "1." and "-" as typed while the field holds 1 and the value before.
-        value={props.field.text}
-        onInput={(event) => props.field.setNumberText(event.currentTarget.value)}
-        onBlur={props.field.handleBlur}
+        value={number.text}
+        onInput={(event) => number.setText(event.currentTarget.value)}
+        onBlur={number.handleBlur}
         aria-describedby={props.field.errorId}
       />
       <Errors id={props.field.errorId} errors={props.field.shownErrors} />

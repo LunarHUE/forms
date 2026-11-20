@@ -1,156 +1,151 @@
-import { type FieldSnapshot, optionId } from "@lunarhue/forms-core";
+import type { FieldSnapshot, ValueOf } from "@lunarhue/forms-core";
 import type { ChangeEvent } from "react";
-import { type BaseInputProps, errorId } from "./input.js";
-import { setNumberText } from "./number-text.js";
-import { asText, type FieldPieces } from "./pieces.js";
+import {
+  type BaseInputProps,
+  type CheckboxInputProps,
+  type EmptyOption,
+  errorId,
+  type FieldObjectLike,
+  type OptionArgs,
+  type SelectProps,
+  type TextareaProps,
+  type TextInputOptions,
+  type TextInputProps,
+} from "./input.js";
+import { asText } from "./pieces.js";
 import { cached } from "./select.js";
 
-/** A handle as the input props use it at runtime. Every core handle fits. */
-export interface InputHandle {
-  readonly id: string;
-}
-
-/** What the runtime calls on a core handle. */
-interface Commands {
+/** What the props call on a field's handle. Every core handle has these. */
+export interface Commands {
   setValue(value: unknown): void;
   peek(): FieldSnapshot<unknown, unknown>;
-  handleBlur(): void;
 }
 
-/** The input options as the runtime reads them. */
-export interface AnyInputOptions {
-  readonly kind?: string;
-  readonly type?: string;
-  readonly value?: unknown;
-  readonly empty?: unknown;
-}
+/** The handle's commands. The field object's types only name the handle's id. */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const commandsOf = (field: FieldObjectLike): Commands => field.handle as unknown as Commands;
 
-/** Props for any input kind, as the runtime builds them. */
-export type AnyInputProps = BaseInputProps & Record<string, unknown>;
+/** True while the field takes no edits. */
+export const readOnly = (commands: Commands): boolean => commands.peek().readOnly;
 
-type Kind = "text" | "textarea" | "number" | "range" | "checkbox" | "group" | "radio" | "select";
+// Callbacks are cached per handle and props per field object, then by kind
+// and by the option the element was given.
+const changeCache = new WeakMap<object, Map<string, Map<unknown, unknown>>>();
+const propsCache = new WeakMap<object, Map<string, Map<unknown, unknown>>>();
 
-/** The `onChange` of one element kind on one field. */
-type OnChange = (event: ChangeEvent<HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement>) => void;
-
-/** What the props are built from: a field object, which has every snapshot member, the pieces and `text`. */
-export type InputState = FieldSnapshot<unknown, unknown> & FieldPieces & { readonly text: string };
-
-// Both caches are keyed by kind, then by the option (or `empty`, or a text input's `type`) the element was given.
-const changeCache = new WeakMap<object, Map<Kind, Map<unknown, OnChange>>>();
-const propsCache = new WeakMap<object, Map<Kind, Map<unknown, AnyInputProps>>>();
-
-function kindOf(options: AnyInputOptions | undefined): Kind {
-  const kind = options?.kind ?? "text";
-  if (kind === "checkbox" && options !== undefined && "value" in options) return "group";
-  // The contract's option types allow only these kinds.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return kind as Kind;
-}
-
-/** The `onChange` of one element kind on one field. Text and number kinds go through the field's pieces. */
-function changeHandler(handle: Commands, pieces: FieldPieces, kind: Kind, option: unknown): OnChange {
-  const writable = () => !handle.peek().readOnly;
-  switch (kind) {
-    case "number":
-    case "range":
-      return (event) => {
-        // Text such as `-` isn't a number yet. The browser reports it as an empty value with `badInput`.
-        if (event.target.validity.badInput) setNumberText(handle, { value: handle.peek().value, text: event.target.value });
-        else pieces.setNumberText(event.target.value, option);
-      };
-    case "checkbox":
-      return (event) => {
-        if (writable()) handle.setValue(event.target.checked);
-      };
-    case "group":
-      return (event) => {
-        const snapshot = handle.peek();
-        if (snapshot.readOnly) return;
-        const list: readonly unknown[] = Array.isArray(snapshot.value) ? snapshot.value : [];
-        const has = list.includes(option);
-        if (event.target.checked && !has) handle.setValue([...list, option]);
-        if (!event.target.checked && has) handle.setValue(list.filter((item) => !Object.is(item, option)));
-      };
-    case "radio":
-      return (event) => {
-        if (event.target.checked && writable()) handle.setValue(option);
-      };
-    case "select":
-      return (event) => {
-        const value = event.target.value;
-        if (writable()) handle.setValue(value === "" ? option : value);
-      };
-    default:
-      return (event) => pieces.setText(event.target.value, event);
-  }
-}
-
-function buildProps(
-  handle: InputHandle,
-  snapshot: InputState,
-  kind: Kind,
-  option: unknown,
-  onChange: OnChange,
-): AnyInputProps {
+/** The props every kind has. `id` is the handle's, unless the element is one option of the field. */
+export function controlProps(field: FieldObjectLike, id: string = field.handle.id): BaseInputProps {
   // An ARIA state that is off is left out. React would write `false` as "false".
-  const shown = snapshot.shownErrors.length > 0 || undefined;
-  const grouped = kind === "group" || kind === "radio";
-  const base: BaseInputProps = {
-    name: snapshot.name,
-    id: grouped ? optionId(handle.id, asText(option)) : handle.id,
-    onBlur: snapshot.handleBlur,
-    ref: snapshot.ref,
-    disabled: snapshot.disabled,
+  const shown = field.shownErrors.length > 0 || undefined;
+  return {
+    name: field.name,
+    id,
+    onBlur: field.handleBlur,
+    ref: field.ref,
+    disabled: field.disabled,
     "aria-invalid": shown,
-    "aria-describedby": shown ? errorId(handle) : undefined,
+    "aria-describedby": shown ? errorId(field.handle) : undefined,
   };
-  const { value, readOnly, text } = snapshot;
-  const ariaReadOnly = readOnly || undefined;
-  switch (kind) {
-    case "number":
-    case "range":
-      return { ...base, type: kind, value: text, readOnly, onChange };
-    case "checkbox":
-      return { ...base, type: "checkbox", checked: value === true, "aria-readonly": ariaReadOnly, onChange };
-    case "group":
-      return {
-        ...base,
-        type: "checkbox",
-        value: asText(option),
-        checked: Array.isArray(value) && value.includes(option),
-        "aria-readonly": ariaReadOnly,
-        onChange,
-      };
-    case "radio":
-      return { ...base, type: "radio", value: asText(option), checked: Object.is(value, option), "aria-readonly": ariaReadOnly, onChange };
-    case "select":
-      return { ...base, value: asText(value), "aria-readonly": ariaReadOnly, onChange };
-    case "textarea":
-      return { ...base, value: text, readOnly, onChange };
-    default:
-      return { ...base, type: option ?? "text", value: text, readOnly, onChange };
-  }
 }
 
 /**
- * The props for one element bound to `handle`, built on the pieces of
- * `field`, its field object. Callbacks are cached per handle and props per
- * field object, so both keep their identity until the field changes.
+ * The props of one kind of element, made once per field object and option.
+ * `change` makes the `onChange`, once per handle and option, and `build` the
+ * props around it. So the callbacks keep their identity for the life of the
+ * handle, and the props until the field object changes.
  */
-export function inputPropsFor(handle: InputHandle, field: InputState, options: AnyInputOptions | undefined): AnyInputProps {
-  const kind = kindOf(options);
-  const option = kind === "group" || kind === "radio" ? options?.value : kind === "text" ? options?.type : options?.empty;
-  const byOption = cached(cached(propsCache, field, () => new Map()), kind, () => new Map());
-  const cachedProps = byOption.get(option);
-  if (cachedProps !== undefined) return cachedProps;
-
-  // Every core handle has these commands. `InputHandle` only names what the contract's handle types share.
+export function kindProps<E, P>(
+  field: FieldObjectLike,
+  kind: string,
+  option: unknown,
+  change: (commands: Commands) => (event: E) => void,
+  build: (onChange: (event: E) => void) => P,
+): P {
+  // Below its kind, each cache holds that kind's props or callbacks only.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const commands = handle as unknown as Commands;
-  const changes = cached(cached(changeCache, handle, () => new Map()), kind, () => new Map());
-  const onChange = cached(changes, option, () => changeHandler(commands, field, kind, option));
-  const props = buildProps(handle, field, kind, option, onChange);
-  byOption.set(option, props);
-  return props;
+  const byOption = cached(cached(propsCache, field, () => new Map()), kind, () => new Map()) as Map<unknown, P>;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const changes = cached(cached(changeCache, field.handle, () => new Map()), kind, () => new Map()) as Map<unknown, (event: E) => void>;
+  return cached(byOption, option, () => build(cached(changes, option, () => change(commandsOf(field)))));
 }
+
+/** The text a text input or textarea writes, through `setText` so a display such as a mask places the caret. */
+const textChange =
+  ({ setText }: FieldObjectLike) =>
+  () =>
+  (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setText(event.target.value, event);
+
+/**
+ * Returns the props for an `<input>` on a string field:
+ * `<input {...inputProps(field)} />`. `type` is one of the text-like types and
+ * defaults to `"text"`. `value` is `field.text`, and `onChange` writes through
+ * `field.setText`.
+ *
+ * Every props function is a plain function, not a hook, so it can be called
+ * anywhere the field object is, and a form that never calls one doesn't ship
+ * it. Errors show in `aria-invalid` and `aria-describedby` only while they
+ * are in `shownErrors`. The callbacks keep their identity for the life of the
+ * handle, and the props object changes only when the field object does. A
+ * component library's primitives usually own their ids and aria, so bind
+ * those with the field's pieces instead.
+ */
+export const inputProps = (field: FieldObjectLike<string | null | undefined>, options?: TextInputOptions): TextInputProps => {
+  const type = options?.type ?? "text";
+  return kindProps(field, "text", type, textChange(field), (onChange) => ({
+    ...controlProps(field),
+    type,
+    value: field.text,
+    readOnly: field.readOnly,
+    onChange,
+  }));
+};
+
+/** Returns the props for a `<textarea>` on a string field. See `inputProps`. */
+export const textareaProps = (field: FieldObjectLike<string | null | undefined>): TextareaProps =>
+  kindProps(field, "textarea", undefined, textChange(field), (onChange) => ({
+    ...controlProps(field),
+    value: field.text,
+    readOnly: field.readOnly,
+    onChange,
+  }));
+
+/**
+ * Returns the props for a single `<select>` on a string field. An option
+ * whose value is `""` writes `empty`, which is required when the field's
+ * type has no `undefined`. See `inputProps`.
+ */
+export const selectProps: <F extends FieldObjectLike<string | null | undefined>>(
+  field: F,
+  ...options: OptionArgs<EmptyOption<ValueOf<F>>>
+) => SelectProps = (field: FieldObjectLike, options?: { readonly empty?: unknown }) => {
+  const empty = options?.empty;
+  return kindProps(
+    field,
+    "select",
+    empty,
+    (commands) => (event: ChangeEvent<HTMLSelectElement>) => {
+      const { value } = event.target;
+      if (!readOnly(commands)) commands.setValue(value === "" ? empty : value);
+    },
+    (onChange) => ({ ...controlProps(field), value: asText(field.value), "aria-readonly": field.readOnly || undefined, onChange }),
+  );
+};
+
+/** Returns the props for `<input type="checkbox">` on a boolean field. See `inputProps`. */
+export const checkboxProps = (field: FieldObjectLike<boolean | null | undefined>): CheckboxInputProps =>
+  kindProps(
+    field,
+    "checkbox",
+    undefined,
+    (commands) => (event: ChangeEvent<HTMLInputElement>) => {
+      if (!readOnly(commands)) commands.setValue(event.target.checked);
+    },
+    (onChange) => ({
+      ...controlProps(field),
+      type: "checkbox",
+      checked: field.value === true,
+      "aria-readonly": field.readOnly || undefined,
+      onChange,
+    }),
+  );

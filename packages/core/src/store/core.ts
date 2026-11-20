@@ -392,10 +392,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const touched = node.touched;
     const submitted = submitCount > 0;
     if (typeof show === "function") return show({ touched, edited: node.editedCount > 0, dirty, submitCount });
-    if (show === "always") return true;
-    if (show === "touched") return touched;
-    if (show === "submitted") return submitted;
-    return touched || submitted;
+    return show === "always" || (show !== "submitted" && touched) || (show !== "touched" && submitted);
   };
 
   const build = (node: Node<E>): Snapshot<E> => {
@@ -494,15 +491,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     const byOwner = node.byOwner;
     if (!byOwner || byOwner.size === 0) return none;
     if (byOwner.size === 1) for (const list of byOwner.values()) return list;
-    // Few owners share a field, so an insertion sort is enough.
-    const ordered: { rank: number; list: readonly E[] }[] = [];
-    for (const [owner, list] of byOwner) {
-      const rank = rankOf(owner);
-      let at = ordered.length;
-      while (at > 0 && (ordered[at - 1]?.rank ?? -1) > rank) at--;
-      ordered.splice(at, 0, { rank, list });
-    }
-    const joined = ordered.flatMap((entry) => entry.list);
+    // The spread is a fresh array, so sorting it in place is safe.
+    // oxlint-disable-next-line unicorn/no-array-sort
+    const joined = [...byOwner].sort((a, b) => rankOf(a[0]) - rankOf(b[0])).flatMap((entry) => entry[1]);
     return sameList(joined, node.validation) ? node.validation : freeze(joined);
   };
 
@@ -1053,6 +1044,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     stats() {
       let nodes = 0;
       let subscribed = 0;
+      // Only tests and leak checks ask, so production keeps no walk.
+      if (typeof process === "undefined" || process.env.NODE_ENV === "production") return { nodes, subscribed };
       const count = (node: Node<E>) => {
         nodes++;
         if (node.subscriptions) subscribed++;

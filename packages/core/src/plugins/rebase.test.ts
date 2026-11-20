@@ -5,6 +5,7 @@ import type { Path } from "../path.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals } from "../store/form-store.js";
 import type { ValidatorContext } from "../validator.js";
+import { formValidator } from "../store/validate/form.js";
 import { arrays } from "./arrays.js";
 import { dirty } from "./dirty.js";
 import { type Rebase, rebase as rebasePlugin, type Resolve } from "./rebase.js";
@@ -211,7 +212,7 @@ describe("rebase", () => {
       id: "f",
       initial: { a: "x", b: "x" },
       plugins: [rebasePlugin(), dirty()],
-      validate: { form },
+      validate: { form: formValidator(form) },
     });
     await store.validate();
     form.mockClear();
@@ -231,7 +232,7 @@ describe("rebase", () => {
       id: "f",
       initial: { a: "x", b: "x" },
       plugins: [rebasePlugin(), dirty()],
-      validate: { form },
+      validate: { form: formValidator(form) },
     });
     await store.validate();
     form.mockClear();

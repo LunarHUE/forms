@@ -1,5 +1,5 @@
 import { inspectScenario as scenario } from "@lunarhue/forms-e2e/contract";
-import { createField, createForm, fieldRef, inputProps } from "@lunarhue/forms-solid";
+import { createField, createForm, fieldRef, radioProps } from "@lunarhue/forms-solid";
 import { forms, Probe } from "../parts.js";
 
 const settings = forms.define(scenario.definition);
@@ -18,11 +18,11 @@ export function InspectPage() {
                 <fieldset>
                   <legend>{labels.plan}</legend>
                   <label>
-                    <input {...inputProps(field, { kind: "radio", value: "free" })} />
+                    <input {...radioProps(field, "free")} />
                     {labels.free}
                   </label>
                   <label>
-                    <input {...inputProps(field, { kind: "radio", value: "pro" })} />
+                    <input {...radioProps(field, "pro")} />
                     {labels.pro}
                   </label>
                 </fieldset>

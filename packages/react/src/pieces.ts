@@ -1,7 +1,6 @@
 import type { FieldSnapshot, TextControl } from "@lunarhue/forms-core";
 import { displayOf } from "./display.js";
 import type { FieldRef } from "./input.js";
-import { type NumberText, setNumberText } from "./number-text.js";
 import { focusedElement, refFor } from "./refs.js";
 import { cached } from "./select.js";
 
@@ -21,14 +20,7 @@ export interface FieldPieces {
    * recorded. Writes nothing while the field is read-only.
    */
   readonly setText: (text: string, from?: TextSource) => void;
-  /**
-   * Writes text typed in a number field. Text that isn't a number yet, such
-   * as `-`, writes nothing. Text such as `12.` writes `12`. `field.text`
-   * keeps showing the typed text until the value changes or the field blurs.
-   * Empty text writes `empty`.
-   */
-  readonly setNumberText: (text: string, empty?: unknown) => void;
-  /** Marks the field touched, runs blur validation, and drops the typed number text. */
+  /** Marks the field touched and runs blur validation. */
   readonly handleBlur: () => void;
   /**
    * Records the element for focus after an invalid submit. On a native
@@ -50,12 +42,10 @@ export const asText = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" || typeof value === "boolean" || typeof value === "bigint" ? String(value) : "";
 
 /**
- * The text an element shows for a field: the number text the user typed
- * while the field still holds what it wrote, else the display text when a
- * plugin gives one, else the value. `NaN` shows as `""`.
+ * The text an element shows for a field: the display text when a plugin
+ * gives one, else the value. `NaN` shows as `""`.
  */
-export function textOf({ value, meta }: FieldSnapshot<unknown, unknown>, typed: NumberText | undefined): string {
-  if (typed !== undefined && Object.is(typed.value, value)) return typed.text;
+export function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
   const shown = displayOf(meta);
   if (shown) return shown.display(value);
   return typeof value === "number" && Number.isNaN(value) ? "" : asText(value);
@@ -86,22 +76,7 @@ export const piecesFor = (handle: object): FieldPieces =>
         const control = isControl(target) ? target : focusedElement(handle);
         if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : nativeOf(from));
       },
-      setNumberText(text, empty) {
-        const { value: current, readOnly } = commands.peek();
-        if (readOnly) return;
-        const number = text.trim() === "" ? Number.NaN : Number(text);
-        if (Number.isNaN(number) && text !== "") {
-          setNumberText(handle, { value: current, text });
-          return;
-        }
-        const value = Number.isNaN(number) ? empty : number;
-        setNumberText(handle, { value, text });
-        commands.setValue(value);
-      },
-      handleBlur() {
-        setNumberText(handle, undefined);
-        commands.handleBlur();
-      },
+      handleBlur: () => commands.handleBlur(),
       ref: refFor(handle),
     };
   });

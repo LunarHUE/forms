@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { debounced, recheckOnSubmit, validateOn } from "../../validate-timing.js";
 import type { ErrorMap, FormError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { PlatformAbortSignal } from "../../value.js";
 import { createFormInternals, type FormStoreOptions } from "../form-store.js";
 import { arrays } from "../../plugins/arrays.js";
+import { fieldValidators, formValidator } from "../../index.js";
 
 type Options<V> = Omit<FormStoreOptions<V>, "id" | "initial">;
 
@@ -45,16 +47,16 @@ describe("validate.fields", () => {
   it("reads a record of child entries", () => {
     const { root, messages } = make(
       { user: { name: "", email: "" } },
-      { timing: "input", validate: { fields: { user: { name: required, email: schema(() => ({ issues: [{ message: "Email" }] })) } } } },
+      { timing: "input", validate: { fields: fieldValidators({ user: { name: required, email: schema(() => ({ issues: [{ message: "Email" }] })) } }) } },
     );
     root.at("user").setValue({ name: "", email: "x" });
     expect(messages(["user", "name"])).toEqual(["Required"]);
     expect(messages(["user", "email"])).toEqual(["Email"]);
   });
 
-  it("reads the options-object form", async () => {
+  it("reads a wrapped check", async () => {
     const check = vi.fn<Check>(required);
-    const { root, messages } = make({ name: "x" }, { validate: { fields: { name: { validate: check, debounce: 50, on: "input" } } } });
+    const { root, messages } = make({ name: "x" }, { validate: { fields: fieldValidators({ name: debounced(validateOn(check, "input"), 50) }) } });
     root.at("name").setValue("");
     expect(check).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(50);
@@ -63,7 +65,7 @@ describe("validate.fields", () => {
 
   it("applies a tuple entry to every item, including items added, moved and removed", async () => {
     const check = vi.fn<Check>(required);
-    const { root, messages, validation } = make({ rows: [{ t: "" }, { t: "x" }] }, { validate: { fields: { rows: [{ t: check }] } } });
+    const { root, messages, validation } = make({ rows: [{ t: "" }, { t: "x" }] }, { validate: { fields: fieldValidators({ rows: [{ t: check }] }) } });
     const rows = root.at("rows");
     rows.item("k0").at("t").handleBlur();
     expect(messages(["rows", "k0", "t"])).toEqual(["Required"]);
@@ -87,7 +89,7 @@ describe("validate.fields", () => {
 
   it("arms items added after submit", async () => {
     const noRows: { t: string }[] = [];
-    const { root, validation, messages } = make({ rows: noRows }, { validate: { fields: { rows: [{ t: required }] } } });
+    const { root, validation, messages } = make({ rows: noRows }, { validate: { fields: fieldValidators({ rows: [{ t: required }] }) } });
     await validation.settleForSubmit();
     root.at("rows").push({ t: "x" });
     root.at("rows").item("k0").at("t").setValue("");
@@ -97,7 +99,7 @@ describe("validate.fields", () => {
   it("aborts a run on a removed item and never writes to it", async () => {
     const signals: PlatformAbortSignal[] = [];
     const check = slow(20, err("Late"), signals);
-    const { root, store } = make({ rows: [{ t: "" }] }, { timing: "input", validate: { fields: { rows: [{ t: check }] } } });
+    const { root, store } = make({ rows: [{ t: "" }] }, { timing: "input", validate: { fields: fieldValidators({ rows: [{ t: check }] }) } });
     root.at("rows").item("k0").at("t").setValue("x");
     expect(store.getFormSnapshot().validating).toBe(true);
     root.at("rows").remove(0);
@@ -108,7 +110,7 @@ describe("validate.fields", () => {
   });
 
   it("drops a result for an item removed without a user edit", async () => {
-    const { root, store } = make({ rows: [{ t: "" }] }, { timing: "input", validate: { fields: { rows: [{ t: slow(20, err("Late")) }] } } });
+    const { root, store } = make({ rows: [{ t: "" }] }, { timing: "input", validate: { fields: fieldValidators({ rows: [{ t: slow(20, err("Late")) }] }) } });
     root.at("rows").item("k0").at("t").setValue("x");
     root.at("rows").remove(0, { edited: false });
     await vi.runAllTimersAsync();
@@ -160,7 +162,7 @@ describe("settleForSubmit", () => {
     root.at("a").registerValidator(fresh);
     root.at("b").registerValidator(current);
     root.at("c").registerValidator(thrower);
-    root.at("d").registerValidator({ validate: recheck, recheckOnSubmit: true });
+    root.at("d").registerValidator(recheckOnSubmit(recheck));
     root.at("b").setValue("x");
     root.at("c").setValue("x");
     root.at("d").setValue("x");
@@ -176,7 +178,7 @@ describe("settleForSubmit", () => {
 
   it("resolves only once every running check has landed", async () => {
     const { root, validation, messages, store } = make({ a: "", b: "" }, { timing: "input" });
-    root.at("a").registerValidator({ validate: slow(30, err("Slow")), debounce: 500 });
+    root.at("a").registerValidator(debounced(slow(30, err("Slow")), 500));
     root.at("b").registerValidator(slow(10, undefined));
     root.setValue({ a: "x", b: "x" });
     let done = false;
@@ -197,7 +199,7 @@ describe("validate(path)", () => {
     const under = vi.fn<Check>(required);
     const { root, store, messages } = make(
       { user: { name: "", rows: [{ t: "" }, { t: "x" }] } },
-      { validate: { form: () => ({ form: err("Form") }), fields: { user: { rows: [{ t: under }] } } } },
+      { validate: { form: formValidator(() => ({ form: err("Form") })), fields: fieldValidators({ user: { rows: [{ t: under }] } }) } },
     );
     root.registerValidator(above);
     root.at("user").registerValidator(at);
@@ -225,11 +227,11 @@ describe("validate(path)", () => {
 describe("reset", () => {
   it("aborts runs, drops debounces and puts validators back to not-yet-run", async () => {
     const signals: PlatformAbortSignal[] = [];
-    const debounced = vi.fn<Check>(() => err("D"));
+    const waiting = vi.fn<Check>(() => err("D"));
     const blurred = vi.fn<Check>(required);
     const { root, core, validation, validating } = make({ a: "", b: "", c: "" });
-    root.at("a").registerValidator({ validate: slow(20, err("A"), signals), on: "input" });
-    root.at("b").registerValidator({ validate: debounced, on: "input", debounce: 50 });
+    root.at("a").registerValidator(validateOn(slow(20, err("A"), signals), "input"));
+    root.at("b").registerValidator(debounced(validateOn(waiting, "input"), 50));
     root.at("c").registerValidator(blurred);
     root.at("c").handleBlur();
     root.setValue({ a: "x", b: "x", c: "" });
@@ -240,7 +242,7 @@ describe("reset", () => {
     expect(validating(["b"])).toBe(false);
     expect(vi.getTimerCount()).toBe(1);
     await vi.runAllTimersAsync();
-    expect(debounced).not.toHaveBeenCalled();
+    expect(waiting).not.toHaveBeenCalled();
     // Blur timing again: a write doesn't run it until the next blur.
     const calls = blurred.mock.calls.length;
     root.at("c").setValue("y");
@@ -287,7 +289,7 @@ describe("blur and form-level validators", () => {
 
   it("does the same for an ErrorMap form validator", () => {
     const check = vi.fn<() => ErrorMap<FormError>>(() => ({ form: err("F"), fields: { a: err("A"), b: err("B") } }));
-    const { root, messages } = make({ a: "", b: "" }, { validate: { form: check } });
+    const { root, messages } = make({ a: "", b: "" }, { validate: { form: formValidator(check) } });
     root.at("b").handleBlur();
     root.at("b").handleBlur();
     expect(check).toHaveBeenCalledTimes(1);
@@ -317,7 +319,7 @@ describe("cost", () => {
     const form = vi.fn<() => undefined>(() => undefined);
     const { root, core } = make(
       { rows },
-      { validate: { form: { validate: form, on: "input" }, fields: { rows: [{ t: { validate: t, on: "input" }, u }] } } },
+      { validate: { form: formValidator(validateOn(form, "input")), fields: fieldValidators({ rows: [{ t: validateOn(t, "input"), u }] }) } },
     );
     root.at("rows").item("k1500").at("u").handleBlur();
     root.registerValidator(() => undefined);

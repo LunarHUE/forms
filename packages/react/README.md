@@ -2,11 +2,53 @@
 
 The React adapter for [forms](https://github.com/LunarHUE/forms). Field names are checked by the compiler,
 features are plugins, and a plugin you don't use costs no bytes. Works with
-React 16.8 and later.
+React 18 and later, and with React 16.8 and 17 through a resolve condition.
 
 ```sh
 npm install @lunarhue/forms-react
 ```
+
+## React 16.8 and 17
+
+The default build uses React 18's `useSyncExternalStore` and `useId`. On
+React 16.8 or 17, have your bundler resolve with the `@lunarhue/react-legacy`
+condition, which picks a build with fallbacks for both. Without it, a
+development build throws `react:legacy` when the adapter loads.
+
+```ts
+// Vite
+import { defaultClientConditions, defaultServerConditions, defineConfig } from "vite";
+
+export default defineConfig({
+  resolve: { conditions: ["@lunarhue/react-legacy", ...defaultClientConditions] },
+  ssr: {
+    resolve: {
+      conditions: ["@lunarhue/react-legacy", ...defaultServerConditions],
+      externalConditions: ["@lunarhue/react-legacy"],
+    },
+  },
+});
+```
+
+```js
+// webpack or Rspack
+resolve: { conditionNames: ["@lunarhue/react-legacy", "..."] }
+
+// esbuild. Custom conditions drop the default `module`, so list it again.
+conditions: ["@lunarhue/react-legacy", "module"]
+
+// Next with webpack, in next.config.js
+webpack(config) {
+  config.resolve.conditionNames = ["@lunarhue/react-legacy", ...(config.resolve.conditionNames ?? ["..."])];
+  return config;
+}
+
+// Next with Turbopack, which has no conditions setting, in next.config.js
+turbopack: { resolveAlias: { "#lunarhue/react": "@lunarhue/forms-react/legacy" } }
+```
+
+When Node loads the adapter itself, as an unbundled server does, run it with
+`NODE_OPTIONS=--conditions=@lunarhue/react-legacy`.
 
 For schema validation add `@lunarhue/forms-schema` and Zod or Valibot.
 

@@ -41,23 +41,24 @@ export type {
   SnapshotOf,
 } from "./field.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
-export { createInputProps, errorId, fieldRef, inputProps } from "./input.js";
+export { errorId, fieldRef } from "./input.js";
+export { checkboxProps, inputProps, selectProps, textareaProps } from "./input-props.js";
+export { checkboxGroupProps, radioProps } from "./choice-props.js";
+export { numberPieces, numberProps, rangeProps } from "./number-props.js";
+export type { NumberPieces } from "./number-props.js";
 export { elementsOf, fieldOf } from "./lookup.js";
 export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
-  CheckableProps,
-  CheckboxGroupOptions,
-  CheckboxOptions,
-  ControlProps,
+  BaseInputProps,
+  CheckboxGroupInputProps,
+  CheckboxInputProps,
+  DescribedByOption,
+  EmptyOption,
   FieldObjectLike,
-  InputOptions,
-  NumberInputOptions,
   NumberInputProps,
-  NumberInputType,
-  RadioOptions,
-  SelectOptions,
+  RadioInputProps,
+  RangeInputProps,
   SelectProps,
-  TextareaOptions,
   TextareaProps,
   TextInputOptions,
   TextInputProps,

@@ -1,13 +1,12 @@
+import { errorId } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
-import { errorIdOf } from "./input-props.js";
 import { addPieces, type PiecesHandle } from "./pieces.js";
 import { defineGetters, fieldReader } from "./reader.js";
 
 /**
  * Builds the field object for a handle: snapshot getters over one signal,
  * the handle's commands, `id` and `path`, `handle`, `errorId`, and the
- * pieces (`text`, `setText`, `setNumberText`, `ref`, and a `handleBlur` that
- * also drops typed number text).
+ * pieces (`text`, `setText` and `ref`).
  */
 export function createFieldApi(handle: HandleLike): object {
   const read = fieldReader(handle);
@@ -22,7 +21,7 @@ export function createFieldApi(handle: HandleLike): object {
     if (name !== "peek" && name !== "registerValidator" && name !== "store") field[name] = member;
   }
   field.handle = handle;
-  field.errorId = errorIdOf(handle);
+  field.errorId = errorId(handle.id);
   // Every core handle has `setValue` and `handleBlur`. `HandleLike` only names what reading needs.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   addPieces(field, handle as unknown as PiecesHandle, read);

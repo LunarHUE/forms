@@ -139,7 +139,6 @@ const commonMembers = {
   errorId: true,
   text: true,
   setText: true,
-  setNumberText: true,
   ref: true,
   "~field": false,
 } as const;

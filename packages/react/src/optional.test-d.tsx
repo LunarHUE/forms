@@ -11,6 +11,7 @@ import {
   type HandleOf,
   type Plugin,
   type StandardSchemaV1,
+  checkboxProps,
 } from "./index.js";
 
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -25,7 +26,7 @@ function TextField(props: { readonly field: FieldApi<string | undefined>; readon
 
 function Checkbox(props: { readonly field: FieldApi<boolean | undefined>; readonly label: string }) {
   expectTypeOf(props.field.value).toEqualTypeOf<boolean | undefined>();
-  return <input {...inputProps(props.field, { kind: "checkbox" })} aria-label={props.label} />;
+  return <input {...checkboxProps(props.field)} aria-label={props.label} />;
 }
 
 function NullableText(props: { readonly field: FieldApi<string | null | undefined> }) {

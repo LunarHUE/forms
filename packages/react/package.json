@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "plugins"
+    "plugins",
+    "legacy"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -43,7 +44,32 @@
         "default": "./dist/cjs/plugins.js"
       }
     },
+    "./legacy": {
+      "@lunarhue/source": "./src/legacy.ts",
+      "import": {
+        "types": "./dist/esm/legacy.d.ts",
+        "default": "./dist/esm/legacy.js"
+      },
+      "require": {
+        "types": "./dist/cjs/legacy.d.ts",
+        "default": "./dist/cjs/legacy.js"
+      }
+    },
     "./package.json": "./package.json"
+  },
+  "imports": {
+    "#lunarhue/react": {
+      "@lunarhue/source": {
+        "@lunarhue/react-legacy": "./src/legacy.ts",
+        "default": "./src/react18.ts"
+      },
+      "@lunarhue/react-legacy": {
+        "import": "./dist/esm/legacy.js",
+        "require": "./dist/cjs/legacy.js"
+      },
+      "import": "./dist/esm/react18.js",
+      "require": "./dist/cjs/react18.js"
+    }
   },
   "dependencies": {
     "@lunarhue/forms-core": "workspace:^"
@@ -88,9 +114,16 @@
       "limit": "12.35 kB"
     },
     {
+      "name": "react + every props function",
+      "import": {
+        "dist/esm/index.js": "{ createForms, useForm, inputProps, textareaProps, selectProps, numberProps, rangeProps, checkboxProps, checkboxGroupProps, radioProps, numberPieces }"
+      },
+      "limit": "11.75 kB"
+    },
+    {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.85 kB"
+      "limit": "12.95 kB"
     },
     {
       "name": "react + valibot()",
@@ -98,7 +131,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.35 kB"
+      "limit": "13.4 kB"
     },
     {
       "name": "react + dirty()",
@@ -106,7 +139,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.45 kB"
+      "limit": "13.55 kB"
     },
     {
       "name": "react, everything on",

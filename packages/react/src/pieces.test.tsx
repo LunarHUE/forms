@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createForms, type FieldApi, defineField, inputProps, useForm } from "./index.js";
+import { createForms, type FieldApi, defineField, inputProps, numberPieces, useForm, selectProps, checkboxProps } from "./index.js";
 import { digits, mask, masked, persist } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
@@ -42,16 +42,20 @@ function Order({ fromEvent }: { readonly fromEvent: boolean }) {
         )}
       </form.Field>
       <form.Field name="price">
-        {(field) => (
-          <input
-            aria-label="price"
-            inputMode="decimal"
-            ref={field.ref}
-            value={field.text}
-            onChange={(event) => field.setNumberText(event.target.value)}
-            onBlur={field.handleBlur}
-          />
-        )}
+        {(field) => {
+          // Bound by hand, as a component library's number field would be.
+          const price = numberPieces(field, { empty: 0 });
+          return (
+            <input
+              aria-label="price"
+              inputMode="decimal"
+              ref={field.ref}
+              value={price.text}
+              onChange={(event) => price.setText(event.target.value)}
+              onBlur={price.handleBlur}
+            />
+          );
+        }}
       </form.Field>
       <form.Field name="name">{(field) => <input aria-label="name" {...inputProps(field)} />}</form.Field>
     </>
@@ -82,7 +86,7 @@ describe("field pieces", () => {
     await user.clear(price);
     await user.type(price, "-");
     expect(price.value).toBe("-");
-    expect(valueOf("price")).toBeUndefined();
+    expect(valueOf("price")).toBe(0);
     await user.type(price, "12.");
     expect(price.value).toBe("-12.");
     expect(valueOf("price")).toBe(-12);
@@ -138,15 +142,20 @@ function Settings() {
         )}
       </form.Field>
       <form.Field name="price">
-        {(field) => (
-          <input
-            aria-label="price"
-            ref={field.ref}
-            value={field.text}
-            onChange={(event) => field.setNumberText(event.target.value)}
-            onBlur={field.handleBlur}
-          />
-        )}
+        {(field) => {
+          // Bound by hand, as a component library's number field would be.
+          const price = numberPieces(field, { empty: 0 });
+          return (
+            <input
+              aria-label="price"
+              inputMode="decimal"
+              ref={field.ref}
+              value={price.text}
+              onChange={(event) => price.setText(event.target.value)}
+              onBlur={price.handleBlur}
+            />
+          );
+        }}
       </form.Field>
       <form.Field name="terms">
         {(field) => (
@@ -161,7 +170,7 @@ function Settings() {
       </form.Field>
       <form.Field name="size">
         {(field) => (
-          <select aria-label="size" {...inputProps(field, { kind: "select", empty: "" })}>
+          <select aria-label="size" {...selectProps(field, { empty: "" })}>
             <option value="s">Small</option>
             <option value="l">Large</option>
           </select>
@@ -210,10 +219,10 @@ function Plain() {
       <form.Field name="name">
         {(field) => <input aria-label="name" ref={field.ref} value={field.text} onChange={(event) => field.setText(event.target.value)} />}
       </form.Field>
-      <form.Field name="terms">{(field) => <input aria-label="terms" {...inputProps(field, { kind: "checkbox" })} />}</form.Field>
+      <form.Field name="terms">{(field) => <input aria-label="terms" {...checkboxProps(field)} />}</form.Field>
       <form.Field name="size">
         {(field) => (
-          <select aria-label="size" {...inputProps(field, { kind: "select", empty: "" })}>
+          <select aria-label="size" {...selectProps(field, { empty: "" })}>
             <option value="s">Small</option>
             <option value="l">Large</option>
           </select>

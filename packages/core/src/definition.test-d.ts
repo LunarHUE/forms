@@ -25,6 +25,7 @@ import type {
 } from "./index.js";
 import type { HasSchemaPlugin } from "./plugin.js";
 import { arrays } from "./plugins/arrays.js";
+import { fieldValidators, formValidator } from "./index.js";
 
 // A schema type a plugin accepts, and one no plugin accepts.
 interface FakeSchema<I, O = I> extends StandardSchemaV1<I, O> {
@@ -106,16 +107,16 @@ describe("defaults case 1: schema with a schema plugin", () => {
     core.define({
       schema: userSchema,
       validate: {
-        fields: {
+        fields: fieldValidators({
           age: (value) => {
             expectTypeOf(value).toEqualTypeOf<number | undefined>();
             return value === undefined ? { message: "required" } : undefined;
           },
-        },
-        form: (value) => {
+        }),
+        form: formValidator((value) => {
           expectTypeOf(value).toEqualTypeOf<DraftUser>();
           return undefined;
-        },
+        }),
       },
       disabled: { age: true, address: { city: true } },
       onSubmit: (value, ctx) => {
@@ -125,7 +126,7 @@ describe("defaults case 1: schema with a schema plugin", () => {
       },
     });
     // The whole schema is still a valid form validator for the draft.
-    core.define({ schema: userSchema, validate: { form: userSchema } });
+    core.define({ schema: userSchema, validate: { form: formValidator(userSchema) } });
   });
 
   it("rejects defaults of the wrong type", () => {
@@ -153,12 +154,12 @@ describe("defaults case 1: from the definition's own plugins", () => {
       schema: userSchema,
       plugins: [fakePlugin],
       validate: {
-        fields: {
+        fields: fieldValidators({
           age: (value) => {
             expectTypeOf(value).toEqualTypeOf<number | undefined>();
             return undefined;
           },
-        },
+        }),
       },
     });
   });
@@ -257,7 +258,7 @@ describe("entries that aren't plugins", () => {
 });
 
 describe("a definition's own plugins", () => {
-  const validate = { fields: { name: (value: string) => (value ? undefined : { message: "Required" }) } };
+  const validate = { fields: fieldValidators<{ name: string }>({ name: (value) => (value ? undefined : { message: "Required" }) }) };
   const complete: User = { name: "", age: 0, address: { city: "", zip: "" } };
 
   it("satisfy its own equals and schema", () => {
@@ -276,12 +277,12 @@ describe("a definition's own plugins", () => {
         return next(a, b);
       },
       validate: {
-        fields: {
+        fields: fieldValidators({
           name: (value) => {
             expectTypeOf(value).toEqualTypeOf<string>();
             return undefined;
           },
-        },
+        }),
       },
     });
   });
@@ -308,7 +309,7 @@ describe("a definition's own plugins", () => {
 });
 
 describe("validation", () => {
-  const validate = { fields: { name: (value: string) => (value ? undefined : { message: "Required" }) } };
+  const validate = { fields: fieldValidators<{ name: string }>({ name: (value) => (value ? undefined : { message: "Required" }) }) };
 
   it("needs no plugin", () => {
     createFormsCore().define({ defaultValues: { name: "" }, validate });
@@ -321,12 +322,12 @@ describe("validation", () => {
     createFormsCore().define({
       defaultValues: { name: "" },
       validate: {
-        fields: {
+        fields: fieldValidators({
           name: (value) => {
             expectTypeOf(value).toEqualTypeOf<string>();
             return undefined;
           },
-        },
+        }),
       },
     });
   });
@@ -422,12 +423,12 @@ describe("defaults case 3: literals in defaultValues widen", () => {
     core.define({
       defaultValues: { pickup: false, note: "" } as const,
       validate: {
-        fields: {
+        fields: fieldValidators({
           pickup: (value) => {
             expectTypeOf(value).toEqualTypeOf<boolean>();
             return undefined;
           },
-        },
+        }),
       },
       disabled: { note: true },
       onSubmit: (value) => {
@@ -572,8 +573,8 @@ describe("the error type", () => {
     const form = app.define({
       defaultValues: { name: "" },
       validate: {
-        fields: { name: (value) => (value ? undefined : { key: "required" }) },
-        form: () => ({ fields: { name: { key: "taken" } } }),
+        fields: fieldValidators({ name: (value) => (value ? undefined : { key: "required" }) }),
+        form: formValidator(() => ({ fields: { name: { key: "taken" } } })),
       },
     });
     const store = form.createStore();
@@ -585,7 +586,7 @@ describe("the error type", () => {
     store.setErrors({ form: { message: "x" } });
 
     // @ts-expect-error: a validator must return AppError
-    app.define({ defaultValues: { name: "" }, validate: { fields: { name: () => ({ message: "no" }) } } });
+    app.define({ defaultValues: { name: "" }, validate: { fields: fieldValidators({ name: () => ({ message: "no" }) }) } });
   });
 
   it("allows a plain string error type", () => {

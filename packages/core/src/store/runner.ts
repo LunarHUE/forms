@@ -1,18 +1,16 @@
 import type { MapError } from "../errors.js";
 import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { FieldValidators, FormValidatorInput, ValidateTiming, ValidatorInput } from "../validator.js";
+import type { FieldValidatorSet, FormValidatorSet, ValidateTiming, ValidatorInput } from "../validator.js";
 
 /** The store options validation reads. */
 export interface ValidationOptions<V, E> {
   /** The definition's validators and their timing. */
   readonly validate?: {
-    /** When this form's validators first run. Overrides `timing`. */
-    readonly on?: ValidateTiming;
     /** A validator for the whole value. */
-    readonly form?: FormValidatorInput<V, E>;
+    readonly form?: FormValidatorSet<V, E>;
     /** Field validators shaped like the value. */
-    readonly fields?: FieldValidators<V, E>;
+    readonly fields?: FieldValidatorSet<V, E>;
   } | undefined;
   /** A schema for the whole value. It runs as a form validator, before `validate.form` when both are given. */
   readonly schema?: StandardSchemaV1 | undefined;

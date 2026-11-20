@@ -2,6 +2,7 @@
 // tsc writes declarations for this file, and fails if one of these types names
 // something the adapter doesn't export.
 import {
+  checkboxProps,
   createForms,
   defineField,
   type Choice,
@@ -9,11 +10,12 @@ import {
   type FieldApi,
   type FormOf,
   type HandleOf,
+  numberPieces,
+  numberProps,
   useField,
   useForm,
   useFormContext,
   useFormState,
-  useInputProps,
   useItems,
 } from "@lunarhue/forms-react";
 import { arrays, digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-react/plugins";
@@ -94,11 +96,15 @@ export function useQty(form: OrderForm) {
 }
 
 export function useQtyInput(form: OrderForm) {
-  return useInputProps(form.root.at("qty"), { kind: "number" });
+  return numberProps(useField(form.root.at("qty")));
+}
+
+export function useQtyPieces(form: OrderForm) {
+  return numberPieces(useField(form.root.at("qty")));
 }
 
 export function usePickupInput(form: OrderForm) {
-  return useInputProps(form.root.at("pickup"), { kind: "checkbox" });
+  return checkboxProps(useField(form.root.at("pickup")));
 }
 
 export function useLines(form: OrderForm) {

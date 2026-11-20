@@ -1,7 +1,7 @@
 import type { FormError, Plugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext } from "./index.js";
+import { debounced, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext, fieldValidators } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -21,7 +21,7 @@ const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: ()
 
 describe("with no plugins", () => {
   const forms = createForms({ fields: { TextField } });
-  const profile = forms.define({ defaultValues: { name: "" }, validate: { fields: { name: required } } });
+  const profile = forms.define({ defaultValues: { name: "" }, validate: { fields: fieldValidators({ name: required }) } });
 
   function Page() {
     const form = useForm(profile);
@@ -35,7 +35,7 @@ describe("with no plugins", () => {
           {(field) => field.value}
         </form.Field>
         <form.TextField name="name" label="Name" validate={required} />
-        <scope.TextField name="name" label="Name" validate={{ validate: required, debounce: 100 }} />
+        <scope.TextField name="name" label="Name" validate={debounced(required, 100)} />
       </>
     );
   }
@@ -51,7 +51,7 @@ describe("with no plugins", () => {
 
 describe("with a schema plugin", () => {
   const forms = createForms({ plugins: [fakePlugin], fields: { TextField } });
-  const profile = forms.define({ schema: profileSchema, validate: { fields: { name: required } } });
+  const profile = forms.define({ schema: profileSchema, validate: { fields: fieldValidators({ name: required }) } });
 
   function Page() {
     const form = useForm(profile);
@@ -65,7 +65,7 @@ describe("with a schema plugin", () => {
 
 describe("plugins on the definition", () => {
   const forms = createForms({ fields: { TextField } });
-  const checked = forms.define({ defaultValues: { name: "" }, plugins: [counter], validate: { fields: { name: required } } });
+  const checked = forms.define({ defaultValues: { name: "" }, plugins: [counter], validate: { fields: fieldValidators({ name: required }) } });
   const plain = forms.define({ defaultValues: { name: "" } });
 
   function Page() {

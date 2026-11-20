@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/dom";
 import { useReducer } from "react";
 import { describe, expect, it } from "vitest";
-import { createForms, useForm, useFormContext, useInputProps } from "../src/index.js";
+import { createForms, useForm, useFormContext, inputProps, useField } from "../src/index.js";
 import { act, render } from "./render.js";
 
 // Fast Refresh runs an edited module again and keeps its components' state.
@@ -11,7 +11,7 @@ let signUp = load("first");
 
 function Name() {
   const form = useFormContext(signUp);
-  return <input aria-label="name" {...useInputProps(form.root.at("name"))} />;
+  return <input aria-label="name" {...inputProps(useField(form.root.at("name")))} />;
 }
 
 function Page() {

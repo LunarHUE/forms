@@ -28,7 +28,7 @@ import type {
 import { attach, createFormsCore, invalidFields, subscribeInvalid } from "@lunarhue/forms-core";
 import { createContext, createElement, Fragment, type ReactElement, type ReactNode, useContext, useMemo, useState } from "react";
 import { type AnyScope, makeScope } from "./bound.js";
-import { generatedIdUsed, useId, useSyncExternalStore } from "./compat.js";
+import { generatedIdUsed, useId, useSyncExternalStore } from "#lunarhue/react";
 import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
@@ -311,7 +311,7 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    * `R` and the definition's own plugins `D` are inferred the same way.
    */
   define<V = never, S extends StandardSchemaV1 = never, O = void, I = undefined, R = unknown, const D extends Plugins = []>(
-    config: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    config: DefineConfig<V, S, O, P, E, I, R, D>,
     ...parts: readonly DefineParts<V, S, P, D>[]
   ): ReactFormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, F, Combined<P, D>>;
   /**

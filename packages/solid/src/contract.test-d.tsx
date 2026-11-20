@@ -16,20 +16,28 @@ import { For, Match, Show, Switch, type Accessor } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import {
+  debounced,
   Items,
   createDisabledErrors,
   createField,
   createForm,
   createForms,
-  createInputProps,
   createItems,
   createValidator,
   errorId,
   fieldRef,
+  checkboxGroupProps,
+  checkboxProps,
   inputProps,
+  numberProps,
+  radioProps,
+  rangeProps,
+  selectProps,
+  textareaProps,
   useFormContext,
   type AnyForm,
-  type CheckableProps,
+  type CheckboxGroupInputProps,
+  type CheckboxInputProps,
   type ExactFieldApi,
   type FieldApi,
   type FieldPath,
@@ -38,6 +46,8 @@ import {
   type FormState,
   type HandleOf,
   type NumberInputProps,
+  type RadioInputProps,
+  type RangeInputProps,
   type Scope,
   type SelectProps,
   type SolidForm,
@@ -59,7 +69,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <label>
       {props.label}
-      <input {...inputProps(props.field, { kind: "number" })} />
+      <input {...numberProps(props.field)} />
     </label>
   );
 }
@@ -406,7 +416,7 @@ describe("Field", () => {
       <form.Field handle={qty} validate={(value) => (value === undefined ? { message: "Required" } : null)}>
         {(field) => {
           expectTypeOf(field.value).toEqualTypeOf<number | undefined>();
-          return <input {...inputProps(field, { kind: "number" })} />;
+          return <input {...numberProps(field)} />;
         }}
       </form.Field>
     );
@@ -436,17 +446,17 @@ describe("Field", () => {
     expectTypeOf<"a.b.c.d.e.f.g.h.i">().not.toExtend<FieldPath<Deep>>();
   });
 
-  it("checks inputProps per kind on the field", () => {
+  it("checks the props functions on the field", () => {
     const form = createForm(Signup);
     void (
       <form.Field name="plan">
         {(field) => {
-          expectTypeOf(inputProps(field, { kind: "select" })).toEqualTypeOf<SelectProps>();
-          expectTypeOf(inputProps(field, { kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
-          // @ts-expect-error: a union of literals takes no free text
-          inputProps(field);
+          expectTypeOf(selectProps(field)).toEqualTypeOf<SelectProps>();
+          expectTypeOf(radioProps(field, "pro")).toEqualTypeOf<RadioInputProps>();
+          // @ts-expect-error: a plan is not a number
+          numberProps(field);
           // @ts-expect-error: "team" is not a plan
-          inputProps(field, { kind: "radio", value: "team" });
+          radioProps(field, "team");
           return null;
         }}
       </form.Field>
@@ -590,8 +600,8 @@ describe("registered field components", () => {
         }}
       />
     );
-    void (<form.NumberField name="age" label="Age" validate={{ validate: (value) => (value === undefined ? { message: "Required" } : null), debounce: 300 }} />);
-    void (<form.Field name="age" validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null), debounce: 300 }}>{() => null}</form.Field>);
+    void (<form.NumberField name="age" label="Age" validate={debounced((value) => (value === undefined ? { message: "Required" } : null), 300)} />);
+    void (<form.Field name="age" validate={debounced((value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null), 300)}>{() => null}</form.Field>);
     void (<form.Field name="name" validate={false}>{() => null}</form.Field>);
     void (<billing.TextField name="city" label="City" validate={(value) => (expectTypeOf(value).toEqualTypeOf<string>(), null)} />);
     void (<billing.Field name="geo.lat" validate={(value) => (expectTypeOf(value).toEqualTypeOf<number | undefined>(), null)}>{() => null}</billing.Field>);
@@ -749,36 +759,37 @@ describe("free functions", () => {
     createItems(form.root.at("name"));
   });
 
-  it("picks input props by kind and rejects kinds the field doesn't fit", () => {
+  it("types each props function and rejects fields it doesn't fit", () => {
     const root = createForm(Signup).root;
-    expectTypeOf(createInputProps(root.at("name"))).toEqualTypeOf<TextInputProps>();
-    expectTypeOf(createInputProps(root.at("name"), { type: "email" })).toEqualTypeOf<TextInputProps>();
-    expectTypeOf(createInputProps(root.at("bio"), { kind: "textarea" })).toEqualTypeOf<TextareaProps>();
-    expectTypeOf(createInputProps(root.at("age"), { kind: "number", type: "range" })).toEqualTypeOf<NumberInputProps>();
-    expectTypeOf(createInputProps(root.at("subscribe"), { kind: "checkbox" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("tags"), { kind: "checkbox", value: "news" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("channels"), { kind: "checkbox", value: "sms" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("plan"), { kind: "radio", value: "pro" })).toEqualTypeOf<CheckableProps>();
-    expectTypeOf(createInputProps(root.at("plan"), { kind: "select" })).toEqualTypeOf<SelectProps>();
+    expectTypeOf(inputProps(createField(root.at("name")))).toEqualTypeOf<TextInputProps>();
+    expectTypeOf(inputProps(createField(root.at("name")), { type: "email", describedBy: "hint" })).toEqualTypeOf<TextInputProps>();
+    expectTypeOf(textareaProps(createField(root.at("bio")))).toEqualTypeOf<TextareaProps>();
+    expectTypeOf(numberProps(createField(root.at("age")))).toEqualTypeOf<NumberInputProps>();
+    expectTypeOf(rangeProps(createField(root.at("age")))).toEqualTypeOf<RangeInputProps>();
+    expectTypeOf(checkboxProps(createField(root.at("subscribe")))).toEqualTypeOf<CheckboxInputProps>();
+    expectTypeOf(checkboxGroupProps(createField(root.at("tags")), "news")).toEqualTypeOf<CheckboxGroupInputProps>();
+    expectTypeOf(checkboxGroupProps(createField(root.at("channels")), "sms")).toEqualTypeOf<CheckboxGroupInputProps>();
+    expectTypeOf(radioProps(createField(root.at("plan")), "pro", { describedBy: "hint" })).toEqualTypeOf<RadioInputProps>();
+    expectTypeOf(selectProps(createField(root.at("plan")))).toEqualTypeOf<SelectProps>();
     // @ts-expect-error: a number field is not text
-    createInputProps(root.at("age"));
+    inputProps(createField(root.at("age")));
     // @ts-expect-error: a string field is not a number input
-    createInputProps(root.at("name"), { kind: "number" });
+    numberProps(createField(root.at("name")));
     // @ts-expect-error: a checkbox group's value is one of the array's items
-    createInputProps(root.at("tags"), { kind: "checkbox", value: 1 });
+    checkboxGroupProps(createField(root.at("tags")), 1);
     // @ts-expect-error: a picked option is never undefined
-    createInputProps(root.at("channels"), { kind: "checkbox", value: undefined });
+    checkboxGroupProps(createField(root.at("channels")), undefined);
     // @ts-expect-error: a boolean field is not a select
-    createInputProps(root.at("subscribe"), { kind: "select" });
+    selectProps(createField(root.at("subscribe")));
   });
 
   it("spreads input props onto their elements", () => {
     const root = createForm(Signup).root;
     void (
       <>
-        <textarea {...createInputProps(root.at("bio"), { kind: "textarea" })} />
-        <input {...createInputProps(root.at("subscribe"), { kind: "checkbox" })} />
-        <select {...createInputProps(root.at("plan"), { kind: "select" })} />
+        <textarea {...textareaProps(createField(root.at("bio")))} />
+        <input {...checkboxProps(createField(root.at("subscribe")))} />
+        <select {...selectProps(createField(root.at("plan")))} />
         <div ref={fieldRef(root.at("billing").at("zip"))} tabindex={0} />
       </>
     );
@@ -789,7 +800,7 @@ describe("free functions", () => {
 function Checkbox(props: { field: FieldApi<boolean>; label: string }) {
   return (
     <label>
-      <input {...inputProps(props.field, { kind: "checkbox" })} />
+      <input {...checkboxProps(props.field)} />
       {props.label}
     </label>
   );

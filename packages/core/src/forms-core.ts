@@ -100,7 +100,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
     R = unknown,
     const D extends Plugins = [],
   >(
-    definition: DefineConfig<V, S, O, Combined<P, D>, E, I, R, D>,
+    definition: DefineConfig<V, S, O, P, E, I, R, D>,
     ...given: readonly DefineParts<V, S, P, D>[]
   ): FormDefinition<DefinedValue<V, S, Combined<P, D>>, E, I, R, O, Combined<P, D>> => {
     // `.at` gives a list of parts, so the parts come flattened.

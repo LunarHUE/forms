@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { useSelected } from "./select.js";
-import { useInputProps } from "./input.js";
 import { createForms, useField, useForm, useFormState, useItems, useValidator } from "./index.js";
 
 const forms = createForms();
@@ -23,7 +22,7 @@ it("compiles the test components", () => {
 });
 
 it("compiles the adapter's hooks", () => {
-  for (const hook of [useSelected, useInputProps, useField, useFormState, useItems, useValidator]) {
+  for (const hook of [useSelected, useField, useFormState, useItems, useValidator]) {
     expect(String(hook)).toMatch(compiled);
   }
 });

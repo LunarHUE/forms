@@ -1,11 +1,11 @@
 // The bare form plus one field validator in the definition.
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, useForm, fieldValidators } from "@lunarhue/forms-react";
 import { TextInput } from "./input.js";
 
 const forms = createForms();
 const signIn = forms.define({
   defaultValues: { email: "" },
-  validate: { fields: { email: (value) => (value.includes("@") ? undefined : { message: "Enter an email." }) } },
+  validate: { fields: fieldValidators({ email: (value) => (value.includes("@") ? undefined : { message: "Enter an email." }) }) },
   onSubmit: (value) => value.email,
 });
 

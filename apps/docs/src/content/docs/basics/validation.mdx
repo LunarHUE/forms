@@ -12,17 +12,18 @@ type two passwords that differ.
 
 ## Field validators
 
-`validate.fields` is shaped like the value. Give a field a function that
-returns an error, or `undefined` when the value passes:
+`validate.fields` takes `fieldValidators({...})`, an object shaped like the
+value. Give a field a function that returns an error, or `undefined` when the
+value passes:
 
 ```ts
 const signUp = forms.define({
   defaultValues: { username: "", password: "", confirm: "", terms: false },
   validate: {
-    fields: {
+    fields: fieldValidators({
       username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
       password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
-    },
+    }),
   },
 });
 ```
@@ -33,21 +34,28 @@ field works in place of the function. See
 
 ## Form validators
 
-`validate.form` gets the whole value, so it can compare fields. It returns
-errors keyed by dotted field name, and each one lands on its field:
+`validate.form` takes `formValidator(check)`. The check gets the whole value,
+so it can compare fields. It returns errors keyed by dotted field name, and
+each one lands on its field:
 
 ```ts
 validate: {
-  form: (value) =>
+  form: formValidator((value) =>
     value.confirm === value.password
       ? undefined
       : { fields: { confirm: { message: "The passwords don't match." } } },
+  ),
 },
 ```
 
 `form` in the same object holds errors for the form as a whole. At an array, a
-one-element tuple in `validate.fields` applies its entry to every item:
-`{ lines: [{ sku: checkSku }] }`.
+one-element tuple in `fieldValidators` applies its entry to every item:
+`fieldValidators({ lines: [{ sku: checkSku }] })`.
+
+Both are functions you import, so a form that uses neither doesn't ship the
+code that walks a validator tree or reads those error maps. Written inline in
+`define`, they take the form's value type. Defined on their own, they need it
+given: `fieldValidators<SignUp>({...})`.
 
 ## Validators from a component
 
@@ -56,7 +64,7 @@ mounted, and removes it and its errors on unmount:
 
 ```tsx
 <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
-  {(field) => <input {...inputProps(field, { kind: "checkbox" })} />}
+  {(field) => <input {...checkboxProps(field)} />}
 </form.Field>
 ```
 
@@ -93,12 +101,17 @@ returns the function that removes it.
 
 A validator first runs on the field's first blur. After that it runs on every
 input. To change the first run, set `validate` on `createForms` to `"input"`,
-`"blur"` or `"submit"` for every form, `validate.on` in a definition for one
-form, or `on` on one validator:
+`"blur"` or `"submit"` for every form. For one validator, wrap it in
+`validateOn`:
 
 ```ts
-username: { validate: checkName, on: "input" },
+username: validateOn(checkName, "input"),
 ```
+
+`validateOn`, `debounced` and `recheckOnSubmit` take a function or a Standard
+Schema and nest in any order. They work everywhere a validator does: in
+`fieldValidators`, in `formValidator`, in the `validate` prop and in
+`registerValidator`. [Async validation](./async-validation) uses all three.
 
 A submit runs every validator and stops if any field has an error.
 `field.validate()` runs one field's validators now and resolves true when it

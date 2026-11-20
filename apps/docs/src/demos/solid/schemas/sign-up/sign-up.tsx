@@ -1,4 +1,4 @@
-import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
+import { checkboxProps, createForm, createForms, inputProps, numberProps, selectProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
@@ -39,7 +39,7 @@ export default function SignUpForm() {
             {(field) => (
               <label>
                 Age
-                <input {...inputProps(field, { kind: "number" })} />
+                <input {...numberProps(field)} />
                 {field.shownErrors[0]?.message}
               </label>
             )}
@@ -48,7 +48,7 @@ export default function SignUpForm() {
             {(field) => (
               <label>
                 Plan
-                <select {...inputProps(field, { kind: "select" })}>
+                <select {...selectProps(field)}>
                   <option value="free">Free</option>
                   <option value="pro">Pro</option>
                 </select>
@@ -58,7 +58,7 @@ export default function SignUpForm() {
           <form.Field name="newsletter">
             {(field) => (
               <label>
-                <input {...inputProps(field, { kind: "checkbox" })} />
+                <input {...checkboxProps(field)} />
                 Send me the newsletter
               </label>
             )}

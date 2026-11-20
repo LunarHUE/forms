@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { createForms, type FieldApi, defineField, type FormOf, useForm, useInputProps } from "./index.js";
+import { createForms, type FieldApi, defineField, type FormOf, useForm, inputProps, textareaProps, selectProps, useField } from "./index.js";
 import { digits, mask, type MaskConfig, masked, upper } from "./plugins.js";
 
 /** Shows "5551234" as "(555) 123-4". */
@@ -45,10 +45,10 @@ function ContactForm() {
   const root = form.root;
   return (
     <>
-      <input aria-label="phone" {...useInputProps(root.at("phone"), { type: "tel" })} />
-      <input aria-label="zip" {...useInputProps(root.at("zip"))} />
-      <textarea aria-label="notes" {...useInputProps(root.at("notes"), { kind: "textarea" })} />
-      <select aria-label="code" {...useInputProps(root.at("code"), { kind: "select", empty: "" })}>
+      <input aria-label="phone" {...inputProps(useField(root.at("phone")), { type: "tel" })} />
+      <input aria-label="zip" {...inputProps(useField(root.at("zip")))} />
+      <textarea aria-label="notes" {...textareaProps(useField(root.at("notes")))} />
+      <select aria-label="code" {...selectProps(useField(root.at("code")), { empty: "" })}>
         <option value="1">One</option>
         <option value="2">Two</option>
       </select>
@@ -188,7 +188,7 @@ describe("two masks on one field", () => {
 
   function Twice() {
     const form = useForm(twice);
-    return <input aria-label="phone" {...useInputProps(form.root.at("phone"))} />;
+    return <input aria-label="phone" {...inputProps(useField(form.root.at("phone")))} />;
   }
 
   it("shows the display of the part that attaches first", async () => {

@@ -1,4 +1,4 @@
-import { createForm, createForms } from "@lunarhue/forms-solid";
+import { createForm, createForms, fieldValidators } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { z } from "zod";
 import { TextInput } from "./TextInput";
@@ -18,9 +18,9 @@ const signUp = forms.define({
   defaultValues: { username: "", email: "" },
   // Runs alongside the schema.
   validate: {
-    fields: {
+    fields: fieldValidators({
       username: (name) => (name === "admin" ? { message: "That name is reserved." } : undefined),
-    },
+    }),
   },
   onSubmit: (value) => `Signed up ${value.username}.`,
 });

@@ -1,4 +1,4 @@
-import { type FieldApi, type FormError, inputProps } from "@lunarhue/forms-solid";
+import { checkboxProps, type FieldApi, type FormError, inputProps, numberProps } from "@lunarhue/forms-solid";
 import { For } from "solid-js";
 
 function Errors(props: { readonly id: string; readonly errors: readonly FormError[] }) {
@@ -25,7 +25,7 @@ export function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <div>
       <label for={props.field.id}>{props.label}</label>
-      <input {...inputProps(props.field, { kind: "number" })} />
+      <input {...numberProps(props.field)} />
       <Errors id={props.field.errorId} errors={props.field.shownErrors} />
     </div>
   );
@@ -35,7 +35,7 @@ export function CheckboxField(props: { field: FieldApi<boolean>; label: string }
   return (
     <div>
       <label>
-        <input {...inputProps(props.field, { kind: "checkbox" })} />
+        <input {...checkboxProps(props.field)} />
         {props.label}
       </label>
       <Errors id={props.field.errorId} errors={props.field.shownErrors} />

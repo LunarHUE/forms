@@ -117,6 +117,9 @@ which run in the root `test`.
   major's own copy of the framework instead of the workspace's newest. React
   16.8 ships no JSX runtime, so `apps/react16` points the JSX at its own
   `src/jsx-runtime.ts`, a copy of the one in `packages/react/compat`.
+  `apps/react16` and `apps/react17` also resolve with the
+  `@lunarhue/react-legacy` condition through `withCondition`, as a React 16.8
+  or 17 app must, so the adapter takes its fallback hooks.
 - `specs/`: the Playwright specs. They find things through the contract only:
   roles, labels and test ids.
 - `skips.ts`: the reporter that lists skipped specs with their reasons.

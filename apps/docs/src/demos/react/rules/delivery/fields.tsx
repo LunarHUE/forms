@@ -1,4 +1,4 @@
-import { type FieldApi, inputProps } from "@lunarhue/forms-react";
+import { checkboxProps, type FieldApi, inputProps } from "@lunarhue/forms-react";
 import { rules } from "@lunarhue/forms-react/plugins";
 
 interface FieldProps<V> {
@@ -21,7 +21,7 @@ export function TextField({ field, label }: FieldProps<string>) {
 export function Checkbox({ field, label }: FieldProps<boolean>) {
   return (
     <label>
-      <input {...inputProps(field, { kind: "checkbox" })} />
+      <input {...checkboxProps(field)} />
       {label}
     </label>
   );

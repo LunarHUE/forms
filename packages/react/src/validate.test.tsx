@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput } from "./index.js";
+import { debounced, validateOn, type Choice, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, useForm, type ValidatorInput, fieldValidators, radioProps } from "./index.js";
 
 /** A registered text field that shows its errors and records the props it was given. */
 const given: Record<string, unknown>[] = [];
@@ -23,7 +23,7 @@ function TextField(props: { readonly field: FieldApi<string>; readonly label: st
 const forms = createForms({ fields: { TextField } });
 const signup = forms.define({
   defaultValues: { email: "", name: "", home: { city: "" } },
-  validate: { fields: { name: (value) => (value === "" ? { message: "definition" } : undefined) } },
+  validate: { fields: fieldValidators({ name: (value) => (value === "" ? { message: "definition" } : undefined) }) },
 });
 type SignupForm = FormOf<typeof signup>;
 
@@ -48,7 +48,7 @@ function Signup(props: { readonly check?: Check; readonly debounce?: number }) {
   });
   const check = props.check ?? (() => undefined);
   const input: ValidatorInput<string> =
-    props.debounce === undefined ? (value) => toError(check(value)) : { validate: (value) => toError(check(value)), debounce: props.debounce };
+    props.debounce === undefined ? (value) => toError(check(value)) : debounced((value) => toError(check(value)), props.debounce);
   return (
     <>
       <button type="button" onClick={() => setShown(!shown)}>
@@ -92,7 +92,7 @@ function RadioGroupField(props: { readonly field: FieldApi<Choice>; readonly opt
       {props.options.map((option) => (
         <label key={option}>
           {option}
-          <input {...inputProps(props.field, { kind: "radio", value: option })} />
+          <input {...radioProps(props.field, option)} />
         </label>
       ))}
     </>
@@ -117,7 +117,18 @@ function Delivery() {
   );
 }
 
+function EmailOnInput() {
+  const form = useForm(signup);
+  return <form.TextField name="email" label="Email" validate={validateOn(work, "input")} />;
+}
+
 describe("the validate prop", () => {
+  it("keeps the timing a wrapped check sets", () => {
+    render(<EmailOnInput />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ada@y.io" } });
+    expect(errorsOf("Email")).toBe("work email");
+  });
+
   it("runs on the form's timing, shows its errors, and never reaches the registered component", () => {
     given.length = 0;
     render(<Signup />);
@@ -182,7 +193,7 @@ describe("the validate prop", () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 
-  it("takes an options object with debounce", async () => {
+  it("takes a debounced check", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const check = vi.fn<Check>((value) => (value.length < 3 ? "short" : undefined));
     render(<Signup check={check} debounce={200} />);

@@ -50,24 +50,24 @@ export type {
   IsEqual,
   SnapshotOf,
 } from "./field.js";
-export { errorId, inputProps, useFieldRef, useInputProps } from "./input.js";
+export { errorId, useFieldRef } from "./input.js";
+export { checkboxProps, inputProps, selectProps, textareaProps } from "./input-props.js";
+export { checkboxGroupProps, radioProps } from "./choice-props.js";
+export { numberPieces, numberProps, rangeProps } from "./number-props.js";
+export type { NumberPieces } from "./number-props.js";
 export { elementsOf, fieldOf } from "./lookup.js";
 export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
   CheckboxGroupInputProps,
-  CheckboxGroupOptions,
-  CheckboxInputOptions,
   CheckboxInputProps,
+  EmptyOption,
   FieldObjectLike,
   FieldRef,
-  NumberInputOptions,
   NumberInputProps,
-  RadioInputOptions,
   RadioInputProps,
-  SelectOptions,
+  RangeInputProps,
   SelectProps,
-  TextareaOptions,
   TextareaProps,
   TextInputOptions,
   TextInputProps,

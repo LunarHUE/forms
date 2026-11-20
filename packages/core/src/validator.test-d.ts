@@ -1,15 +1,19 @@
 import { describe, expectTypeOf, it } from "vitest";
+import { createFormsCore, debounced, fieldValidators, formValidator, recheckOnSubmit, validateOn } from "./index.js";
 import type {
   ErrorMap,
+  FieldValidatorSet,
   FieldValidators,
   FormError,
   FormValidatorInput,
+  FormValidatorSet,
   Path,
   StandardSchemaV1,
   Validator,
   ValidatorContext,
   ValidatorInput,
   ValidatorResult,
+  WrappedSchema,
 } from "./index.js";
 
 interface Order {
@@ -50,13 +54,10 @@ describe("Validator", () => {
 });
 
 describe("ValidatorInput", () => {
-  it("accepts a function, a schema and the options object", () => {
+  it("accepts a function, a schema and either one wrapped", () => {
     expectTypeOf(stringSchema).toExtend<ValidatorInput<string>>();
-    expectTypeOf({ validate: stringSchema, debounce: 300, on: "blur" as const }).toExtend<ValidatorInput<string>>();
-    expectTypeOf({
-      validate: (value: string) => (value ? undefined : { message: "x" }),
-      recheckOnSubmit: true,
-    }).toExtend<ValidatorInput<string>>();
+    expectTypeOf(debounced(validateOn(stringSchema, "blur"), 300)).toExtend<ValidatorInput<string>>();
+    expectTypeOf(recheckOnSubmit((value: string) => (value ? undefined : { message: "x" }))).toExtend<ValidatorInput<string>>();
   });
 
   it("takes a schema with a narrower input as a check on a wider field", () => {
@@ -66,7 +67,10 @@ describe("ValidatorInput", () => {
   it("rejects a validator or schema for another value type", () => {
     expectTypeOf(numberSchema).not.toExtend<ValidatorInput<string>>();
     expectTypeOf<Validator<number>>().not.toExtend<ValidatorInput<string>>();
-    expectTypeOf({ validate: numberSchema }).not.toExtend<ValidatorInput<string>>();
+    expectTypeOf(debounced(numberSchema, 300)).not.toExtend<ValidatorInput<string>>();
+    expectTypeOf(validateOn((value: number) => (value ? undefined : { message: "x" }), "input")).not.toExtend<
+      ValidatorInput<string>
+    >();
   });
 });
 
@@ -75,7 +79,7 @@ describe("FieldValidators", () => {
     const fields: FieldValidators<Order> = {
       email: (value) => (value.includes("@") ? undefined : { message: "email" }),
       note: stringSchema,
-      tags: { validate: (value) => (value.length > 3 ? { message: "too many" } : undefined), on: "submit" },
+      tags: validateOn((value) => (value.length > 3 ? { message: "too many" } : undefined), "submit"),
     };
     expectTypeOf(fields).toExtend<FieldValidators<Order>>();
   });
@@ -130,5 +134,105 @@ describe("FormValidatorInput", () => {
     expectTypeOf<ErrorMap<FormError>["fields"]>().toEqualTypeOf<
       Readonly<Record<string, FormError | readonly FormError[] | undefined>> | undefined
     >();
+  });
+});
+
+describe("timing wrappers", () => {
+  it("types an inline check from where it goes, through nested wrappers in any order", () => {
+    const fields: FieldValidators<Order> = {
+      email: debounced(
+        validateOn(
+          recheckOnSubmit(async (value, ctx) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            expectTypeOf(ctx).toEqualTypeOf<ValidatorContext<FormError>>();
+            return value ? undefined : { message: "required" };
+          }),
+          "input",
+        ),
+        300,
+      ),
+      address: {
+        zip: recheckOnSubmit(
+          debounced((value) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            return undefined;
+          }, 300),
+        ),
+      },
+      lines: [{ qty: validateOn(debounced((value) => (value > 0 ? undefined : { message: "qty" }), 100), "blur") }],
+    };
+    expectTypeOf(fields).toExtend<FieldValidators<Order>>();
+  });
+
+  it("types a form validator the same way", () => {
+    const form: FormValidatorInput<Order> = debounced(
+      validateOn((value) => {
+        expectTypeOf(value).toEqualTypeOf<Order>();
+        return value.email ? undefined : { fields: { email: { message: "required" } } };
+      }, "input"),
+      300,
+    );
+    expectTypeOf(form).toExtend<FormValidatorInput<Order>>();
+  });
+
+  it("keeps a wrapped schema's input type, however deep", () => {
+    expectTypeOf(debounced(stringSchema, 300)).toEqualTypeOf<WrappedSchema<string>>();
+    expectTypeOf(recheckOnSubmit(validateOn(debounced(stringSchema, 300), "input"))).toEqualTypeOf<WrappedSchema<string>>();
+  });
+
+  it("rejects a wrapped check for another value type", () => {
+    const fields: FieldValidators<Order> = {
+      // @ts-expect-error: email holds a string, the schema checks numbers
+      email: debounced(validateOn(numberSchema, "input"), 300),
+    };
+    expectTypeOf(fields).toExtend<FieldValidators<Order>>();
+  });
+});
+
+describe("fieldValidators and formValidator", () => {
+  const core = createFormsCore();
+  const order: Order = { email: "", address: { city: "", zip: "" }, lines: [], tags: [] };
+
+  it("take the value type from the definition when written inline", () => {
+    core.define({
+      defaultValues: order,
+      validate: {
+        fields: fieldValidators({
+          email: debounced((value) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            return undefined;
+          }, 300),
+          lines: [{ qty: (value) => (value > 0 ? undefined : { message: "qty" }) }],
+        }),
+        form: formValidator((value) => {
+          expectTypeOf(value).toEqualTypeOf<Order>();
+          return undefined;
+        }),
+      },
+    });
+  });
+
+  it("take the value type as a type argument when defined on their own", () => {
+    const fields = fieldValidators<Order>({ email: (value) => (value ? undefined : { message: "required" }) });
+    expectTypeOf(fields).toEqualTypeOf<FieldValidatorSet<Order>>();
+    expectTypeOf(formValidator(orderSchema)).toEqualTypeOf<FormValidatorSet<Order>>();
+    core.define({ defaultValues: order, validate: { fields, form: formValidator(orderSchema) } });
+  });
+
+  it("reject a bare record, a bare function and a set in the wrong slot", () => {
+    // @ts-expect-error: fields takes fieldValidators({...})
+    core.define({ defaultValues: order, validate: { fields: { email: sync } } });
+    // @ts-expect-error: form takes formValidator(check)
+    core.define({ defaultValues: order, validate: { form: () => undefined } });
+    // @ts-expect-error: a form validator set doesn't go in fields
+    core.define({ defaultValues: order, validate: { fields: formValidator(() => undefined) } });
+    expectTypeOf<FieldValidatorSet<Order>>().not.toEqualTypeOf<FormValidatorSet<Order>>();
+  });
+
+  it("reject a set for another value type", () => {
+    const other = fieldValidators<{ name: string }>({ name: sync });
+    // @ts-expect-error: the set checks another value
+    core.define({ defaultValues: order, validate: { fields: other } });
+    expectTypeOf(other).not.toExtend<FieldValidatorSet<Order>>();
   });
 });

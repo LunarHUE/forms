@@ -1,4 +1,4 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, fieldValidators, useForm } from "@lunarhue/forms-react";
 import { z } from "zod";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
@@ -17,9 +17,9 @@ const signUp = forms.define({
   defaultValues: { username: "", email: "" },
   // Runs alongside the schema.
   validate: {
-    fields: {
+    fields: fieldValidators({
       username: (name) => (name === "admin" ? { message: "That name is reserved." } : undefined),
-    },
+    }),
   },
   onSubmit: (value) => `Signed up ${value.username}.`,
 });

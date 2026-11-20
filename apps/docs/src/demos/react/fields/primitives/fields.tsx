@@ -1,7 +1,7 @@
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Field } from "@base-ui/react/field";
 import { Input } from "@base-ui/react/input";
-import type { FieldApi, FormError } from "@lunarhue/forms-react";
+import { type FieldApi, type FormError, numberPieces } from "@lunarhue/forms-react";
 
 interface FieldProps<T> {
   readonly field: FieldApi<T>;
@@ -43,6 +43,7 @@ export function TextField({ field, label }: FieldProps<string>) {
 
 export function NumberField({ field, label }: FieldProps<number>) {
   const { ref } = field;
+  const number = numberPieces(field);
   return (
     <Field.Root name={field.name} invalid={field.shownErrors.length > 0} disabled={field.disabled}>
       <Field.Label>{label}</Field.Label>
@@ -50,9 +51,9 @@ export function NumberField({ field, label }: FieldProps<number>) {
         inputMode="decimal"
         ref={ref}
         // Keeps "1." and "-" as typed while the field holds 1 and the value before.
-        value={field.text}
-        onValueChange={(text) => field.setNumberText(text)}
-        onBlur={field.handleBlur}
+        value={number.text}
+        onValueChange={(text) => number.setText(text)}
+        onBlur={number.handleBlur}
         readOnly={field.readOnly}
       />
       <Errors errors={field.shownErrors} />

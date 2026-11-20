@@ -50,24 +50,28 @@ export type Validator<V, E = FormError> = (
   ctx: ValidatorContext<E>,
 ) => ValidatorResult<E> | Promise<ValidatorResult<E>>;
 
-/** A validator with options. */
-export interface ValidatorOptions<V, E = FormError> {
-  /** The check: a validator function or a Standard Schema. */
-  readonly validate: Validator<V, E> | StandardSchemaV1<V, unknown>;
-  /** Milliseconds to wait after the last input before running. Submit and `validate()` skip the wait. */
-  readonly debounce?: number;
-  /** When the check first runs. Defaults to the form's timing. */
-  readonly on?: ValidateTiming;
-  /** Run the check again on submit even when its last result is still current. */
-  readonly recheckOnSubmit?: boolean;
+/**
+ * A Standard Schema wrapped by `debounced`, `validateOn` or
+ * `recheckOnSubmit`. At runtime it is a function that runs the schema, and
+ * its issues go through `mapError` as the schema's would. `In` is the
+ * schema's input type.
+ */
+export interface WrappedSchema<In = unknown> {
+  readonly "~schema": true;
+  /** Carries the schema's input type. Types only. */
+  readonly "~types"?: { readonly input: In } | undefined;
 }
+
+/** The input type of a schema or of a wrapped one. */
+export type SchemaInput<S> = S extends StandardSchemaV1<infer In, unknown> ? In : S extends WrappedSchema<infer In> ? In : never;
 
 /**
  * Anything accepted where a field validator goes: a validator function, a
  * Standard Schema whose input type is the field's value type, or either one
- * with options. A schema's issues go through `mapError`.
+ * wrapped by `debounced`, `validateOn` or `recheckOnSubmit`. A schema's
+ * issues go through `mapError`.
  */
-export type ValidatorInput<V, E = FormError> = Validator<V, E> | StandardSchemaV1<V, unknown> | ValidatorOptions<V, E>;
+export type ValidatorInput<V, E = FormError> = Validator<V, E> | StandardSchemaV1<V, unknown> | WrappedSchema<V>;
 
 /** What a form validator returns. `undefined` and `null` mean the form passed. */
 export type FormValidatorResult<E> = ErrorMap<E> | undefined | null;
@@ -81,26 +85,13 @@ export type FormValidator<V, E = FormError> = (
   ctx: ValidatorContext<E>,
 ) => FormValidatorResult<E> | Promise<FormValidatorResult<E>>;
 
-/** A form validator with options. The options mean what they mean on `ValidatorOptions`. */
-export interface FormValidatorOptions<V, E = FormError> {
-  /** The check: a form validator or a Standard Schema for the whole value. */
-  readonly validate: FormValidator<V, E> | StandardSchemaV1<V, unknown>;
-  /** Milliseconds to wait after the last input before running. */
-  readonly debounce?: number;
-  /** When the check first runs. Defaults to the form's timing. */
-  readonly on?: ValidateTiming;
-  /** Run the check again on submit even when its last result is still current. */
-  readonly recheckOnSubmit?: boolean;
-}
-
 /**
- * Anything accepted as `validate.form`. A Standard Schema's issues land on
- * the fields their paths point at.
+ * Anything accepted as `validate.form`: a form validator, a Standard Schema
+ * for the whole value, or either one wrapped by `debounced`, `validateOn` or
+ * `recheckOnSubmit`. A schema's issues land on the fields their paths point
+ * at.
  */
-export type FormValidatorInput<V, E = FormError> =
-  | FormValidator<V, E>
-  | StandardSchemaV1<V, unknown>
-  | FormValidatorOptions<V, E>;
+export type FormValidatorInput<V, E = FormError> = FormValidator<V, E> | StandardSchemaV1<V, unknown> | WrappedSchema<V>;
 
 /**
  * Field validators shaped like the value. At any node it is a
@@ -127,3 +118,25 @@ export type NestedValidators<V, E = FormError> =
 export type ValidatorRecord<V, E = FormError> = {
   readonly [K in KeysOf<V>]?: FieldValidators<ChildValue<V, K>, E>;
 } & { readonly "~standard"?: never };
+
+/** Marks the functions `fieldValidators` and `formValidator` return. Types only. */
+declare const validatorSet: unique symbol;
+
+/**
+ * A definition's field validators, as `fieldValidators` wraps them for
+ * `validate.fields`. A bare record or validator doesn't fit, so a definition
+ * can't leave the wrapper out by mistake.
+ */
+// A function type with one call signature and nothing else, so TypeScript
+// infers `V` for a `fieldValidators` call written inside the config that
+// gives `V`. The brand sits on the return type for the same reason.
+export type FieldValidatorSet<V, E = FormError> = (
+  core: never,
+  add: never,
+  runOf: never,
+) => { readonly [validatorSet]: { readonly fields: (value: V) => V; readonly error: (error: E) => E } };
+
+/** A definition's form validator, as `formValidator` wraps it for `validate.form`. A function type, as `FieldValidatorSet` is. */
+export type FormValidatorSet<V, E = FormError> = (
+  add: never,
+) => { readonly [validatorSet]: { readonly form: (value: V) => V; readonly error: (error: E) => E } };

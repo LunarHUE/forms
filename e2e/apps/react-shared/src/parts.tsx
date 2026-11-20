@@ -10,11 +10,13 @@ import {
 } from "@lunarhue/forms-e2e/contract";
 import {
   type AnyFormStore,
+  checkboxProps,
   createForms,
   defineField,
   type FieldApi,
   type FormError,
   inputProps,
+  numberProps,
   useField,
   useFormContext,
   useFormState,
@@ -101,7 +103,7 @@ function NumberField({ field, label }: FieldProps<number>) {
   return (
     <div className="field">
       <label htmlFor={field.id}>{label}</label>
-      <input {...inputProps(field, { kind: "number" })} />
+      <input {...numberProps(field)} />
       <ErrorList id={field.errorId} errors={field.shownErrors} />
       <Renders id={field.name} />
     </div>
@@ -112,7 +114,7 @@ function Checkbox({ field, label }: FieldProps<boolean | undefined>) {
   return (
     <div className="field">
       <label>
-        <input {...inputProps(field, { kind: "checkbox" })} />
+        <input {...checkboxProps(field)} />
         {label}
       </label>
       <ErrorList id={field.errorId} errors={field.shownErrors} />

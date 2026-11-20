@@ -5,6 +5,7 @@ import { arrays } from "./plugins/arrays.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { ErrorsByKind } from "./store.js";
 import { createFormStore, type FormStoreOptions } from "./store/form-store.js";
+import { fieldValidators, formValidator } from "./index.js";
 
 interface Value {
   name: string;
@@ -30,8 +31,8 @@ describe("errorsByKind", () => {
     const store = make({
       schema: failing({ message: "Schema", path: ["name"] }),
       validate: {
-        form: () => ({ fields: { name: err("Form") } }),
-        fields: { name: () => err("Field") },
+        form: formValidator(() => ({ fields: { name: err("Form") } })),
+        fields: fieldValidators({ name: () => err("Field") }),
       },
     });
     const name = store.root.at("name");
@@ -50,7 +51,7 @@ describe("errorsByKind", () => {
   });
 
   it("returns empty groups for a valid field and for a path with no field", async () => {
-    const store = make({ validate: { fields: { name: () => undefined } } });
+    const store = make({ validate: { fields: fieldValidators({ name: () => undefined }) } });
     await store.validate();
     const empty = { schema: [], form: [], field: [] };
     expect(errorsByKind(store.root.at("name"))).toEqual(empty);
@@ -60,8 +61,8 @@ describe("errorsByKind", () => {
   it("puts a thrown validator's error under its kind, and a form validator's form errors on the root", async () => {
     const store = make({
       validate: {
-        form: () => ({ form: err("Whole form") }),
-        fields: {
+        form: formValidator(() => ({ form: err("Whole form") })),
+        fields: fieldValidators({
           rows: [
             {
               title: () => {
@@ -69,7 +70,7 @@ describe("errorsByKind", () => {
               },
             },
           ],
-        },
+        }),
       },
     });
     await store.validate();
@@ -79,7 +80,7 @@ describe("errorsByKind", () => {
   });
 
   it("drops a registered validator's errors once it is removed", async () => {
-    const store = make({ validate: { fields: { name: () => err("Field") } } });
+    const store = make({ validate: { fields: fieldValidators({ name: () => err("Field") }) } });
     const remove = store.registerValidator(["name"], () => err("Registered"));
     await store.validate();
     expect(errorsByKind(store.root.at("name")).field).toEqual([err("Field"), err("Registered")]);
@@ -89,7 +90,7 @@ describe("errorsByKind", () => {
 
   it("orders a kind's errors by registration, not by which validator ran last", async () => {
     let first: FormError | undefined;
-    const store = make({ validate: { fields: { name: () => first } } });
+    const store = make({ validate: { fields: fieldValidators({ name: () => first }) } });
     store.registerValidator(["name"], () => err("Second"));
     await store.validate();
     first = err("First");

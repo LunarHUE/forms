@@ -2,7 +2,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import { For } from "solid-js";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
-import { type Choice, createForm, createForms, type FieldApi, inputProps } from "./index.js";
+import { debounced, type Choice, createForm, createForms, type FieldApi, inputProps, selectProps, checkboxGroupProps, radioProps } from "./index.js";
 
 interface Option<T> {
   readonly value: T;
@@ -18,7 +18,7 @@ function SelectField(props: {
 }) {
   expectTypeOf(props.field.value).toEqualTypeOf<Choice | undefined>();
   return (
-    <select {...inputProps(props.field, { kind: "select" })} aria-label={props.label}>
+    <select {...selectProps(props.field)} aria-label={props.label}>
       <For each={props.options}>{(option) => <option value={option.value}>{option.label}</option>}</For>
     </select>
   );
@@ -28,7 +28,7 @@ function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Opt
   return (
     <>
       <For each={props.options}>
-        {(option) => <input {...inputProps(props.field, { kind: "radio", value: option.value })} />}
+        {(option) => <input {...radioProps(props.field, option.value)} />}
       </For>
       <button type="button" onClick={() => props.field.setValue(props.options[0]?.value)}>
         First
@@ -40,13 +40,13 @@ function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Opt
 function CheckboxGroupField(props: { field: FieldApi<Choice[]>; options: readonly Option<Choice>[] }) {
   return (
     <For each={props.options}>
-      {(option) => <input {...inputProps(props.field, { kind: "checkbox", value: option.value })} />}
+      {(option) => <input {...checkboxGroupProps(props.field, option.value)} />}
     </For>
   );
 }
 
 function SizeField(props: { field: FieldApi<Choice<number>>; sizes: readonly Choice<number>[] }) {
-  return <For each={props.sizes}>{(size) => <input {...inputProps(props.field, { kind: "radio", value: size })} />}</For>;
+  return <For each={props.sizes}>{(size) => <input {...radioProps(props.field, size)} />}</For>;
 }
 
 function TextField(props: { field: FieldApi<string>; label: string }) {
@@ -110,7 +110,7 @@ function ValidateUses() {
       <form.CheckboxGroupField
         name="channels"
         options={[{ value: "sms", label: "SMS" }]}
-        validate={{ validate: (value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), debounce: 300 }}
+        validate={debounced((value) => (expectTypeOf(value).toEqualTypeOf<("email" | "sms")[]>(), null), 300)}
       />
       <form.SelectField
         handle={form.root.at("country")}
@@ -129,7 +129,7 @@ function ValidateUses() {
 
 // A registered option component that declares a validate prop of its own.
 function OwnValidateSelect(props: { field: FieldApi<Choice>; options: readonly Option<Choice>[]; validate?: boolean }) {
-  return <select {...inputProps(props.field, { kind: "select" })} data-validate={props.validate} />;
+  return <select {...selectProps(props.field)} data-validate={props.validate} />;
 }
 
 // Rejects options and fields that don't fit.

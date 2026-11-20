@@ -72,7 +72,8 @@ on), and `peek()` reads the current snapshot in event handlers. Pass one as
 
 To render something from a handle's state, read it with `useField(handle)`,
 or `useField(handle, select)` to re-render only when the selected part
-changes.
+changes. `useField(handle)` returns the same field object `form.Field` gives
+its children, so `inputProps(useField(handle))` binds an input to it.
 
 </Only>
 

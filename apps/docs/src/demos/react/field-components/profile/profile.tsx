@@ -1,4 +1,4 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, fieldValidators, useForm } from "@lunarhue/forms-react";
 import { CheckboxField, NumberField, TextField } from "./fields";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -15,9 +15,9 @@ interface Profile {
 const profile = forms.define<Profile>({
   defaultValues: { name: "", age: undefined, newsletter: false },
   validate: {
-    fields: {
+    fields: fieldValidators({
       age: (age) => (age === undefined || age < 18 ? { message: "You must be 18 or over." } : undefined),
-    },
+    }),
   },
   onSubmit: (value) => value,
 });

@@ -50,32 +50,30 @@ function resolveField(root: RuntimeHandle, props: FieldTarget): RuntimeHandle {
   });
 }
 
-/** The options object of a validate prop, or undefined for a function, a schema or none. */
-function optionsOf(input: AnyValidateProp) {
-  return input && typeof input === "object" && !("~standard" in input) ? input : undefined;
-}
-
 /** The function a validate prop gives, read when a run starts. Undefined for a schema or none. */
 function functionOf(input: AnyValidateProp): Validator<unknown, unknown> | undefined {
-  const check = optionsOf(input)?.validate ?? input;
-  return typeof check === "function" ? check : undefined;
+  // A schema that is also a function, as some libraries make them, counts as a schema.
+  return typeof input === "function" && !("~standard" in input) ? input : undefined;
 }
 
 /**
  * Adds a bound component's `validate` prop for the life of its owner. The
- * kind and the options are read at mount. A function is read from the prop
- * when each run starts, so a reactive prop that gives another function
+ * kind and the timing tags are read at mount. A function is read from the
+ * prop when each run starts, so a reactive prop that gives another function
  * takes effect without registering again.
  */
 function addPropValidator(handle: RuntimeHandle, props: OneField): void {
   const input = untrack(() => props.validate);
-  if (functionOf(input) === undefined) {
+  const fn = functionOf(input);
+  if (fn === undefined) {
     addValidator(handle, input);
     return;
   }
-  const run: Validator<unknown, unknown> = (value, ctx) => functionOf(untrack(() => props.validate))?.(value, ctx);
-  const options = optionsOf(input);
-  addValidator(handle, options ? { ...options, validate: run } : run);
+  // The tags `debounced`, `validateOn` and `recheckOnSubmit` put on the function come along.
+  addValidator(
+    handle,
+    Object.assign((value: unknown, ctx: never) => functionOf(untrack(() => props.validate))?.(value, ctx), fn),
+  );
 }
 
 /** A registered component bound to a scope: it renders the app's component with `field` filled in. */

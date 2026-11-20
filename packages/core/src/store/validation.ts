@@ -6,14 +6,13 @@ import type { PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { addErrors, type Placed } from "./placed.js";
 import type { SchemaOutput, Validation, ValidationOptions } from "./runner.js";
-import { readFields, type Spec, toSpec } from "./validate/inputs.js";
+import type { ItemValidators } from "./validate/fields.js";
+import { type Spec, toSpec } from "./validate/inputs.js";
 import { place, thrownMessage } from "./validate/place.js";
-import { isConcrete, item, keyOf, matches, type Pattern, startsWith } from "./validate/paths.js";
+import { keyOf, type Pattern, startsWith } from "./validate/paths.js";
 import { copyTree } from "./tree.js";
 
 // Core has no DOM or node types, so this declares the platform globals validation uses.
-declare function setTimeout(run: () => void, ms: number): unknown;
-declare function clearTimeout(handle: unknown): void;
 declare const AbortController: new () => { readonly signal: PlatformAbortSignal; abort(): void };
 
 /**
@@ -22,7 +21,7 @@ declare const AbortController: new () => { readonly signal: PlatformAbortSignal;
  * registration is one owner in the core, named `<kind><n>`, as `field3`, so that
  * `errorsByKind` can group a field's errors without the store keeping more.
  */
-interface Registration {
+export interface Registration {
   readonly owner: string;
   readonly spec: Spec;
   readonly pattern: Pattern;
@@ -31,12 +30,16 @@ interface Registration {
   readonly reaches: boolean;
   /** The runs by field path key. */
   readonly runs: Map<string, Run>;
-  /** Set by submit and `validate()` on the root: runs made after that start armed. */
+  /**
+   * Only on a registration with `item` segments, which `fieldValidators`
+   * makes. Set by submit and `validate()` on the root: runs made after that
+   * start armed.
+   */
   armedAll?: boolean;
 }
 
 /** One registration on one concrete field. */
-interface Run {
+export interface Run {
   readonly reg: Registration;
   readonly path: Path;
   readonly key: string;
@@ -47,7 +50,6 @@ interface Run {
   /** True once it ran while armed. A reset at or below its field clears it. */
   ran?: boolean;
   thrown?: boolean;
-  timer?: unknown;
   /** The latest call, whose result is the one that lands. */
   call?: Call | undefined;
   /** True while the latest call's promise is pending. */
@@ -63,12 +65,19 @@ interface Run {
 interface Call {
   controller: { readonly signal: PlatformAbortSignal; abort(): void } | undefined;
   aborted: boolean;
+  /** Ends the wait of a `debounced` check, so it runs now. */
+  flush?: (() => void) | undefined;
 }
 
 // A primitive's `then` comes from its prototype, which nothing sets.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   typeof (value as { then?: unknown } | null | undefined)?.then === "function";
+
+/** The promise a `debounced` check returns. */
+interface Flushable {
+  readonly "~flush"?: () => void;
+}
 
 // A result with no issues passed. An empty issue list counts as none, as `place` reads it.
 const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unknown> => {
@@ -81,8 +90,8 @@ const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unkno
 const defaultMapError: MapError<FormError> = (raw) => ({ message: raw.message });
 
 /**
- * The validation runner: field and form validators, their timing, debounce
- * and async runs, and placing their errors on fields. Making it and
+ * The validation runner: field and form validators, their timing, async
+ * runs, and placing their errors on fields. Making it and
  * registering validators run nothing: validators first run on a write, a
  * blur, a submit or `validate()`.
  */
@@ -91,11 +100,9 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   // Without `mapError` the form's error type is `FormError`.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const mapError = options.mapError ?? (defaultMapError as unknown as MapError<E>);
-  const formTiming = options.validate?.on ?? options.timing ?? "blur";
+  const formTiming = options.timing ?? "blur";
   // Every run.
   const all = new Set<Run>();
-  // Registrations with `item` segments. A definition has few, so writes loop over them.
-  const patterns = new Set<Registration>();
   let nextOwner = 0;
 
   // A spec's kind is "form" for the schema too, so the schema passes its own.
@@ -140,7 +147,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     return out;
   };
 
-  const busy = (run: Run) => run.timer !== undefined || run.inflight;
+  const busy = (run: Run) => run.inflight;
 
   const mark = (run: Run, on: boolean) => {
     if (run.marked === on) return;
@@ -160,10 +167,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   const idle = (run: Run): Promise<void> | undefined =>
     busy(run) ? new Promise((resolve) => void run.waiters.push(resolve)) : undefined;
 
-  // Stops the pending debounce and the call in flight. Their results never land.
+  // Stops the call in flight. Its result never lands.
   const stop = (run: Run) => {
-    if (run.timer !== undefined) clearTimeout(run.timer);
-    run.timer = undefined;
     const call = run.call;
     run.call = undefined;
     run.inflight = false;
@@ -226,7 +231,6 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
 
   // Calls the check on the field's current value. Sync results land before it returns.
   const execute = (run: Run) => {
-    run.timer = undefined;
     if (!live(run)) return;
     stop(run);
     if (run.armed) run.ran = true;
@@ -261,6 +265,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       return;
     }
     run.inflight = true;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    call.flush = (result as Flushable)["~flush"];
     mark(run, true);
     const finish = (apply: () => void) => {
       // A newer call, a reset or a removal took over, so this result is dropped.
@@ -278,18 +284,6 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     );
   };
 
-  // Starts a run. A debounced check waits unless `now` is true. Either way the older call is stale from here.
-  const start = (run: Run, now: boolean) => {
-    stop(run);
-    const wait = run.reg.spec.debounce;
-    if (now || wait === 0) {
-      execute(run);
-      return;
-    }
-    mark(run, true);
-    run.timer = setTimeout(() => core.batch(() => execute(run)), wait);
-  };
-
   const arm = (run: Run) => {
     run.armed = true;
     run.scopes = undefined;
@@ -299,45 +293,21 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   const touch = (run: Run) => {
     if (!live(run)) return;
     if (!run.armed && run.reg.timing === "input") arm(run);
-    if (run.armed || run.scopes) start(run, false);
-  };
-
-  // Adds the runs of pattern registrations whose fields are `path` or lie under it.
-  const expand = (reg: Registration, path: Path, out: Set<Run>) => {
-    const { pattern } = reg;
-    if (path.length === pattern.length) {
-      out.add(runOf(reg, path));
-      return;
-    }
-    const seg = pattern[path.length];
-    if (seg !== item) {
-      if (seg !== undefined) expand(reg, [...path, seg], out);
-      return;
-    }
-    const snapshot = core.getSnapshot(path);
-    if (!Array.isArray(snapshot.value)) return;
-    for (const key of snapshot.keys ?? []) expand(reg, [...path, key], out);
-  };
-
-  // Adds the pattern runs at or under `path`, and, with `above`, the one at or above it.
-  const patternRuns = (reg: Registration, path: Path, above: boolean, out: Set<Run>) => {
-    const { pattern } = reg;
-    if (pattern.length <= path.length) {
-      if (above && matches(pattern, path, pattern.length)) out.add(runOf(reg, path.slice(0, pattern.length)));
-    } else if (matches(pattern, path, path.length)) expand(reg, path, out);
+    if (run.armed || run.scopes) execute(run);
   };
 
   // Runs every registration at and below `path` now, arming each, and resolves once they land.
   const runNow = (path: Path, rerun: (run: Run) => boolean): Promise<unknown> => {
     const runs = near(path, false, true, true);
-    for (const reg of patterns) patternRuns(reg, path, false, runs);
+    loose?.(path, 0, runs);
     const waits: Promise<void>[] = [];
     core.batch(() => {
       for (const run of runs) {
         if (!live(run)) continue;
         arm(run);
-        if (rerun(run)) start(run, true);
-        else if (run.timer !== undefined) execute(run);
+        if (rerun(run)) execute(run);
+        // Submit and `validate()` skip the wait of a `debounced` check.
+        run.call?.flush?.();
         const wait = idle(run);
         if (wait) waits.push(wait);
       }
@@ -345,10 +315,12 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     return Promise.all(waits);
   };
 
-  const add = (pattern: Pattern, spec: Spec, kind?: ValidatorKind): Registration => {
+  // A registration on one field gets its run now. One with `item` segments gets runs as items match.
+  const add = (pattern: Pattern, spec: Spec, kind?: ValidatorKind, items?: boolean): Registration => {
     const reg = makeRegistration(pattern, spec, kind);
-    if (isConcrete(pattern)) runOf(reg, pattern);
-    else patterns.add(reg);
+    // Without `item` segments a pattern is a path.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    if (!items) runOf(reg, pattern as Path);
     return reg;
   };
 
@@ -357,9 +329,12 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     const spec = toSpec(options.schema, "form");
     if (spec) schemaReg = add([], spec, "schema");
   }
-  const formSpec = toSpec(options.validate?.form, "form");
-  if (formSpec) add([], formSpec);
-  for (const { pattern, spec } of readFields(options.validate?.fields)) add(pattern, spec);
+  // `formValidator` made `form`, which adds its registration.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  options.validate?.form?.(add as never);
+  // `fieldValidators` made `fields`, which takes this runner's parts and returns the item validators.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const loose = options.validate?.fields?.(core as never, add as never, runOf as never) as ItemValidators | undefined;
 
   return {
     register(path, validator) {
@@ -372,35 +347,29 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       };
     },
     async validate(path) {
-      if (path.length === 0) for (const reg of patterns) reg.armedAll = true;
       await runNow(path, () => true);
       return !core.invalidAt(path);
     },
     written(path) {
       const runs = near(path, true, true, true);
-      // Only a pattern that arms on a write needs runs made for it. Runs that exist are in `all`.
-      for (const reg of patterns) if (reg.armedAll || reg.timing === "input") patternRuns(reg, path, true, runs);
+      loose?.(path, 1, runs);
       for (const run of runs) touch(run);
     },
     blurred(path) {
       const runs = near(path, true, true, false);
-      for (const reg of patterns) {
-        const { length } = reg.pattern;
-        if (reg.timing === "blur" && (length === path.length || (reg.reaches && length < path.length)))
-          patternRuns(reg, path, true, runs);
-      }
+      loose?.(path, 2, runs);
       const key = keyOf(path);
       for (const run of runs) {
         if (run.armed || run.reg.timing !== "blur" || !live(run)) continue;
         if (run.key === key) {
           // Blur arms the validators at exactly the blurred field.
           arm(run);
-          start(run, false);
+          execute(run);
         } else if (run.reg.reaches && !inScope(run, path)) {
           // A form validator or schema above the field runs for the blurred subtree only,
           // so a blur on one field doesn't put errors on fields not yet visited.
           (run.scopes ??= []).push(path);
-          start(run, false);
+          execute(run);
         }
       }
     },
@@ -408,7 +377,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       for (const run of near(path, false, true, true)) {
         stop(run);
         settle(run);
-        if (!isConcrete(run.reg.pattern)) {
+        if (run.reg.armedAll !== undefined) {
           drop(run);
           continue;
         }
@@ -426,19 +395,17 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         run.scopes = run.scopes?.filter((scope) => !startsWith(scope, path));
         if (!run.scopes?.length) run.scopes = undefined;
       }
-      if (path.length === 0) for (const reg of patterns) reg.armedAll = false;
+      loose?.(path, 4);
     },
     changed(paths) {
       const runs = new Set<Run>();
       for (const path of paths) {
         near(path, true, true, true, runs);
-        // Runs made for an armed pattern start armed. Other patterns only have the runs that exist.
-        for (const reg of patterns) if (reg.armedAll) patternRuns(reg, path, true, runs);
+        loose?.(path, 3, runs);
       }
-      for (const run of runs) if (live(run) && (run.armed || run.scopes)) start(run, false);
+      for (const run of runs) if (live(run) && (run.armed || run.scopes)) execute(run);
     },
     async settleForSubmit() {
-      for (const reg of patterns) reg.armedAll = true;
       await runNow([], (run) => !run.ran || run.thrown || run.reg.spec.recheckOnSubmit);
     },
     async schemaOutput() {
@@ -449,7 +416,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       const run = runOf(schemaReg, []);
       core.batch(() => {
         arm(run);
-        start(run, true);
+        execute(run);
       });
       await idle(run);
       return captured;

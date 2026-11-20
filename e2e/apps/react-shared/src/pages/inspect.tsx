@@ -1,5 +1,5 @@
 import { inspectScenario as scenario } from "@lunarhue/forms-e2e/contract";
-import { inputProps, useField, useFieldRef, useForm } from "@lunarhue/forms-react";
+import { radioProps, useField, useFieldRef, useForm } from "@lunarhue/forms-react";
 import { forms, Probe, serverId } from "../parts.js";
 
 const settings = forms.define(scenario.definition);
@@ -20,11 +20,11 @@ export function InspectPage() {
                 <fieldset>
                   <legend>{labels.plan}</legend>
                   <label>
-                    <input {...inputProps(field, { kind: "radio", value: "free" })} />
+                    <input {...radioProps(field, "free")} />
                     {labels.free}
                   </label>
                   <label>
-                    <input {...inputProps(field, { kind: "radio", value: "pro" })} />
+                    <input {...radioProps(field, "pro")} />
                     {labels.pro}
                   </label>
                 </fieldset>

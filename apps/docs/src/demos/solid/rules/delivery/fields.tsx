@@ -1,4 +1,4 @@
-import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps, checkboxProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { rules } from "@lunarhue/forms-solid/plugins";
 
@@ -23,7 +23,7 @@ export function TextField(props: FieldProps<string>) {
 export function Checkbox(props: FieldProps<boolean>) {
   return (
     <label>
-      <input {...inputProps(props.field, { kind: "checkbox" })} />
+      <input {...checkboxProps(props.field)} />
       {props.label}
     </label>
   );

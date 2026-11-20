@@ -3,7 +3,7 @@ import { type ReactNode, StrictMode, Suspense, use } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { Items, createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, useInputProps } from "./index.js";
+import { Items, createForms, type FieldApi, inputProps, useField, useForm, useFormContext, useFormState, radioProps, numberProps } from "./index.js";
 import { arrays, dirty, ruled, rules } from "./plugins.js";
 import { type Commits, useCommits } from "./test/helpers.js";
 
@@ -29,8 +29,8 @@ function Plan() {
   const plan = form.root.at("plan");
   return (
     <>
-      <input {...useInputProps(plan, { kind: "radio", value: "free" })} />
-      <input {...useInputProps(plan, { kind: "radio", value: "pro" })} />
+      <input {...radioProps(useField(plan), "free")} />
+      <input {...radioProps(useField(plan), "pro")} />
     </>
   );
 }
@@ -103,7 +103,7 @@ function CountedText(props: { readonly field: FieldApi<string>; readonly label: 
 
 function CountedNumber(props: { readonly field: FieldApi<number>; readonly label: string }) {
   useCommits(commits, props.label);
-  return <input aria-label={props.label} {...inputProps(props.field, { kind: "number" })} />;
+  return <input aria-label={props.label} {...numberProps(props.field)} />;
 }
 
 function Counted(props: { readonly name: string; readonly children: ReactNode }) {

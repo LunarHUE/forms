@@ -3,7 +3,23 @@ import { userEvent } from "@testing-library/user-event";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { errorId as coreErrorId } from "@lunarhue/forms-core";
-import { createForms, errorId, type FormOf, optionId, useForm, useInputProps } from "./index.js";
+import {
+  checkboxGroupProps,
+  checkboxProps,
+  createForms,
+  errorId,
+  type FormOf,
+  inputProps,
+  numberPieces,
+  numberProps,
+  optionId,
+  radioProps,
+  rangeProps,
+  selectProps,
+  textareaProps,
+  useField,
+  useForm,
+} from "./index.js";
 
 interface Settings {
   title: string;
@@ -42,18 +58,20 @@ function Settings() {
     holder.form = form;
   });
   const root = form.root;
+  const tags = useField(root.at("tags"));
+  const plan = useField(root.at("plan"));
   return (
     <>
-      <input aria-label="title" {...useInputProps(root.at("title"))} />
-      <textarea aria-label="bio" {...useInputProps(root.at("bio"), { kind: "textarea" })} />
-      <input aria-label="age" {...useInputProps(root.at("age"), { kind: "number" })} />
-      <input aria-label="volume" {...useInputProps(root.at("volume"), { kind: "range", empty: 0 })} />
-      <input aria-label="newsletter" {...useInputProps(root.at("newsletter"), { kind: "checkbox" })} />
-      <input aria-label="urgent" {...useInputProps(root.at("tags"), { kind: "checkbox", value: "urgent" })} />
-      <input aria-label="later" {...useInputProps(root.at("tags"), { kind: "checkbox", value: "later" })} />
-      <input aria-label="free" {...useInputProps(root.at("plan"), { kind: "radio", value: "free" })} />
-      <input aria-label="pro" {...useInputProps(root.at("plan"), { kind: "radio", value: "pro" })} />
-      <select aria-label="country" {...useInputProps(root.at("country"), { kind: "select", empty: "" })}>
+      <input aria-label="title" {...inputProps(useField(root.at("title")))} />
+      <textarea aria-label="bio" {...textareaProps(useField(root.at("bio")))} />
+      <input aria-label="age" {...numberProps(useField(root.at("age")))} />
+      <input aria-label="volume" {...rangeProps(useField(root.at("volume")))} />
+      <input aria-label="newsletter" {...checkboxProps(useField(root.at("newsletter")))} />
+      <input aria-label="urgent" {...checkboxGroupProps(tags, "urgent")} />
+      <input aria-label="later" {...checkboxGroupProps(tags, "later")} />
+      <input aria-label="free" {...radioProps(plan, "free")} />
+      <input aria-label="pro" {...radioProps(plan, "pro")} />
+      <select aria-label="country" {...selectProps(useField(root.at("country")), { empty: "" })}>
         <option value="">Pick one</option>
         <option value="se">Sweden</option>
         <option value="no">Norway</option>
@@ -69,12 +87,12 @@ function RawAge() {
   useEffect(() => {
     holder.form = form;
   });
-  return <input aria-label="raw age" {...useInputProps(form.root.at("age"), { kind: "number" })} type="text" />;
+  return <input aria-label="raw age" {...numberProps(useField(form.root.at("age")))} type="text" />;
 }
 
 function Email() {
   const form = useForm(settings);
-  return <input aria-label="email" {...useInputProps(form.root.at("title"), { type: "email" })} />;
+  return <input aria-label="email" {...inputProps(useField(form.root.at("title")), { type: "email" })} />;
 }
 
 const input = (label: string) => screen.getByLabelText<HTMLInputElement>(label);
@@ -155,11 +173,13 @@ function Picker() {
   });
   const size = form.root.at("size");
   const picks = form.root.at("picks");
-  const small = useInputProps(size, { kind: "radio", value: "s" });
-  const large = useInputProps(size, { kind: "radio", value: "m l" });
-  const keyed = useInputProps(picks, { kind: "checkbox", value: "k0" });
-  const plain = useInputProps(picks, { kind: "checkbox", value: "a" });
-  const first = useInputProps(picks.item("k0"));
+  const sizeField = useField(size);
+  const picksField = useField(picks);
+  const small = radioProps(sizeField, "s");
+  const large = radioProps(sizeField, "m l");
+  const keyed = checkboxGroupProps(picksField, "k0");
+  const plain = checkboxGroupProps(picksField, "a");
+  const first = inputProps(useField(picks.item("k0")));
   return (
     <>
       <label htmlFor={small.id}>small</label>
@@ -279,7 +299,7 @@ describe("number and range", () => {
     expect(values().age).toBeUndefined();
   });
 
-  it("writes a range's number, and its empty option", () => {
+  it("writes a range's number", () => {
     render(<Settings />);
     const volume = input("volume");
     expect(volume.type).toBe("range");
@@ -348,5 +368,208 @@ describe("checkboxes, radios and selects", () => {
     act(() => current().root.at("plan").setDisabled(true));
     expect(input("free").disabled).toBe(true);
     expect(input("title").disabled).toBe(false);
+  });
+});
+
+const elements = () => [
+  input("title"),
+  screen.getByLabelText<HTMLTextAreaElement>("bio"),
+  input("age"),
+  input("volume"),
+  input("newsletter"),
+  input("urgent"),
+  input("pro"),
+  screen.getByLabelText<HTMLSelectElement>("country"),
+];
+const names = ["title", "bio", "age", "volume", "newsletter", "tags", "plan", "country"] as const;
+
+describe("every kind", () => {
+  it("points aria at the errors once they show", () => {
+    render(<Settings />);
+    for (const element of elements()) expect(element.hasAttribute("aria-invalid")).toBe(false);
+    act(() => {
+      for (const name of names) {
+        current().root.at(name).setErrors({ message: "wrong" });
+        current().root.at(name).setTouched();
+      }
+    });
+    elements().forEach((element, index) => {
+      expect(element.getAttribute("aria-invalid")).toBe("true");
+      expect(element.getAttribute("aria-describedby")).toBe(errorId(current().root.at(names[index] ?? "title")));
+    });
+  });
+
+  it("disables every element with its field", () => {
+    render(<Settings />);
+    act(() => current().root.setDisabled(true));
+    for (const element of elements()) expect(element.disabled).toBe(true);
+  });
+
+  it("marks text, number and range inputs read-only, and number and range write nothing then", () => {
+    render(<Settings />);
+    act(() => current().root.setReadOnly(true));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("bio").readOnly).toBe(true);
+    expect(input("age").readOnly).toBe(true);
+    expect(input("volume").readOnly).toBe(true);
+    fireEvent.change(input("age"), { target: { value: "7" } });
+    fireEvent.change(input("volume"), { target: { value: "9" } });
+    expect(values()).toMatchObject({ age: undefined, volume: 5 });
+  });
+});
+
+const extras = forms.define({ defaultValues: { count: 3, size: undefined as "s" | "l" | undefined } });
+const extraHolder: { form?: FormOf<typeof extras> } = {};
+
+function Extras() {
+  const form = useForm(extras);
+  useEffect(() => {
+    extraHolder.form = form;
+  });
+  return (
+    <>
+      <input aria-label="count" {...numberProps(useField(form.root.at("count")), { empty: 0 })} />
+      <select aria-label="size" {...selectProps(useField(form.root.at("size")))}>
+        <option value="">Any</option>
+        <option value="s">Small</option>
+      </select>
+    </>
+  );
+}
+
+const extraValues = () => extraHolder.form?.root.peek().value;
+
+describe("the empty option", () => {
+  it("is what an empty number input or the select's empty option writes", async () => {
+    render(<Extras />);
+    fireEvent.change(input("count"), { target: { value: "" } });
+    expect(extraValues()?.count).toBe(0);
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText("size"), "s");
+    expect(extraValues()?.size).toBe("s");
+    await user.selectOptions(screen.getByLabelText("size"), "");
+    expect(extraValues()?.size).toBeUndefined();
+  });
+});
+
+interface Rendered {
+  readonly title: ReturnType<typeof inputProps>;
+  readonly age: ReturnType<typeof numberProps>;
+  readonly pro: ReturnType<typeof radioProps>;
+  readonly urgent: ReturnType<typeof checkboxGroupProps>;
+  readonly pieces: ReturnType<typeof numberPieces>;
+}
+const rendered: Rendered[] = [];
+
+// Renders on every change to the form, through a field it doesn't bind, so a
+// render where the bound fields didn't change shows whether their props stayed.
+function Identity() {
+  const form = useForm(settings);
+  useEffect(() => {
+    holder.form = form;
+  });
+  const root = form.root;
+  useField(root.at("country"));
+  const age = useField(root.at("age"));
+  const props = {
+    title: inputProps(useField(root.at("title"))),
+    age: numberProps(age),
+    pro: radioProps(useField(root.at("plan")), "pro"),
+    urgent: checkboxGroupProps(useField(root.at("tags")), "urgent"),
+    pieces: numberPieces(age),
+  };
+  rendered.push(props);
+  return (
+    <>
+      <input aria-label="title" {...props.title} />
+      <input aria-label="age" {...props.age} />
+    </>
+  );
+}
+
+const last = (): Rendered => {
+  const props = rendered[rendered.length - 1];
+  if (props === undefined) throw new Error("not rendered");
+  return props;
+};
+const mount = (): Rendered => {
+  rendered.length = 0;
+  render(<Identity />);
+  return last();
+};
+
+describe("identity", () => {
+  it("keeps the props while their field doesn't change", () => {
+    const before = mount();
+    const renders = rendered.length;
+    act(() => current().root.at("country").setValue("se"));
+    expect(rendered.length).toBeGreaterThan(renders);
+    for (const key of ["title", "age", "pro", "urgent", "pieces"] as const) expect(last()[key]).toBe(before[key]);
+  });
+
+  it("gives new props when the field changes, with the same callbacks", () => {
+    const before = mount();
+    act(() => current().root.at("title").setValue("changed"));
+    expect(last().title).not.toBe(before.title);
+    expect(last().title.onChange).toBe(before.title.onChange);
+    expect(last().title.onBlur).toBe(before.title.onBlur);
+    expect(last().title.ref).toBe(before.title.ref);
+    expect(last().age).toBe(before.age);
+  });
+
+  it("gives new number props and pieces when the typed text changes, with the same callbacks", () => {
+    const before = mount();
+    fireEvent.change(input("age"), { target: { value: "12" } });
+    expect(values().age).toBe(12);
+    expect(last().age).not.toBe(before.age);
+    expect(last().age.onChange).toBe(before.age.onChange);
+    expect(last().age.onBlur).toBe(before.age.onBlur);
+    expect(last().pieces).not.toBe(before.pieces);
+    expect(last().pieces.setText).toBe(before.pieces.setText);
+    expect(last().pieces.handleBlur).toBe(before.pieces.handleBlur);
+    expect(last().pieces.text).toBe("12");
+  });
+});
+
+function Title() {
+  const form = useForm(settings);
+  useEffect(() => {
+    holder.form = form;
+  });
+  const title = useField(form.root.at("title"));
+  return <p>{`${title.value} ${title.touched}`}</p>;
+}
+
+describe("useField(handle)", () => {
+  it("returns the field object form.Field gives its children", () => {
+    const hooked: unknown[] = [];
+    const given: unknown[] = [];
+    function Both() {
+      const form = useForm(settings);
+      const title = form.root.at("title");
+      const field = useField(title);
+      hooked.push(field);
+      expect(field.handle).toBe(title);
+      expect(field.setValue).toBeTypeOf("function");
+      return (
+        <form.Field handle={title}>
+          {(child) => {
+            given.push(child);
+            return <p>{child.value}</p>;
+          }}
+        </form.Field>
+      );
+    }
+    render(<Both />);
+    expect(given).toHaveLength(1);
+    expect(given[0]).toBe(hooked[hooked.length - 1]);
+  });
+
+  it("re-renders when the field changes", () => {
+    render(<Title />);
+    expect(screen.getByText("hello false")).toBeTruthy();
+    act(() => current().root.at("title").setValue("bye"));
+    expect(screen.getByText("bye false")).toBeTruthy();
+    act(() => current().root.at("title").setTouched());
+    expect(screen.getByText("bye true")).toBeTruthy();
   });
 });

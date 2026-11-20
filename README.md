@@ -12,7 +12,7 @@ Lists, undo, masks, schema libraries and the rest are plugins you install.
 ## Install
 
 ```sh
-npm install @lunarhue/forms-react    # React 16.8 and later
+npm install @lunarhue/forms-react    # React 18+, or 16.8+ with a condition
 npm install @lunarhue/forms-solid    # Solid 2, or Solid 1.8+ from ./v1
 ```
 
@@ -209,7 +209,7 @@ no `zod()` in the list.
 | Package                  | What it is                                       |
 | ------------------------ | ------------------------------------------------ |
 | `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
-| `@lunarhue/forms-react`  | React adapter, React 16.8 and later              |
+| `@lunarhue/forms-react`  | React adapter, React 18 and later, 16.8 with the `@lunarhue/react-legacy` condition |
 | `@lunarhue/forms-solid`  | Solid adapter, Solid 2, and Solid 1 from `./v1`  |
 | `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
 | `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |

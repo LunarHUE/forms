@@ -1,6 +1,5 @@
 import type {
   ErrorOf,
-  StandardSchemaV1,
   Validator,
   FieldSnapshot,
   FormSnapshot,
@@ -12,8 +11,10 @@ import type {
   ValueOf,
 } from "@lunarhue/forms-core";
 import { useEffect, useRef } from "react";
+import { type FieldView, fieldViewSource, pickApi } from "./field-api.js";
+import type { FieldApiOf } from "./scope.js";
 import { useSelected } from "./select.js";
-import { fieldSource, formSource, storeOf } from "./sources.js";
+import { formSource, storeOf } from "./sources.js";
 
 /**
  * What the hooks need from a handle: its id, its stable path, and a store to
@@ -44,26 +45,34 @@ export type IsEqual<T> = (previous: T, next: T) => boolean;
 export const whole = <S>(snapshot: S): S => snapshot;
 
 /**
- * Reads a field's snapshot and re-renders when it changes. It reads through
+ * Reads a field and re-renders when it changes. It reads through
  * `useSyncExternalStore` on the handle's store, with the store's server
  * snapshot for server rendering and hydration.
  *
- * With `select`, the component gets what `select` returns and re-renders only
- * when that changes by `isEqual`. `select` may be an inline function. It must
- * return the same value, by `isEqual`, for the same snapshot.
+ * Without `select`, it returns the field object, the same one `form.Field`
+ * gives its children: the snapshot's members, the handle's commands and the
+ * pieces that bind an element. Pass it to a props function such as
+ * `inputProps`.
+ *
+ * With `select`, the component gets what `select` returns from the snapshot
+ * and re-renders only when that changes by `isEqual`. `select` may be an
+ * inline function. It must return the same value, by `isEqual`, for the same
+ * snapshot.
  */
 export const useField: {
-  <H extends HandleLike>(handle: H): SnapshotOf<H>;
+  <H extends HandleLike>(handle: H): FieldApiOf<H>;
   <H extends HandleLike, T>(handle: H, select: (snapshot: SnapshotOf<H>) => T, isEqual?: IsEqual<T>): T;
 } = <H extends HandleLike, T>(
   handle: H,
   select?: (snapshot: SnapshotOf<H>) => T,
   isEqual?: IsEqual<T>,
 ) => {
-  // Snapshots of `handle` are its value and error types, which `~types` records.
+  // Snapshots of `handle` are its value and error types, which `~types` records,
+  // and without `select` the overloads type the field object.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const pick = (select ?? whole) as (snapshot: FieldSnapshot<unknown, unknown>) => T;
-  return useSelected(fieldSource(handle), pick, isEqual);
+  const pick = select as ((snapshot: FieldSnapshot<unknown, unknown>) => T) | undefined;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return useSelected(fieldViewSource(handle), pick === undefined ? (pickApi as (view: FieldView) => T) : (view: FieldView) => pick(view.snapshot), isEqual);
 };
 
 /** What `useFormState` needs from a store. Every `FormStore` fits. `Installed` is the names of its plugins. */
@@ -112,25 +121,17 @@ export interface ValidatorHandleLike extends HandleLike {
 /** A validator input as the runtime reads it. */
 type AnyValidatorInput = ValidatorInput<unknown, unknown> | undefined | null | false;
 
-/** True for a Standard Schema, which validators also accept. */
-const isSchema = (value: unknown): value is StandardSchemaV1 =>
-  typeof value === "object" && value !== null && "~standard" in value;
-
-/** The options object of a validator input, or undefined for a function, a schema or none. */
-function optionsOf(input: AnyValidatorInput) {
-  return input && typeof input === "object" && !isSchema(input) ? input : undefined;
-}
-
-/** The check a validator input gives: its options' `validate`, or the input itself. */
-function checkOf(input: AnyValidatorInput) {
-  const options = optionsOf(input);
-  return options ? options.validate : input;
+/** What `debounced`, `validateOn` and `recheckOnSubmit` put on the function they return. */
+interface Tags {
+  readonly "~on"?: unknown;
+  readonly "~recheck"?: unknown;
+  readonly "~schema"?: unknown;
 }
 
 /** The function a validator input gives. Undefined for a schema or none. */
 function functionOf(input: AnyValidatorInput): Validator<unknown, unknown> | undefined {
-  const check = checkOf(input);
-  return typeof check === "function" ? check : undefined;
+  // A schema that is also a function, as some libraries make them, counts as a schema.
+  return typeof input === "function" && !("~standard" in input) ? input : undefined;
 }
 
 /**
@@ -138,11 +139,12 @@ function functionOf(input: AnyValidatorInput): Validator<unknown, unknown> | und
  * and its errors on unmount. Pass `undefined`, `null` or `false` to add none,
  * so a validator can be conditional without breaking the rules of hooks.
  *
- * A validator function or options object may be inline. The adapter
- * registers once and calls the latest function on each run. It registers
- * again when the handle changes, when a schema is a different object, when
- * a function becomes a schema or the other way round, or when `debounce`,
- * `on` or `recheckOnSubmit` change.
+ * A validator may be inline, wrapped or not. The adapter registers once and
+ * calls the latest function on each run. It registers again when the handle
+ * changes, when a schema is a different object, when a function becomes a
+ * schema or the other way round, or when `validateOn` or `recheckOnSubmit`
+ * change. A wrapped schema is a function, so writing
+ * `debounced(schema, 300)` inline doesn't register again on each render.
  */
 export const useValidator: <H extends ValidatorHandleLike>(
   handle: H,
@@ -156,27 +158,24 @@ export const useValidator: <H extends ValidatorHandleLike>(
     latest.current = input;
   });
 
-  // What decides whether to register again. A function or an options object
-  // may be new on every render, so only these parts of it count. A bare
-  // check and an options object count as different, so switching between
-  // them registers again.
-  const options = optionsOf(input);
-  const check = checkOf(input);
-  const schema = isSchema(check) ? check : undefined;
-  const active = Boolean(input);
-  const withOptions = options !== undefined;
-  const debounce = options?.debounce;
-  const on = options?.on;
-  const recheckOnSubmit = options?.recheckOnSubmit;
+  // What decides whether to register again. A function may be new on every
+  // render, so only its tags count.
+  const fn = functionOf(input);
+  const isFunction = fn !== undefined;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const tags = (fn ?? {}) as Tags;
+  const schema = isFunction ? undefined : input || undefined;
+  const on = tags["~on"];
+  const recheck = tags["~recheck"];
+  const schemaResult = tags["~schema"];
 
   useEffect(() => {
-    if (!active) return undefined;
+    if (!schema && !isFunction) return undefined;
     // The function to call is the latest one given, read when the run starts.
-    const run: Validator<unknown, unknown> = (value, ctx) => functionOf(latest.current)?.(value, ctx);
-    // Core reads an undefined option as not given, so this one object stands for a bare check too.
-    const spec = { validate: schema ?? run, debounce, on, recheckOnSubmit };
+    const run = (value: unknown, ctx: never) => functionOf(latest.current)?.(value, ctx);
+    const check = schema ?? Object.assign(run, { "~on": on, "~recheck": recheck, "~schema": schemaResult });
     // The handle's validator type is its own value type, which `validator` was checked against.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return handle.registerValidator(spec as never);
-  }, [handle, active, withOptions, schema, debounce, on, recheckOnSubmit]);
+    return handle.registerValidator(check as never);
+  }, [handle, isFunction, schema, on, recheck, schemaResult]);
 };

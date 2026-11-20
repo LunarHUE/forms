@@ -2,7 +2,7 @@
 // strict in their value type call for. See core's handle tests.
 import type { ArrayHandle, FieldHandle, FormError } from "@lunarhue/forms-core";
 import { describe, expectTypeOf, it } from "vitest";
-import { Items, createField, createForm, createForms, createInputProps, inputProps, type FieldApi, type HandleOf } from "./index.js";
+import { Items, createField, createForm, createForms, inputProps, type FieldApi, type HandleOf } from "./index.js";
 import { arrays } from "./plugins.js";
 
 interface Tag {
@@ -46,7 +46,7 @@ function TagList<T extends Tag>(props: { tags: ArrayHandle<T[], FormError, "arra
             <>
               <TagFields field={tag} />
               <form.TextField handle={tag.at("name")} label={value} />
-              <input {...createInputProps(name)} />
+              <input {...inputProps(createField(name))} />
             </>
           );
         }}

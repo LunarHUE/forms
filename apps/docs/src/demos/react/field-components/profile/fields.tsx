@@ -1,4 +1,4 @@
-import { type FieldApi, type FormError, inputProps } from "@lunarhue/forms-react";
+import { checkboxProps, type FieldApi, type FormError, inputProps, numberProps } from "@lunarhue/forms-react";
 
 function Errors({ id, errors }: { readonly id: string; readonly errors: readonly FormError[] }) {
   return (
@@ -26,7 +26,7 @@ export function NumberField({ field, label }: { field: FieldApi<number>; label: 
   return (
     <div>
       <label htmlFor={field.id}>{label}</label>
-      <input {...inputProps(field, { kind: "number" })} />
+      <input {...numberProps(field)} />
       <Errors id={field.errorId} errors={field.shownErrors} />
     </div>
   );
@@ -36,7 +36,7 @@ export function CheckboxField({ field, label }: { field: FieldApi<boolean>; labe
   return (
     <div>
       <label>
-        <input {...inputProps(field, { kind: "checkbox" })} />
+        <input {...checkboxProps(field)} />
         {label}
       </label>
       <Errors id={field.errorId} errors={field.shownErrors} />

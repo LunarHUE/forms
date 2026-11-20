@@ -8,6 +8,7 @@ import {
   type PluginErrorHandler,
   type Write,
   type WriteRecord,
+  fieldValidators,
 } from "../index.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
@@ -17,6 +18,7 @@ import { persist } from "./persist.js";
 import { ruled, rules } from "./rules.js";
 import { rebase } from "./rebase.js";
 import { arrays } from "./arrays.js";
+import { formValidator } from "../store/validate/form.js";
 
 interface Contact {
   phone: string;
@@ -826,7 +828,7 @@ describe("reset and submit", () => {
       .define({
         defaultValues: contact(),
         plugins: [plugin],
-        validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } },
+        validate: { fields: fieldValidators({ phone: (value) => (value === "" ? { message: "Required" } : undefined) }) },
       })
       .createStore();
     await store.submit();
@@ -844,7 +846,7 @@ describe("reset and submit", () => {
       .define({
         defaultValues: contact(),
         plugins: [end],
-        validate: { fields: { code: () => gate.then(() => undefined) } },
+        validate: { fields: fieldValidators({ code: () => gate.then(() => undefined) }) },
         onSubmit: (_value, ctx) => {
           sent = ctx.input;
           if (fail) throw new Error("down");
@@ -870,7 +872,7 @@ describe("reset and submit", () => {
     const inputs: unknown[] = [];
     const end = definePlugin({ name: "end", setup: () => ({ onSubmitted: (_submission, input) => void inputs.push(input) }) });
     const store = createFormsCore({ plugins: [arrays(), arrays()] })
-      .define({ defaultValues: contact(), plugins: [end], validate: { fields: { phone: (value) => (value === "" ? { message: "Required" } : undefined) } } })
+      .define({ defaultValues: contact(), plugins: [end], validate: { fields: fieldValidators({ phone: (value) => (value === "" ? { message: "Required" } : undefined) }) } })
       .createStore();
     await store.submit();
     expect(inputs).toEqual([undefined]);
@@ -1069,7 +1071,7 @@ describe("revalidation", () => {
     });
     const form = vi.fn<(value: Contact) => undefined>(() => undefined);
     const store = createFormsCore({ plugins: [arrays(), arrays()] })
-      .define({ defaultValues: contact(), validate: { form }, plugins: [filler] })
+      .define({ defaultValues: contact(), validate: { form: formValidator(form) }, plugins: [filler] })
       .createStore();
     await store.validate();
     form.mockClear();

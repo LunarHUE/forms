@@ -1,4 +1,4 @@
-import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
+import { checkboxProps, createForm, createForms, inputProps, numberProps, selectProps } from "@lunarhue/forms-solid";
 import { docsDevtools } from "@/devtools/enabled";
 
 const forms = createForms({ plugins: [docsDevtools] });
@@ -44,7 +44,7 @@ export default function ProfileForm() {
             {(field) => (
               <label>
                 Age
-                <input {...inputProps(field, { kind: "number" })} />
+                <input {...numberProps(field)} />
                 <output>Stored: {JSON.stringify(field.value) ?? "undefined"}</output>
               </label>
             )}
@@ -53,7 +53,7 @@ export default function ProfileForm() {
             {(field) => (
               <label>
                 Plan
-                <select {...inputProps(field, { kind: "select" })}>
+                <select {...selectProps(field, { empty: "free" })}>
                   <option value="free">Free</option>
                   <option value="pro">Pro</option>
                 </select>
@@ -63,7 +63,7 @@ export default function ProfileForm() {
           <form.Field name="newsletter">
             {(field) => (
               <label>
-                <input {...inputProps(field, { kind: "checkbox" })} />
+                <input {...checkboxProps(field)} />
                 Send me the newsletter
               </label>
             )}

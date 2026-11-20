@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Equals } from "./definition.js";
 import type { FormError, RawError } from "./errors.js";
-import { createFormsCore } from "./index.js";
+import { createFormsCore, fieldValidators, formValidator, validateOn } from "./index.js";
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
@@ -153,18 +153,20 @@ describe("shared settings and per-definition overrides", () => {
 
   it("use the shared show unless the definition has its own", () => {
     const core = createFormsCore({ show: "always" });
-    const shared = core.define({ defaultValues: { a: "" }, validate: { fields: { a: required } } }).createStore();
-    const own = core.define({ defaultValues: { a: "" }, show: "submitted", validate: { fields: { a: required } } }).createStore();
+    const shared = core.define({ defaultValues: { a: "" }, validate: { fields: fieldValidators({ a: required }) } }).createStore();
+    const own = core.define({ defaultValues: { a: "" }, show: "submitted", validate: { fields: fieldValidators({ a: required }) } }).createStore();
     void shared.validate();
     void own.validate();
     expect(shared.root.at("a").peek().shownErrors).toEqual([err("Required")]);
     expect(own.root.at("a").peek()).toMatchObject({ errors: [err("Required")], shownErrors: [] });
   });
 
-  it("use the shared timing unless the definition has its own", () => {
+  it("use the shared timing unless a validator sets its own", () => {
     const core = createFormsCore({ validate: "input" });
-    const shared = core.define({ defaultValues: { a: "x" }, validate: { fields: { a: required } } }).createStore();
-    const own = core.define({ defaultValues: { a: "x" }, validate: { on: "blur", fields: { a: required } } }).createStore();
+    const shared = core.define({ defaultValues: { a: "x" }, validate: { fields: fieldValidators({ a: required }) } }).createStore();
+    const own = core
+      .define({ defaultValues: { a: "x" }, validate: { fields: fieldValidators({ a: validateOn(required, "blur") }) } })
+      .createStore();
     shared.root.at("a").setValue("");
     own.root.at("a").setValue("");
     expect(shared.root.at("a").peek().errors).toEqual([err("Required")]);
@@ -209,11 +211,11 @@ describe("shared settings and per-definition overrides", () => {
         schema,
         defaultValues: { a: "" },
         validate: {
-          fields: {
+          fields: fieldValidators({
             a: () => {
               throw new Error("boom");
             },
-          },
+          }),
         },
       })
       .createStore();
@@ -245,7 +247,7 @@ describe("no side effects", () => {
     const core = createFormsCore({ plugins: [arrays(), plugin, dirty()], mapError, equals });
     const definition = core.define({
       schema: fakeSchema<{ a: string; rows: string[] }>(validate),
-      validate: { on: "input", form, fields: { a: field } },
+      validate: { form: formValidator(form), fields: fieldValidators({ a: field }) },
       equals,
       onSubmit,
     });

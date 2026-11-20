@@ -1,42 +1,44 @@
-import { errorId, type FieldSnapshot, optionId } from "@lunarhue/forms-core";
-import type { ControlProps } from "./input.js";
-import { asText, type FieldPieces, type PiecesHandle } from "./pieces.js";
-import { elementsOf } from "./refs.js";
+import { errorId, type FieldSnapshot } from "@lunarhue/forms-core";
+import type {
+  BaseInputProps,
+  CheckboxInputProps,
+  DescribedByOption,
+  EmptyOption,
+  FieldObjectLike,
+  FieldValue,
+  OptionArgs,
+  SelectProps,
+  TextareaProps,
+  TextInputOptions,
+  TextInputProps,
+} from "./input.js";
+import { asText, type PiecesHandle } from "./pieces.js";
 
-/** A field object as the input props read it: its snapshot getters, handle and pieces. */
-export type InputField = FieldSnapshot<unknown, unknown> &
-  FieldPieces & {
-    readonly handle: { readonly id: string } & PiecesHandle;
-  };
+/** The handle's commands. The field object's types only name the handle's id. */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
+export const handleOf = (field: FieldObjectLike): PiecesHandle => field.handle as unknown as PiecesHandle;
 
-/** Every input option, loosely typed, as the runtime reads them. */
-export interface AnyInputOptions {
-  readonly kind?: string;
-  readonly type?: string;
-  readonly value?: unknown;
-  readonly empty?: unknown;
-  readonly describedBy?: string;
-}
-
-/** Returns the id the input props point `aria-describedby` at while the field shows errors. */
-export function errorIdOf(handle: { readonly id: string }): string {
-  return errorId(handle.id);
-}
+/** The current snapshot from the store, for event handlers. */
+export const current = (handle: PiecesHandle): FieldSnapshot<unknown, unknown> => handle.store.getSnapshot(handle.path);
 
 /** The input element an event was bound on. */
-function inputOf(event: Event): HTMLInputElement | HTMLTextAreaElement | undefined {
+export function inputOf(event: Event): HTMLInputElement | HTMLTextAreaElement | undefined {
   const target = event.currentTarget;
   return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target : undefined;
 }
 
+/** `"true"` while the field is read-only. For elements HTML has no `readonly` for. */
+export const ariaReadOnly = (field: FieldObjectLike): "true" | undefined => (field.readOnly ? "true" : undefined);
+
 /**
- * Adds the props every input kind shares to `own` and returns it. The
- * getters read the field's signal, so each is a reactive read. `id` is the
- * element's id, the handle's unless the element is one option of the field.
+ * Adds the props every kind shares to `own` and returns it. The getters read
+ * the field's getters, so each is a reactive read of that field only. `id`
+ * is the element's id, the handle's unless the element is one option of the
+ * field. The caller's signature types the result.
  */
-function withControl(field: InputField, options: AnyInputOptions | undefined, own: object, id = field.handle.id): object {
-  const errorsId = errorIdOf(field.handle);
-  const control: ControlProps<HTMLElement> = {
+export function withControl(field: FieldObjectLike, options: DescribedByOption | undefined, own: object, id = field.handle.id): never {
+  const errorsId = errorId(field.handle.id);
+  const control: BaseInputProps<HTMLElement> = {
     id,
     get name() {
       return field.name;
@@ -57,182 +59,126 @@ function withControl(field: InputField, options: AnyInputOptions | undefined, ow
     },
   };
   // A prop of `own` wins over the shared one of the same name.
-  return Object.defineProperties(own, { ...Object.getOwnPropertyDescriptors(control), ...Object.getOwnPropertyDescriptors(own) });
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return Object.defineProperties(own, { ...Object.getOwnPropertyDescriptors(control), ...Object.getOwnPropertyDescriptors(own) }) as never;
 }
 
-/** The current snapshot from the store, for event handlers. */
-function current(handle: PiecesHandle): FieldSnapshot<unknown, unknown> {
-  return handle.store.getSnapshot(handle.path);
-}
-
-function textProps(field: InputField, options: AnyInputOptions | undefined, textarea: boolean): object {
-  const own = {
-    get value() {
-      return field.text;
-    },
-    get readonly() {
-      return field.readOnly;
-    },
-    onInput: (event: Event) => {
-      const input = inputOf(event);
-      if (input) field.setText(input.value, event);
-    },
-  };
-  // A textarea has no `type`. Defined, not assigned, so the getters above stay getters.
-  if (!textarea) Object.defineProperty(own, "type", { value: options?.type ?? "text", enumerable: true });
-  return withControl(field, options, own);
-}
-
-function numberProps(field: InputField, options: AnyInputOptions | undefined): object {
-  const { handle } = field;
-  let element: HTMLInputElement | undefined;
-  const own = {
-    type: options?.type ?? "number",
-    get value() {
-      return field.text;
-    },
-    get readonly() {
-      return field.readOnly;
-    },
-    ref: (input: HTMLElement) => {
-      if (input instanceof HTMLInputElement) element = input;
-      field.ref(input);
-    },
-    onInput: (event: Event) => {
-      const input = inputOf(event);
-      // An empty value with `badInput` is text such as `-` or `1.` that isn't a number yet.
-      // The element keeps it as typed, so this writes nothing and changes no text.
-      if (input instanceof HTMLInputElement && !input.validity.badInput) field.setNumberText(input.value, options?.empty);
-    },
-    onBlur: () => {
-      field.handleBlur();
-      // Once the input loses focus it shows the field's number again, including over text such as `1.`.
-      if (element !== undefined) element.value = asText(current(handle).value);
-    },
-  };
-  return withControl(field, options, own);
-}
-
-/** Puts every radio button of the field back to the field's value. */
-function restoreRadios(handle: PiecesHandle): void {
-  const value = asText(current(handle).value);
-  for (const element of elementsOf(handle)) {
-    if (element instanceof HTMLInputElement && element.type === "radio") element.checked = element.value === value;
-  }
-}
-
-function checkboxProps(field: InputField, options: AnyInputOptions | undefined): object {
-  const { handle } = field;
-  const group = options?.value !== undefined;
-  const option = options?.value;
-  const holds = (value: unknown) => (group ? Array.isArray(value) && value.includes(option) : value === true);
-  const own = {
-    type: "checkbox",
-    value: group ? asText(option) : undefined,
-    get checked() {
-      return holds(field.value);
-    },
-    get "aria-readonly"() {
-      return field.readOnly ? "true" : undefined;
-    },
-    onChange: (event: Event) => {
-      const input = inputOf(event);
-      if (!(input instanceof HTMLInputElement)) return;
-      const snapshot = current(handle);
-      if (snapshot.readOnly) {
-        input.checked = holds(snapshot.value);
-        return;
-      }
-      if (!group) {
-        handle.setValue(input.checked);
-        return;
-      }
-      const list: readonly unknown[] = Array.isArray(snapshot.value) ? snapshot.value : [];
-      if (input.checked) handle.setValue(list.includes(option) ? list : [...list, option]);
-      else handle.setValue(list.filter((each) => each !== option));
-    },
-  };
-  return withControl(field, options, own, group ? optionId(handle.id, asText(option)) : handle.id);
-}
-
-function radioProps(field: InputField, options: AnyInputOptions | undefined): object {
-  const { handle } = field;
-  const option = options?.value;
-  const own = {
-    type: "radio",
-    value: asText(option),
-    get checked() {
-      return field.value === option;
-    },
-    get "aria-readonly"() {
-      return field.readOnly ? "true" : undefined;
-    },
-    onChange: (event: Event) => {
-      const input = inputOf(event);
-      if (!(input instanceof HTMLInputElement)) return;
-      if (current(handle).readOnly) restoreRadios(handle);
-      else if (input.checked) handle.setValue(option);
-    },
-  };
-  return withControl(field, options, own, optionId(handle.id, asText(option)));
-}
-
-function selectProps(field: InputField, options: AnyInputOptions | undefined): object {
-  const { handle } = field;
-  const own = {
-    get value() {
-      return asText(field.value);
-    },
-    get "aria-readonly"() {
-      return field.readOnly ? "true" : undefined;
-    },
-    onChange: (event: Event) => {
-      const select = event.currentTarget;
-      if (!(select instanceof HTMLSelectElement)) return;
-      const snapshot = current(handle);
-      if (snapshot.readOnly) select.value = asText(snapshot.value);
-      else handle.setValue(select.value);
-    },
-  };
-  return withControl(field, options, own);
-}
-
-/** Builds the input props for `options.kind`. The caller's overloads type the result. */
-function buildInputProps(field: InputField, options: AnyInputOptions | undefined): object {
-  switch (options?.kind ?? "text") {
-    case "textarea":
-      return textProps(field, options, true);
-    case "number":
-      return numberProps(field, options);
-    case "checkbox":
-      return checkboxProps(field, options);
-    case "radio":
-      return radioProps(field, options);
-    case "select":
-      return selectProps(field, options);
-    default:
-      return textProps(field, options, false);
-  }
-}
+const propsCache = new WeakMap<object, Map<string, unknown>>();
 
 /** An option value with its type, so `1` and `"1"` give different keys. */
-function typedKey(value: unknown): string {
-  return `${typeof value}:${asText(value)}`;
-}
+export const typedKey = (value: unknown): string => `${typeof value}:${asText(value)}`;
 
-/** A key that is equal for two option objects that build the same props. */
-function optionsKey(options: AnyInputOptions = {}): string {
-  return [options.kind ?? "text", options.type ?? "", typedKey(options.value), typedKey(options.empty), options.describedBy ?? ""].join("|");
-}
-
-const propsCache = new WeakMap<object, Map<string, object>>();
-
-/** The input props for a field object, the same object for the same options. */
-export function inputPropsFor(field: InputField, options: AnyInputOptions | undefined): object {
+/**
+ * The props of one kind of element, built once per field object, kind and
+ * key. The key names every option the props depend on, so a call in JSX gets
+ * the same object back each time.
+ */
+export function cachedProps<P>(field: FieldObjectLike, kind: string, options: DescribedByOption | undefined, key: string, build: () => P): P {
   let byKey = propsCache.get(field);
   if (byKey === undefined) propsCache.set(field, (byKey = new Map()));
-  const key = optionsKey(options);
-  let props = byKey.get(key);
-  if (props === undefined) byKey.set(key, (props = buildInputProps(field, options)));
+  const full = `${kind}|${options?.describedBy ?? ""}|${key}`;
+  // Each key holds the props `build` made for it.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  let props = byKey.get(full) as P | undefined;
+  if (props === undefined) byKey.set(full, (props = build()));
   return props;
 }
+
+/** The props of a text input or textarea, without `type`. */
+const textProps = (field: FieldObjectLike) => ({
+  get value() {
+    return field.text;
+  },
+  get readonly() {
+    return field.readOnly;
+  },
+  onInput: (event: Event) => {
+    const input = inputOf(event);
+    if (input) field.setText(input.value, event);
+  },
+});
+
+/**
+ * Returns the props for an `<input>` on a string field:
+ * `<input {...inputProps(field)} />`. `type` is one of the text-like types
+ * and defaults to `"text"`. `value` is `field.text`, and `onInput` writes
+ * through `field.setText`. `describedBy` adds ids to `aria-describedby`,
+ * before the error id.
+ *
+ * Every props function is a plain function: call it in JSX or a component
+ * body. The value, `name`, flags and aria members are getters over the
+ * field's getters, so each updates on its own. The handlers are fixed
+ * functions, so Solid binds them once. A props function returns the same
+ * object for the same field object and options, and a form that never calls
+ * one doesn't ship it. A component library's primitives usually own their
+ * ids and aria, so bind those with the field's pieces instead.
+ *
+ * To run your own handler as well, spread these props, set your own handler
+ * after them, and call ours from it.
+ */
+export const inputProps = (field: FieldObjectLike<string | null | undefined>, options?: TextInputOptions): TextInputProps => {
+  const type = options?.type ?? "text";
+  // Defined, not spread in, so the getters of the text props stay getters.
+  return cachedProps(field, "text", options, type, () =>
+    withControl(field, options, Object.defineProperty(textProps(field), "type", { value: type, enumerable: true })),
+  );
+};
+
+/** Returns the props for a `<textarea>` on a string field. See `inputProps`. */
+export const textareaProps = (field: FieldObjectLike<string | null | undefined>, options?: DescribedByOption): TextareaProps =>
+  cachedProps(field, "textarea", options, "", () => withControl(field, options, textProps(field)));
+
+/**
+ * Returns the props for a single `<select>` on a string field. An option
+ * whose value is `""` writes `empty`, which is required when the field's
+ * type has no `undefined`. See `inputProps`.
+ */
+export const selectProps: <F extends FieldObjectLike<string | null | undefined>>(
+  field: F,
+  ...options: OptionArgs<EmptyOption<FieldValue<F>> & DescribedByOption>
+) => SelectProps = (field: FieldObjectLike, options?: { readonly empty?: unknown } & DescribedByOption) => {
+  const empty = options?.empty;
+  return cachedProps(field, "select", options, typedKey(empty), () => {
+    const handle = handleOf(field);
+    return withControl(field, options, {
+      get value() {
+        return asText(field.value);
+      },
+      get "aria-readonly"() {
+        return ariaReadOnly(field);
+      },
+      onChange: (event: Event) => {
+        const select = event.currentTarget;
+        if (!(select instanceof HTMLSelectElement)) return;
+        const snapshot = current(handle);
+        if (snapshot.readOnly) select.value = asText(snapshot.value);
+        else handle.setValue(select.value === "" ? empty : select.value);
+      },
+    });
+  });
+};
+
+/** Returns the props for `<input type="checkbox">` on a boolean field. See `inputProps`. */
+export const checkboxProps = (field: FieldObjectLike<boolean | null | undefined>, options?: DescribedByOption): CheckboxInputProps =>
+  cachedProps(field, "checkbox", options, "", () => {
+    const handle = handleOf(field);
+    return withControl(field, options, {
+      type: "checkbox",
+      // Solid 2 runs the ref before it sets `type`, and the ref writes the field's text as `value`.
+      // When `type` turns the input into a checkbox, that text becomes the `value` attribute. This removes it.
+      value: undefined,
+      get checked() {
+        return field.value === true;
+      },
+      get "aria-readonly"() {
+        return ariaReadOnly(field);
+      },
+      onChange: (event: Event) => {
+        const input = inputOf(event);
+        if (!(input instanceof HTMLInputElement)) return;
+        const snapshot = current(handle);
+        if (snapshot.readOnly) input.checked = snapshot.value === true;
+        else handle.setValue(input.checked);
+      },
+    });
+  });

@@ -70,9 +70,10 @@ export type FieldCommands<V, E = FormError, Installed extends string = never> = 
  *   `setDisabled`, `setReadOnly`, and `at` on objects or `push`, `insert`,
  *   `remove`, `move` and `item` on arrays;
  * - `handle` itself and `errorId`;
- * - the pieces that bind an element by hand: `text`, `setText`,
- *   `setNumberText`, `ref`, and `handleBlur`, which also drops typed number
- *   text. `inputProps(field)` builds a DOM prop spread from them.
+ * - the pieces that bind an element by hand: `text`, `setText`, `ref` and
+ *   `handleBlur`. `inputProps(field)` and the other props functions build a
+ *   DOM prop spread from them, and `numberPieces(field)` adds the pieces of
+ *   a number input.
  *
  * Don't destructure the snapshot members or `text`: a destructured member is
  * read once. The commands, `handle`, `errorId` and the other pieces never
@@ -91,8 +92,6 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
     readonly text: string;
     /** See `FieldPieces.setText`. */
     readonly setText: FieldPieces["setText"];
-    /** See `FieldPieces.setNumberText`. `empty` is what empty text writes. */
-    readonly setNumberText: (text: string, empty?: V) => void;
     /** See `FieldPieces.ref`. */
     readonly ref: FieldPieces["ref"];
     /** Type information only, always undefined at runtime. */

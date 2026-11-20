@@ -60,8 +60,8 @@ function makeApp(adapter: Adapter, ids: boolean) {
     const plan = adapter.useFormContext(order).root.at("plan");
     return (
       <>
-        <input {...adapter.useInputProps(plan, { kind: "radio", value: "free" })} />
-        <input {...adapter.useInputProps(plan, { kind: "radio", value: "pro" })} />
+        <input {...adapter.radioProps(adapter.useField(plan), "free")} />
+        <input {...adapter.radioProps(adapter.useField(plan), "pro")} />
       </>
     );
   }
