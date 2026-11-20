@@ -1,7 +1,7 @@
 import type { FormError, MapError } from "../errors.js";
 import type { Path } from "../path.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { ValidateTiming, ValidatorContext } from "../validator.js";
+import type { ValidateTiming, ValidatorContext, ValidatorKind } from "../validator.js";
 import type { PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { addErrors, type Placed } from "./placed.js";
@@ -19,7 +19,8 @@ declare const AbortController: new () => { readonly signal: PlatformAbortSignal;
 /**
  * One validator from the definition or from `register`. Its pattern names
  * one field, or every field that matches when it has `item` segments. Each
- * registration is one owner in the core.
+ * registration is one owner in the core, named `<kind><n>`, as `field3`, so that
+ * `errorsByKind` can group a field's errors without the store keeping more.
  */
 interface Registration {
   readonly owner: string;
@@ -97,8 +98,9 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   const patterns = new Set<Registration>();
   let nextOwner = 0;
 
-  const makeRegistration = (pattern: Pattern, spec: Spec): Registration => {
-    const owner = `validator:${nextOwner++}`;
+  // A spec's kind is "form" for the schema too, so the schema passes its own.
+  const makeRegistration = (pattern: Pattern, spec: Spec, kind?: ValidatorKind): Registration => {
+    const owner = (kind ?? spec.kind) + nextOwner++;
     core.addOwner(owner);
     return {
       owner,
@@ -343,8 +345,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     return Promise.all(waits);
   };
 
-  const add = (pattern: Pattern, spec: Spec): Registration => {
-    const reg = makeRegistration(pattern, spec);
+  const add = (pattern: Pattern, spec: Spec, kind?: ValidatorKind): Registration => {
+    const reg = makeRegistration(pattern, spec, kind);
     if (isConcrete(pattern)) runOf(reg, pattern);
     else patterns.add(reg);
     return reg;
@@ -353,7 +355,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   // The definition's validators, in error order: the schema, the form validator, then field validators.
   if (options.schema) {
     const spec = toSpec(options.schema, "form");
-    if (spec) schemaReg = add([], spec);
+    if (spec) schemaReg = add([], spec, "schema");
   }
   const formSpec = toSpec(options.validate?.form, "form");
   if (formSpec) add([], formSpec);
