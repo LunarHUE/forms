@@ -49,13 +49,12 @@ const attributeValued = new Set(["checkbox", "radio", "file", "hidden", "submit"
  * a ref runs, so this writes nothing.
  */
 function showRendered(element: HTMLElement): void {
-  if (element instanceof HTMLInputElement) {
-    if (element.checked !== element.defaultChecked) element.checked = element.defaultChecked;
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    // A textarea has no `checked` or `defaultChecked`, so the first check passes it by.
+    const control = element as HTMLInputElement;
+    if (control.checked !== control.defaultChecked) control.checked = control.defaultChecked;
     // On these types `value` isn't what the user typed, and writing it sets the `value` attribute.
-    if (attributeValued.has(element.type)) return;
-    if (element.value !== element.defaultValue) element.value = element.defaultValue;
-  } else if (element instanceof HTMLTextAreaElement) {
-    if (element.value !== element.defaultValue) element.value = element.defaultValue;
+    if (!attributeValued.has(control.type) && control.value !== control.defaultValue) control.value = control.defaultValue;
   } else if (element instanceof HTMLSelectElement) {
     const rendered = [...element.options].find((option) => option.defaultSelected);
     if (rendered !== undefined && !rendered.selected) rendered.selected = true;
