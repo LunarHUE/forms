@@ -81,10 +81,11 @@ interface View {
   readonly form: number;
   readonly expanded: ReadonlySet<string>;
   readonly row: Path | null;
+  readonly filter: string;
   readonly invalidOnly: boolean;
 }
 
-const fresh = (form: number): View => ({ form, expanded: new Set(), row: null, invalidOnly: false });
+const fresh = (form: number): View => ({ form, expanded: new Set(), row: null, filter: "", invalidOnly: false });
 
 export interface AppProps {
   readonly hook: Hook;
@@ -144,6 +145,7 @@ export function App({ hook, host }: AppProps): JSX.Element {
       form: found.form.id,
       expanded: new Set([...(previous.form === found.form.id ? previous.expanded : []), ...ancestors(found.path)]),
       row: found.path,
+      filter: "",
       invalidOnly: false,
     }));
   };
@@ -202,9 +204,19 @@ export function App({ hook, host }: AppProps): JSX.Element {
         }),
       row: current.row,
       onRow: (row) => updateView(() => ({ row })),
+      filter: current.filter,
+      onFilter: (filter) => updateView(() => ({ filter })),
       invalidOnly: current.invalidOnly,
-      onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly, row: null })),
+      onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly })),
       onHover: shown.entry.adapter === undefined ? undefined : setRowHover,
+      onInspect:
+        shown.entry.adapter === undefined
+          ? undefined
+          : (path) => {
+              const handle = handleOf(shown, path);
+              (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+              setRowHover(path);
+            },
     });
   };
 

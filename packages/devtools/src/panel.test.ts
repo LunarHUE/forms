@@ -228,7 +228,7 @@ describe("Fields", () => {
     expect(row(root, ["tags", keys[1] ?? ""])?.textContent).toContain('1 "b"');
   });
 
-  it("shows flags, with dirty only when the form has dirty()", async () => {
+  it("shows flags as icons, with dirty only when the form has dirty()", async () => {
     const store = form({ name: "" });
     const root = await open();
     button(root, "Fields").click();
@@ -236,41 +236,64 @@ describe("Fields", () => {
     store.root.at("name").setValue("x");
     store.root.at("name").setTouched(true);
     await frame();
-    expect(row(root, ["name"])?.querySelector(".flags")?.textContent).not.toContain("dirty");
-    expect(row(root, ["name"])?.querySelector(".flags")?.textContent).toContain("edited");
+    const flags = [...(row(root, ["name"])?.querySelectorAll(".flag") ?? [])].map((flag) => flag.getAttribute("aria-label"));
+    expect(flags).toEqual(["edited: Changed by the user since the last reset", "touched: Blurred since the last reset"]);
   });
 
-  it("filters to invalid fields and shows the selected field's errors by source", async () => {
+  it("shows a flag's detail in a hover card: the errors by source for invalid, the last write for edited", async () => {
     const store = form({ name: "", email: "" });
-    store.setErrors({ fields: { email: { message: "Taken." } } });
     const root = await open();
     button(root, "Fields").click();
     await frame();
-    const filter = root.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    filter?.click();
+    store.root.at("email").setValue("a@b");
+    store.setErrors({ fields: { email: { message: "Taken." } } });
     await frame();
-    expect(row(root, ["name"])).toBeNull();
-    expect(row(root, ["email"])?.textContent).toContain("Taken.");
-    row(root, ["email"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
+    row(root, ["email"])?.querySelector(".flag.invalid")?.dispatchEvent(new Event("pointerenter"));
     await frame();
-    const detail = root.querySelector('[aria-label="Field detail"]');
-    expect(detail?.textContent).toContain("setErrors Taken.");
-    expect(detail?.textContent).toContain('["email"]');
+    expect(root.querySelector(".hovercard")?.textContent).toBe("InvalidHas errorssetErrorsTaken.");
+    row(root, ["email"])?.querySelector(".flag.invalid")?.dispatchEvent(new Event("pointerleave"));
+    row(root, ["email"])?.querySelector(".flag.edited")?.dispatchEvent(new Event("pointerenter"));
+    await frame();
+    expect(root.querySelector(".hovercard")?.textContent).toContain('"""a@b"user');
   });
 
-  it("shows the last write with its cause and the baseline", async () => {
+  it("filters by name into a flat list, and to the fields with errors", async () => {
+    const store = form({ name: "", address: { city: "", zip: "" } });
+    store.setErrors({ fields: { "address.zip": { message: "No." } } });
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    const box = root.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!box) throw new Error("No filter box.");
+    box.value = "CI";
+    box.dispatchEvent(new Event("input"));
+    await frame();
+    expect([...root.querySelectorAll("[data-path]")].map((item) => item.getAttribute("data-path"))).toEqual(['["address","city"]']);
+    expect(row(root, ["address", "city"])?.textContent).toContain("address.city");
+    box.value = "";
+    box.dispatchEvent(new Event("input"));
+    button(root, "Only fields with errors").click();
+    await frame();
+    expect([...root.querySelectorAll("[data-path]")].map((item) => item.getAttribute("data-path"))).toEqual(['["address","zip"]']);
+    box.value = "name";
+    box.dispatchEvent(new Event("input"));
+    await frame();
+    expect(root.textContent).toContain("No field has an error.");
+  });
+
+  it("shows the selected field's value, baseline and writes with their causes", async () => {
     const store = form({ name: "Ada" });
     const root = await open();
     button(root, "Fields").click();
     await frame();
     row(root, ["name"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
     await frame();
-    expect(root.querySelector('[aria-label="Field detail"]')?.textContent).toContain("same as value");
+    const detail = () => root.querySelector('[aria-label="Field detail"]')?.textContent ?? "";
+    expect(detail()).toBe('namevalue"Ada"baseline"Ada"writesnone logged');
     store.root.at("name").setValue("Grace");
+    store.root.at("name").setValue("Grace Hopper");
     await frame();
-    const detail = root.querySelector('[aria-label="Field detail"]')?.textContent ?? "";
-    expect(detail).toContain("value by user");
-    expect(detail).toContain('"Ada" → "Grace"');
+    expect(detail()).toBe('namevalue"Grace Hopper"baseline"Ada"writes"Grace""Grace Hopper"user"Ada""Grace"user');
   });
 });
 
@@ -401,7 +424,7 @@ describe("inspect", () => {
     expect(clicks).toBe(0);
     expect(card(root)?.querySelector('[aria-label="Unpin the field card"]')).not.toBeNull();
     expect(row(root, ["address", "city"])?.getAttribute("aria-current")).toBe("true");
-    expect(root.querySelector('[aria-label="Field detail"]')?.textContent).toContain('["address","city"]');
+    expect(root.querySelector('[aria-label="Field detail"] strong')?.textContent).toBe("address.city");
     button(root, "Unpin the field card").click();
     await frame();
     expect(card(root)).toBeNull();
@@ -458,6 +481,18 @@ describe("inspect", () => {
     move(text);
     await frame();
     expect(card(root)?.getAttribute("aria-label")).toBe("Field email");
+  });
+
+  it("scrolls a field's element into view from its row's show button", async () => {
+    const store = form({ name: "" });
+    const input = field(store, ["name"]);
+    const scroll = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+    input.scrollIntoView = scroll;
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    button(root, "Show name on the page").click();
+    expect(scroll).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
   });
 
   it("outlines a field's elements while the pointer is over its row", async () => {

@@ -59,11 +59,30 @@ test.describe("devtools", () => {
     await expect(row(page, ["name"])).toContainText('"Ada Lovelace"');
     await input(page, labels.name).fill("Grace Hopper");
     await expect(row(page, ["name"])).toContainText('"Grace Hopper"');
-    await expect(row(page, ["name"])).toContainText("edited");
+    await expect(row(page, ["name"]).getByRole("img", { name: /^edited: / })).toBeVisible();
     await input(page, labels.name).fill("");
     await input(page, labels.name).blur();
-    await expect(row(page, ["name"])).toContainText("invalid");
-    await expect(row(page, ["name"])).toContainText(basicScenario.errors.name);
+    // The invalid flag's hover card lists the errors.
+    await row(page, ["name"]).getByRole("img", { name: /^invalid: / }).hover();
+    await expect(page.getByRole("tooltip")).toContainText(basicScenario.errors.name);
+    // The field card shows the writes, newest first, with their causes.
+    await row(page, ["name"]).locator(".row-main").click();
+    await expect(page.getByRole("region", { name: "Field detail" }).locator(".write").first()).toHaveText('"Grace Hopper"""user');
+  });
+
+  test("the filter box narrows the Fields tab by name, and its toggle to the fields with errors", async ({ page }) => {
+    const { labels } = basicScenario;
+    await openWithDevtools(page, "basic");
+    await page.getByRole("tab", { name: "Fields" }).click();
+    await page.getByRole("searchbox", { name: "Filter fields by name" }).fill("MAI");
+    await expect(page.locator("[data-path]")).toHaveCount(1);
+    await expect(row(page, ["email"])).toBeVisible();
+    await page.getByRole("searchbox", { name: "Filter fields by name" }).fill("");
+    await page.getByRole("button", { name: "Only fields with errors" }).click();
+    await expect(page.locator("[data-path]")).toHaveCount(0);
+    await input(page, labels.name).fill("");
+    await input(page, labels.name).blur();
+    await expect(page.locator("[data-path]")).toHaveCount(1);
   });
 
   test("the hover card finds a radio group's field from either radio, and a click pins it", async ({ page }) => {
