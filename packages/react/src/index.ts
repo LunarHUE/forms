@@ -51,6 +51,7 @@ export type {
   SnapshotOf,
 } from "./field.js";
 export { errorId, inputProps, useFieldRef, useInputProps } from "./input.js";
+export { elementsOf, fieldOf } from "./lookup.js";
 export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
