@@ -40,14 +40,14 @@ test.describe("devtools", () => {
   test("every form has an outline with a tag, and clicking the tag selects the form", async ({ page }) => {
     await openWithDevtools(page, "basic");
     await expect(page.getByRole("button", { name: /pick/i })).toHaveCount(0);
-    await expect(page.locator(".outline.form")).toHaveCount(1);
+    await expect(page.locator(".form-outline")).toHaveCount(1);
     const tag = page.getByRole("button", { name: /^Select form / });
     // A form with no id of its own is named by its place on the page, not by the id React made up.
     await expect(tag).toHaveText(/^(form 1|basic)$/);
     // The outline lets the pointer through to the form.
     await input(page, basicScenario.labels.name).click();
     await tag.click();
-    await expect(page.locator(".outline.form.on")).toHaveCount(1);
+    await expect(page.locator(".form-outline.on")).toHaveCount(1);
     await expect(page.getByRole("button", { name: /^Form .+\. Choose a form$/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Devtools fields" })).toBeVisible();
   });
@@ -93,7 +93,7 @@ test.describe("devtools", () => {
     await expect(card(page, "plan")).toContainText('"free"');
     await page.getByLabel(labels.free).hover();
     await expect(card(page, "plan")).toBeVisible();
-    await expect(page.locator(".outline.field")).toHaveCount(2);
+    await expect(page.locator(".field-outline")).toHaveCount(2);
     // The click pins the card and never reaches the radio.
     await page.getByLabel(labels.pro).click();
     await expect(page.getByRole("button", { name: "Unpin the field card" })).toBeVisible();
@@ -141,10 +141,10 @@ test.describe("devtools", () => {
     await openWithDevtools(page, "inspect");
     await page.getByRole("tab", { name: "Fields" }).click();
     await row(page, ["plan"]).hover();
-    await expect(page.locator(".outline.field")).toHaveCount(2);
+    await expect(page.locator(".field-outline")).toHaveCount(2);
     await row(page, ["rating"]).hover();
-    await expect(page.locator(".outline.field")).toHaveCount(1);
+    await expect(page.locator(".field-outline")).toHaveCount(1);
     await page.mouse.move(0, 0);
-    await expect(page.locator(".outline.field")).toHaveCount(0);
+    await expect(page.locator(".field-outline")).toHaveCount(0);
   });
 });

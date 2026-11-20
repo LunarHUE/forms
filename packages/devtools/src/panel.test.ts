@@ -1,6 +1,6 @@
 import { createFormsCore, type Path, tracking } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { cornerKey } from "./panel/corner.js";
 import { type Hook, hookKey } from "./hook.js";
 import { devtools } from "./index.js";
@@ -23,6 +23,10 @@ afterEach(() => {
   document.body.replaceChildren();
   localStorage.clear();
 });
+
+// Preact runs effects after a paint, with a 35ms timeout in case no frame comes, and the timeout calls
+// `cancelAnimationFrame`. Waiting it out keeps it from firing after jsdom is gone.
+afterAll(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
 /** A form with devtools, subscribed the way an adapter's form is. */
 function form<V extends object>(defaultValues: V, id = "form") {
@@ -55,6 +59,12 @@ const button = (root: ShadowRoot, label: string): HTMLButtonElement => {
   if (!found) throw new Error(`No button "${label}".`);
   return found;
 };
+
+/** Gives an element a box, as the page's layout would. jsdom lays nothing out, so every box is empty there. */
+function laidOut<E extends Element>(element: E): E {
+  element.getBoundingClientRect = () => new DOMRect(20, 40, 200, 32);
+  return element;
+}
 
 const row = (root: ShadowRoot, path: Path) => root.querySelector(`[data-path='${JSON.stringify(path)}']`);
 
@@ -131,18 +141,30 @@ describe("dock", () => {
 
   it("outlines every form with its name on a tag, and the tag selects the form and opens the Fields tab", async () => {
     const store = form({ name: "" }, "signup");
-    const element = document.createElement("form");
+    const element = laidOut(document.createElement("form"));
     document.body.prepend(element);
     // What an adapter's ref reports for the form element.
     tracking.record?.(element, store, true, "test");
     const root = await open();
-    expect(root.querySelectorAll(".outline.form")).toHaveLength(1);
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(1);
     expect(button(root, "Choose a form").textContent).toContain("No form");
     button(root, "Select form signup").click();
     await frame();
-    expect(root.querySelector(".outline.form")?.classList.contains("on")).toBe(true);
+    expect(root.querySelector(".form-outline")?.classList.contains("on")).toBe(true);
     expect(button(root, "Form signup. Choose a form")).toBeDefined();
     expect(root.querySelector('[aria-label="Devtools fields"]')).not.toBeNull();
+  });
+
+  it("outlines no form that isn't rendered, such as one in a hidden tab", async () => {
+    const store = form({ name: "" }, "signup");
+    const element = document.createElement("form");
+    document.body.prepend(element);
+    tracking.record?.(element, store, true, "test");
+    const root = await open();
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(0);
+    laidOut(element);
+    await frame();
+    expect(root.querySelectorAll(".form-outline")).toHaveLength(1);
   });
 
   it("has no pick button", async () => {
@@ -297,19 +319,47 @@ describe("Fields", () => {
   });
 });
 
-describe("bar", () => {
-  it("shows how the selected form's last submission went", async () => {
-    const store = createFormsCore({ plugins: [devtools()] })
-      .define({ defaultValues: { name: "" }, onSubmit: () => Promise.reject(new Error("Down.")) })
-      .createStore(undefined, { id: "checkout" });
-    cleanups.push(store.subscribeForm(() => {}));
+describe("Fields rows", () => {
+  it("selects a field from anywhere on its row, its indent included, and not from its buttons", async () => {
+    form({ address: { city: "" } });
     const root = await open();
     button(root, "Fields").click();
     await frame();
-    expect(root.querySelector(".status")).toBeNull();
-    await store.submit().catch(() => {});
+    button(root, "Expand address").click();
     await frame();
-    expect(root.querySelector(".status")?.textContent).toBe("submit failed");
+    const city = row(root, ["address", "city"]);
+    city?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await frame();
+    expect(row(root, ["address", "city"])?.getAttribute("aria-current")).toBe("true");
+    button(root, "Collapse address").click();
+    await frame();
+    expect(row(root, ["address"])?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("keeps a slot for every flag, so a flag coming or going moves nothing", async () => {
+    const store = form({ name: "" });
+    field(store, ["name"]);
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    const slots = () => row(root, ["name"])?.lastElementChild?.children.length;
+    const before = slots();
+    store.root.at("name").setTouched(true);
+    await frame();
+    expect(root.querySelector(".flag.touched")).not.toBeNull();
+    expect(slots()).toBe(before);
+  });
+
+  it("uses the styled tooltip, never a native title", async () => {
+    const store = form({ name: "" });
+    field(store, ["name"]);
+    store.root.at("name").setValue("Ada");
+    const root = await open();
+    for (const tab of ["Fields", "Log", "Plugins", "Bundle"]) {
+      button(root, tab).click();
+      await frame();
+      expect(root.querySelector("[title]")).toBeNull();
+    }
   });
 });
 
@@ -394,7 +444,7 @@ describe("inspect", () => {
 
   it("shows a card for the field under the pointer while the toggle is on", async () => {
     const store = form({ name: "Ada" });
-    const input = field(store, ["name"]);
+    const input = laidOut(field(store, ["name"]));
     const root = await open();
     move(input);
     await frame();
@@ -405,11 +455,15 @@ describe("inspect", () => {
     await frame();
     expect(card(root)?.getAttribute("aria-label")).toBe("Field name");
     expect(card(root)?.textContent).toContain('"Ada"');
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(1);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(1);
     store.root.at("name").setValue("Grace");
     await frame();
     expect(card(root)?.textContent).toContain('"Grace"');
     move(document.body);
+    await frame();
+    // The card stays a moment after the pointer leaves, for a pointer crossing a gap.
+    expect(card(root)).not.toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 200));
     await frame();
     expect(card(root)).toBeNull();
   });
@@ -513,17 +567,18 @@ describe("inspect", () => {
 
   it("outlines a field's elements while the pointer is over its row", async () => {
     const store = form({ name: "" });
-    field(store, ["name"]);
+    laidOut(field(store, ["name"]));
+    laidOut(field(store, ["name"]));
     field(store, ["name"]);
     const root = await open();
     button(root, "Fields").click();
     await frame();
     row(root, ["name"])?.dispatchEvent(new Event("pointerenter"));
     await frame();
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(2);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(2);
     row(root, ["name"])?.dispatchEvent(new Event("pointerleave"));
     await frame();
-    expect(root.querySelectorAll(".outline.field")).toHaveLength(0);
+    expect(root.querySelectorAll(".field-outline")).toHaveLength(0);
   });
 });
 

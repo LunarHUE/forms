@@ -86,12 +86,11 @@ button that opens a bottom sheet.
   disabled and read-only. Hover or focus one to see what it means and its
   detail: errors by where they came from for invalid, baseline against value
   for dirty, the last write for edited. The pointer button on a row scrolls
-  the field's element into view. Select a row to see its value, its baseline
-  and its last writes, each with its cause. The filter box above the tree
+  the field's element into view. Click anywhere on a row to see the field's
+  value, its baseline and its last writes, each with its cause. A long value
+  keeps its start and end, and its tooltip shows all of it. The filter box above the tree
   lists the fields whose name contains the text, and its toggle lists just
   the fields with errors.
-- The bar shows how the selected form's last submission went, such as
-  `submit failed`, once the form has submitted.
 - The Log tab lists the form's writes and submissions in the order they
   happened, newest first, each write with its cause: `user`, `reset`,
   `rebase` or the plugin's name. A submission that a reset ended shows as
@@ -103,7 +102,8 @@ button that opens a bottom sheet.
   baseline and writes for the input under the pointer. A radio group's
   radios all find their one field, and a custom input finds its field once
   it has the adapter's field ref (`useFieldRef` in React, `fieldRef` in
-  Solid). Hovering a field's label counts as hovering the field. Click to
+  Solid). Hovering a field's label counts as hovering the field, and the card
+  stays while the pointer crosses a gap of up to 32px between them. Click to
   pin the card and select the field's row. The click never reaches the page,
   and inspecting stays on, so the next click pins another field. Escape
   unpins the card; the inspect button turns inspecting off.
@@ -124,6 +124,7 @@ An error that one of our packages raised shows as its code, linked to its
 entry on the [errors page](https://forms.lunarhue.dev/errors).
 
 The panel renders in a shadow root, so the page's styles and its own stay
-apart. It is one chunk, with Preact bundled in, and an app doesn't install
-Preact. While it's open it reads the forms on each animation frame and never
-subscribes to a store, so it never keeps a plugin's `onActive` running.
+apart. It is one chunk, with Preact and the Lucide icons it uses bundled in,
+and an app installs neither. While it's open it reads the forms on each
+animation frame and never subscribes to a store, so it never keeps a plugin's
+`onActive` running.

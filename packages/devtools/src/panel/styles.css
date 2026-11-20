@@ -1,0 +1,140 @@
+/*
+ * The panel's stylesheet. panel-css.ts compiles it with the classes the
+ * panel's TSX uses and the panel puts it in its shadow root, so the page's
+ * styles can't reach it and these can't leak out. No preflight: the shadow
+ * root starts from `all: initial`, and the base layer below resets only what
+ * the panel's elements need.
+ */
+@layer properties, theme, base, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "../panel.tsx";
+@source "./";
+
+/* Hover applies on every device, as it did before Tailwind. */
+@custom-variant hover (&:hover);
+
+/*
+ * The docs site's devtools tokens: the panel stays dark on light and dark
+ * pages. Sizes are in px, so a page's root font size doesn't scale the panel.
+ */
+@theme {
+  --color-*: initial;
+  --color-surface: #18191c;
+  --color-raised: #222327;
+  --color-fg: #ececee;
+  --color-soft: #b4b6bc;
+  --color-muted: #8f9198;
+  --color-line: #2c2e33;
+  --color-thumb: #3d4047;
+  --color-hover: rgb(255 255 255 / 0.06);
+  --color-row-hover: rgb(255 255 255 / 0.03);
+  --color-active: #262d40;
+  --color-brand: #4c7dff;
+  --color-brand-tint: rgb(76 125 255 / 0.14);
+  --color-error: #f0716a;
+  --color-error-tint: rgb(240 113 106 / 0.16);
+  --color-outline: #b8b8b1;
+  --color-white: #fff;
+  /* The Bundle graph's three rows of bars, their numbers and the wedge between. */
+  --color-bar-1: #262f4d;
+  --color-bar-2: #2f3c69;
+  --color-bar-3: #3b4d8a;
+  --color-bar-num: #a9b6dc;
+  --color-wedge: #232a3d;
+
+  --font-*: initial;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* No line height of their own: `text-xs/5` sets one, `text-xs` keeps the parent's. */
+  --text-*: initial;
+  --text-xs: 12px;
+  --text-sm: 13px;
+
+  --spacing: 4px;
+
+  --radius-*: initial;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-*: initial;
+  --shadow-panel: 0 8px 24px rgb(0 0 0 / 0.2);
+}
+
+@layer base {
+  :host {
+    all: initial;
+  }
+
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-thumb) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 5px;
+    background: var(--color-thumb) padding-box;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid rgb(76 125 255 / 0.7);
+    outline-offset: -2px;
+  }
+
+  a {
+    color: var(--color-brand);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  pre {
+    margin: 0;
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  code {
+    font: 12px var(--font-mono);
+    color: var(--color-brand);
+  }
+}

@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { brotliCompressSync } from "node:zlib";
 import solid from "@solidjs/vite-plugin";
 import { build, defaultClientConditions, type PluginOption, type Rolldown } from "vite";
+import { panelCss } from "../packages/devtools/panel-css.js";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -48,7 +49,8 @@ async function measure(framework: string, plugins: PluginOption[], form: string,
     logLevel: "silent",
     mode,
     root: join(fixtures, framework),
-    plugins,
+    // The devtools fixture pulls in the panel, whose stylesheet is a virtual module.
+    plugins: [panelCss(), ...plugins],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
     define: { "process.env.NODE_ENV": JSON.stringify(mode) },
     build: {
