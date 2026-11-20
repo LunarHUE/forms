@@ -16,7 +16,7 @@ const order = forms.define(
 );
 
 export default function BillingForm() {
-  const form = useForm(order);
+  const form = useForm(order, { id: "billing" });
   return (
     <form.Form>
       {(formProps) => (

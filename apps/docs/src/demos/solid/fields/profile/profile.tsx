@@ -1,6 +1,7 @@
 import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 interface Profile {
   name: string;
@@ -18,7 +19,7 @@ const profile = forms.define<Profile>({
 });
 
 export default function ProfileForm() {
-  const form = createForm(profile);
+  const form = createForm(profile, { id: "profile" });
   return (
     <form.Form>
       {(formProps) => (

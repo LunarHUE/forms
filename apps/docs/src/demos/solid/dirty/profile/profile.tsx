@@ -1,8 +1,9 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
 import { baselineOnSubmit, dirty } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [dirty()], fields: { TextField } });
+const forms = createForms({ plugins: [dirty(), docsDevtools], fields: { TextField } });
 
 const profile = forms.define({
   defaultValues: { name: "Ada Lovelace", email: "ada@example.com" },
@@ -12,7 +13,7 @@ const profile = forms.define({
 });
 
 export default function ProfileForm() {
-  const form = createForm(profile);
+  const form = createForm(profile, { id: "profile" });
   return (
     <form.Form>
       {(formProps) => (

@@ -2,8 +2,9 @@ import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { zod } from "@lunarhue/forms-schema/zod";
 import { z } from "zod";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [zod()] });
+const forms = createForms({ plugins: [zod(), docsDevtools] });
 
 const SignUp = z.object({
   name: z.string().min(1, "Enter your name."),
@@ -20,7 +21,7 @@ const signUp = forms.define({
 });
 
 export default function SignUpForm() {
-  const form = createForm(signUp);
+  const form = createForm(signUp, { id: "sign-up" });
   return (
     <form.Form>
       {(formProps) => (

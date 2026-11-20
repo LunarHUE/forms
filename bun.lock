@@ -31,6 +31,7 @@
         "@fontsource-variable/geist-mono": "5.3.0",
         "@fontsource-variable/inter": "5.3.0",
         "@lunarhue/forms-bind": "workspace:*",
+        "@lunarhue/forms-devtools": "workspace:*",
         "@lunarhue/forms-react": "workspace:*",
         "@lunarhue/forms-schema": "workspace:*",
         "@lunarhue/forms-solid": "workspace:*",

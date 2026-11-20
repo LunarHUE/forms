@@ -1,6 +1,7 @@
 import { createForms, inputProps, useForm } from "@lunarhue/forms-react";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 interface Profile {
   name: string;
@@ -18,7 +19,7 @@ const profile = forms.define<Profile>({
 });
 
 export default function ProfileForm() {
-  const form = useForm(profile);
+  const form = useForm(profile, { id: "profile" });
   return (
     <form.Form>
       {(formProps) => (

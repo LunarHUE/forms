@@ -6,7 +6,8 @@
  * React page ships no Solid code.
  *
  * The Code tab shows every file in the demo folder, read with `?raw`, so it
- * is the code that runs. The entry file (`contact.tsx`) comes first.
+ * is the code that runs, minus the docs' devtools wiring (demo/devtools.ts).
+ * The entry file (`contact.tsx`) comes first.
  *
  * Reset: the slot renders once. The live copy goes in the stage, and a copy
  * without <script> tags goes in a <template>. DemoFrame swaps a clone of the
@@ -17,14 +18,13 @@ import { AVAILABLE_FRAMEWORKS, isFramework } from "@/lib/frameworks";
 import { highlight } from "@/lib/highlight";
 
 import { DemoFrame, type DemoFile } from "./DemoFrame";
+import { hideDevtools } from "./demo/devtools";
 import { demoId } from "./demo/ids";
 import "@/styles/demo.css";
 
 interface Props {
   /** The demo's folder under `src/demos/<framework>/`, like `masks/contact`. */
   name: string;
-  /** The form's name on the devtools tag. Default: the last part of `name`. */
-  form?: string;
 }
 
 const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
@@ -35,7 +35,6 @@ const sources = import.meta.glob<string>("/src/demos/**/*.{ts,tsx,css}", {
 
 const { name } = Astro.props;
 const leaf = name.split("/").at(-1)!;
-const form = Astro.props.form ?? leaf;
 const framework = Astro.params.framework;
 if (!framework || !isFramework(framework)) {
   throw new Error(`<Demo name="${name}"> needs a framework page, got ${Astro.url.pathname}.`);
@@ -49,7 +48,7 @@ const entry = `${leaf}.tsx`;
 const files: DemoFile[] = await Promise.all(
   Object.entries(sources)
     .filter(([path]) => path.startsWith(folder))
-    .map(([path, code]) => [path.slice(folder.length), code.replace(/\n$/, "")] as const)
+    .map(([path, code]) => [path.slice(folder.length), hideDevtools(code).replace(/\n$/, "")] as const)
     .toSorted(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a.localeCompare(b)))
     .map(async ([file, code]) => ({ name: file, code, html: await highlight(code, file.split(".").at(-1)) })),
 );
@@ -82,7 +81,7 @@ const loader = others
 <Fragment set:html={loader} />
 <!-- Search skips the demo: its labels and source would crowd the page's prose in results. -->
 <div data-pagefind-ignore>
-  <DemoFrame client:visible id={id} name={name} form={form} files={files}>
+  <DemoFrame client:visible id={id} name={name} files={files}>
     <div data-demo-live><Fragment set:html={html} /></div>
     <template data-demo-initial><Fragment set:html={initial} /></template>
   </DemoFrame>

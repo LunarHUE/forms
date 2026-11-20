@@ -37,7 +37,6 @@ export default defineConfig({
       // these folders, and the dev JSX transform then fails to parse it.
       include: [
         "**/src/components/**/*.{jsx,tsx}",
-        "**/src/devtools/**/*.{jsx,tsx}",
         "**/src/demos/react/**/*.{jsx,tsx}",
         "**/src/layouts/**/*.{jsx,tsx}",
       ],

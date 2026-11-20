@@ -1,8 +1,9 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { dirty, rebase } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [dirty(), rebase()], fields: { TextField } });
+const forms = createForms({ plugins: [dirty(), rebase(), docsDevtools], fields: { TextField } });
 
 const profile = forms.define({
   defaultValues: { name: "Ada Lovelace", email: "ada@example.com" },
@@ -15,7 +16,7 @@ const fetchProfile = () =>
   Promise.resolve({ name: "Ada King", email: "ada@lovelace.dev" });
 
 export default function ProfileForm() {
-  const form = useForm(profile);
+  const form = useForm(profile, { id: "profile" });
 
   // Fields the user edited keep their text. The rest take the server's.
   const refresh = async () => {

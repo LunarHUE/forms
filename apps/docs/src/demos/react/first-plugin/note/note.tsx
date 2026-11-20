@@ -1,7 +1,8 @@
 import { createForms, inputProps, useForm } from "@lunarhue/forms-react";
 import { collapseSpaces } from "./collapseSpaces";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ plugins: [collapseSpaces()] });
+const forms = createForms({ plugins: [collapseSpaces(), docsDevtools] });
 
 const note = forms.define({
   defaultValues: { title: "", body: "" },
@@ -9,7 +10,7 @@ const note = forms.define({
 });
 
 export default function NoteForm() {
-  const form = useForm(note);
+  const form = useForm(note, { id: "note" });
   return (
     <form.Form>
       {(formProps) => (

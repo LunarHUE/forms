@@ -2,8 +2,9 @@ import { signal } from "@lunarhue/forms-bind/solid";
 import { createForm, createForms } from "@lunarhue/forms-solid";
 import { createSignal } from "solid-js";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField } });
 
 interface Settings {
   displayName: string;
@@ -36,6 +37,7 @@ export default function SettingsForm() {
   // The form starts from the signal's value. Errors, touched and the
   // rest stay in the form. Only the value is copied.
   const form = createForm(settingsForm, {
+    id: "settings",
     plugins: [signal(settings, setSettings)],
   });
   return (

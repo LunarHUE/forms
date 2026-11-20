@@ -4,7 +4,7 @@ The docs site for LunarHUE Forms, built with Astro. Run `bun run dev` here, or `
 
 ## Two renderers
 
-Demos render in their own framework. React (`@astrojs/react`) handles `src/components`, `src/devtools`, `src/layouts` and `src/demos/react`. Solid 2 handles `src/demos/solid`. Both compile `.tsx`, so each renderer gets an `include` list in `astro.config.ts`, and the Solid demos have their own `tsconfig.json` with Solid's JSX settings.
+Demos render in their own framework. React (`@astrojs/react`) handles `src/components`, `src/layouts` and `src/demos/react`. Solid 2 handles `src/demos/solid`. Both compile `.tsx`, so each renderer gets an `include` list in `astro.config.ts`, and the Solid demos have their own `tsconfig.json` with Solid's JSX settings.
 
 `@astrojs/solid-js` 7.x only supports Solid 1, and 8.x isn't on npm yet (checked 2026-11-18). Until it is, `integrations/solid/` holds a small Solid 2 renderer copied from Xenon's docs. Its server `check()` only claims hydrated components whose URL contains `/demos/solid/`. Astro sets `componentUrl` only when a component has a `client:` directive, so a Solid demo without one won't render. Every demo is an island anyway.
 
@@ -24,7 +24,8 @@ This works for both React and Solid 2, in `astro build` + `astro preview` and in
 
 1. Write the demo for each framework the page lists in `frameworks`: `src/demos/react/<page>/<demo>/<demo>.tsx` and `src/demos/solid/<page>/<demo>/<demo>.tsx`, each with a default export. Other files in the folder (`PhoneField.tsx`) show up as tabs in the Code view; the entry file comes first.
 2. Use bare `<form>`, `<label>`, `<input>` and `<button>`. `src/styles/demo.css` styles them.
-3. In the MDX page, write `<Demo name="<page>/<demo>" />`. Add `form="..."` if the devtools tag should show a name other than the folder's.
+3. Install the forms devtools: add `docsDevtools` from `@/devtools/enabled` last in `createForms`' `plugins`, and give the form an `id` unique on its page, such as `useForm(contact, { id: "contact" })`. The Code view hides the import and the plugin entry (`src/components/mdx/demo/devtools.ts`), so readers see the plain example, and the build fails if it can't.
+4. In the MDX page, write `<Demo name="<page>/<demo>" />`.
 
 The `demos` MDX plugin (`src/lib/mdx/demos.ts`) turns that into imports and one `client:visible` slot per framework. If a framework the page lists has no demo folder, the build fails with the file and line of the `<Demo>`.
 

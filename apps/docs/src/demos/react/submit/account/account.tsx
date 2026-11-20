@@ -1,8 +1,9 @@
 import { createForms, useForm, useFormContext, useFormState } from "@lunarhue/forms-react";
 import { saveAccount } from "./server";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const account = forms.define({
   defaultValues: { name: "", email: "" },
@@ -36,7 +37,7 @@ function SubmitButton() {
 }
 
 export default function AccountForm() {
-  const form = useForm(account);
+  const form = useForm(account, { id: "account" });
   return (
     <form.Form>
       {(formProps) => (

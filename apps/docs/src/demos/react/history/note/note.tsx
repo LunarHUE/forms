@@ -1,12 +1,13 @@
 import { createForms, useForm } from "@lunarhue/forms-react";
 import { history } from "@lunarhue/forms-react/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
 // Keep the object `history()` returns. Its `formMeta` reader says
 // whether there is a step to undo or redo.
 const undoHistory = history();
 
-const forms = createForms({ plugins: [undoHistory], fields: { TextField } });
+const forms = createForms({ plugins: [undoHistory, docsDevtools], fields: { TextField } });
 
 const note = forms.define({
   defaultValues: { title: "", body: "" },
@@ -14,7 +15,7 @@ const note = forms.define({
 });
 
 export default function NoteForm() {
-  const form = useForm(note);
+  const form = useForm(note, { id: "note" });
   return (
     <form.Form>
       {(formProps) => (

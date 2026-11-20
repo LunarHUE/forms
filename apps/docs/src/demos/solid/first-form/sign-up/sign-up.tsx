@@ -1,8 +1,9 @@
 import { createForm, createForms, inputProps } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
+import { docsDevtools } from "@/devtools/enabled";
 
 // No plugins and no field components: this form uses only what every form has.
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 const signUp = forms.define({
   defaultValues: { name: "", email: "" },
@@ -10,7 +11,7 @@ const signUp = forms.define({
 });
 
 export default function SignUpForm() {
-  const form = createForm(signUp);
+  const form = createForm(signUp, { id: "sign-up" });
   return (
     <form.Form>
       {(formProps) => (

@@ -1,8 +1,9 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { TextInput } from "./TextInput";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms();
+const forms = createForms({ plugins: [docsDevtools] });
 
 // Stands in for a request to your server. "ada" and "grace" are taken.
 function isTaken(name: string, signal: AbortSignal) {
@@ -36,7 +37,7 @@ const account = forms.define({
 });
 
 export default function UsernameForm() {
-  const form = createForm(account);
+  const form = createForm(account, { id: "username" });
   return (
     <form.Form>
       {(formProps) => (

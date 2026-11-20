@@ -1,8 +1,9 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
 import { persist } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
+import { docsDevtools } from "@/devtools/enabled";
 
-const forms = createForms({ fields: { TextField } });
+const forms = createForms({ plugins: [docsDevtools], fields: { TextField } });
 
 const feedback = forms.define({
   defaultValues: { subject: "", message: "" },
@@ -13,7 +14,7 @@ const feedback = forms.define({
 });
 
 export default function FeedbackForm() {
-  const form = createForm(feedback);
+  const form = createForm(feedback, { id: "feedback" });
   return (
     <form.Form>
       {(formProps) => (
