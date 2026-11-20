@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
  * Each group is a <details>, so it folds without any script. A rule runs down
  * the left of its items and the current page marks it in the accent. Shell
  * remembers which groups were folded (`data-nav-group`) and moves the
- * current-page mark after a client-side navigation.
+ * current-page mark after a client-side navigation. rail.ts slides one bar
+ * (`data-nav-marker`) along the rail in place of the links' own borders.
  */
 interface NavTreeProps {
   groups: readonly NavGroup[];
@@ -22,7 +23,12 @@ interface NavTreeProps {
 
 export function NavTree({ groups, currentSlug, compact = false }: NavTreeProps) {
   return (
-    <nav aria-label="Docs" className={cn("flex flex-col", compact ? "gap-3" : "gap-5")}>
+    <nav aria-label="Docs" data-nav className={cn("relative flex flex-col", compact ? "gap-3" : "gap-5")}>
+      <span
+        aria-hidden
+        data-nav-marker
+        className="pointer-events-none absolute top-0 left-0 w-0.5 bg-brand opacity-0 data-hover:bg-foreground/30"
+      />
       {groups.map((group) => (
         <details key={group.section} open data-nav-group={group.section} className="group/nav">
           <summary
