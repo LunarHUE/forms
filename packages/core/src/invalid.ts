@@ -1,11 +1,6 @@
 import type { AnyFormStore, InvalidField } from "./store.js";
-import type { StoreCore } from "./store/core.js";
-import { cores } from "./store/cores.js";
+import { coreOf } from "./store/cores.js";
 import { reach } from "./store/handles.js";
-
-// The core of a store `createFormStore` made. Its error type is the store's.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const coreOf = <E>(store: AnyFormStore<E>) => cores.get(store) as StoreCore<E, unknown>;
 
 /**
  * Returns every field of `store` with an error, in value order: validation

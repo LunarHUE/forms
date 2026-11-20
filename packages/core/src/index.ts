@@ -1,6 +1,7 @@
 export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
+export { errorsByKind } from "./error-kinds.js";
 export { invalidFields, subscribeInvalid } from "./invalid.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
@@ -69,6 +70,7 @@ export type {
   Validator,
   ValidatorContext,
   ValidatorInput,
+  ValidatorKind,
   ValidatorOptions,
   ValidatorRecord,
   ValidatorResult,
@@ -102,7 +104,7 @@ export type {
   ValueOf,
   WriteOptions,
 } from "./handle.js";
-export type { AnyFormStore, Change, DisabledInvalid, FormStore, IntentArgs, InvalidField } from "./store.js";
+export type { AnyFormStore, Change, DisabledInvalid, ErrorsByKind, FormStore, IntentArgs, InvalidField } from "./store.js";
 export type { SchemaAdapter } from "./schema-adapter.js";
 export type {
   CreateFormsCore,
