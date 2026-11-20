@@ -174,7 +174,7 @@ ways:
   Object but received undefined", or a check across fields has no path.
 - A server error comes back for the whole form, through `setErrors({ form })`.
 - An error names a field that doesn't exist, so it falls back to the root
-  (see [`errors:unknown`](#core:errors:unknown)).
+  (see [`field:unknown`](#core:field:unknown)).
 
 Errors on an object or array field, such as an empty list that needs a row,
 stay on that field. Render them next to its fields.
@@ -208,13 +208,9 @@ fields that have fields read under them, since an unread field may be on a
 step the app shows after the submit. It can miss a case too. A component
 that reads the root's value, or a list's items, counts as reading its errors.
 
-## React
+<a id="core:field:unknown"></a>
 
-These come from `@lunarhue/forms-react`.
-
-<a id="core:errors:unknown"></a>
-
-### `errors:unknown`
+### `field:unknown`
 
 > No field is named "&lt;name&gt;", so its errors went to the form's root. Check the name, and render the root errors.
 
@@ -232,6 +228,10 @@ leaf never counts.
 The usual cause is a server that renamed a field, or a typo. Fix the name. To
 route these errors yourself, check each name with `store.pathOf(name)`, which
 returns `undefined` for the same names.
+
+## React
+
+These come from `@lunarhue/forms-react`.
 
 <a id="react:form:definition"></a>
 

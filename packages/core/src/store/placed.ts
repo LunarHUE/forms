@@ -36,7 +36,7 @@ export const addNamed = <E>(placed: Placed<E>, core: Pick<StoreCore<E>, "pathOf"
     if (!names) warned.set(core, (names = new Set()));
     if (!names.has(name)) {
       names.add(name);
-      console.warn(problem("errors:unknown", name));
+      console.warn(problem("field:unknown", name));
     }
   }
   addErrors(placed, path ?? [], errors);

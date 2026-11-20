@@ -127,7 +127,7 @@ field, so render the root's errors somewhere, or the user sees nothing. See
 
 A name that matches no field also lands on the root, after the `form`
 errors, and development warns with
-[`errors:unknown`](/errors#core:errors:unknown). That happens when the server
+[`field:unknown`](/errors#core:field:unknown). That happens when the server
 renames a field before the form catches up. A name counts as a field when the
 value has that key, when a field there is rendered or validated, or when it
 sits under an object that is missing. To send such errors somewhere else,

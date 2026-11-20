@@ -126,7 +126,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    * Replaces user errors across the form. Errors under `fields` land on the
    * field with that dotted name. A name `pathOf` doesn't resolve sends its
    * errors to the root, after the `form` errors, and development warns
-   * (`errors:unknown`). User errors don't block submit and clear when the
+   * (`field:unknown`). User errors don't block submit and clear when the
    * field's value is next written as a user edit.
    */
   setErrors(errors: ErrorMap<E>): void;

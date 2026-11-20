@@ -4,7 +4,7 @@
 "@lunarhue/forms-solid": minor
 ---
 
-Errors for a field name the form doesn't have now land on the root. Before, `setErrors({ fields: { nope: ... } })` and a form validator's `fields` put them on a path nothing renders, so the user never saw them. A server that renames a field no longer makes its errors disappear. They show with the form's errors, after the `form` ones, and development warns with the new code `errors:unknown`, once per name.
+Errors for a field name the form doesn't have now land on the root. Before, `setErrors({ fields: { nope: ... } })` and a form validator's `fields` put them on a path nothing renders, so the user never saw them. A server that renames a field no longer makes its errors disappear. They show with the form's errors, after the `form` ones, and development warns with the new code `field:unknown`, once per name.
 
 A name counts as a field when each step exists in the form's value: a key its object has, or an index its array has. A key the value lacks still counts while something renders or validates a field there, such as an optional field with an input. Names under a missing object count too, since the value can't say what it would hold.
 

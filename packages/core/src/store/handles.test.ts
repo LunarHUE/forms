@@ -571,7 +571,7 @@ describe("names no field has", () => {
     expect(store.getSnapshot(["tags", "k0"]).errors).toEqual([err("fine")]);
     expect(warn).toHaveBeenCalledTimes(3);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringMatching(/^@lunarhue\/forms-core: No field is named "nope", so its errors went to the form's root\. .+#core:errors:unknown$/),
+      expect.stringMatching(/^@lunarhue\/forms-core: No field is named "nope", so its errors went to the form's root\. .+#core:field:unknown$/),
     );
     store.setErrors({ fields: { nope: err("again") } });
     expect(store.getSnapshot([]).errors).toEqual([err("again")]);
