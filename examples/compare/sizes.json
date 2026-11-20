@@ -84,6 +84,25 @@
           "brotli": 2244
         }
       }
+    },
+    "backoffice": {
+      "lunarhue": {
+        "total": {
+          "min": 365239,
+          "gzip": 112991,
+          "brotli": 98018
+        },
+        "forms": {
+          "min": 65296,
+          "gzip": 23292,
+          "brotli": 21125
+        },
+        "app": {
+          "min": 12319,
+          "gzip": 4330,
+          "brotli": 3840
+        }
+      }
     }
   }
 }

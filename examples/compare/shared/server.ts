@@ -1,6 +1,8 @@
 // A fake server that lives in the page. Every call waits like a network
 // request and honours an AbortSignal, so both builds of an app see the same
 // latency and the same answers.
+import type { Company, Customer, Invite, Order } from "../backoffice/schemas.ts";
+
 
 /** Resolves after `ms`, or rejects with the signal's reason when it aborts. */
 export function wait(ms: number, signal?: AbortSignal): Promise<void> {
@@ -85,4 +87,66 @@ export async function saveProfile(profile: Profile): Promise<Profile> {
 /** Someone else changes the name and the bio on the server. */
 export function editProfileElsewhere(): void {
   storedProfile = { ...storedProfile, name: "Ada King", bio: "Countess of Lovelace." };
+}
+
+// Back office
+
+/** A record the server keeps, with a delay on every call and a way for "someone else" to change it. */
+function record<T>(initial: T, elsewhere: (current: T) => T) {
+  let stored = initial;
+  // Arrow functions, so the app can pass them around unbound.
+  return {
+    get: async (): Promise<T> => {
+      await wait(200);
+      return stored;
+    },
+    save: async (value: T): Promise<void> => {
+      await wait(600);
+      stored = value;
+    },
+    editElsewhere: (): void => {
+      stored = elsewhere(stored);
+    },
+  };
+}
+
+export const customers = record<Customer>(
+  {
+    name: "Grace Hopper",
+    email: "grace@example.com",
+    phone: "2025550143",
+    billing: { street: "1 Navy Way", city: "Arlington", region: "VA", postcode: "22202", country: "US" },
+    sameAsBilling: true,
+    shipping: { street: "", city: "", region: "", postcode: "", country: "US" },
+  },
+  (customer) => ({ ...customer, email: "admiral@example.com", billing: { ...customer.billing, city: "Washington", region: "DC" } }),
+);
+
+export const orders = record<Order>(
+  {
+    reference: "PO-1001",
+    lines: [
+      { sku: "COBOL-1", quantity: "2", price: "49.5" },
+      { sku: "UNIVAC-PUNCH", quantity: "1", price: "1200" },
+    ],
+    gift: false,
+    giftMessage: "",
+  },
+  (order) => ({ ...order, reference: "PO-1001-B" }),
+);
+
+export const companies = record<Company>(
+  {
+    name: "Analytical Engines Ltd",
+    phone: "2075550198",
+    taxId: "123456789",
+    address: { street: "12 Dorset Street", city: "London", region: "", postcode: "W1U 4EH", country: "GB" },
+  },
+  (company) => ({ ...company, name: "Analytical Engines plc", phone: "2075550100" }),
+);
+
+/** Sends an invitation. */
+export async function sendInvite(invite: Invite): Promise<string> {
+  await wait(400);
+  return `Invitation sent to ${invite.email}.`;
 }

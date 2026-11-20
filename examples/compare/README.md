@@ -85,6 +85,37 @@ snapshot doesn't change on a second edit while the form is already dirty. The
 save bar reads the count under `useField(form.root, ...)`, which re-runs on
 every value change.
 
+**Back office** (`backoffice/`). Three record forms and a dialog on one page,
+each loaded from the server:
+
+- Customer: contact details, a billing address, and a shipping address that
+  shows only when "Ship to the billing address" is unchecked. Its errors
+  count only then.
+- Order: a list of lines with a SKU, a quantity and a price, a running
+  total, and a gift message that shows once the order is a gift.
+- Company settings: name, phone, tax ID and a registered address.
+- Invite a teammate: a dialog whose draft survives closing it and reloading
+  the page.
+
+Every address shows the state only for the US. Phone, tax ID, quantity and
+price are masked: the store keeps digits, or digits and a decimal point, and
+the input shows them formatted. Each record form has the save bar from the
+profile app plus an Undo button, and an error summary that lists every
+invalid field once a save is tried. The schemas, formatters and markup live
+in `backoffice/` and both builds use them.
+
+Our side has one `createForms` with `zod()`, `dirty()`, `rebase()`,
+`rules()`, `mask()`, `arrays()` and `history()`. The masks are parts on the
+field types (`PhoneField`, `TaxIdField`, `MoneyField`, `QuantityField`), so
+a form only names the field. The state rule is on an `AddressFieldset`, so
+every address gets it. The save bar, the error summary and the address
+fields find their form with `useFormContext(forms)`, and the invite draft
+is `persist()` on its definition.
+
+The invite dialog's submit handler calls `form.submit()` and resets the form
+once it succeeds. A reset puts the submission back to idle, so the "sent"
+message lives in React state.
+
 ## Running
 
 From the repo root:
