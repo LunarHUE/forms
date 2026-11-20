@@ -576,9 +576,11 @@ function Tip({ root }: TipProps): JSX.Element | null {
     if (element === null) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const target = (event: Event) => (event.target instanceof Element ? event.target.closest("[data-tip]") : null);
+    // A value's tooltip only shows when the value is cut short.
+    const clipped = (value: Element) => [...value.querySelectorAll(".truncate")].some((part) => part.scrollWidth > part.clientWidth);
     const show = (found: Element | null) => {
       clearTimeout(timer);
-      const text = found?.getAttribute("data-tip");
+      const text = found && (!found.hasAttribute("data-tip-clipped") || clipped(found)) ? found.getAttribute("data-tip") : null;
       setShown(found && text ? { text, rect: found.getBoundingClientRect() } : null);
     };
     const onOver = (event: Event) => {
@@ -610,7 +612,7 @@ function Tip({ root }: TipProps): JSX.Element | null {
   const x = Math.max(80, Math.min(rect.left + rect.width / 2, innerWidth - 80));
   return (
     <div
-      class={`fixed z-[2147483002] max-w-[220px] py-1 px-2 border border-line rounded-md bg-raised font-sans text-xs/4 text-fg pointer-events-none -translate-x-1/2 ${above ? "-translate-y-full" : ""}`}
+      class={`fixed z-[2147483002] max-w-[220px] max-h-40 overflow-hidden [overflow-wrap:anywhere] py-1 px-2 border border-line rounded-md bg-raised font-sans text-xs/4 text-fg pointer-events-none -translate-x-1/2 ${above ? "-translate-y-full" : ""}`}
       aria-hidden="true"
       style={`left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`}
     >

@@ -146,7 +146,7 @@ export interface ErrorViewProps {
 export function ErrorView({ error }: ErrorViewProps): JSX.Element {
   const shown = readError(error);
   return shown.code === undefined
-    ? <span class="text-error">{shown.text}</span>
+    ? <span class="min-w-0 text-error [overflow-wrap:anywhere]">{shown.text}</span>
     : <a href={`${errorsPage}${shown.code}`} target="_blank" rel="noreferrer">{shown.code}</a>;
 }
 
@@ -201,6 +201,34 @@ export function Fact({ term, children }: FactProps): JSX.Element {
   );
 }
 
+/** How many characters at the end of a value stay readable when its middle gives way. */
+const tailLength = 6;
+
+interface ValueProps {
+  /** The value's text, in full. */
+  readonly text: string;
+  readonly muted?: boolean;
+}
+
+/**
+ * A value on one line of a card. When it doesn't fit, its middle gives way to
+ * an ellipsis, so its start and its end stay readable, and the tooltip shows
+ * it whole. The card never scrolls sideways.
+ */
+export function Value({ text, muted = false }: ValueProps): JSX.Element {
+  const split = text.length > 2 * tailLength;
+  const head = split ? text.slice(0, -tailLength) : text;
+  return (
+    <span class={`flex min-w-0 whitespace-nowrap${split ? "" : " shrink-0"}${muted ? " text-muted" : ""}`} data-tip={text} data-tip-clipped="">
+      <span class="truncate">{head}</span>
+      {split ? <span class="shrink-0">{text.slice(-tailLength)}</span> : null}
+    </span>
+  );
+}
+
+/** The most of a value a card's line shows, and its tooltip with it. */
+const cardMax = 2000;
+
 interface WriteLineProps {
   readonly write: LoggedWrite;
 }
@@ -211,14 +239,14 @@ function WriteLine({ write: { record } }: WriteLineProps): JSX.Element {
     <div class="write flex flex-1 items-center gap-2 min-w-0 whitespace-nowrap">
       {record.type === "value" ? (
         <>
-          <span class="text-muted">{preview(record.before)}</span>
+          <Value muted text={preview(record.before, cardMax)} />
           <ArrowRight class="size-3.5 text-muted" />
-          {preview(record.after)}
+          <Value text={preview(record.after, cardMax)} />
         </>
       ) : (
-        `${record.type} ${preview(record.after)}`
+        <Value text={`${record.type} ${preview(record.after, cardMax)}`} />
       )}
-      <span class="ml-auto pl-2 font-sans text-muted">{causeText(record.cause)}</span>
+      <span class="shrink-0 ml-auto pl-2 font-sans text-muted">{causeText(record.cause)}</span>
     </div>
   );
 }
@@ -235,10 +263,10 @@ function ValueFacts({ entry, path, snapshot }: FieldProps): JSX.Element {
   return (
     <>
       <Fact term="value">
-        <span class="truncate">{preview(snapshot.value)}</span>
+        <Value text={preview(snapshot.value, cardMax)} />
       </Fact>
       <Fact term="baseline">
-        <span class="text-muted truncate">{baseline === undefined ? "none" : preview(baseline.value)}</span>
+        <Value muted text={baseline === undefined ? "none" : preview(baseline.value, cardMax)} />
       </Fact>
     </>
   );
@@ -456,7 +484,7 @@ interface FieldDetailProps extends FieldProps {
 /** The selected field's card under the tree. */
 function FieldDetail({ entry, path, snapshot, onClose, onInspect }: FieldDetailProps): JSX.Element {
   return (
-    <section class={`${scroll} flex-[0_0_auto] max-h-1/2 border-t border-line`} aria-label="Field detail">
+    <section class={`${scroll} flex-[0_0_auto] max-h-1/2 overflow-x-hidden border-t border-line`} aria-label="Field detail">
       <div class={detailHead}>
         <strong class={detailName}>{snapshot.name || "(form)"}</strong>
         {onInspect ? <ShowButton path={path} name={snapshot.name} onInspect={onInspect} /> : null}
