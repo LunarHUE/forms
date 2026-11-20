@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { build, createServer, type Rolldown, type ViteDevServer } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SizeReport } from "./sizes.js";
-import { formsDevtools } from "./vite.js";
 import { entryCode, reportFile, sizeReport } from "./vite/measure.js";
 
 const app = join(dirname(fileURLToPath(import.meta.url)), "vite", "fixtures", "app");
