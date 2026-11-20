@@ -1,6 +1,6 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
+import { createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps, numberPieces, selectProps } from "../index.js";
 import { digits, mask, masked, persist } from "../plugins.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
@@ -48,15 +48,18 @@ function mountOrder(fromEvent = true) {
           )}
         </created.Field>
         <created.Field name="price">
-          {(field) => (
-            <input
-              aria-label="price"
-              ref={field.ref}
-              value={field.text}
-              onInput={(event) => field.setNumberText(event.currentTarget.value)}
-              onBlur={field.handleBlur}
-            />
-          )}
+          {(field) => {
+            const number = numberPieces(field, { empty: 0 });
+            return (
+              <input
+                aria-label="price"
+                ref={field.ref}
+                value={number.text}
+                onInput={(event) => number.setText(event.currentTarget.value)}
+                onBlur={number.handleBlur}
+              />
+            );
+          }}
         </created.Field>
         <created.Field name="name">{(field) => <input aria-label="name" {...inputProps(field)} />}</created.Field>
         <created.Field name="terms">
@@ -72,7 +75,7 @@ function mountOrder(fromEvent = true) {
         </created.Field>
         <created.Field name="size">
           {(field) => (
-            <select aria-label="size" {...inputProps(field, { kind: "select" })}>
+            <select aria-label="size" {...selectProps(field, { empty: "" })}>
               <option value="s">Small</option>
               <option value="l">Large</option>
             </select>
@@ -113,7 +116,7 @@ describe("field pieces", () => {
     expect(value("phone")).toBe("55519234");
   });
 
-  it("keep number text while it is typed and drop it on blur", async () => {
+  it("keep number text from numberPieces while it is typed and drop it on blur", async () => {
     const { input, value } = mountOrder();
     const price = input("price");
     typeText(price, "-");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createForm, createForms, createInputProps, type FieldApi, defineField, type FormOf } from "../index.js";
+import { createForm, createForms, type FieldApi, defineField, type FormOf, createField, inputProps, textareaProps, selectProps } from "../index.js";
 import { digits, mask, type MaskConfig, masked, upper } from "../plugins.js";
 import { choose, getAs, mount, settle } from "./dom.js";
 import { formatPhone } from "./ssr-app.js";
@@ -28,10 +28,10 @@ function mountContact() {
     const root = created.root;
     return (
       <>
-        <input aria-label="phone" {...createInputProps(root.at("phone"), { type: "tel" })} />
-        <input aria-label="zip" {...createInputProps(root.at("zip"))} />
-        <textarea aria-label="notes" {...createInputProps(root.at("notes"), { kind: "textarea" })} />
-        <select aria-label="code" {...createInputProps(root.at("code"), { kind: "select" })}>
+        <input aria-label="phone" {...inputProps(createField(root.at("phone")), { type: "tel" })} />
+        <input aria-label="zip" {...inputProps(createField(root.at("zip")))} />
+        <textarea aria-label="notes" {...textareaProps(createField(root.at("notes")))} />
+        <select aria-label="code" {...selectProps(createField(root.at("code")), { empty: "" })}>
           <option value="1">One</option>
           <option value="2">Two</option>
         </select>
@@ -175,7 +175,7 @@ describe("two masks on one field", () => {
   it("shows the display of the part that attaches first", async () => {
     const { host } = mount(() => {
       const form = createForm(Twice);
-      return <input aria-label="phone" {...createInputProps(form.root.at("phone"))} />;
+      return <input aria-label="phone" {...inputProps(createField(form.root.at("phone")))} />;
     });
     const phone = getAs(host, "input", HTMLInputElement);
     expect(phone.value).toBe("(555) 123-4");

@@ -1,7 +1,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { Items, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps } from "../index.js";
+import { Items, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, numberProps } from "../index.js";
 import { get, mount, settle, typeText } from "./dom.js";
 import { arrays } from "../plugins.js";
 
@@ -22,7 +22,7 @@ function NumberField(props: { field: FieldApi<number>; label: string }) {
   return (
     <label>
       {props.label}
-      <input data-label={props.label} {...inputProps(props.field, { kind: "number" })} />
+      <input data-label={props.label} {...numberProps(props.field)} />
     </label>
   );
 }

@@ -1,5 +1,5 @@
 import type { FieldSnapshot, Path, TextControl } from "@lunarhue/forms-core";
-import { afterProps, batch, createSignal } from "#solid";
+import { afterProps, batch } from "#solid";
 import { untrack } from "solid-js";
 import { displayOf } from "./display.js";
 import { elementRegistrar, elementsOf } from "./refs.js";
@@ -12,10 +12,7 @@ export type TextSource = TextControl | { readonly target: EventTarget | null };
 
 /** The pieces a field object carries for binding an element by hand. Only `text` is reactive. */
 export interface FieldPieces {
-  /**
-   * The text an element shows: the number text the user is typing, else the
-   * display text a plugin such as a mask gives, else the value. Reactive.
-   */
+  /** The text an element shows: the display text a plugin such as a mask gives, else the value. Reactive. */
   readonly text: string;
   /**
    * Writes text the user typed. When a plugin gives the field a display, such
@@ -24,14 +21,7 @@ export interface FieldPieces {
    * registered. Writes nothing while the field is read-only.
    */
   readonly setText: (text: string, from?: TextSource) => void;
-  /**
-   * Writes text typed in a number field. Text that isn't a number yet, such
-   * as `-`, writes nothing. Text such as `12.` writes `12`. `text` keeps
-   * showing the typed text until the value changes or the field blurs. Empty
-   * text writes `empty`.
-   */
-  readonly setNumberText: (text: string, empty?: unknown) => void;
-  /** Marks the field touched, runs blur validation, and drops the typed number text. */
+  /** Marks the field touched and runs blur validation. */
   readonly handleBlur: () => void;
   /**
    * Registers the element so a failed submit can focus it, until the field's
@@ -48,12 +38,6 @@ export interface PiecesHandle {
   readonly store: { getSnapshot(path: Path): FieldSnapshot<unknown, unknown> };
   setValue(value: unknown): void;
   handleBlur(): void;
-}
-
-/** What a number input showed after its last edit, and the value it wrote. */
-interface NumberText {
-  readonly value: unknown;
-  readonly text: string;
 }
 
 /** A field value as text: empty while it is null, undefined, `NaN` or not a primitive. */
@@ -88,26 +72,22 @@ function showState(element: HTMLElement, value: unknown, text: string): void {
   }
 }
 
+/** The text an element shows: the display text a plugin gives, else the value. */
+function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
+  const shown = displayOf(meta);
+  return shown ? shown.display(value) : asText(value);
+}
+
 /**
  * Adds the pieces to a field object. `read` is the field's snapshot as a
- * reactive read. Call it under the field's owner: the typed-text signal and
- * the element registrations belong to it.
+ * reactive read. Call it under the field's owner: the element registrations
+ * belong to it.
  */
 export function addPieces(field: object, handle: PiecesHandle, read: () => FieldSnapshot<unknown, unknown>): void {
-  // Equal typed text doesn't notify. Chrome reports `2.` as `2`, and writing
-  // `2` back into a number input drops the dot and moves the caret to the start.
-  const [typed, setTyped] = createSignal<NumberText | undefined>(undefined, {
-    ownedWrite: true,
-    equals: (before, after) => before?.text === after?.text && Object.is(before?.value, after?.value),
-  });
   const register = elementRegistrar(handle);
   const current = () => handle.store.getSnapshot(handle.path);
-  const textOf = (typedText: NumberText | undefined, { value, meta }: FieldSnapshot<unknown, unknown>): string => {
-    if (typedText !== undefined && Object.is(typedText.value, value)) return typedText.text;
-    const shown = displayOf(meta);
-    return shown ? shown.display(value) : asText(value);
-  };
-  const pieces: Omit<FieldPieces, "text"> = {
+  // `handleBlur` is the handle's own, which the field object already has.
+  const pieces: Omit<FieldPieces, "text" | "handleBlur"> = {
     setText(text, from) {
       if (current().readOnly) return;
       // The display reads the element's text and caret after the write, before Solid updates the element.
@@ -123,30 +103,14 @@ export function addPieces(field: object, handle: PiecesHandle, read: () => Field
         if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : from);
       });
     },
-    setNumberText(text, empty) {
-      const { value: before, readOnly } = current();
-      if (readOnly) return;
-      const number = text.trim() === "" ? Number.NaN : Number(text);
-      if (Number.isNaN(number) && text !== "") {
-        setTyped(() => ({ value: before, text }));
-        return;
-      }
-      const value = Number.isNaN(number) ? empty : number;
-      setTyped(() => ({ value, text }));
-      handle.setValue(value);
-    },
-    handleBlur() {
-      setTyped(undefined);
-      handle.handleBlur();
-    },
     ref(element) {
       register(element);
       // The current snapshot, not the reactive one: the reader may still hold the server's while hydrating.
-      afterProps(() => untrack(() => showState(element, current().value, textOf(typed(), current()))));
+      afterProps(() => untrack(() => showState(element, current().value, textOf(current()))));
     },
   };
   Object.defineProperties(field, {
     ...Object.getOwnPropertyDescriptors(pieces),
-    text: { enumerable: true, get: () => textOf(typed(), read()) },
+    text: { enumerable: true, get: () => textOf(read()) },
   });
 }

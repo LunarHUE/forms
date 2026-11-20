@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createForm, createForms, createInputProps, elementsOf, fieldOf, fieldRef, type FormOf, trackElements } from "../index.js";
+import { createField, createForm, createForms, elementsOf, fieldOf, fieldRef, type FormOf, inputProps, radioProps, trackElements } from "../index.js";
 import { get, getAs, mount, settle } from "./dom.js";
 
 const forms = createForms();
@@ -18,14 +18,15 @@ function mountProfile() {
     const f = createForm(Profile, { id: "profile" });
     form = f;
     const plan = f.root.at("plan");
+    const planField = createField(plan);
     return (
       <form data-form {...f.formProps}>
         <Show when={early()}>
-          <input data-plan="team" {...createInputProps(plan, { kind: "radio", value: "team" })} />
+          <input data-plan="team" {...radioProps(createField(plan), "team")} />
         </Show>
-        <input data-name {...createInputProps(f.root.at("name"))} />
-        <input data-plan="free" {...createInputProps(plan, { kind: "radio", value: "free" })} />
-        <input data-plan="pro" {...createInputProps(plan, { kind: "radio", value: "pro" })} />
+        <input data-name {...inputProps(createField(f.root.at("name")))} />
+        <input data-plan="free" {...radioProps(planField, "free")} />
+        <input data-plan="pro" {...radioProps(planField, "pro")} />
         <div data-bio ref={fieldRef(f.root.at("bio"))}>
           <span data-bio-inner>bio</span>
         </div>

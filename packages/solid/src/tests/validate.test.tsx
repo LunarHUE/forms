@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import { debounced, validateOn, type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput, fieldValidators } from "../index.js";
+import { debounced, validateOn, type Choice, createForm, createForms, type FieldApi, type FormOf, type HandleOf, inputProps, type ValidatorInput, fieldValidators, radioProps } from "../index.js";
 import { click, get, mount, settle, typeText } from "./dom.js";
 
 /** The props each registered component was given, by label. */
@@ -79,7 +79,7 @@ function WithHome() {
 
 /** A registered radio group written with `Choice`. */
 function RadioGroupField(props: { field: FieldApi<Choice>; options: readonly Choice[] }) {
-  return <For each={props.options}>{(option) => <input data-option={option} {...inputProps(props.field, { kind: "radio", value: option })} />}</For>;
+  return <For each={props.options}>{(option) => <input data-option={option} {...radioProps(props.field, option)} />}</For>;
 }
 
 const choiceForms = createForms({ fields: { RadioGroupField } });

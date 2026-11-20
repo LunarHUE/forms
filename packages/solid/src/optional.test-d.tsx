@@ -5,7 +5,7 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
-import { createForm, createForms, inputProps, type FieldApi, type HandleOf } from "./index.js";
+import { createForm, createForms, inputProps, type FieldApi, type HandleOf, checkboxProps } from "./index.js";
 
 function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
   expectTypeOf(props.field.value).toEqualTypeOf<string | undefined>();
@@ -14,7 +14,7 @@ function TextField(props: { field: FieldApi<string | undefined>; label: string }
 
 function Checkbox(props: { field: FieldApi<boolean | undefined>; label: string }) {
   expectTypeOf(props.field.value).toEqualTypeOf<boolean | undefined>();
-  return <input {...inputProps(props.field, { kind: "checkbox" })} aria-label={props.label} />;
+  return <input {...checkboxProps(props.field)} aria-label={props.label} />;
 }
 
 function NullableText(props: { field: FieldApi<string | null | undefined> }) {
