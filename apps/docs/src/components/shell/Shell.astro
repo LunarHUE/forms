@@ -101,31 +101,59 @@ if (framework) {
       ))
     }
     <script is:inline>
-      // Keep the sidebar's scroll position across page loads, and make sure the
-      // current item is in view. Runs before paint, right after the sidebar.
+      // Keep the sidebar's scroll position and folded groups across page
+      // loads, and make sure the current item is in view. Runs before paint,
+      // right after the sidebar.
       (() => {
-        const key = "forms:sidebar-scroll";
-        const asides = [...document.querySelectorAll("[data-sidebar]")];
-        let saved = null;
+        const scrollKey = "forms:sidebar-scroll";
+        const foldKey = "forms:sidebar-folded";
+        // The IIFE is the scope; there is nothing outside it to move them to.
+        // oxlint-disable-next-line unicorn/consistent-function-scoping
+        const read = (key) => {
+          try {
+            return sessionStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        };
+        // oxlint-disable-next-line unicorn/consistent-function-scoping
+        const write = (key, value) => {
+          try {
+            sessionStorage.setItem(key, value);
+          } catch {}
+        };
+        let folded = [];
         try {
-          saved = sessionStorage.getItem(key);
+          folded = JSON.parse(read(foldKey) ?? "[]");
         } catch {}
-        for (const aside of asides) {
-          if (saved !== null) aside.scrollTop = Number(saved);
-          const current = aside.querySelector('[aria-current="page"]');
+        const groups = [...document.querySelectorAll("[data-sidebar] [data-nav-group]")];
+        for (const group of groups) {
+          // The current page's group stays open.
+          if (folded.includes(group.dataset.navGroup) && !group.querySelector('[aria-current="page"]')) {
+            group.open = false;
+          }
+          group.addEventListener("toggle", () => {
+            const name = group.dataset.navGroup;
+            folded = folded.filter((other) => other !== name);
+            if (!group.open) folded.push(name);
+            write(foldKey, JSON.stringify(folded));
+          });
+        }
+        const scrollers = [...document.querySelectorAll("[data-sidebar-scroll]")];
+        const saved = read(scrollKey);
+        for (const scroller of scrollers) {
+          if (saved !== null) scroller.scrollTop = Number(saved);
+          const current = scroller.querySelector('[aria-current="page"]');
           if (!current) continue;
-          const top = current.offsetTop;
+          const top = current.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
           const bottom = top + current.offsetHeight;
-          if (top < aside.scrollTop || bottom > aside.scrollTop + aside.clientHeight) {
-            aside.scrollTop = top - aside.clientHeight / 2;
+          if (top < scroller.scrollTop || bottom > scroller.scrollTop + scroller.clientHeight) {
+            scroller.scrollTop = top - scroller.clientHeight / 2;
           }
         }
         addEventListener("pagehide", () => {
-          const visible = asides.find((aside) => aside.getClientRects().length > 0);
-          if (!visible) return;
-          try {
-            sessionStorage.setItem(key, String(visible.scrollTop));
-          } catch {}
+          const visible = scrollers.find((scroller) => scroller.getClientRects().length > 0);
+          if (visible) write(scrollKey, String(visible.scrollTop));
         });
       })();
     </script>
