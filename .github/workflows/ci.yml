@@ -53,6 +53,10 @@ jobs:
       # Builds a few real forms from source and prints their sizes, with no limits.
       - if: steps.setup.outputs.docs-only != 'true'
         run: bun run size:forms
+      # Builds the comparison apps in examples/compare and fails when their
+      # sizes differ from the committed sizes.json.
+      - if: steps.setup.outputs.docs-only != 'true'
+        run: bun run size:compare --check
 
   # The docs site builds the packages from source, so a package change runs
   # this too. A change to Markdown alone counts as docs and skips it.
@@ -149,9 +153,19 @@ jobs:
         run: bun run e2e:changed --base "$BASE" $MAJORS
       - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && github.event_name != 'pull_request'
         run: bun run e2e $MAJORS
+      # The comparison apps run one spec per app against both libraries' builds.
+      - if: env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && matrix.browser == 'chromium'
+        working-directory: examples/compare
+        run: bun run test:e2e
       - if: failure() && env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.browser }}
           path: e2e/playwright-report
+          retention-days: 7
+      - if: failure() && env.RELEASE != 'true' && steps.setup.outputs.docs-only != 'true' && matrix.browser == 'chromium'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-compare
+          path: examples/compare/playwright-report
           retention-days: 7
