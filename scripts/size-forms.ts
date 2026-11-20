@@ -29,6 +29,7 @@ const forms = [
   ["registered", "Registered field component"],
   ["arrays", "+ an array: items, add, remove, move"],
   ["everything", "Everything on"],
+  ["devtools", "Bare form + devtools()"],
 ] as const;
 
 const frameworks = [

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@lunarhue/forms-devtools": "workspace:*",
     "@lunarhue/forms-react": "workspace:*",
     "@lunarhue/forms-schema": "workspace:*",
     "@lunarhue/forms-solid": "workspace:*",
