@@ -1,7 +1,7 @@
 /** The panel's root element: the panel's font and text colour, and dark form controls and scrollbars. */
 export const panelRoot = "font-mono text-sm/5 text-fg scheme-dark antialiased";
 
-/** A floating surface: the dock's bar and panel, menus, cards and the phone's sheet. */
+/** A floating surface: the dock's bar and panel, menus and cards. */
 export const surface = "bg-surface border border-line rounded-lg shadow-panel";
 
 /** The empty state of a tab. */

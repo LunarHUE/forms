@@ -77,6 +77,34 @@ describe("mount", () => {
     expect(document.querySelector("[data-lunarhue-forms-devtools]")).toBeNull();
   });
 
+  it("renders nothing at a phone's width, and goes and comes back as the window narrows and widens", async () => {
+    // jsdom has no matchMedia. This one reports a phone's width while `phone` is true.
+    let phone = true;
+    const changes = new Set<() => void>();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return phone && query === "(max-width: 640px)";
+      },
+      addEventListener: (_type: string, listener: () => void) => changes.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => changes.delete(listener),
+    }));
+    cleanups.push(() => vi.unstubAllGlobals());
+    const resize = async (next: boolean) => {
+      phone = next;
+      for (const change of changes) change();
+      await frame();
+    };
+
+    form({ name: "" });
+    const root = await open();
+    const container = root.lastElementChild;
+    expect(container?.childElementCount).toBe(0);
+    await resize(false);
+    expect(root.querySelector('[role="toolbar"]')).not.toBeNull();
+    await resize(true);
+    expect(container?.childElementCount).toBe(0);
+  });
+
   it("says only that the versions differ for a hook of another version", async () => {
     form({ name: "" });
     await open();
