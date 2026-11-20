@@ -457,6 +457,36 @@ pre {
   color: var(--muted);
 }
 
+.log,
+.plugins {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.log-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 6px 12px;
+}
+
+.log-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plugin + .plugin {
+  border-top: 1px solid var(--border);
+}
+
+.plugin-head {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px 0;
+}
+
 .outline {
   position: fixed;
   z-index: 2147482999;
