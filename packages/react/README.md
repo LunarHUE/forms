@@ -116,8 +116,8 @@ Type `name="emial"` and the build fails.
 ## Plugins
 
 The plugins that need no other library ship with this package, all from
-`@lunarhue/forms-react/plugins`: `history`, `mask`, `rules`, `persist`,
-`rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
+`@lunarhue/forms-react/plugins`: `arrays`, `history`, `mask`, `rules`,
+`persist`, `rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
 Validation is built in.
 
 `mask` and `rules` work per field. Install them in the form's plugins and

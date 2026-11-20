@@ -24,6 +24,7 @@ effects, so your bundler drops a plugin you don't import and it costs no bytes.
 | Plugin | What it does |
 | --- | --- |
 | `dirty()` and `baselineOnSubmit()` | What changed since the saved values |
+| `arrays()` | Lists, with row keys and `push`, `insert`, `remove` and `move` |
 | `history()` | Undo and redo |
 | `mask()` | Cleans and formats what the user types |
 | `rules()` | `disabled` and `hidden` from the rest of the form |
@@ -33,7 +34,7 @@ effects, so your bundler drops a plugin you don't import and it costs no bytes.
 
 Write your own with `definePlugin` from `./plugins`, or a schema plugin for
 another schema library with `definePlugin({ name, schema })`. The rules are in
-[Writing a plugin](https://forms.lunarhue.dev/react/plugins/writing-a-plugin).
+[Writing a plugin](https://forms.lunarhue.dev/react/writing-plugins/first-plugin).
 
 ## More
 
