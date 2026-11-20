@@ -30,6 +30,7 @@
   --accent-foreground: #18191c;
   --destructive: #c93a3a;
   --border: #e4e4e0;
+  --scrollbar: #cfcfca;
   --input: #e4e4e0;
   --ring: #4c7dff;
 
@@ -73,6 +74,7 @@
   --accent-foreground: #ececea;
   --destructive: #c93a3a;
   --border: #26272b;
+  --scrollbar: #3a3b40;
   --input: #26272b;
   --ring: #4c7dff;
 
@@ -151,5 +153,72 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Thin scrollbars in the theme's colours, page and panels alike. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+}
+
+/*
+ * Soft edges on a scroll area: `scroll-fade-y` fades the top while there is
+ * content above and the bottom while there is content below, `scroll-fade-x`
+ * the same sideways. Scroll-driven animations move the two stops, so it needs
+ * no script and survives page swaps. Browsers without them get hard edges.
+ * Put it on the scrolling element itself.
+ */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes fade-start {
+  from {
+    --fade-start: 0px;
+  }
+  to {
+    --fade-start: 2rem;
+  }
+}
+@keyframes fade-end {
+  from {
+    --fade-end: 2rem;
+  }
+  to {
+    --fade-end: 0px;
+  }
+}
+@utility scroll-fade-y {
+  @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: fade-start linear both, fade-end linear both;
+    animation-timeline: scroll(self block), scroll(self block);
+    animation-range: 0 2rem, calc(100% - 2rem) 100%;
+  }
+}
+@utility scroll-fade-x {
+  @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: fade-start linear both, fade-end linear both;
+    animation-timeline: scroll(self inline), scroll(self inline);
+    animation-range: 0 2rem, calc(100% - 2rem) 100%;
   }
 }

@@ -23,7 +23,8 @@ function codesInSource(): Set<string> {
   const codes = new Set<string>();
   for (const [file, text] of Object.entries(sources)) {
     const pkg = packageOf(file);
-    for (const match of text.matchAll(/["'`]([a-z]+:[a-z]+)["'`]/g)) codes.add(`${pkg}:${match[1]}`);
+    // `node:fs` and the like are imports of Node's modules, not codes.
+    for (const match of text.matchAll(/["'`](?!node:)([a-z]+:[a-z]+)["'`]/g)) codes.add(`${pkg}:${match[1]}`);
   }
   return codes;
 }

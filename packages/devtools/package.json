@@ -31,10 +31,23 @@
         "default": "./dist/cjs/index.js"
       }
     },
+    "./vite": {
+      "@lunarhue/source": "./src/vite.ts",
+      "import": {
+        "types": "./dist/esm/vite.d.ts",
+        "default": "./dist/esm/vite.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "@lunarhue/forms-core": "workspace:^"
+    "@lunarhue/forms-core": "workspace:^",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@lunarhue/forms-core": "workspace:^",
@@ -44,7 +57,8 @@
     "jsdom": "catalog:",
     "lucide-preact": "catalog:",
     "preact": "catalog:",
-    "tailwindcss": "4.3.5"
+    "tailwindcss": "4.3.5",
+    "vite": "catalog:"
   },
   "publishConfig": {
     "access": "public"
@@ -52,7 +66,7 @@
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.build.json && tsdown -c tsdown.types.config.ts && rm -rf dist/types",
     "typecheck": "tsc -p tsconfig.json",
-    "check:package": "publint --strict --pack npm && attw --pack .",
+    "check:package": "publint --strict --pack npm && attw --pack . --exclude-entrypoints ./vite && attw --pack . --entrypoints ./vite --profile esm-only",
     "size": "size-limit"
   },
   "size-limit": [

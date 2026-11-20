@@ -17,10 +17,15 @@ const panelExternal = {
   resolveId: (source: string) => (source === "./panel.js" ? { id: source, external: true } : null),
 };
 
+// The Vite plugin is ESM only, like Vite: its worker loads its own file by
+// `import.meta.url`.
+const viteEntries = ["!src/vite.ts", "!src/vite/**"];
+
 export default libraryBuild().flatMap((build): UserConfig[] => {
   const entry = Array.isArray(build.entry) ? build.entry : [];
+  const esmOnly = build.format === "cjs" ? viteEntries : [];
   return [
-    { ...build, entry: [...entry, `!${panelEntry}`, "!src/panel/**"], plugins: [panelExternal, ...[build.plugins ?? []].flat()] },
+    { ...build, entry: [...entry, `!${panelEntry}`, "!src/panel/**", ...esmOnly], plugins: [panelExternal, ...[build.plugins ?? []].flat()] },
     {
       ...build,
       entry: { panel: panelEntry },
