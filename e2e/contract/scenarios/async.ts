@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { fakeServer } from "../fake-server.js";
 import { scenario } from "../scenario.js";
+import { fieldValidators } from "@lunarhue/forms-core";
 
 const SignUp = v.object({
   username: v.pipe(v.string(), v.minLength(3, "Too short.")),
@@ -21,9 +22,9 @@ export const asyncScenario = {
     schema: SignUp,
     defaultValues: { username: "" },
     validate: {
-      fields: {
-        username: async (name: string) => ((await fakeServer.check(name)) ? { message: "That name is taken." } : undefined),
-      },
+      fields: fieldValidators<v.InferInput<typeof SignUp>>({
+        username: async (name) => ((await fakeServer.check(name)) ? { message: "That name is taken." } : undefined),
+      }),
     },
     onSubmit: (value: v.InferOutput<typeof SignUp>) => `Signed up ${value.username}.`,
   },

@@ -1,4 +1,4 @@
-import { createForms, debounced, useForm } from "@lunarhue/forms-react";
+import { createForms, debounced, fieldValidators, formValidator, useForm } from "@lunarhue/forms-react";
 import { isUsernameTaken, signUp } from "../../shared/server.ts";
 import { Page } from "../../shared/ui.tsx";
 import { Checkbox, TextField } from "./fields.tsx";
@@ -12,7 +12,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const signUpForm = forms.define({
   defaultValues: { email: "", username: "", password: "", confirm: "", terms: false },
   validate: {
-    fields: {
+    fields: fieldValidators({
       email: (email) => (emailPattern.test(email) ? undefined : { message: "Enter a valid email." }),
       // The sync rules answer at once. Only a well-formed name goes to the
       // server. A newer run aborts the older request.
@@ -23,13 +23,13 @@ const signUpForm = forms.define({
       }, 400),
       password: (password) => (password.length >= 8 ? undefined : { message: "Use at least 8 characters." }),
       terms: (accepted) => (accepted ? undefined : { message: "Accept the terms to continue." }),
-    },
+    }),
     // Sees the whole value, so it runs again when either password changes.
-    form: ({ password, confirm }) => {
+    form: formValidator(({ password, confirm }) => {
       if (confirm === "") return { fields: { confirm: { message: "Confirm your password." } } };
       if (confirm !== password) return { fields: { confirm: { message: "The passwords don't match." } } };
       return undefined;
-    },
+    }),
   },
   onSubmit: async (value, { store }) => {
     const response = await signUp(value);

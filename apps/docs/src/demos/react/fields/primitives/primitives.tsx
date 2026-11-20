@@ -1,4 +1,4 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, fieldValidators, useForm } from "@lunarhue/forms-react";
 import { CheckboxField, NumberField, TextField } from "./fields";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -7,12 +7,12 @@ const forms = createForms({ plugins: [docsDevtools] });
 const order = forms.define({
   defaultValues: { name: "", quantity: undefined as number | undefined, terms: false },
   validate: {
-    fields: {
+    fields: fieldValidators({
       name: (name) => (name === "" ? { message: "Enter your name." } : undefined),
       quantity: (quantity) =>
         quantity === undefined || quantity < 0.5 ? { message: "Order at least half a box." } : undefined,
       terms: (accepted) => (accepted ? undefined : { message: "Accept the terms." }),
-    },
+    }),
   },
   onSubmit: (value) => value,
 });

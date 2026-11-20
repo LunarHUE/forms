@@ -1,4 +1,4 @@
-import { createForms, inputProps, useForm } from "@lunarhue/forms-react";
+import { createForms, fieldValidators, formValidator, inputProps, useForm } from "@lunarhue/forms-react";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -8,13 +8,14 @@ const signUp = forms.define({
   defaultValues: { username: "", password: "", confirm: "", terms: false },
   validate: {
     // One function per field. Return an error, or undefined when it passes.
-    fields: {
+    fields: fieldValidators({
       username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
       password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
-    },
+    }),
     // Sees the whole value, so it can compare two fields.
-    form: (value) =>
+    form: formValidator((value) =>
       value.confirm === value.password ? undefined : { fields: { confirm: { message: "The passwords don't match." } } },
+    ),
   },
   onSubmit: (value) => `Signed up ${value.username}.`,
 });

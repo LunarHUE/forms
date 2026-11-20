@@ -1,5 +1,5 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
-import { Items, createForms, defineField, useForm } from "@lunarhue/forms-react";
+import { Items, createForms, defineField, useForm, fieldValidators } from "@lunarhue/forms-react";
 import { arrays, baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-react/plugins";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
@@ -40,7 +40,7 @@ const order = forms.define(
       },
     }),
   ],
-  validate: { fields: { phone: (value) => (value.length < 10 ? { message: "Enter ten digits." } : undefined) } },
+  validate: { fields: fieldValidators({ phone: (value) => (value.length < 10 ? { message: "Enter ten digits." } : undefined) }) },
   onSubmit: (value) => value.phone,
   },
   ruled({ note: (value) => ({ hidden: value.phone === "" }) }),

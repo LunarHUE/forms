@@ -1,11 +1,11 @@
 // The bare form plus one field validator in the definition.
-import { createForm, createForms } from "@lunarhue/forms-solid";
+import { createForm, createForms, fieldValidators } from "@lunarhue/forms-solid";
 import { TextInput } from "./input.js";
 
 const forms = createForms();
 const signIn = forms.define({
   defaultValues: { email: "" },
-  validate: { fields: { email: (value) => (value.includes("@") ? undefined : { message: "Enter an email." }) } },
+  validate: { fields: fieldValidators({ email: (value) => (value.includes("@") ? undefined : { message: "Enter an email." }) }) },
   onSubmit: (value) => value.email,
 });
 

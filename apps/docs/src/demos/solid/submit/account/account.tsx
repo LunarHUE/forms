@@ -1,4 +1,4 @@
-import { createForm, createForms, useFormContext } from "@lunarhue/forms-solid";
+import { createForm, createForms, fieldValidators, useFormContext } from "@lunarhue/forms-solid";
 import { Show } from "solid-js";
 import { saveAccount } from "./server";
 import { TextInput } from "./TextInput";
@@ -9,10 +9,10 @@ const forms = createForms({ plugins: [docsDevtools] });
 const account = forms.define({
   defaultValues: { name: "", email: "" },
   validate: {
-    fields: {
+    fields: fieldValidators({
       name: (name) => (name === "" ? { message: "Enter your name." } : undefined),
       email: (email) => (email.includes("@") ? undefined : { message: "Enter a valid email." }),
-    },
+    }),
   },
   // Runs only once the value is valid. What it returns is the result.
   onSubmit: async (value, { store }) => {

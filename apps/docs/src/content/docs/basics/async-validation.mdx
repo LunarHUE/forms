@@ -13,7 +13,7 @@ A validator that returns a promise is async. Try `ada` as the username.
 const account = forms.define({
   defaultValues: { username: "" },
   validate: {
-    fields: {
+    fields: fieldValidators({
       username: validateOn(
         debounced(
           async (name, { signal }) =>
@@ -22,7 +22,7 @@ const account = forms.define({
         ),
         "input",
       ),
-    },
+    }),
   },
   show: "always",
 });
