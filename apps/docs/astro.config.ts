@@ -11,6 +11,7 @@ import solid from "./integrations/solid";
 import { codeFences } from "./src/lib/mdx/code-fences";
 import { demos } from "./src/lib/mdx/demos";
 import { frameworkBlocks } from "./src/lib/mdx/framework-blocks";
+import { docRedirects } from "./src/lib/redirects";
 
 // Workspace packages export their source under this condition, so the docs
 // build the library from source and need no package build first.
@@ -22,6 +23,8 @@ export default defineConfig({
   build: { format: "file" },
   // Internal links fetch their page on hover.
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
+  // Pages that moved keep their old URLs (src/lib/redirects.ts).
+  redirects: docRedirects(),
   integrations: [
     // Fences become <Code> (highlighted by lib/highlight.ts, filtered by
     // framework); framework-blocks records which headings sit in <Only>;
