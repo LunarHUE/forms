@@ -110,6 +110,8 @@ tarballs in dependency order. It skips versions already on npm, so it is safe
 to run again after a failure. Never run `npm publish` inside a package
 folder. That ships `workspace:` versions nobody can install.
 
+Pushing the tags also deploys the docs for the release.
+
 ## Size
 
 Each entry point has a limit in its package's `size-limit` list, and

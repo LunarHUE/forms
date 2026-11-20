@@ -2,8 +2,25 @@ import type { Framework } from "./frameworks";
 
 export const SITE_NAME = "LunarHUE Forms";
 
-/** Production origin, also `site` in astro.config.ts. */
-export const SITE_URL = "https://forms.lunarhue.dev";
+/**
+ * Which deploy a build is for. `release` is production, which serves the
+ * latest release (and later older versions too), and also covers local
+ * builds and pull request previews. `next` serves main's docs only.
+ * docs-deploy.yml sets DOCS_CHANNEL=next for main, and astro.config.ts passes
+ * it through, since Vite exposes no unprefixed variable on its own.
+ */
+export type Channel = "release" | "next";
+
+export const CHANNEL: Channel = import.meta.env.DOCS_CHANNEL === "next" ? "next" : "release";
+
+/** Where each channel is served. */
+export const CHANNEL_URLS: Readonly<Record<Channel, string>> = {
+  release: "https://forms.lunarhue.dev",
+  next: "https://next.forms.lunarhue.dev",
+};
+
+/** This build's origin, also `site` in astro.config.ts. */
+export const SITE_URL = CHANNEL_URLS[CHANNEL];
 
 export const GITHUB_URL = "https://github.com/LunarHUE/forms";
 

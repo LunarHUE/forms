@@ -13,13 +13,17 @@ import { demos } from "./src/lib/mdx/demos";
 import { frameworkBlocks } from "./src/lib/mdx/framework-blocks";
 import { docRedirects } from "./src/lib/redirects";
 import { panelCss } from "../../packages/devtools/panel-css.ts";
+import { CHANNEL_URLS, type Channel } from "./src/lib/site";
 
 // Workspace packages export their source under this condition, so the docs
 // build the library from source and need no package build first.
 const sourceCondition = "@lunarhue/source";
 
+// src/lib/site.ts explains the channels.
+const channel: Channel = process.env["DOCS_CHANNEL"] === "next" ? "next" : "release";
+
 export default defineConfig({
-  site: "https://forms.lunarhue.dev",
+  site: CHANNEL_URLS[channel],
   trailingSlash: "never",
   build: { format: "file" },
   // Internal links fetch their page on hover.
@@ -47,6 +51,8 @@ export default defineConfig({
     pagefindIndex(),
   ],
   vite: {
+    // Vite only exposes PUBLIC_ variables, and this one reaches client code too.
+    define: { "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel) },
     // The devtools panel builds from source here, its stylesheet included.
     plugins: [tailwindcss(), panelCss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },
