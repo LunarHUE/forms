@@ -176,6 +176,7 @@ Each throws when no matching `form.Form` is above.
 | `<Items handle>` | Renders one child per item, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `useValidator(handle, validator)` | Adds a validator while the component is mounted. |
 | `useDisabledErrors(form)` | The disabled fields whose errors blocked the last submit. |
+| `useInvalidFields(form)` | Every field with errors, in form order, as `{ field, name, errors }`. Re-renders when the list changes. |
 
 </Only>
 
@@ -188,6 +189,7 @@ Each throws when no matching `form.Form` is above.
 | `<Items handle fallback?>` | Renders the items with `For`, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
 | `createValidator(handle, validator)` | Adds a validator for the life of the owner. |
 | `createDisabledErrors(form)` | An accessor of the disabled fields whose errors blocked the last submit. |
+| `createInvalidFields(form)` | An accessor of every field with errors, in form order, as `{ field, name, errors }`. |
 
 </Only>
 
@@ -242,7 +244,8 @@ children.
 | `name` | The dotted name, as `"address.city"`. |
 | `errors` | Every error on the field. |
 | `shownErrors` | The errors to show now, per `show`. |
-| `invalid` | True when it has a validation error. Errors you set don't count. |
+| `userErrors` | The errors set with `setErrors`, the tail of `errors`. |
+| `invalid` | True when it has any error, from validation or `setErrors`. |
 | `touched` | True after a blur. |
 | `edited` | True after a user edit. |
 | `dirty` | True when the value differs from the baseline. Needs `dirty()`. |
@@ -309,13 +312,14 @@ tests.
 | `batch(fn)` | Runs `fn`, notifying listeners once at the end. |
 | `submit(intent?)` | Submits without the adapter's focus handling. |
 | `handleSubmit(event?)` | The same, for a submit event. |
-| `setErrors(errorMap)` | Replaces user errors across the form. |
+| `setErrors(errorMap)` | Replaces user errors across the form. A name no field has goes to the root. |
 | `validate()` | Runs every validator now. |
 | `reset(options?)` | Resets the whole form. |
-| `fieldAt(path)` | The handle at a stable path. |
+| `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
+| `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
-| `firstInvalid()` | The first enabled field with a validation error. |
-| `disabledInvalid()` | Every disabled field with a validation error. |
+| `firstInvalid()` | The first enabled field with an error. |
+| `disabledInvalid()` | Every disabled field with an error. |
 
 ### Types
 
@@ -350,6 +354,8 @@ any release, so don't copy them into your own code.
 | --- | --- |
 | `createFormsCore(config?)` | Core's entry point, which the adapters wrap. Returns `define`. |
 | `branch(handle, snapshot, key, value)` | Narrows a handle to one member of a discriminated union. |
+| `invalidFields(store)` | Every field with an error, in form order, as `{ field, name, errors }`. The adapter hooks above wrap it. |
+| `subscribeInvalid(store, listener)` | Calls `listener` after a write that may change `invalidFields(store)`. Returns the function that unsubscribes. |
 | `splitPath(path)` | `"items.0.name"` to `["items", 0, "name"]`. |
 | `fieldId(formId, path)` | The DOM id the adapters give a field. |
 | `optionId(id, option)` | The DOM id of one radio or checkbox in a group. |

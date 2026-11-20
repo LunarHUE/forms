@@ -48,7 +48,7 @@ describe("a form with no plugins", () => {
     store.setErrors({ form: err("Try again"), fields: { name: err("Taken"), "rows.0.title": err("Too short") } });
     const [row] = store.root.at("rows").peek().keys;
     expect(store.getSnapshot([]).errors).toEqual([err("Try again")]);
-    expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Taken")], invalid: false });
+    expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Taken")], userErrors: [err("Taken")], invalid: true });
     expect(store.getSnapshot(["rows", row ?? "", "title"]).errors).toEqual([err("Too short")]);
     // A user edit clears the field's own.
     store.root.at("name").setValue("Ada");

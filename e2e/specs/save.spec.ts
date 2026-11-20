@@ -33,3 +33,28 @@ test("a refused save puts the server's errors on the field and the form, and the
   await expect(formErrors).toHaveText("");
   await expect.poll(async () => (await probe(page)).fields[""]?.errors).toEqual([]);
 });
+
+test("a server error under a name the form doesn't have shows with the form's errors", async ({ page }) => {
+  const formErrors = page.getByRole("list", { name: labels.formErrors });
+  await input(page, labels.name).fill(scenario.renamedName);
+  await page.getByRole("button", { name: submit.idle }).click();
+  await expect(page.getByRole("status")).toHaveText(messages.refused);
+  await expect(formErrors).toHaveText(messages.renamed);
+  const refused = await probe(page);
+  expect(refused.fields[""]?.shown).toEqual([messages.renamed]);
+});
+
+test("an error summary lists the server's errors, focuses a field from its entry, and drops the field once it is fixed", async ({ page }) => {
+  const email = input(page, labels.email);
+  const summary = page.getByRole("list", { name: labels.summary });
+  await expect(summary.getByRole("listitem")).toHaveCount(0);
+  await email.fill(scenario.takenEmail);
+  await page.getByRole("button", { name: submit.idle }).click();
+  await expect(page.getByRole("status")).toHaveText(messages.refused);
+  await expect(summary.getByRole("listitem")).toHaveText([`form: ${messages.form}`, `email: ${messages.email}`]);
+
+  await summary.getByRole("button", { name: `email: ${messages.email}` }).click();
+  await expect(email).toBeFocused();
+  await email.fill("ada@example.com");
+  await expect(summary.getByRole("listitem")).toHaveText([`form: ${messages.form}`]);
+});

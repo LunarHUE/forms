@@ -32,6 +32,15 @@ describe("rules", () => {
     expect(server()).toEqual(testStore({ defaultValues: order(), plugins: [rules()] }, shippingRules()).server());
   });
 
+  it("disables a field the starting value lacks", () => {
+    const { store, errors } = testStore(
+      { defaultValues: { locked: true }, plugins: [rules()] },
+      ruled<{ locked: boolean; note?: string }>({ note: (value) => ({ disabled: value.locked }) }),
+    );
+    expect(store.getSnapshot(["note"]).disabled).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
   it("reads a field no rule names as shown, the same object on the server and the client", () => {
     const { store, errors } = testStore({ defaultValues: order(), plugins: [rules()] }, shippingRules());
     const meta = rules.meta(store.getSnapshot(["sameAsBilling"]));

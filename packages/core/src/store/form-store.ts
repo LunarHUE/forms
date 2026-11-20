@@ -9,6 +9,7 @@ import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.
 import type { FormContext } from "./context.js";
 import type { BuildKeys } from "./baseline/keys.js";
 import { createStoreCore, type CreateArrays, type StoreCore } from "./core.js";
+import { cores } from "./cores.js";
 import { createHandles } from "./handles.js";
 import type { Validation, ValidationOptions } from "./runner.js";
 import { createSubmit, type Submit, type SubmitOptions } from "./submit.js";
@@ -150,6 +151,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     reset: (resetOptions) => reset([], resetOptions),
     registerValidator: validation.register,
     fieldAt: handles.fieldAt,
+    pathOf: (name) => core.pathOf(name, true),
     // Without `dirty()` the types have no `changes`. Development throws for callers without types.
     changes:
       typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !createDirty
@@ -161,6 +163,8 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     disabledInvalid: submit.disabledInvalid,
     plugins: host?.apis ?? {},
   };
+  // For `invalidFields` and `subscribeInvalid`.
+  cores.set(store, core);
   host?.start(store, baseline, validation, parts);
   return { store, core, baseline, validation, submit };
 }

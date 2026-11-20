@@ -5,6 +5,7 @@ import type { Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
 import type { FormStore } from "../store.js";
 import { createFormInternals, type FormStoreOptions } from "./form-store.js";
+import { invalidFields, subscribeInvalid } from "../invalid.js";
 import { arrays } from "../plugins/arrays.js";
 
 // Core declares no timer globals, so the tests declare the one they use.
@@ -469,8 +470,7 @@ describe("user errors and submit", () => {
       },
     });
     expect(await store.submit()).toEqual({ status: "succeeded", result: "saved" });
-    expect(store.getSnapshot(["name"]).errors).toEqual([err("Taken")]);
-    expect(store.getSnapshot(["name"]).invalid).toBe(false);
+    expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Taken")], userErrors: [err("Taken")], invalid: true });
     expect(store.getFormSnapshot().valid).toBe(true);
   });
 
@@ -501,7 +501,7 @@ describe("firstInvalid", () => {
     expect(store.firstInvalid()).toBe(store.root.at("rows").item(b ?? "").at("title"));
   });
 
-  it("skips disabled fields and fields with only user errors", async () => {
+  it("skips disabled fields, whatever their errors", async () => {
     const { store } = make(options, { name: "", rows: [{ title: "" }, { title: "" }] });
     const [a, b] = keys(store);
     await store.submit();
@@ -511,6 +511,65 @@ describe("firstInvalid", () => {
     expect(store.firstInvalid()).toBe(store.root.at("rows").item(b ?? "").at("title"));
     store.root.at("rows").item(b ?? "").at("title").setValue("ok");
     expect(store.firstInvalid()).toBeUndefined();
+  });
+});
+
+describe("errors from setErrors", () => {
+  it("count for firstInvalid, so focus can follow a server's errors", async () => {
+    const { store } = make({ validate: { fields: { name: required } } }, { name: "", rows: [{ title: "a" }] });
+    store.root.at("name").setValue("Ada");
+    await store.validate();
+    store.setErrors({ fields: { "rows.0.title": err("Taken") } });
+    expect(store.getSnapshot(["rows", "k0", "title"])).toMatchObject({ errors: [err("Taken")], userErrors: [err("Taken")], invalid: true });
+    expect(store.firstInvalid()).toBe(store.root.at("rows").item("k0").at("title"));
+    // They still don't block submit.
+    expect(store.getFormSnapshot().valid).toBe(true);
+  });
+});
+
+describe("invalidFields", () => {
+  it("lists every field with errors in value order, validation and user errors alike, disabled ones too", async () => {
+    const { store } = make(
+      { validate: { fields: { name: required, rows: [{ title: required }] } }, disabled: { rows: true } },
+      { name: "", rows: [{ title: "" }, { title: "b" }] },
+    );
+    expect(invalidFields(store)).toEqual([]);
+    await store.validate();
+    store.root.at("rows").item("k1").at("title").setErrors(err("Taken"));
+    store.root.setErrors(err("Form"));
+    expect(invalidFields(store)).toEqual([
+      { field: store.root, name: "", errors: [err("Form")] },
+      { field: store.root.at("name"), name: "name", errors: [err("Required")] },
+      { field: store.root.at("rows").item("k0").at("title"), name: "rows.0.title", errors: [err("Required")] },
+      { field: store.root.at("rows").item("k1").at("title"), name: "rows.1.title", errors: [err("Taken")] },
+    ]);
+    // The move is a user edit of `rows`, so it clears the user error below it.
+    store.root.at("rows").move(1, 0);
+    expect(invalidFields(store).map((entry) => entry.name)).toEqual(["", "name", "rows.1.title"]);
+    expect(invalidFields(store)[2]?.field).toBe(store.root.at("rows").item("k0").at("title"));
+  });
+
+  it("gives a handle for a field whose key the value lacks", () => {
+    const { store } = make();
+    // The value type has no such key, so the test reaches it through the loose handle.
+    const extra = store.fieldAt([])?.at("extra");
+    extra?.setErrors(err("x"));
+    expect(invalidFields(store)).toEqual([{ field: extra, name: "extra", errors: [err("x")] }]);
+  });
+});
+
+describe("subscribeInvalid", () => {
+  it("wakes the listener when the list changes, until it unsubscribes", () => {
+    const { store } = make();
+    let runs = 0;
+    const stop = subscribeInvalid(store, () => void runs++);
+    store.setErrors({ fields: { name: err("Taken") } });
+    expect(runs).toBe(1);
+    store.root.at("name").setTouched();
+    expect(runs).toBe(1);
+    stop();
+    store.setErrors({});
+    expect(runs).toBe(1);
   });
 });
 

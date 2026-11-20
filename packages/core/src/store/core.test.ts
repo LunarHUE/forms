@@ -239,6 +239,7 @@ describe("snapshot contents", () => {
       value: "a",
       name: "rows.0.title",
       errors: [],
+      userErrors: [],
       shownErrors: [],
       invalid: false,
       touched: false,

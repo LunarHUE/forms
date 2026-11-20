@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormError } from "../errors.js";
 import type { AnyFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
@@ -466,8 +466,23 @@ describe("fieldAt", () => {
     const { store, root } = make({ rows: [{ tags: ["x"] }], user: { name: "a" }, nothing: null });
     expect(field(store, ["rows", "k0", "tags", "k0"])).toBe(root.at("rows").item("k0").at("tags").item("k0"));
     expect(field(store, ["rows", "k0", "tags", "k0"]).key).toBe("k0");
-    expect(field(store, ["user", "missing"])).toBe(root.at("user").at("missing"));
     expect(field(store, ["nothing", "x"])).toBe(root.at("nothing").at("x"));
+  });
+
+  it("returns undefined for a key the object lacks, until something subscribes to or validates a field there", () => {
+    const { core, store, root } = make({ user: { name: "a" } });
+    expect(store.fieldAt(["user", "missing"])).toBeUndefined();
+    expect(store.fieldAt(["nope"])).toBeUndefined();
+    // Reading makes a node, but nothing renders it.
+    store.getSnapshot(["nope"]);
+    expect(store.fieldAt(["nope"])).toBeUndefined();
+    const stop = store.subscribe(["user", "missing", "deep"], () => {});
+    expect(store.fieldAt(["user", "missing"])).toBe(root.at("user").at("missing"));
+    stop();
+    expect(store.fieldAt(["user", "missing"])).toBeUndefined();
+    core.setValidationErrors("v", ["nope"], [err("x")]);
+    expect(store.fieldAt(["nope"])).toBe(root.at("nope"));
+    expect(store.firstInvalid()).toBe(root.at("nope"));
   });
 
   it("returns undefined for a path through a leaf or an item key the array never had", () => {
@@ -486,9 +501,11 @@ describe("store commands", () => {
     root.at("a").setErrors(err("old"));
     root.at("rows").move(1, 0);
     const runs = count(store, [["a"], ["rows", "k1", "t"]]);
+    vi.stubGlobal("console", { warn: vi.fn<(message: string) => void>() });
     store.setErrors({ form: err("form"), fields: { "rows.0.t": [err("x"), err("y")], "": err("root"), nope: err("n"), a: undefined } });
+    vi.unstubAllGlobals();
     expect(runs).toEqual([1, 1]);
-    expect(root.peek().errors).toEqual([err("form"), err("root")]);
+    expect(root.peek().errors).toEqual([err("form"), err("root"), err("n")]);
     expect(store.getSnapshot(["rows", "k1", "t"]).errors).toEqual([err("x"), err("y")]);
     expect(root.at("a").peek().errors).toEqual([]);
   });
@@ -527,5 +544,67 @@ describe("store commands", () => {
     });
     expect(result).toBe("done");
     expect(runs).toEqual([1]);
+  });
+});
+
+/** Stubs `console.warn` and returns the stub. */
+const spy = () => {
+  const warn = vi.fn<(message: string) => void>();
+  vi.stubGlobal("console", { warn });
+  return warn;
+};
+
+describe("names no field has", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("setErrors puts their errors on the root after the form errors, and warns once per name", () => {
+    const warn = spy();
+    const { store } = make({ name: "", tags: ["a"] });
+    store.setErrors({
+      form: err("form"),
+      fields: { nope: err("no such field"), "name.first": err("under a leaf"), "tags.5": err("past the end"), "tags.0": err("fine") },
+    });
+    expect(store.getSnapshot([]).errors).toEqual([err("form"), err("no such field"), err("under a leaf"), err("past the end")]);
+    expect(store.getSnapshot(["nope"]).errors).toEqual([]);
+    expect(store.getSnapshot(["tags", "k0"]).errors).toEqual([err("fine")]);
+    expect(warn).toHaveBeenCalledTimes(3);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/^@lunarhue\/forms-core: No field is named "nope", so its errors went to the form's root\. .+#core:field:unknown$/),
+    );
+    store.setErrors({ fields: { nope: err("again") } });
+    expect(store.getSnapshot([]).errors).toEqual([err("again")]);
+    expect(warn).toHaveBeenCalledTimes(3);
+  });
+
+  it("setErrors keeps errors on a key the value lacks when a field there is rendered", () => {
+    const warn = spy();
+    const { store } = make({ name: "" });
+    store.subscribe(["nickname"], () => {});
+    store.setErrors({ fields: { nickname: err("taken") } });
+    expect(store.getSnapshot(["nickname"]).errors).toEqual([err("taken")]);
+    expect(store.getSnapshot([]).errors).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("setErrors treats the fields of a missing object as fields", () => {
+    const warn = spy();
+    const { store } = make({ address: undefined, billing: null });
+    store.setErrors({ fields: { "address.street": err("a"), "billing.zip": err("b") } });
+    expect(store.getSnapshot(["address", "street"]).errors).toEqual([err("a")]);
+    expect(store.getSnapshot(["billing", "zip"]).errors).toEqual([err("b")]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("pathOf resolves a dotted name by the same rule", () => {
+    const { store } = make({ rows: [{ t: 1 }, { t: 2 }], nothing: null });
+    store.root.at("rows").move(1, 0);
+    expect(store.pathOf("rows.0.t")).toEqual(["rows", "k1", "t"]);
+    expect(store.pathOf("")).toEqual([]);
+    expect(store.pathOf("nothing.x")).toEqual(["nothing", "x"]);
+    expect(store.pathOf("nope")).toBeUndefined();
+    expect(store.pathOf("rows.2")).toBeUndefined();
+    expect(store.pathOf("rows.0.t.x")).toBeUndefined();
   });
 });

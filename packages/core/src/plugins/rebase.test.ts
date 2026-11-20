@@ -40,6 +40,13 @@ const check = (label: string) =>
 const paths = (resolve: { mock: { calls: Parameters<Resolve>[] } }) => resolve.mock.calls.map(([leaf]) => leaf.path);
 
 describe("rebase", () => {
+  it("writes a key the current value lacks", () => {
+    const { store, root, rebase } = make({ name: "a" });
+    const { taken } = rebase(root, { name: "a", nickname: "n" }, () => "take");
+    expect(taken).toEqual([["nickname"]]);
+    expect(store.getSnapshot([]).value).toEqual({ name: "a", nickname: "n" });
+  });
+
   it("asks once per differing leaf and keeps, takes or writes a value", () => {
     const { store, root, rebase } = make({ name: "a", port: 1, same: "s", address: { street: "", city: "" } });
     root.at("name").setValue("mine");

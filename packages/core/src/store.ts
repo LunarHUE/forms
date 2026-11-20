@@ -15,8 +15,8 @@ export interface Change {
   readonly value: unknown;
 }
 
-/** A disabled field with a validation error, as `disabledInvalid` lists it. */
-export interface DisabledInvalid<E = FormError> {
+/** A field with errors, as `invalidFields` and `disabledInvalid` list it. */
+export interface InvalidField<E = FormError> {
   /** The field's handle. */
   readonly field: AnyFieldHandle<E>;
   /** The field's dotted value path, as the snapshot's `name`. */
@@ -24,6 +24,9 @@ export interface DisabledInvalid<E = FormError> {
   /** Every error on the field, as the snapshot's `errors`. The form's `show` setting doesn't filter it. */
   readonly errors: readonly E[];
 }
+
+/** A disabled field with errors, as `disabledInvalid` lists it. The same shape as `InvalidField`. */
+export type DisabledInvalid<E = FormError> = InvalidField<E>;
 
 /**
  * The arguments `submit` takes. When `undefined` is a valid intent the
@@ -124,8 +127,10 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
 
   /**
    * Replaces user errors across the form. Errors under `fields` land on the
-   * field with that dotted name. User errors don't block submit and clear
-   * when the field's value is next written as a user edit.
+   * field with that dotted name. A name `pathOf` doesn't resolve sends its
+   * errors to the root, after the `form` errors, and development warns
+   * (`field:unknown`). User errors don't block submit and clear when the
+   * field's value is next written as a user edit.
    */
   setErrors(errors: ErrorMap<E>): void;
   /**
@@ -147,26 +152,36 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
 
   /**
    * Returns the handle at stable path `path`, the same object `at` and
-   * `item` return. Returns `undefined` when the path can't name a field: a
-   * segment goes into a leaf, or names an item key the array never had.
+   * `item` return. Returns `undefined` when the path names no field: a
+   * segment goes into a leaf, names an item key the array never had, or
+   * names a key its object doesn't have while nothing subscribes to or
+   * validates a field there. Fields under a missing object count, since the
+   * value can't say which keys it would have.
    */
   fieldAt(path: Path): AnyFieldHandle<E, N> | undefined;
   /**
-   * Returns the first enabled field, in value order, that has a validation
-   * error, for the adapter to focus after an invalid submit. Read-only fields
-   * count. Disabled ones don't: `disabledInvalid` lists those. Returns
-   * `undefined` when there is none. A read for event handlers and effects,
-   * not render.
+   * Returns the stable path of the field with dotted name `name`, such as
+   * `rows.0.title`, by the rule `fieldAt` uses. Returns `undefined` when no
+   * field has that name, so a caller can send server errors for a renamed
+   * field somewhere visible before `setErrors` puts them on the root.
+   */
+  pathOf(name: string): Path | undefined;
+  /**
+   * Returns the first enabled field in `invalidFields(store)`, for the adapter to focus
+   * after an invalid submit, or for an `onSubmit` that just put a server's
+   * errors on the form with `setErrors`. Read-only fields count. Disabled
+   * ones don't: `disabledInvalid` lists those. Returns `undefined` when there
+   * is none. A read for event handlers and effects, not render.
    */
   firstInvalid(): AnyFieldHandle<E, N> | undefined;
   /**
-   * Returns every disabled field, in value order, that has a validation
-   * error. Their errors still block submit, but `firstInvalid` skips them, so
-   * after an invalid submit the adapter can show these at form level. A field
-   * counts as disabled when it or a field above it is. Returns an empty list
-   * when there is none. A read for event handlers and effects, not render.
+   * Returns the disabled fields in `invalidFields(store)`. Their validation errors still
+   * block submit, but `firstInvalid` skips them, so after an invalid submit
+   * the adapter can show these at form level. A field counts as disabled when
+   * it or a field above it is. Returns an empty list when there is none. A
+   * read for event handlers and effects, not render.
    */
-  disabledInvalid(): readonly DisabledInvalid<E>[];
+  disabledInvalid(): readonly InvalidField<E>[];
   /**
    * The API of each installed hook plugin that has one, by plugin name:
    * `store.plugins.history.undo()`. A store from a definition types it

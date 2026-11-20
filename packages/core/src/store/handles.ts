@@ -31,11 +31,26 @@ export interface HandleDeps<E, I, R> {
 export interface Handles<E> {
   /** The root handle, made on first call. */
   root(): Handle<E>;
-  /** The handle at `path`, or undefined when the path can't name a field. */
+  /** The handle at `path`, or undefined when the path names no field, as `FormStore.fieldAt` says. */
   fieldAt(this: void, path: Path): Handle<E> | undefined;
 }
 
 const isList = <E>(errors: Many<E>): errors is readonly E[] => Array.isArray(errors);
+
+/**
+ * The handle at stable path `path`, made with `at` and `item`. Unlike
+ * `fieldAt` it takes a key the value doesn't have yet, so a plugin can write
+ * a field that isn't there. Writes at a path that can't hold a field do
+ * nothing.
+ */
+export function reach<N extends string>(store: AnyFormStore<unknown, N>, path: Path): Loose<unknown, N> {
+  let handle: Loose<unknown, N> = store.root;
+  path.forEach((segment, i) => {
+    const seg = String(segment);
+    handle = store.getSnapshot(path.slice(0, i)).keys?.includes(seg) ? handle.item(seg) : handle.at(seg);
+  });
+  return handle;
+}
 
 /** One error or a list of them, as a list. */
 export const errorList = <E>(errors: Many<E>): readonly E[] => (isList(errors) ? errors : [errors]);
@@ -164,7 +179,7 @@ export function createHandles<E, I, R>(deps: HandleDeps<E, I, R>): Handles<E> {
   return {
     root: rootHandle,
     fieldAt(path) {
-      const steps = core.itemSteps(path);
+      const steps = core.itemSteps(path, true);
       if (!steps) return undefined;
       let handle = rootHandle();
       for (const [i, segment] of path.entries()) handle = steps[i] === true ? handle.item(String(segment)) : handle.at(segment);

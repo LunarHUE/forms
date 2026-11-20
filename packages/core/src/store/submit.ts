@@ -2,12 +2,12 @@ import type { SubmitContext } from "../definition.js";
 import type { ErrorMap } from "../errors.js";
 import type { Handle } from "./handles.js";
 import type { Submission } from "../snapshot.js";
-import type { DisabledInvalid, IntentArgs } from "../store.js";
+import type { InvalidField, IntentArgs } from "../store.js";
 import type { DeepReadonly, PlatformAbortSignal } from "../value.js";
 import type { FormContext } from "./context.js";
 import { errorList } from "./handles.js";
 import type { PluginHost } from "./plugins.js";
-import { addErrors, type Placed } from "./placed.js";
+import { addErrors, addNamed, type Placed } from "./placed.js";
 import type { Validation } from "./runner.js";
 
 // Core has no DOM or node types, so this declares the platform global submit uses.
@@ -30,7 +30,7 @@ export interface Submit<E, I, R> {
   /** As `FormStore.firstInvalid`. */
   firstInvalid(this: void): Handle<E> | undefined;
   /** As `FormStore.disabledInvalid`. */
-  disabledInvalid(this: void): DisabledInvalid<E>[];
+  disabledInvalid(this: void): InvalidField<E>[];
   /** Called when the whole form is reset, inside the reset's batch, to abort a running submit. */
   abort(): void;
 }
@@ -108,6 +108,18 @@ export function createSubmit<V, E, I, R, O = V>(
     return promise;
   };
 
+  // The fields with an error that are disabled, or enabled, in value order.
+  // `fieldAt` has no handle for a key the value lacks, so those are skipped.
+  const listed = (disabled: boolean) => {
+    const found: (InvalidField<E> & { readonly field: Handle<E> })[] = [];
+    for (const path of core.invalid()) {
+      const field = context.store().fieldAt(path);
+      const { name, errors, disabled: off } = core.getSnapshot(path);
+      if (field && off === disabled) found.push({ field, name, errors });
+    }
+    return found;
+  };
+
   return {
     // With no argument the intent is undefined, which `IntentArgs` allows only when I includes it.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -123,27 +135,14 @@ export function createSubmit<V, E, I, R, O = V>(
       const lists: Placed<E> = new Map();
       if (errors.form !== undefined) addErrors(lists, [], errorList(errors.form));
       // A name that resolves to no field lands on the root after the form errors, as validation does.
-      for (const [name, entry] of Object.entries(errors.fields ?? {}))
-        if (entry !== undefined) addErrors(lists, core.pathOf(name) ?? [], errorList(entry));
+      for (const [name, entry] of Object.entries(errors.fields ?? {})) if (entry !== undefined) addNamed(lists, core, name, errorList(entry));
       core.batch(() => {
         core.clearUserErrors([]);
         for (const { path, errors: list } of lists.values()) core.setUserErrors(path, list);
       });
     },
-    firstInvalid() {
-      const path = core.firstInvalid();
-      return path && context.store().fieldAt(path);
-    },
-    disabledInvalid() {
-      const found: DisabledInvalid<E>[] = [];
-      for (const path of core.disabledInvalid()) {
-        const field = context.store().fieldAt(path);
-        if (!field) continue;
-        const { name, errors } = core.getSnapshot(path);
-        found.push({ field, name, errors });
-      }
-      return found;
-    },
+    firstInvalid: () => listed(false)[0]?.field,
+    disabledInvalid: () => listed(true),
     abort() {
       const run = running;
       running = undefined;

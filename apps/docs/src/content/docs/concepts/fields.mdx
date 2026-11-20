@@ -81,8 +81,9 @@ that bind an element. A new object arrives with each change.
 | `value` | The value the store holds. |
 | `name` | The dotted name with array indexes, such as `tasks.0.title`. |
 | `errors`, `shownErrors` | Every error, and the ones the `show` setting lets through now. |
+| `userErrors` | The errors set with `setErrors`. They come last in `errors`. |
 | `touched`, `edited`, `dirty` | Blurred once, changed by the user, different from the baseline. `dirty` needs the `dirty()` plugin. |
-| `invalid`, `validating` | Has a validation error, has a validator running. |
+| `invalid`, `validating` | Has any error, has a validator running. |
 | `disabled`, `readOnly` | Set on this field or one above it. |
 | `setValue`, `setTouched`, `setErrors`, `handleBlur`, `reset`, `validate` | The handle's commands. Arrays add `push`, `insert`, `remove` and `move`. |
 | `text`, `setText`, `setNumberText`, `ref` | The pieces for binding an element. See below. |

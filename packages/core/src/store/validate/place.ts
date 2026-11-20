@@ -4,7 +4,7 @@ import type { StandardSchemaV1 } from "../../standard-schema.js";
 import type { ValidatorResult } from "../../validator.js";
 import type { StoreCore } from "../core.js";
 import { errorList } from "../handles.js";
-import { addErrors, type Placed } from "../placed.js";
+import { addErrors, addNamed, type Placed } from "../placed.js";
 import type { Spec } from "./inputs.js";
 
 const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
@@ -55,10 +55,8 @@ export function place<E, I, R>(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const map = result as ErrorMap<E>;
     addErrors(placed, base, listOf(map.form));
-    for (const [name, errors] of Object.entries(map.fields ?? {})) {
-      // A name that resolves to no field lands on the root after the form errors, so it still blocks submit.
-      addErrors(placed, core.pathOf(name) ?? base, listOf(errors));
-    }
+    // A name that resolves to no field lands on the root after the form errors, so it still blocks submit.
+    for (const [name, errors] of Object.entries(map.fields ?? {})) addNamed(placed, core, name, listOf(errors));
   } else {
     // A validator's own errors are already the form's error type.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion

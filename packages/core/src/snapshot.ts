@@ -25,9 +25,20 @@ export interface FieldSnapshotBase<V, E = FormError> {
   readonly name: string;
   /** Every error on this field: validation errors first, then user-set errors. */
   readonly errors: readonly E[];
+  /**
+   * The errors `setErrors` put on this field, on the store or the handle:
+   * the end of `errors`. The validation errors are the rest, so
+   * `errors.slice(0, errors.length - userErrors.length)`. They don't block
+   * submit and clear on the field's next user edit.
+   */
+  readonly userErrors: readonly E[];
   /** The part of `errors` the form's `show` setting lets through now. */
   readonly shownErrors: readonly E[];
-  /** True when this field has a validation error. User-set errors don't count. */
+  /**
+   * True when this field has an error, from validation or `setErrors`. Only
+   * validation errors block submit: the form snapshot's `valid` counts those
+   * alone.
+   */
   readonly invalid: boolean;
   /** True once the field has been blurred or `setTouched` set it. Reset clears it. */
   readonly touched: boolean;
@@ -101,7 +112,10 @@ export type FormSnapshot<I = undefined, R = unknown, N extends string = never> =
 
 /** The members every form snapshot has. See `FormSnapshot`. */
 export interface FormSnapshotBase<I = undefined, R = unknown> {
-  /** True when no field has a validation error. User-set errors don't count. */
+  /**
+   * True when no field has a validation error. Errors from `setErrors` don't
+   * count, though they make the field snapshot's `invalid` true.
+   */
   readonly valid: boolean;
   /** True while any validator in the form is waiting or running. */
   readonly validating: boolean;

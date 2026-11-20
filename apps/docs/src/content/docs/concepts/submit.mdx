@@ -125,8 +125,84 @@ onSubmit: async (value, { store }) => {
 field, so render the root's errors somewhere, or the user sees nothing. See
 [`submit:unseen`](/errors#core:submit:unseen) for how.
 
+A name that matches no field also lands on the root, after the `form`
+errors, and development warns with
+[`field:unknown`](/errors#core:field:unknown). That happens when the server
+renames a field before the form catches up. A name counts as a field when the
+value has that key, when a field there is rendered or validated, or when it
+sits under an object that is missing. To send such errors somewhere else,
+such as a toast, check each name with `store.pathOf` first:
+
+```ts
+// The names to show in a toast instead.
+const unknown = Object.keys(response.fields).filter((name) => store.pathOf(name) === undefined);
+```
+
 Errors set this way don't block the next submit. Each one clears when the
 user edits its field, and they all clear when the next submit starts.
+
+## Error summary
+
+A long form can list its errors at the top, so the user sees what the server
+refused without scrolling. Each entry has the field's `name`, its `errors`,
+and its handle as `field`, whose `id` is the input's id. The root comes first
+with name `""`, and the rest follow in form order. The list counts errors from
+validation and from `setErrors` alike.
+
+<Only framework="react">
+
+```tsx
+function Summary() {
+  const form = useFormContext(forms);
+  const invalid = useInvalidFields(form);
+  return (
+    <ul>
+      {invalid.map((entry) => (
+        <li key={entry.field.id}>
+          <a href={`#${entry.field.id}`}>{entry.name || "Form"}</a>:{" "}
+          {entry.errors.map((error) => error.message).join(" ")}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+function Summary() {
+  const form = useFormContext(forms);
+  const invalid = createInvalidFields(form);
+  return (
+    <ul>
+      <For each={invalid()}>
+        {(entry) => (
+          <li>
+            <a href={`#${entry.field.id}`}>{entry.name || "Form"}</a>:{" "}
+            {entry.errors.map((error) => error.message).join(" ")}
+          </li>
+        )}
+      </For>
+    </ul>
+  );
+}
+```
+
+</Only>
+
+A submit that validation stops moves focus to the first invalid field. One
+that `onSubmit` ends with `setErrors` doesn't, since the submit itself
+succeeded. To focus the first field the server refused, call
+`store.firstInvalid()` after the submit resolves:
+
+```ts
+await form.submit();
+const field = form.store.firstInvalid();
+if (field) document.getElementById(field.id)?.focus();
+```
 
 A plugin can refuse a submit too. Its `onSubmit` hook returns `refuse`, and
 the submit ends `"invalid"` without calling yours. See

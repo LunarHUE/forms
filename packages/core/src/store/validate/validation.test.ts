@@ -424,6 +424,20 @@ describe("form validator results", () => {
     expect(messages(["rows", "k0", "t"])).toEqual(["T"]);
   });
 
+  it("puts a name the value lacks on the root, not on a field nothing renders, and warns once", () => {
+    const warn = vi.fn<(message: string) => void>();
+    vi.stubGlobal("console", { warn });
+    const { store, root, messages } = make({ a: "" }, { timing: "input", validate: { form: () => ({ fields: { nope: err("Renamed") } }) } });
+    root.at("a").setValue("x");
+    root.at("a").setValue("y");
+    vi.unstubAllGlobals();
+    expect(messages([])).toEqual(["Renamed"]);
+    expect(messages(["nope"])).toEqual([]);
+    expect(store.fieldAt(["nope"])).toBeUndefined();
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('No field is named "nope"'));
+  });
+
   it("keeps the form invalid when its only error is under a name that resolves to nothing", () => {
     const { store, root, messages } = make({ a: "", rows: [] }, { timing: "input", validate: { form: () => ({ fields: { "rows.0.t": err("Stale") } }) } });
     root.at("a").setValue("x");

@@ -5,7 +5,7 @@ import type { FormSnapshot, Submission } from "../snapshot.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import { hadKey, indexOfKey, initialIndex, initialKeys, keyAt, keysView, type KeyList } from "./keys.js";
-import { childOf, isPlainObject, setAt } from "./tree.js";
+import { childOf, hasOwn, isPlainObject, setAt } from "./tree.js";
 
 export type { Snapshot } from "./entries.js";
 
@@ -56,6 +56,7 @@ export type CreateArrays = <E>(
   bump: (from: Node<E> | undefined, count: Count, delta: number) => void,
   withErrors: Set<Node<E>>,
   ownerNodes: Map<string, Set<Node<E>>>,
+  invalidChanged: () => void,
 ) => ArrayKit<E>;
 
 /**
@@ -151,23 +152,29 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   /**
    * The stable path of the field with dotted name `name` (`rows.0.title`),
    * or undefined when an index is out of range or a step goes into a leaf.
+   * With `strict`, also undefined when a step names a key its object lacks,
+   * unless something subscribes to or validates the field there or below.
    */
-  pathOf(name: string): Path | undefined;
+  pathOf(name: string, strict?: boolean): Path | undefined;
   /** True when state can be set at `path`: it names a field and its item wasn't removed. */
   isLive(path: Path): boolean;
   /**
    * Says, for each segment of `path`, whether it names an array item.
    * Undefined when the path can't name a field: a step goes into a leaf, or
    * names an item key its array never had. A removed item's key counts as
-   * had. Makes no nodes.
+   * had. With `strict`, also undefined where `pathOf` would be. Makes no nodes.
    */
-  itemSteps(path: Path): readonly boolean[] | undefined;
+  itemSteps(path: Path, strict?: boolean): readonly boolean[] | undefined;
   /** True when the field at `path` or one below it has a validation error. Makes no nodes. */
   invalidAt(path: Path): boolean;
-  /** The stable path of the first enabled field, in value order, with a validation error. */
-  firstInvalid(): Path | undefined;
-  /** The stable paths of the disabled fields with a validation error, in value order. Makes no nodes. */
-  disabledInvalid(): Path[];
+  /** The stable paths of the fields with an error of either kind, in value order. Visits every node. Makes no nodes. */
+  invalid(): Path[];
+  /**
+   * Calls `listener` after a write that changes which fields have errors,
+   * one of their error lists or one of their names. Returns the function
+   * that unsubscribes.
+   */
+  subscribeInvalid(this: void, listener: () => void): () => void;
 
   /** How many paths have a node, and how many of those hold subscriber state. For tests and leak checks. */
   stats(): { readonly nodes: number; readonly subscribed: number };
@@ -324,6 +331,9 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let formMeta: Meta;
   // True once `submit:unseen` was logged for this store.
   let warnedUnseen = false;
+  // Wakes `subscribeInvalid` listeners. Its snapshot is a counter.
+  const invalidCell: Cell<number> = { snapshot: 0, before: undefined, subscriptions: undefined };
+  const invalidChanged = () => replace(invalidCell, invalidCell.snapshot + 1);
 
   // The index of item key `seg` in the array at `node` of `length` items, or -1.
   const indexIn = (node: Node<E> | undefined, seg: string, length: number) =>
@@ -388,13 +398,13 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
 
   const build = (node: Node<E>): Snapshot<E> => {
     const dirty = dirtyOf(node);
-    const invalid = node.validation.length > 0;
     // User errors always show: something set them on purpose.
-    const shownErrors = invalid && showsValidation(node, dirty) ? node.errors : node.user;
+    const shownErrors = node.validation.length > 0 && showsValidation(node, dirty) ? node.errors : node.user;
     return entries(node.value, node.name, Array.isArray(node.value) ? (node.list ? keysView(node.list) : positionalKeys(node.value.length)) : undefined, {
       errors: node.errors,
+      userErrors: node.user,
       shownErrors,
-      invalid,
+      invalid: node.errors.length > 0,
       touched: node.touched,
       edited: node.editedCount > 0,
       dirty,
@@ -505,17 +515,23 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       if (is) withErrors.add(node);
       else withErrors.delete(node);
     }
-    const { user } = node;
+    const { user, errors } = node;
     if (validation.length === 0) node.errors = user;
     else if (user.length === 0) node.errors = validation;
     else {
       const joined = [...validation, ...user];
       if (!sameList(joined, node.errors)) node.errors = freeze(joined);
     }
+    if (node.errors !== errors) invalidChanged();
     rebuild(node);
   };
 
   const syncKeys = (node: Node<E>) => kit?.[0](node);
+
+  // True when something subscribes to or validates the field at `node` or
+  // below it, so its name counts as known though the value lacks the key.
+  const used = (node: Node<E> | undefined): boolean =>
+    !!node && (!!node.subscriptions || !!node.validating || node.validation.length > 0 || [...(node.children?.values() ?? [])].some(used));
 
   const createNode = (parent: Node<E> | undefined, seg: string): Node<E> => {
     const node: Node<E> = {
@@ -608,7 +624,10 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     place(node);
     const moved = renamed || node.index !== index;
     if (!moved && node.blocked === blocked && Object.is(node.value, value)) return;
-    if (moved) node.name = nameOf(node);
+    if (moved) {
+      node.name = nameOf(node);
+      if (node.errors.length > 0) invalidChanged();
+    }
     syncKeys(node);
     rebuild(node);
     node.children?.forEach((child) => update(child, moved));
@@ -778,7 +797,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     };
   };
 
-  const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes);
+  const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes, invalidChanged);
 
   const form = (): Cell<FormSnapshot<I, R, "dirty">> =>
     (formCell ??= {
@@ -956,7 +975,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       };
       if (root) visit(root);
     },
-    pathOf(name) {
+    pathOf(name, strict) {
       // A property name that contains a dot can't be told apart from two
       // steps, so such a field resolves to the wrong path or to none.
       if (name === "") return [];
@@ -972,6 +991,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
           seg = keyAt(node?.list, at);
           value = value[at];
         } else if (isPlainObject(value)) {
+          if (strict && !hasOwn(value, part) && !used(node?.children?.get(part))) return undefined;
           seg = part;
           value = childOf(value, part);
         } else if (value === undefined || value === null) {
@@ -985,7 +1005,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       return path;
     },
     isLive: (path) => fieldAt(path) !== undefined,
-    itemSteps(path) {
+    itemSteps(path, strict) {
       const steps: boolean[] = [];
       let value = current;
       let node = root;
@@ -1003,6 +1023,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
           else if (child) value = child.value;
           else known = false;
         } else if (isPlainObject(value)) {
+          if (strict && !hasOwn(value, seg) && !used(child)) return undefined;
           steps.push(false);
           value = childOf(value, seg);
         } else if (value === undefined || value === null) steps.push(false);
@@ -1015,30 +1036,16 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       const node = findNode(path);
       return node !== undefined && !node.dead && node.invalidCount > 0;
     },
-    firstInvalid() {
-      const visit = (node: Node<E>): Node<E> | undefined => {
-        // A disabled node's subtree is disabled too, so it is skipped whole.
-        if (node.invalidCount === 0 || node.disabled.on) return undefined;
-        if (node.validation.length > 0) return node;
-        for (const child of inValueOrder(node)) {
-          const found = visit(child);
-          if (found) return found;
-        }
-        return undefined;
-      };
-      const found = root && visit(root);
-      return found && pathOf(found, false);
-    },
-    disabledInvalid() {
+    invalid() {
       const paths: Path[] = [];
       const visit = (node: Node<E>) => {
-        if (node.invalidCount === 0) return;
-        if (node.validation.length > 0 && node.disabled.on) paths.push(pathOf(node, false));
+        if (node.errors.length > 0) paths.push(pathOf(node, false));
         for (const child of inValueOrder(node)) visit(child);
       };
       if (root) visit(root);
       return paths;
     },
+    subscribeInvalid: (listener) => listen(invalidCell, listener),
 
     stats() {
       let nodes = 0;

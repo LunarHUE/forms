@@ -171,10 +171,11 @@ describe("errors", () => {
     expect(snap(store, ["a"]).invalid).toBe(true);
   });
 
-  it("doesn't count user errors as invalid", () => {
+  it("counts user errors as invalid on the field but not on the form", () => {
     const store = make({ a: 1 });
     store.setUserErrors(["a"], [err("u")]);
-    expect(snap(store, ["a"]).invalid).toBe(false);
+    expect(snap(store, ["a"])).toMatchObject({ invalid: true, errors: [err("u")], userErrors: [err("u")] });
+    expect(store.invalidAt([])).toBe(false);
     expect(store.getFormSnapshot().valid).toBe(true);
   });
 
@@ -643,26 +644,53 @@ describe("invalid lookup", () => {
     expect(store.invalidAt(["nope"])).toBe(false);
   });
 
-  it("finds the first enabled invalid field in value order", () => {
+  it("lists every field with an error of either kind, in value order", () => {
     const store = make({ b: 1, a: { x: 1, y: 1 }, rows: [{ t: 1 }, { t: 2 }] });
-    expect(store.firstInvalid()).toBeUndefined();
+    expect(store.invalid()).toEqual([]);
     store.setValidationErrors("v", ["rows", "k1", "t"], [err("x")]);
     store.setValidationErrors("v", ["rows", "k0", "t"], [err("x")]);
-    expect(store.firstInvalid()).toEqual(["rows", "k0", "t"]);
+    expect(store.invalid()).toEqual([["rows", "k0", "t"], ["rows", "k1", "t"]]);
     store.move(["rows"], 1, 0);
-    expect(store.firstInvalid()).toEqual(["rows", "k1", "t"]);
+    expect(store.invalid()).toEqual([["rows", "k1", "t"], ["rows", "k0", "t"]]);
     store.setValidationErrors("v", ["a", "y"], [err("x")]);
     store.setValidationErrors("v", ["missing"], [err("x")]);
-    expect(store.firstInvalid()).toEqual(["a", "y"]);
-    store.setValidationErrors("v", ["b"], [err("x")]);
-    expect(store.firstInvalid()).toEqual(["b"]);
     store.setUserErrors(["a"], [err("u")]);
+    store.setUserErrors(["b"], [err("u")]);
     store.setDisabled(["b"], true);
-    store.setDisabled(["a"], true);
-    expect(store.firstInvalid()).toEqual(["rows", "k1", "t"]);
-    store.setDisabled(["rows"], true);
-    expect(store.firstInvalid()).toEqual(["missing"]);
     store.setValidationErrors("v", [], [err("form")]);
-    expect(store.firstInvalid()).toEqual([]);
+    expect(store.invalid()).toEqual([[], ["b"], ["a"], ["a", "y"], ["rows", "k1", "t"], ["rows", "k0", "t"], ["missing"]]);
+    store.setUserErrors(["a"], []);
+    store.clearUserErrors([]);
+    store.remove(["rows"], 0);
+    store.setValidationErrors("v", [], []);
+    expect(store.invalid()).toEqual([["a", "y"], ["rows", "k0", "t"], ["missing"]]);
+  });
+
+  it("wakes invalid listeners when a field gains, changes or loses errors, or one with errors moves", () => {
+    const store = make({ a: 1, rows: [{ t: 1 }, { t: 2 }] });
+    let runs = 0;
+    const stop = store.subscribeInvalid(() => void runs++);
+    store.setUserErrors(["a"], [err("u")]);
+    expect(runs).toBe(1);
+    store.setValidationErrors("v", ["a"], [err("x")]);
+    expect(runs).toBe(2);
+    store.setValidationErrors("v", ["rows", "k1", "t"], [err("x")]);
+    expect(runs).toBe(3);
+    // `rows.1.t` becomes `rows.0.t`.
+    store.move(["rows"], 1, 0);
+    expect(runs).toBe(4);
+    store.set(["a"], 2);
+    store.setTouched(["a"], true);
+    expect(runs).toBe(4);
+    store.remove(["rows"], 0);
+    expect(runs).toBe(5);
+    store.batch(() => {
+      store.setUserErrors(["a"], []);
+      store.setValidationErrors("v", ["a"], []);
+    });
+    expect(runs).toBe(6);
+    stop();
+    store.setUserErrors(["a"], [err("u")]);
+    expect(runs).toBe(6);
   });
 });

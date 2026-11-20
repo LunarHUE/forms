@@ -173,7 +173,8 @@ ways:
 - The schema rejects the value as a whole, such as "Invalid type: Expected
   Object but received undefined", or a check across fields has no path.
 - A server error comes back for the whole form, through `setErrors({ form })`.
-- An error names a field that doesn't exist, so it falls back to the root.
+- An error names a field that doesn't exist, so it falls back to the root
+  (see [`field:unknown`](#core:field:unknown)).
 
 Errors on an object or array field, such as an empty list that needs a row,
 stay on that field. Render them next to its fields.
@@ -206,6 +207,27 @@ stays quiet when any field with an error is read. It names only the root and
 fields that have fields read under them, since an unread field may be on a
 step the app shows after the submit. It can miss a case too. A component
 that reads the root's value, or a list's items, counts as reading its errors.
+
+<a id="core:field:unknown"></a>
+
+### `field:unknown`
+
+> No field is named "&lt;name&gt;", so its errors went to the form's root. Check the name, and render the root errors.
+
+A warning, logged in development only, once per name per store. `setErrors`
+or a form validator's `fields` used a name that matches no field, so its
+errors were added to the root's, after the `form` errors.
+
+A name matches a field when each step exists in the form's value: a key its
+object has, or an index its array has. A key the value lacks still counts
+when something renders or validates a field there, such as an optional
+field with an input. Every name under a missing object counts too, since the
+value can't say what that object would hold. A step into a string or other
+leaf never counts.
+
+The usual cause is a server that renamed a field, or a typo. Fix the name. To
+route these errors yourself, check each name with `store.pathOf(name)`, which
+returns `undefined` for the same names.
 
 ## React
 
