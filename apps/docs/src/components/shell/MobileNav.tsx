@@ -54,7 +54,7 @@ export function MobileNav({ sidebars, currentSlug }: MobileNavProps) {
       {/* shadcn's SheetContent has a light, blurred scrim; the mock's is darker and flat. */}
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-ending-style:duration-160 data-starting-style:opacity-0" />
-        <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] flex-col border-r bg-sidebar text-sidebar-foreground shadow-lg outline-none transition-transform duration-200 ease-out data-ending-style:-translate-x-full data-ending-style:duration-160 data-starting-style:-translate-x-full">
+        <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] flex-col border-r bg-sidebar text-sidebar-foreground shadow-lg outline-none transition-transform duration-200 ease-out data-ending-style:-translate-x-full data-ending-style:duration-160 motion-reduce:transition-opacity motion-reduce:data-ending-style:translate-x-0 motion-reduce:data-ending-style:opacity-0 motion-reduce:data-starting-style:translate-x-0 motion-reduce:data-starting-style:opacity-0 data-starting-style:-translate-x-full">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <div className="flex items-center gap-2 border-b p-3">
             <div className="min-w-0 flex-1">

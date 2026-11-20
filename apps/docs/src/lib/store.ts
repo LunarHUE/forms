@@ -95,9 +95,25 @@ export const isDark = (theme: Theme): boolean =>
   theme === "dark" ||
   (theme === "system" && typeof matchMedia === "function" && matchMedia(BOOT_CONFIG.darkQuery).matches);
 
+/**
+ * Flips html.dark with transitions off, so every colour changes in the same
+ * frame instead of each element easing at its own speed. boot.ts does the
+ * same for OS changes.
+ */
+const setDark = (root: HTMLElement, dark: boolean): void => {
+  if (root.classList.contains("dark") === dark) return;
+  root.setAttribute("data-theme-switching", "");
+  root.classList.toggle("dark", dark);
+  // Reading a style applies the new colours now, while transitions are off.
+  getComputedStyle(root).getPropertyValue("color");
+  const restore = () => root.removeAttribute("data-theme-switching");
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(restore);
+  else setTimeout(restore, 0);
+};
+
 /** Writes the state into the attributes listed at the top of this file. */
 export const applyToDocument = (next: DocsState, root: HTMLElement = document.documentElement): void => {
-  root.classList.toggle("dark", isDark(next.theme));
+  setDark(root, isDark(next.theme));
   root.dataset.theme = next.theme;
   root.dataset.pm = next.pm;
   if (next.framework) root.dataset.framework = next.framework;

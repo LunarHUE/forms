@@ -32,9 +32,15 @@ export function boot(config: BootConfig, pageFramework: string | null): void {
     value !== null && allowed.includes(value) ? value : null;
   const media = matchMedia(config.darkQuery);
   // Reads the setting from <html> each time, so it also sees changes the store made.
+  // Transitions are off for the flip, as in store.ts.
   const applyDark = (): void => {
     const current = root.dataset.theme;
-    root.classList.toggle("dark", current === "dark" || (current === "system" && media.matches));
+    const dark = current === "dark" || (current === "system" && media.matches);
+    if (root.classList.contains("dark") === dark) return;
+    root.setAttribute("data-theme-switching", "");
+    root.classList.toggle("dark", dark);
+    getComputedStyle(root).getPropertyValue("color");
+    requestAnimationFrame(() => root.removeAttribute("data-theme-switching"));
   };
 
   const apply = (framework: string | null): void => {
