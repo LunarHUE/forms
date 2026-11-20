@@ -1,12 +1,8 @@
-import { h, type JSX } from "preact";
+import { type ButtonHTMLAttributes, h, type JSX } from "preact";
 
 // Lucide's icons (ISC), as path data on a 24 by 24 grid.
 const paths = {
   panel: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M7 10h10", "M7 14h10"],
-  pick: [
-    "M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z",
-    "M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6",
-  ],
   chevron: ["m6 9 6 6 6-6"],
   close: ["M18 6 6 18", "m6 6 12 12"],
   check: ["M20 6 9 17l-5-5"],
@@ -28,3 +24,10 @@ export const icon = (name: IconName, className?: string): JSX.Element =>
     { viewBox: "0 0 24 24", "aria-hidden": "true", class: className },
     paths[name].map((d) => h("path", { d })),
   );
+
+/**
+ * A button that shows only an icon. `label` names it for assistive
+ * technology and is its tooltip, unless `props` has a `data-tip` of its own.
+ */
+export const iconButton = (label: string, name: IconName, props: ButtonHTMLAttributes & { readonly "data-tip"?: string } = {}): JSX.Element =>
+  h("button", { class: "icon", "data-tip": label, ...props, "aria-label": label }, icon(name));

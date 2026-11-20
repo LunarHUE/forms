@@ -129,20 +129,61 @@ describe("dock", () => {
     expect(document.querySelector("[data-lunarhue-forms-devtools]")).toBeNull();
   });
 
-  it("selects a form from its outline in pick mode and opens the Fields tab", async () => {
+  it("outlines every form with its name on a tag, and the tag selects the form and opens the Fields tab", async () => {
     const store = form({ name: "" }, "signup");
     const element = document.createElement("form");
     document.body.prepend(element);
     // What an adapter's ref reports for the form element.
     tracking.record?.(element, store, true, "test");
     const root = await open();
-    button(root, "Pick a form on the page").click();
+    expect(root.querySelectorAll(".outline.form")).toHaveLength(1);
+    expect(button(root, "Choose a form").textContent).toContain("No form");
+    button(root, "Select form signup").click();
     await frame();
-    button(root, "Pick form signup").click();
-    await frame();
-    expect(root.querySelector(".outline")).toBeNull();
+    expect(root.querySelector(".outline.form")?.classList.contains("on")).toBe(true);
     expect(button(root, "Form signup. Choose a form")).toBeDefined();
     expect(root.querySelector('[aria-label="Devtools fields"]')).not.toBeNull();
+  });
+
+  it("has no pick button", async () => {
+    form({ name: "" });
+    const root = await open();
+    expect([...root.querySelectorAll("button")].some((element) => /pick/i.test(element.getAttribute("aria-label") ?? ""))).toBe(false);
+  });
+
+  it("shows the clear button in place of the chevron once a form is selected", async () => {
+    form({ name: "" }, "signup");
+    const root = await open();
+    expect(root.querySelector(".chip-main svg")).not.toBeNull();
+    button(root, "Fields").click();
+    await frame();
+    expect(root.querySelector(".chip-main svg")).toBeNull();
+    button(root, "Clear selection signup").click();
+    await frame();
+    expect(root.querySelector(".chip-main svg")).not.toBeNull();
+    expect(root.querySelector('[aria-label="Devtools fields"]')).toBeNull();
+  });
+
+  it("names a form whose id an adapter made up by its place on the page", async () => {
+    form({ name: "" }, "_R_2_");
+    form({ name: "" }, "signup");
+    form({ name: "" }, ":r5:");
+    const root = await open();
+    button(root, "Choose a form").click();
+    await frame();
+    const items = [...root.querySelectorAll('[role="menuitemradio"]')].map((item) => item.textContent);
+    expect(items).toEqual(["form 1", "signup", "form 3"]);
+  });
+
+  it("gives every icon-only button a tooltip", async () => {
+    const store = form({ name: "", address: { city: "" } }, "signup");
+    field(store, ["name"]);
+    const root = await open();
+    button(root, "Fields").click();
+    await frame();
+    const iconOnly = [...root.querySelectorAll("button")].filter((element) => element.textContent === "");
+    expect(iconOnly.length).toBeGreaterThan(3);
+    for (const element of iconOnly) expect(element.getAttribute("data-tip")).toBeTruthy();
   });
 });
 
@@ -358,16 +399,65 @@ describe("inspect", () => {
     input.click();
     await frame();
     expect(clicks).toBe(0);
-    expect(button(root, "Inspect fields on the page").getAttribute("aria-pressed")).toBe("false");
     expect(card(root)?.querySelector('[aria-label="Unpin the field card"]')).not.toBeNull();
     expect(row(root, ["address", "city"])?.getAttribute("aria-current")).toBe("true");
     expect(root.querySelector('[aria-label="Field detail"]')?.textContent).toContain('["address","city"]');
-    // Inspecting is off again, so the page gets its clicks.
-    input.click();
-    expect(clicks).toBe(1);
     button(root, "Unpin the field card").click();
     await frame();
     expect(card(root)).toBeNull();
+  });
+
+  it("keeps inspecting after a click, so the next click pins another field, until the toggle turns it off", async () => {
+    const store = form({ name: "", email: "" });
+    const name = field(store, ["name"]);
+    const email = field(store, ["email"]);
+    let clicks = 0;
+    email.addEventListener("click", () => clicks++);
+    const root = await open();
+    const toggle = button(root, "Inspect fields on the page");
+    toggle.click();
+    await frame();
+    name.click();
+    await frame();
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    email.click();
+    await frame();
+    expect(clicks).toBe(0);
+    expect(card(root)?.getAttribute("aria-label")).toBe("Field email");
+    expect(row(root, ["email"])?.getAttribute("aria-current")).toBe("true");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await frame();
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    toggle.click();
+    await frame();
+    email.click();
+    expect(clicks).toBe(1);
+  });
+
+  it("counts a label as its field: one that names the input with for, and one that wraps it", async () => {
+    const store = form({ name: "Ada", email: "a@b.c" });
+    const name = field(store, ["name"]);
+    name.id = "name-input";
+    const forLabel = document.createElement("label");
+    forLabel.htmlFor = "name-input";
+    forLabel.textContent = "Name";
+    document.body.prepend(forLabel);
+    const email = field(store, ["email"]);
+    const wrapping = document.createElement("label");
+    const text = document.createElement("span");
+    text.textContent = "Email";
+    wrapping.append(text);
+    email.replaceWith(wrapping);
+    wrapping.append(email);
+    const root = await open();
+    button(root, "Inspect fields on the page").click();
+    await frame();
+    move(forLabel);
+    await frame();
+    expect(card(root)?.getAttribute("aria-label")).toBe("Field name");
+    move(text);
+    await frame();
+    expect(card(root)?.getAttribute("aria-label")).toBe("Field email");
   });
 
   it("outlines a field's elements while the pointer is over its row", async () => {
@@ -497,7 +587,6 @@ describe("listeners", () => {
     button(root, "Expand address").click();
     await frame();
     row(root, ["name"])?.querySelector<HTMLButtonElement>(".row-main")?.click();
-    button(root, "Pick a form on the page").click();
     await frame();
     button(root, "Log").click();
     await frame();
