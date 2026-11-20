@@ -31,19 +31,24 @@ export function attachNav(nav: HTMLElement): () => void {
   const current = () => nav.querySelector<HTMLElement>('a[aria-current="page"]');
 
   const place = (slide: boolean) => {
+    // A folded group hides its links with content-visibility, which still
+    // gives them boxes, so check for the closed <details> itself.
+    if (hovered && !isShown(hovered)) {
+      hovered = null;
+      slide = true;
+    }
     const target = hovered ?? current();
-    if (!target || target.getClientRects().length === 0) {
+    if (!target || !isShown(target)) {
       delete marker.dataset.shown;
       return;
     }
-    const box = nav.getBoundingClientRect();
-    const rect = target.getBoundingClientRect();
     // A bar coming back from hidden lands in place instead of sliding in.
     const animate = slide && marker.dataset.shown !== undefined;
     if (animate) marker.dataset.sliding = "";
     else delete marker.dataset.sliding;
-    marker.style.transform = `translate(${rect.left - box.left}px, ${rect.top - box.top}px)`;
-    marker.style.height = `${rect.height}px`;
+    const { left, top } = offsetIn(nav, target);
+    marker.style.transform = `translate(${left}px, ${top}px)`;
+    marker.style.height = `${target.offsetHeight}px`;
     marker.toggleAttribute("data-hover", target !== current());
     marker.dataset.shown = "";
   };
@@ -121,6 +126,8 @@ export function attachNav(nav: HTMLElement): () => void {
   // Folding a group moves everything under it; the bar follows without sliding.
   const resize = new ResizeObserver(() => schedule(false));
   resize.observe(nav);
+  // Folding the group the bar is on sends it back to the current page.
+  nav.addEventListener("toggle", () => schedule(false), { capture: true, signal });
 
   document.addEventListener(
     "astro:before-swap",
@@ -149,4 +156,25 @@ export function attachNav(nav: HTMLElement): () => void {
 
   place(false);
   return detach;
+}
+
+/**
+ * Where `element` sits inside `nav`, from layout offsets. Client rects would
+ * catch the rows of a just-opened group mid-drop. While a row animates, its
+ * transform makes it the link's offsetParent, so walk up to the nav.
+ */
+function offsetIn(nav: HTMLElement, element: HTMLElement): { left: number; top: number } {
+  let left = 0;
+  let top = 0;
+  let node: Element | null = element;
+  while (node instanceof HTMLElement && node !== nav) {
+    left += node.offsetLeft;
+    top += node.offsetTop;
+    node = node.offsetParent;
+  }
+  return { left, top };
+}
+
+function isShown(element: HTMLElement): boolean {
+  return !element.closest("details:not([open])") && element.getClientRects().length > 0;
 }
