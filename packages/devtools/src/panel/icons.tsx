@@ -1,4 +1,5 @@
-import { type ButtonHTMLAttributes, h, type JSX } from "preact";
+/** @jsxImportSource preact */
+import type { ButtonHTMLAttributes, JSX } from "preact";
 
 const ring = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z";
 const tick = "M20 6 9 17l-5-5";
@@ -32,16 +33,20 @@ const paths = {
 export type IconName = keyof typeof paths;
 
 /** An icon, hidden from assistive technology: the button around it carries the label. */
-export const icon = (name: IconName, className?: string): JSX.Element =>
-  h(
-    "svg",
-    { viewBox: "0 0 24 24", "aria-hidden": "true", class: className },
-    paths[name].map((d) => h("path", { d })),
-  );
+export const icon = (name: IconName, className?: string): JSX.Element => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" class={className}>
+    {paths[name].map((d) => (
+      <path d={d} />
+    ))}
+  </svg>
+);
 
 /**
  * A button that shows only an icon. `label` names it for assistive
  * technology and is its tooltip, unless `props` has a `data-tip` of its own.
  */
-export const iconButton = (label: string, name: IconName, props: ButtonHTMLAttributes & { readonly "data-tip"?: string } = {}): JSX.Element =>
-  h("button", { class: "icon", "data-tip": label, ...props, "aria-label": label }, icon(name));
+export const iconButton = (label: string, name: IconName, props: ButtonHTMLAttributes & { readonly "data-tip"?: string } = {}): JSX.Element => (
+  <button class="icon" data-tip={label} {...props} aria-label={label}>
+    {icon(name)}
+  </button>
+);

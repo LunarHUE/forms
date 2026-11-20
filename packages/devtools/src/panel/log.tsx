@@ -1,5 +1,6 @@
+/** @jsxImportSource preact */
 import type { WriteRecord } from "@lunarhue/forms-core";
-import { h, type JSX } from "preact";
+import type { JSX } from "preact";
 import type { FormEntry, LoggedSubmission, LoggedWrite } from "../hook.js";
 import { useFrame } from "./frame.js";
 import { causeText, clock, preview } from "./values.js";
@@ -39,36 +40,36 @@ export function Log({ entry }: { readonly entry: FormEntry }): JSX.Element {
   const items = logItems(entry);
   // Writes push onto the ring, and a submission's status changes in place.
   useFrame(() => [entry.writes.items.length, entry.writes.items[entry.writes.items.length - 1], ...entry.submissions.items.map((logged) => logged.status)]);
-  if (items.length === 0) return h("p", { class: "empty" }, "No writes or submissions yet. The log starts when the panel turns on.");
-  return h(
-    "ol",
-    { class: "log scroll", "aria-label": "Log" },
-    items.map((item) => {
-      if (item.kind === "submission") {
-        const { seq, status } = item.logged;
-        const failed = status === "invalid" || status === "failed" || status === "aborted";
-        return h(
-          "li",
-          { key: seq, class: "log-item", "data-seq": seq },
-          h("span", { class: "muted" }, `#${seq}`),
-          h("span", null, "submit ", h("span", { class: failed ? "error" : status === "succeeded" ? "" : "muted" }, status)),
-          h("span", { class: "muted" }, status === "aborted" ? "reset during submit" : ""),
+  if (items.length === 0) return <p class="empty">No writes or submissions yet. The log starts when the panel turns on.</p>;
+  return (
+    <ol class="log scroll" aria-label="Log">
+      {items.map((item) => {
+        if (item.kind === "submission") {
+          const { seq, status } = item.logged;
+          const failed = status === "invalid" || status === "failed" || status === "aborted";
+          return (
+            <li key={seq} class="log-item" data-seq={seq}>
+              <span class="muted">{`#${seq}`}</span>
+              <span>
+                submit <span class={failed ? "error" : status === "succeeded" ? "" : "muted"}>{status}</span>
+              </span>
+              <span class="muted">{status === "aborted" ? "reset during submit" : ""}</span>
+            </li>
+          );
+        }
+        const { seq, at, record } = item.logged;
+        const name = entry.store.getSnapshot(record.path).name;
+        return (
+          <li key={seq} class="log-item" data-seq={seq} title={clock(at)}>
+            <span class="muted">{`#${seq}`}</span>
+            <span class="log-main">
+              <span>{name === "" ? "(form)" : name}</span>
+              <span class="muted truncate">{writeSummary(record)}</span>
+            </span>
+            <span class="muted">{causeText(record.cause)}</span>
+          </li>
         );
-      }
-      const { seq, at, record } = item.logged;
-      const name = entry.store.getSnapshot(record.path).name;
-      return h(
-        "li",
-        { key: seq, class: "log-item", "data-seq": seq, title: clock(at) },
-        h("span", { class: "muted" }, `#${seq}`),
-        h(
-          "span",
-          { class: "log-main" },
-          h("span", null, name === "" ? "(form)" : name),
-          h("span", { class: "muted truncate" }, writeSummary(record)),
-        ),
-        h("span", { class: "muted" }, causeText(record.cause)),
-      );
-    }),
+      })}
+    </ol>
   );
 }

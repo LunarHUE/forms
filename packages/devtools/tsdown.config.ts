@@ -5,8 +5,10 @@ import { libraryBuild } from "../../tsdown.base.ts";
 // file the collector imports lazily, so it builds on its own as a single
 // chunk with Preact inlined: the base config never bundles dependencies, and
 // an app shouldn't need Preact installed. Core stays external, so the panel
-// reads the same core the app's forms use.
-const panelEntry = "src/panel.ts";
+// reads the same core the app's forms use. Its TSX compiles to Preact's
+// automatic runtime, from `jsxImportSource` in tsconfig.build.json; the
+// collector has no JSX.
+const panelEntry = "src/panel.tsx";
 
 /** Leaves the collector's `import("./panel.js")` to the panel build. */
 const panelExternal = {

@@ -1,5 +1,6 @@
+/** @jsxImportSource preact */
 import type { Path } from "@lunarhue/forms-core";
-import { Fragment, h, type JSX } from "preact";
+import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Hook } from "../hook.js";
 import { fieldFacts } from "./fields.js";
@@ -122,18 +123,13 @@ const rectOf = (element: Element) => {
 /** A solid outline over each element, following it as the page scrolls or reflows. */
 export function Outlines({ elements }: { readonly elements: readonly Element[] }): JSX.Element {
   useFrame(() => elements.flatMap((element) => rectOf(element)));
-  return h(
-    Fragment,
-    null,
-    elements.map((element, index) => {
-      const [left, top, width, height] = rectOf(element);
-      return h("div", {
-        key: index,
-        class: "outline field",
-        style: `left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`,
-        "aria-hidden": "true",
-      });
-    }),
+  return (
+    <>
+      {elements.map((element, index) => {
+        const [left, top, width, height] = rectOf(element);
+        return <div key={index} class="outline field" style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px`} aria-hidden="true" />;
+      })}
+    </>
   );
 }
 
@@ -167,20 +163,14 @@ export function FieldCard({ found, onClose }: FieldCardProps): JSX.Element | nul
   // Below the element when it is in the top half of the window, else above it.
   const below = rect.top + rect.height / 2 < innerHeight / 2;
   const place = below ? `top: ${rect.bottom + gap}px` : `bottom: ${innerHeight - rect.top + gap}px`;
-  return h(
-    "section",
-    {
-      class: onClose ? "card surface pinned" : "card surface",
-      style: `left: ${left}px; width: ${width}px; ${place}`,
-      "aria-label": `Field ${snapshot.name || "(form)"}`,
-    },
-    h(
-      "div",
-      { class: "detail-head" },
-      h("strong", { class: "truncate" }, snapshot.name || "(form)"),
-      h("span", { class: "muted truncate" }, form.label),
-      onClose ? iconButton("Unpin the field card", "close", { class: "icon small", onClick: onClose }) : null,
-    ),
-    fieldFacts(entry, path, snapshot),
+  return (
+    <section class={onClose ? "card surface pinned" : "card surface"} style={`left: ${left}px; width: ${width}px; ${place}`} aria-label={`Field ${snapshot.name || "(form)"}`}>
+      <div class="detail-head">
+        <strong class="truncate">{snapshot.name || "(form)"}</strong>
+        <span class="muted truncate">{form.label}</span>
+        {onClose ? iconButton("Unpin the field card", "close", { class: "icon small", onClick: onClose }) : null}
+      </div>
+      {fieldFacts(entry, path, snapshot)}
+    </section>
   );
 }

@@ -1,4 +1,5 @@
-import { h, type JSX } from "preact";
+/** @jsxImportSource preact */
+import type { JSX } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { FormEntry } from "../hook.js";
 import { type SizePart, type SizeReport, sizesUrl } from "../sizes.js";
@@ -73,36 +74,38 @@ function useReport(url: string | undefined): Load | undefined {
 /** Where the sizes come from, or why there are none. */
 function source(url: string | undefined, result: Load | undefined): JSX.Element {
   if (url === undefined || result === undefined) {
-    return h(
-      "p",
-      { class: "note" },
-      "Sizes come from your production build. Add ",
-      h("code", null, "@lunarhue/forms-devtools/vite"),
-      " to your Vite config to measure them.",
+    return (
+      <p class="note">
+        Sizes come from your production build. Add <code>@lunarhue/forms-devtools/vite</code> to your Vite config to measure them.
+      </p>
     );
   }
-  if (result.state === "loading") return h("p", { class: "note" }, "Reading the size report...");
-  if (result.state === "failed") return h("p", { class: "note error" }, `Couldn't read the size report at ${url}: ${result.reason}.`);
+  if (result.state === "loading") return <p class="note">Reading the size report...</p>;
+  if (result.state === "failed") return <p class="note error">{`Couldn't read the size report at ${url}: ${result.reason}.`}</p>;
   const { report } = result;
   const built = new Date(report.builtAt);
-  return h(
-    "p",
-    { class: "note" },
-    `measured, from the build at ${Number.isNaN(built.getTime()) ? report.builtAt : built.toLocaleString()}`,
-    h("span", { class: "muted" }, ` by ${report.bundler}`),
+  return (
+    <p class="note">
+      {`measured, from the build at ${Number.isNaN(built.getTime()) ? report.builtAt : built.toLocaleString()}`}
+      <span class="muted">{` by ${report.bundler}`}</span>
+    </p>
   );
 }
 
 const sum = (items: readonly ({ readonly size: number | undefined } | undefined)[]) => items.reduce((total, item) => total + (item?.size ?? 0), 0);
 
 /** A bar of the graph, as wide as its share of its row. */
-const bar = (label: string, size: number | undefined, grow: number, part?: string) =>
-  h(
-    "div",
-    { class: "bar-part", style: `flex-grow: ${grow}`, "data-part": part, "data-tip": size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}` },
-    h("span", { class: "truncate" }, label),
-    h("span", { class: "num" }, size === undefined ? "–" : (size / 1000).toFixed(1)),
-  );
+const bar = (label: string, size: number | undefined, grow: number, part?: string) => (
+  <div
+    class="bar-part"
+    style={`flex-grow: ${grow}`}
+    data-part={part}
+    data-tip={size === undefined ? `${label}, not measured` : `${label} ${bytes(size)}`}
+  >
+    <span class="truncate">{label}</span>
+    <span class="num">{size === undefined ? "–" : (size / 1000).toFixed(1)}</span>
+  </div>
+);
 
 /**
  * The Bundle tab: a graph of the bytes the forms packages add, core, the
@@ -127,55 +130,54 @@ export function Bundle({ entry }: { readonly entry: FormEntry }): JSX.Element {
   const top = [core, adapter].map((item) => weigh(item?.size));
   const pluginsWeight = report ? pluginBytes : 1;
   const start = (100 * ((top[0] ?? 0) + (top[1] ?? 0))) / ((top[0] ?? 0) + (top[1] ?? 0) + pluginsWeight || 1);
-  return h(
-    "div",
-    { class: "bundle scroll" },
-    source(url, result),
-    h(
-      "div",
-      { class: "graph", "aria-label": "Bundle" },
-      h(
-        "div",
-        { class: "graph-head" },
-        h("span", { class: "muted" }, "forms packages"),
-        report ? h("span", { class: "muted" }, "whole app ", h("span", { class: "fg" }, bytes(report.total.minified)), ` · ${bytes(report.total.gzip)} gzip`) : null,
-      ),
-      h("div", { class: "bar-row" }, bar("minified", report ? total : undefined, 1)),
-      h(
-        "div",
-        { class: "bar-row" },
-        core ? bar("core", core.size, top[0] ?? 1, `core:${core.row.name ?? ""}`) : null,
-        adapter ? bar(adapter.row.name ?? "adapter", adapter.size, top[1] ?? 1, `adapter:${adapter.row.name ?? ""}`) : null,
-        shipped.length > 0 ? bar("plugins", report ? pluginBytes : undefined, pluginsWeight) : null,
-      ),
-      shipped.length > 0
-        ? [
-            h("svg", { class: "wedge", viewBox: "0 0 100 10", preserveAspectRatio: "none", "aria-hidden": "true" }, h("path", { d: `M${start} 0H100V10H0z` })),
-            h(
-              "div",
-              { class: "bar-row" },
-              shipped.map(({ row, size }) => bar(row.name ?? "", size, weigh(size))),
-            ),
-          ]
-        : null,
-    ),
-    h(
-      "ol",
-      { class: "runs", "aria-label": "Run order" },
-      h("li", { class: "runs-head muted" }, "Run order"),
-      plugins.map(({ row, size }, index) =>
-        h(
-          "li",
-          { key: row.label, "data-part": `${row.kind}:${row.name ?? ""}` },
-          h("span", { class: "muted" }, index + 1),
-          h("span", { class: "truncate" }, row.name),
-          h(
-            "span",
-            { class: "num" },
-            size !== undefined ? bytes(size) : row.kind === "devtools" && report ? h("span", { class: "muted" }, "dev only") : h("span", { class: "muted", title: report ? "The report has no part with this kind and name." : "Not measured" }, "–"),
-          ),
-        ),
-      ),
-    ),
+  return (
+    <div class="bundle scroll">
+      {source(url, result)}
+      <div class="graph" aria-label="Bundle">
+        <div class="graph-head">
+          <span class="muted">forms packages</span>
+          {report ? (
+            <span class="muted">
+              whole app <span class="fg">{bytes(report.total.minified)}</span>
+              {` · ${bytes(report.total.gzip)} gzip`}
+            </span>
+          ) : null}
+        </div>
+        <div class="bar-row">{bar("minified", report ? total : undefined, 1)}</div>
+        <div class="bar-row">
+          {core ? bar("core", core.size, top[0] ?? 1, `core:${core.row.name ?? ""}`) : null}
+          {adapter ? bar(adapter.row.name ?? "adapter", adapter.size, top[1] ?? 1, `adapter:${adapter.row.name ?? ""}`) : null}
+          {shipped.length > 0 ? bar("plugins", report ? pluginBytes : undefined, pluginsWeight) : null}
+        </div>
+        {shipped.length > 0
+          ? [
+              <svg class="wedge" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                <path d={`M${start} 0H100V10H0z`} />
+              </svg>,
+              <div class="bar-row">{shipped.map(({ row, size }) => bar(row.name ?? "", size, weigh(size)))}</div>,
+            ]
+          : null}
+      </div>
+      <ol class="runs" aria-label="Run order">
+        <li class="runs-head muted">Run order</li>
+        {plugins.map(({ row, size }, index) => (
+          <li key={row.label} data-part={`${row.kind}:${row.name ?? ""}`}>
+            <span class="muted">{index + 1}</span>
+            <span class="truncate">{row.name}</span>
+            <span class="num">
+              {size !== undefined ? (
+                bytes(size)
+              ) : row.kind === "devtools" && report ? (
+                <span class="muted">dev only</span>
+              ) : (
+                <span class="muted" title={report ? "The report has no part with this kind and name." : "Not measured"}>
+                  –
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

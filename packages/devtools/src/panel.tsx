@@ -1,4 +1,5 @@
-import { h, render } from "preact";
+/** @jsxImportSource preact */
+import { render } from "preact";
 import type { Hook } from "./hook.js";
 import { App } from "./panel/app.js";
 import { css } from "./panel/styles.js";
@@ -28,21 +29,17 @@ export function mount(hook: Hook): () => void {
   // Another copy's hook can have any version, whatever its type says.
   const found: number = hook.version;
   render(
-    found === version
-      ? h(App, { hook, host })
-      : h(
-          "div",
-          { class: "root" },
-          h(
-            "div",
-            { class: "dock", "data-corner": "bottom-left" },
-            h(
-              "p",
-              { class: "bar notice surface", role: "status" },
-              `Forms devtools: the page's devtools are version ${found} and this panel reads version ${version}. Install one version of @lunarhue/forms-devtools.`,
-            ),
-          ),
-        ),
+    found === version ? (
+      <App hook={hook} host={host} />
+    ) : (
+      <div class="root">
+        <div class="dock" data-corner="bottom-left">
+          <p class="bar notice surface" role="status">
+            {`Forms devtools: the page's devtools are version ${found} and this panel reads version ${version}. Install one version of @lunarhue/forms-devtools.`}
+          </p>
+        </div>
+      </div>
+    ),
     container,
   );
   return () => {

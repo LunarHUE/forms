@@ -1,5 +1,6 @@
+/** @jsxImportSource preact */
 import { errorsByKind, type FieldSnapshot, invalidFields, type Path } from "@lunarhue/forms-core";
-import { Fragment, h, type JSX } from "preact";
+import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { FormEntry, LoggedWrite } from "../hook.js";
 import { hasPlugin } from "./forms.js";
@@ -101,8 +102,8 @@ export function flagsOf(snapshot: Snapshot, dirty: boolean): Flag[] {
 export function errorView(error: unknown): JSX.Element {
   const shown = readError(error);
   return shown.code === undefined
-    ? h("span", { class: "error" }, shown.text)
-    : h("a", { href: `${errorsPage}${shown.code}`, target: "_blank", rel: "noreferrer" }, shown.code);
+    ? <span class="error">{shown.text}</span>
+    : <a href={`${errorsPage}${shown.code}`} target="_blank" rel="noreferrer">{shown.code}</a>;
 }
 
 /** What `errorsByKind` and the snapshot say about where a field's errors came from. */
@@ -132,41 +133,43 @@ export function writesAt(entry: FormEntry, path: Path, max = 5): LoggedWrite[] {
 }
 
 /** A term and its description, one line of a card. */
-export const fact = (term: string, ...description: (JSX.Element | string | null)[]) =>
-  h("div", { class: "fact", key: term }, h("span", { class: "term" }, term), ...description);
+export const fact = (term: string, ...description: (JSX.Element | string | null)[]) => (
+  <div class="fact" key={term}>
+    <span class="term">{term}</span>
+    {description}
+  </div>
+);
 
 /** One logged write: before → after and its cause, or what kind of write it was. */
-const writeLine = ({ seq, record }: LoggedWrite) =>
-  h(
-    "div",
-    { class: "write", key: seq },
-    record.type === "value"
-      ? [h("span", { class: "muted" }, preview(record.before)), icon("arrow"), preview(record.after)]
-      : `${record.type} ${preview(record.after)}`,
-    h("span", { class: "cause" }, causeText(record.cause)),
-  );
+const writeLine = ({ seq, record }: LoggedWrite) => (
+  <div class="write" key={seq}>
+    {record.type === "value" ? [<span class="muted">{preview(record.before)}</span>, icon("arrow"), preview(record.after)] : `${record.type} ${preview(record.after)}`}
+    <span class="cause">{causeText(record.cause)}</span>
+  </div>
+);
 
 /** The value against the baseline, two lines of a card. */
 function valueFacts(entry: FormEntry, path: Path, snapshot: Snapshot): JSX.Element[] {
   const baseline = entry.ctx.baseline.read(path);
   return [
-    fact("value", h("span", { class: "truncate" }, preview(snapshot.value))),
-    fact("baseline", h("span", { class: "muted truncate" }, baseline === undefined ? "none" : preview(baseline.value))),
+    fact("value", <span class="truncate">{preview(snapshot.value)}</span>),
+    fact("baseline", <span class="muted truncate">{baseline === undefined ? "none" : preview(baseline.value)}</span>),
   ];
 }
 
 /** A field card's body: value and baseline, then the writes at the field. */
 export function fieldFacts(entry: FormEntry, path: Path, snapshot: Snapshot): JSX.Element {
   const writes = writesAt(entry, path);
-  return h(
-    Fragment,
-    null,
-    h("div", { class: "facts" }, valueFacts(entry, path, snapshot)),
-    h(
-      "div",
-      { class: "facts" },
-      h("div", { class: "fact" }, h("span", { class: "term" }, "writes"), h("div", { class: "writes" }, writes.length === 0 ? h("span", { class: "muted" }, "none logged") : writes.map(writeLine))),
-    ),
+  return (
+    <>
+      <div class="facts">{valueFacts(entry, path, snapshot)}</div>
+      <div class="facts">
+        <div class="fact">
+          <span class="term">writes</span>
+          <div class="writes">{writes.length === 0 ? <span class="muted">none logged</span> : writes.map(writeLine)}</div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -175,7 +178,12 @@ function flagDetail(entry: FormEntry, path: Path, snapshot: Snapshot, flag: Flag
   if (flag === "dirty") return valueFacts(entry, path, snapshot);
   if (flag === "invalid")
     return errorSources(entry, path, snapshot).flatMap(([source, errors]) =>
-      errors.map((error, index) => h("div", { class: "fact", key: `${source}${index}` }, h("span", { class: "term" }, index === 0 ? source : ""), errorView(error))),
+      errors.map((error, index) => (
+        <div class="fact" key={`${source}${index}`}>
+          <span class="term">{index === 0 ? source : ""}</span>
+          {errorView(error)}
+        </div>
+      )),
     );
   if (flag === "edited") {
     const [last] = writesAt(entry, path, 1);
@@ -190,16 +198,15 @@ function FlagCard({ entry, path, flag, rect }: { readonly entry: FormEntry; read
   // Under the icon, or over it when the icon is low in the window; kept inside the window.
   const below = rect.bottom < innerHeight / 2;
   const right = Math.max(8, innerWidth - rect.right);
-  return h(
-    "div",
-    {
-      class: "hovercard surface",
-      role: "tooltip",
-      style: `right: ${right}px; ${below ? `top: ${rect.bottom + 6}px` : `bottom: ${innerHeight - rect.top + 6}px`}`,
-    },
-    h("strong", null, flag[0]?.toUpperCase(), flag.slice(1)),
-    h("span", { class: "muted" }, flagText[flag]),
-    h("div", { class: "facts" }, flagDetail(entry, path, snapshot, flag)),
+  return (
+    <div class="hovercard surface" role="tooltip" style={`right: ${right}px; ${below ? `top: ${rect.bottom + 6}px` : `bottom: ${innerHeight - rect.top + 6}px`}`}>
+      <strong>
+        {flag[0]?.toUpperCase()}
+        {flag.slice(1)}
+      </strong>
+      <span class="muted">{flagText[flag]}</span>
+      <div class="facts">{flagDetail(entry, path, snapshot, flag)}</div>
+    </div>
   );
 }
 
@@ -238,100 +245,82 @@ export function Fields(props: FieldsProps): JSX.Element {
   });
   const inspect = (path: Path, name: string) =>
     onInspect ? iconButton(`Show ${name} on the page`, "pointer", { class: "icon small", "data-tip": "Show on the page", onClick: () => onInspect(path) }) : null;
-  return h(
-    Fragment,
-    null,
-    h(
-      "div",
-      { class: "filter" },
-      icon("search"),
-      h("input", {
-        type: "search",
-        placeholder: "Filter",
-        "aria-label": "Filter fields by name",
-        value: filter,
-        onInput: (event) => props.onFilter(event.currentTarget.value),
-      }),
-      iconButton("Only fields with errors", "invalid", {
-        class: "icon small",
-        "aria-pressed": invalidOnly ? "true" : "false",
-        onClick: () => props.onInvalidOnly(!invalidOnly),
-      }),
-    ),
-    h(
-      "ul",
-      { class: "tree scroll", "aria-label": "Fields", onScroll: () => setHint(null) },
-      rows.length === 0
-        ? h("li", { class: "empty" }, invalidOnly ? "No field has an error." : filter ? "No field matches." : "The form has no fields.")
-        : rows.map((item) => {
+  return (
+    <>
+      <div class="filter">
+        {icon("search")}
+        <input type="search" placeholder="Filter" aria-label="Filter fields by name" value={filter} onInput={(event) => props.onFilter(event.currentTarget.value)} />
+        {iconButton("Only fields with errors", "invalid", {
+          class: "icon small",
+          "aria-pressed": invalidOnly ? "true" : "false",
+          onClick: () => props.onInvalidOnly(!invalidOnly),
+        })}
+      </div>
+      <ul class="tree scroll" aria-label="Fields" onScroll={() => setHint(null)}>
+        {rows.length === 0 ? (
+          <li class="empty">{invalidOnly ? "No field has an error." : filter ? "No field matches." : "The form has no fields."}</li>
+        ) : (
+          rows.map((item) => {
             const key = pathKey(item.path);
             const open = expanded.has(key);
             const name = item.snapshot.name || item.label;
-            return h(
-              "li",
-              {
-                key,
-                class: "row",
-                style: `--depth: ${item.depth}`,
-                "data-path": key,
-                "aria-current": key === selectedKey ? "true" : undefined,
-                onPointerEnter: () => props.onHover?.(item.path),
-                onPointerLeave: () => props.onHover?.(null),
-              },
-              item.branch
-                ? iconButton(`${open ? "Collapse" : "Expand"} ${name}`, "chevron", {
-                    class: "twisty",
-                    "aria-expanded": open ? "true" : "false",
-                    onClick: () => props.onToggle(key),
-                  })
-                : h("span", { class: "leaf" }),
-              h(
-                "button",
-                { class: "row-main truncate", onClick: () => props.onRow(key === selectedKey ? null : item.path) },
-                item.label,
-                " ",
-                h("span", { class: "muted" }, preview(item.snapshot.value)),
-              ),
-              inspect(item.path, name),
-              h(
-                "span",
-                { class: "flags" },
-                flagsOf(item.snapshot, dirty).map((flag) => {
-                  const show = (event: { currentTarget: Element }) => setHint({ path: item.path, flag, rect: event.currentTarget.getBoundingClientRect() });
-                  return h(
-                    "span",
-                    {
-                      key: flag,
-                      class: `flag ${flag}`,
-                      tabIndex: 0,
-                      role: "img",
-                      "aria-label": `${flag}: ${flagText[flag]}`,
-                      onPointerEnter: show,
-                      onFocus: show,
-                      onPointerLeave: () => setHint(null),
-                      onBlur: () => setHint(null),
-                    },
-                    icon(flag),
-                  );
-                }),
-              ),
+            return (
+              <li
+                key={key}
+                class="row"
+                style={`--depth: ${item.depth}`}
+                data-path={key}
+                aria-current={key === selectedKey ? "true" : undefined}
+                onPointerEnter={() => props.onHover?.(item.path)}
+                onPointerLeave={() => props.onHover?.(null)}
+              >
+                {item.branch
+                  ? iconButton(`${open ? "Collapse" : "Expand"} ${name}`, "chevron", {
+                      class: "twisty",
+                      "aria-expanded": open ? "true" : "false",
+                      onClick: () => props.onToggle(key),
+                    })
+                  : <span class="leaf" />}
+                <button class="row-main truncate" onClick={() => props.onRow(key === selectedKey ? null : item.path)}>
+                  {item.label} <span class="muted">{preview(item.snapshot.value)}</span>
+                </button>
+                {inspect(item.path, name)}
+                <span class="flags">
+                  {flagsOf(item.snapshot, dirty).map((flag) => {
+                    const show = (event: { currentTarget: Element }) => setHint({ path: item.path, flag, rect: event.currentTarget.getBoundingClientRect() });
+                    return (
+                      <span
+                        key={flag}
+                        class={`flag ${flag}`}
+                        tabIndex={0}
+                        role="img"
+                        aria-label={`${flag}: ${flagText[flag]}`}
+                        onPointerEnter={show}
+                        onFocus={show}
+                        onPointerLeave={() => setHint(null)}
+                        onBlur={() => setHint(null)}
+                      >
+                        {icon(flag)}
+                      </span>
+                    );
+                  })}
+                </span>
+              </li>
             );
-          }),
-    ),
-    hint ? h(FlagCard, { entry, ...hint }) : null,
-    row && selected
-      ? h(
-          "section",
-          { class: "detail scroll", "aria-label": "Field detail" },
-          h(
-            "div",
-            { class: "detail-head" },
-            h("strong", { class: "truncate" }, selected.name || "(form)"),
-            inspect(row, selected.name),
-            iconButton("Close the field detail", "close", { class: "icon small", onClick: () => props.onRow(null) }),
-          ),
-          fieldFacts(entry, row, selected),
-        )
-      : null,
+          })
+        )}
+      </ul>
+      {hint ? <FlagCard entry={entry} {...hint} /> : null}
+      {row && selected ? (
+        <section class="detail scroll" aria-label="Field detail">
+          <div class="detail-head">
+            <strong class="truncate">{selected.name || "(form)"}</strong>
+            {inspect(row, selected.name)}
+            {iconButton("Close the field detail", "close", { class: "icon small", onClick: () => props.onRow(null) })}
+          </div>
+          {fieldFacts(entry, row, selected)}
+        </section>
+      ) : null}
+    </>
   );
 }

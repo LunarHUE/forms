@@ -1,4 +1,5 @@
-import { h, type JSX } from "preact";
+/** @jsxImportSource preact */
+import type { JSX } from "preact";
 import type { FormEntry } from "../hook.js";
 import { fact } from "./fields.js";
 import { useFrame } from "./frame.js";
@@ -16,23 +17,24 @@ export function apiKeys(entry: FormEntry, name: string): string[] {
 export function Plugins({ entry }: { readonly entry: FormEntry }): JSX.Element {
   const form = entry.store.getFormSnapshot();
   useFrame(() => [entry.store.getFormSnapshot()]);
-  return h(
-    "ol",
-    { class: "plugins scroll", "aria-label": "Plugins in hook order" },
-    entry.ctx.installed.map((plugin, index) => {
-      const meta = form.meta?.[plugin.name];
-      const keys = apiKeys(entry, plugin.name);
-      return h(
-        "li",
-        { key: plugin.name, class: "plugin", "data-plugin": plugin.name },
-        h("div", { class: "plugin-head" }, h("span", { class: "muted" }, String(index + 1)), h("strong", null, plugin.name)),
-        h(
-          "div",
-          { class: "facts" },
-          fact("form meta", meta === undefined ? h("span", { class: "muted" }, "none") : h("pre", null, format(meta))),
-          fact("API", keys.length === 0 ? h("span", { class: "muted" }, "none") : keys.join(", ")),
-        ),
-      );
-    }),
+  return (
+    <ol class="plugins scroll" aria-label="Plugins in hook order">
+      {entry.ctx.installed.map((plugin, index) => {
+        const meta = form.meta?.[plugin.name];
+        const keys = apiKeys(entry, plugin.name);
+        return (
+          <li key={plugin.name} class="plugin" data-plugin={plugin.name}>
+            <div class="plugin-head">
+              <span class="muted">{String(index + 1)}</span>
+              <strong>{plugin.name}</strong>
+            </div>
+            <div class="facts">
+              {fact("form meta", meta === undefined ? <span class="muted">none</span> : <pre>{format(meta)}</pre>)}
+              {fact("API", keys.length === 0 ? <span class="muted">none</span> : keys.join(", "))}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

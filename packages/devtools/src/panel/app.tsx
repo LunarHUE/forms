@@ -1,5 +1,6 @@
+/** @jsxImportSource preact */
 import type { Path } from "@lunarhue/forms-core";
-import { Fragment, h, type JSX, type TargetedMouseEvent } from "preact";
+import type { JSX, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { FormEntry, Hook } from "../hook.js";
 import { type Corner, cornerLabels, corners, readCorner, saveCorner } from "./corner.js";
@@ -188,117 +189,107 @@ export function App({ hook, host }: AppProps): JSX.Element {
   };
 
   const content = (open: Tab): JSX.Element => {
-    if (shown === undefined) return h("p", { class: "empty" }, "No form with devtools() is mounted on this page.");
-    if (open === "log") return h(Log, { key: `${open}${shown.id}`, entry: shown.entry });
-    if (open === "plugins") return h(Plugins, { key: `${open}${shown.id}`, entry: shown.entry });
-    if (open === "bundle") return h(Bundle, { key: `${open}${shown.id}`, entry: shown.entry });
-    return h(Fields, {
-      key: `${open}${shown.id}`,
-      entry: shown.entry,
-      expanded: current.expanded,
-      onToggle: (key) =>
-        updateView(({ expanded }) => {
-          const next = new Set(expanded);
-          if (!next.delete(key)) next.add(key);
-          return { expanded: next };
-        }),
-      row: current.row,
-      onRow: (row) => updateView(() => ({ row })),
-      filter: current.filter,
-      onFilter: (filter) => updateView(() => ({ filter })),
-      invalidOnly: current.invalidOnly,
-      onInvalidOnly: (invalidOnly) => updateView(() => ({ invalidOnly })),
-      onHover: shown.entry.adapter === undefined ? undefined : setRowHover,
-      onInspect:
-        shown.entry.adapter === undefined
-          ? undefined
-          : (path) => {
-              const handle = handleOf(shown, path);
-              (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
-              setRowHover(path);
-            },
-    });
+    if (shown === undefined) return <p class="empty">No form with devtools() is mounted on this page.</p>;
+    if (open === "log") return <Log key={`${open}${shown.id}`} entry={shown.entry} />;
+    if (open === "plugins") return <Plugins key={`${open}${shown.id}`} entry={shown.entry} />;
+    if (open === "bundle") return <Bundle key={`${open}${shown.id}`} entry={shown.entry} />;
+    return (
+      <Fields
+        key={`${open}${shown.id}`}
+        entry={shown.entry}
+        expanded={current.expanded}
+        onToggle={(key) =>
+          updateView(({ expanded }) => {
+            const next = new Set(expanded);
+            if (!next.delete(key)) next.add(key);
+            return { expanded: next };
+          })
+        }
+        row={current.row}
+        onRow={(row) => updateView(() => ({ row }))}
+        filter={current.filter}
+        onFilter={(filter) => updateView(() => ({ filter }))}
+        invalidOnly={current.invalidOnly}
+        onInvalidOnly={(invalidOnly) => updateView(() => ({ invalidOnly }))}
+        onHover={shown.entry.adapter === undefined ? undefined : setRowHover}
+        onInspect={
+          shown.entry.adapter === undefined
+            ? undefined
+            : (path) => {
+                const handle = handleOf(shown, path);
+                (handle && hook.elementsOf(handle)[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+                setRowHover(path);
+              }
+        }
+      />
+    );
   };
 
-  const chip = h(
-    "div",
-    { class: "chip" },
-    h(
-      "button",
-      {
-        class: "chip-main",
-        "aria-haspopup": "menu",
-        "aria-expanded": menu?.kind === "forms" ? "true" : "false",
-        "aria-label": selected ? `Form ${selected.label}. Choose a form` : "Choose a form",
-        onClick: (event: TargetedMouseEvent<HTMLElement>) => toggleMenu("forms", event),
-      },
-      h("span", { class: selected ? "swatch on" : "swatch", "aria-hidden": "true" }),
-      h("span", { class: selected ? "truncate" : "truncate muted" }, selected?.label ?? (forms.length === 0 ? "No forms" : "No form")),
-      selected ? null : icon("chevron"),
-    ),
-    // The clear button takes the chevron's place.
-    selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null,
+  const chip = (
+    <div class="chip">
+      <button
+        class="chip-main"
+        aria-haspopup="menu"
+        aria-expanded={menu?.kind === "forms" ? "true" : "false"}
+        aria-label={selected ? `Form ${selected.label}. Choose a form` : "Choose a form"}
+        onClick={(event: TargetedMouseEvent<HTMLElement>) => toggleMenu("forms", event)}
+      >
+        <span class={selected ? "swatch on" : "swatch"} aria-hidden="true" />
+        <span class={selected ? "truncate" : "truncate muted"}>{selected?.label ?? (forms.length === 0 ? "No forms" : "No form")}</span>
+        {selected ? null : icon("chevron")}
+      </button>
+      {/* The clear button takes the chevron's place. */}
+      {selected ? iconButton(`Clear selection ${selected.label}`, "close", { class: "icon small", "data-tip": "Clear selection", onClick: () => select(null) }) : null}
+    </div>
   );
 
-  const status = selected ? h(SubmitStatus, { entry: selected.entry }) : null;
+  const status = selected ? <SubmitStatus entry={selected.entry} /> : null;
 
-  const formsMenu = h(
-    "div",
-    { class: "menu surface", role: "menu", "aria-label": "Forms on this page", ref: menuRef, style: `left: ${menu?.left ?? 0}px` },
-    h("div", { class: "menu-label" }, "Forms on this page"),
-    forms.length === 0
-      ? h("div", { class: "menu-item muted" }, "None yet")
-      : forms.map((form) =>
-          h(
-            "button",
-            {
-              key: form.id,
-              class: "menu-item",
-              role: "menuitemradio",
-              "aria-checked": form.id === selectedId ? "true" : "false",
-              onClick: () => select(form.id),
-            },
-            h("span", { class: form.id === selectedId ? "swatch on" : "swatch", "aria-hidden": "true" }),
-            h("span", { class: "truncate" }, form.label),
-            form.id === selectedId ? icon("check", "check") : null,
-          ),
-        ),
+  const formsMenu = (
+    <div class="menu surface" role="menu" aria-label="Forms on this page" ref={menuRef} style={`left: ${menu?.left ?? 0}px`}>
+      <div class="menu-label">Forms on this page</div>
+      {forms.length === 0 ? (
+        <div class="menu-item muted">None yet</div>
+      ) : (
+        forms.map((form) => (
+          <button key={form.id} class="menu-item" role="menuitemradio" aria-checked={form.id === selectedId ? "true" : "false"} onClick={() => select(form.id)}>
+            <span class={form.id === selectedId ? "swatch on" : "swatch"} aria-hidden="true" />
+            <span class="truncate">{form.label}</span>
+            {form.id === selectedId ? icon("check", "check") : null}
+          </button>
+        ))
+      )}
+    </div>
   );
 
-  const dockMenu = h(
-    "div",
-    { class: "menu surface", role: "menu", "aria-label": "Devtools menu", ref: menuRef, style: `left: ${menu?.left ?? 0}px` },
-    h("div", { class: "menu-label" }, "Dock position"),
-    corners.map((option) =>
-      h(
-        "button",
-        {
-          key: option,
-          class: "menu-item",
-          role: "menuitemradio",
-          "aria-checked": option === corner ? "true" : "false",
-          onClick: () => move(option),
-        },
-        cornerLabels[option],
-        option === corner ? icon("check", "check") : null,
-      ),
-    ),
-    onDisable ? h("div", { class: "menu-separator", role: "separator" }) : null,
-    onDisable ? h("button", { class: "menu-item", role: "menuitem", onClick: turnOff }, icon("off"), "Turn off devtools") : null,
+  const dockMenu = (
+    <div class="menu surface" role="menu" aria-label="Devtools menu" ref={menuRef} style={`left: ${menu?.left ?? 0}px`}>
+      <div class="menu-label">Dock position</div>
+      {corners.map((option) => (
+        <button key={option} class="menu-item" role="menuitemradio" aria-checked={option === corner ? "true" : "false"} onClick={() => move(option)}>
+          {cornerLabels[option]}
+          {option === corner ? icon("check", "check") : null}
+        </button>
+      ))}
+      {onDisable ? <div class="menu-separator" role="separator" /> : null}
+      {onDisable ? (
+        <button class="menu-item" role="menuitem" onClick={turnOff}>
+          {icon("off")}
+          Turn off devtools
+        </button>
+      ) : null}
+    </div>
   );
 
-  const tabList = (active: Tab | null, onTab: (tab: Tab) => void) =>
-    h(
-      "div",
-      { class: "tabs", role: "tablist", "aria-label": "Devtools tabs" },
-      tabs.map((item) =>
-        h(
-          "button",
-          { key: item.id, class: "tab", role: "tab", "aria-selected": active === item.id ? "true" : "false", onClick: () => onTab(item.id) },
-          item.label,
-        ),
-      ),
-    );
+  const tabList = (active: Tab | null, onTab: (tab: Tab) => void) => (
+    <div class="tabs" role="tablist" aria-label="Devtools tabs">
+      {tabs.map((item) => (
+        <button key={item.id} class="tab" role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const inspectButton = tracked
     ? iconButton("Inspect fields on the page", "inspect", {
@@ -315,81 +306,84 @@ export function App({ hook, host }: AppProps): JSX.Element {
     : tab === "fields" && shown?.entry.adapter !== undefined
       ? handleOf(shown, rowHover)
       : undefined;
-  const fieldLayer = h(
-    Fragment,
-    null,
-    outlined ? h(Outlines, { elements: hook.elementsOf(outlined) }) : null,
-    card ? h(FieldCard, { key: card === pinned ? "pinned" : "hover", found: card, onClose: card === pinned ? () => setPinned(null) : undefined }) : null,
+  const fieldLayer = (
+    <>
+      {outlined ? <Outlines elements={hook.elementsOf(outlined)} /> : null}
+      {card ? <FieldCard key={card === pinned ? "pinned" : "hover"} found={card} onClose={card === pinned ? () => setPinned(null) : undefined} /> : null}
+    </>
   );
 
-  const layers = h(
-    Fragment,
-    null,
-    h(FormOutlines, { hook, forms, selectedId, onPick: select }),
-    fieldLayer,
-    h(Tip, { root }),
+  const layers = (
+    <>
+      <FormOutlines hook={hook} forms={forms} selectedId={selectedId} onPick={select} />
+      {fieldLayer}
+      <Tip root={root} />
+    </>
   );
 
   const openMenu = menu?.kind === "dock" ? dockMenu : menu?.kind === "forms" ? formsMenu : null;
 
   if (phone) {
     const open = tab ?? "fields";
-    return h(
-      "div",
-      { class: "root", ref: root },
-      layers,
-      sheetOpen
-        ? h(
-            "div",
-            { class: "sheet surface", role: "dialog", "aria-label": "Forms devtools" },
-            h("div", { class: "grip", "aria-hidden": "true" }),
-            h(
-              "div",
-              { class: "sheet-head", ref: menuButtons },
-              chip,
-              status,
-              inspectButton,
-              h("div", { class: "end" }, onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null, iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })),
-              openMenu,
-            ),
-            tabList(open, setTab),
-            h("section", { class: "panel", "aria-label": `Devtools ${open}` }, content(open)),
-          )
-        : iconButton("Open the forms devtools", "panel", {
+    return (
+      <div class="root" ref={root}>
+        {layers}
+        {sheetOpen ? (
+          <div class="sheet surface" role="dialog" aria-label="Forms devtools">
+            <div class="grip" aria-hidden="true" />
+            <div class="sheet-head" ref={menuButtons}>
+              {chip}
+              {status}
+              {inspectButton}
+              <div class="end">
+                {onDisable ? iconButton("Turn off devtools", "off", { onClick: turnOff }) : null}
+                {iconButton("Close the devtools", "close", { onClick: () => setSheetOpen(false) })}
+              </div>
+              {openMenu}
+            </div>
+            {tabList(open, setTab)}
+            <section class="panel" aria-label={`Devtools ${open}`}>
+              {content(open)}
+            </section>
+          </div>
+        ) : (
+          iconButton("Open the forms devtools", "panel", {
             class: "fab icon surface",
             onClick: () => {
               if (selected === undefined && shown) setSelectedId(shown.id);
               setSheetOpen(true);
             },
-          }),
+          })
+        )}
+      </div>
     );
   }
 
-  return h(
-    "div",
-    { class: "root", ref: root },
-    layers,
-    h(
-      "div",
-      { class: "dock", "data-corner": corner },
-      tab ? h("section", { class: "panel surface", "aria-label": `Devtools ${tab}` }, content(tab)) : null,
-      h(
-        "div",
-        { class: "bar surface", role: "toolbar", "aria-label": "Forms devtools", ref: menuButtons },
-        iconButton("Devtools menu", "panel", {
-          "aria-haspopup": "menu",
-          "aria-expanded": menu?.kind === "dock" ? "true" : "false",
-          "data-tip": "Dock position and turning off",
-          onClick: (event) => toggleMenu("dock", event),
-        }),
-        chip,
-        status,
-        h("div", { class: "divider", "aria-hidden": "true" }),
-        inspectButton,
-        tabList(tab, openTab),
-        openMenu,
-      ),
-    ),
+  return (
+    <div class="root" ref={root}>
+      {layers}
+      <div class="dock" data-corner={corner}>
+        {tab ? (
+          <section class="panel surface" aria-label={`Devtools ${tab}`}>
+            {content(tab)}
+          </section>
+        ) : null}
+        <div class="bar surface" role="toolbar" aria-label="Forms devtools" ref={menuButtons}>
+          {iconButton("Devtools menu", "panel", {
+            "aria-haspopup": "menu",
+            "aria-expanded": menu?.kind === "dock" ? "true" : "false",
+            "data-tip": "Dock position and turning off",
+            onClick: (event) => toggleMenu("dock", event),
+          })}
+          {chip}
+          {status}
+          <div class="divider" aria-hidden="true" />
+          {inspectButton}
+          {tabList(tab, openTab)}
+          {openMenu}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -399,11 +393,10 @@ function SubmitStatus({ entry }: { readonly entry: FormEntry }): JSX.Element | n
   const status = last();
   useFrame(() => [last()]);
   if (status === undefined) return null;
-  return h(
-    "span",
-    { class: "status", "data-status": status },
-    "submit ",
-    h("span", { class: status === "failed" || status === "invalid" ? "error" : "soft" }, status === "open" ? "running" : status),
+  return (
+    <span class="status" data-status={status}>
+      submit <span class={status === "failed" || status === "invalid" ? "error" : "soft"}>{status === "open" ? "running" : status}</span>
+    </span>
   );
 }
 
@@ -433,31 +426,27 @@ function FormOutlines({ hook, forms, selectedId, onPick }: FormOutlinesProps): J
       }),
     ),
   );
-  return h(
-    Fragment,
-    null,
-    boxes.map(({ form, rect }, index) =>
-      h(
-        "div",
-        {
-          key: index,
-          class: form.id === selectedId ? "outline form on" : "outline form",
-          style: `left: ${rect.left - pad}px; top: ${rect.top - pad}px; width: ${rect.width + 2 * pad}px; height: ${rect.height + 2 * pad}px`,
-        },
-        h(
-          "button",
-          {
+  return (
+    <>
+      {boxes.map(({ form, rect }, index) => (
+        <div
+          key={index}
+          class={form.id === selectedId ? "outline form on" : "outline form"}
+          style={`left: ${rect.left - pad}px; top: ${rect.top - pad}px; width: ${rect.width + 2 * pad}px; height: ${rect.height + 2 * pad}px`}
+        >
+          <button
             // With no room above the form, the tag sits inside its top edge.
-            class: rect.top - pad < 24 ? "tag inside" : "tag",
-            "aria-label": `Select form ${form.label}`,
-            "aria-pressed": form.id === selectedId ? "true" : "false",
-            onClick: () => onPick(form.id),
-          },
-          icon("panel"),
-          h("span", { class: "truncate" }, form.label),
-        ),
-      ),
-    ),
+            class={rect.top - pad < 24 ? "tag inside" : "tag"}
+            aria-label={`Select form ${form.label}`}
+            aria-pressed={form.id === selectedId ? "true" : "false"}
+            onClick={() => onPick(form.id)}
+          >
+            {icon("panel")}
+            <span class="truncate">{form.label}</span>
+          </button>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -508,13 +497,9 @@ function Tip({ root }: { readonly root: { readonly current: HTMLElement | null }
   // Above the control, or below it near the top of the window; kept off the window's sides.
   const above = rect.top > 40;
   const x = Math.max(80, Math.min(rect.left + rect.width / 2, innerWidth - 80));
-  return h(
-    "div",
-    {
-      class: above ? "tip" : "tip below",
-      "aria-hidden": "true",
-      style: `left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`,
-    },
-    text,
+  return (
+    <div class={above ? "tip" : "tip below"} aria-hidden="true" style={`left: ${x}px; top: ${above ? rect.top - 6 : rect.bottom + 6}px`}>
+      {text}
+    </div>
   );
 }
