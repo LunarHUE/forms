@@ -1,6 +1,11 @@
 import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
 
-export function TextField(props: { field: FieldApi<string>; label: string }) {
+interface TextFieldProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+export function TextField(props: TextFieldProps) {
   return (
     <label>
       {props.label}
