@@ -1053,6 +1053,8 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     stats() {
       let nodes = 0;
       let subscribed = 0;
+      // Only tests and leak checks ask, so production keeps no walk.
+      if (typeof process === "undefined" || process.env.NODE_ENV === "production") return { nodes, subscribed };
       const count = (node: Node<E>) => {
         nodes++;
         if (node.subscriptions) subscribed++;
