@@ -15,6 +15,14 @@ const page = (body: string, extra: Partial<MarkdownPage> = {}): string =>
 /** The output after the title, description and source lines. */
 const content = (markdown: string): string => markdown.split("\n").slice(6).join("\n");
 
+/** A demo with a component and a stylesheet, whose code names the demo. */
+function demo(name: string) {
+  return [
+    { name: "contact.tsx", code: `// ${name}` },
+    { name: "contact.css", code: "a {}" },
+  ];
+}
+
 describe("toMarkdown", () => {
   it("starts with the title, description and source", () => {
     expect(page("Body.")).toBe(
@@ -66,10 +74,6 @@ describe("toMarkdown", () => {
   });
 
   it("turns a demo into its files", () => {
-    const demo = (name: string) => [
-      { name: "contact.tsx", code: `// ${name}` },
-      { name: "contact.css", code: "a {}" },
-    ];
     expect(content(page('<Demo name="masks/contact" />', { demo }))).toBe(
       '```tsx title="contact.tsx"\n// masks/contact\n```\n\n```css title="contact.css"\na {}\n```\n',
     );

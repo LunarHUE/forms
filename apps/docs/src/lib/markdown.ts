@@ -95,10 +95,10 @@ export function toMarkdown({ title, description, body, framework, url, demo }: M
       const close = FENCE.exec(line);
       const done =
         close !== null &&
-        close[3]!.trim() === "" &&
-        close[2]![0] === open.marker[0] &&
-        close[2]!.length >= open.marker.length;
-      if (open.keep) push(done ? `${close![1]}${open.marker}` : line);
+        close[3].trim() === "" &&
+        close[2][0] === open.marker[0] &&
+        close[2].length >= open.marker.length;
+      if (open.keep) push(done ? `${close[1]}${open.marker}` : line);
       if (done) open = undefined;
       continue;
     }

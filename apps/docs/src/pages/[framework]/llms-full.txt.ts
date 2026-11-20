@@ -6,7 +6,10 @@ import { sitePages } from "@/lib/pages";
 import { textResponse } from "@/lib/responses";
 
 export const getStaticPaths = (() =>
-  AVAILABLE_FRAMEWORKS.map((framework) => ({ params: { framework } }))) satisfies GetStaticPaths;
+  AVAILABLE_FRAMEWORKS.map((framework) => ({ params: { framework }, props: { framework } }))) satisfies GetStaticPaths;
 
-export const GET: APIRoute = async ({ params }) =>
-  textResponse(llmsFull(await sitePages(), params.framework as Framework));
+interface Props {
+  readonly framework: Framework;
+}
+
+export const GET: APIRoute<Props> = async ({ props }) => textResponse(llmsFull(await sitePages(), props.framework));
