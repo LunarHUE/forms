@@ -42,6 +42,7 @@ export type {
 } from "./field.js";
 export type { ArrayPath, FieldPath, PathMaxDepth, ValueAt } from "./path.js";
 export { createInputProps, errorId, fieldRef, inputProps } from "./input.js";
+export { elementsOf, fieldOf } from "./lookup.js";
 export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   CheckableProps,
