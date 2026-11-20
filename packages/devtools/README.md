@@ -33,5 +33,25 @@ write, such as from a keyboard shortcut.
 Installing the plugin also calls `trackElements()` from the adapter, so
 `fieldOf(element)` works in production from then on.
 
-The panel itself is still being built. For now the plugin collects each
-mounted form's writes and submissions and mounts an empty panel host.
+## The panel
+
+The panel docks in a corner of the page. Its menu moves it to another
+corner, which the browser remembers for the whole site. On a phone it's a
+button that opens a bottom sheet.
+
+- The form chip lists the forms on the page by their store `id`, numbered
+  when two share one. Give each store an `id` to tell them apart.
+- Pick mode outlines each form on the page. Click one to inspect it.
+- The Fields tab shows the value tree, with each field's flags (`dirty` only
+  when the form has `dirty()`). Select a row to see its stable path, value
+  against baseline, display text, errors by where they came from, the
+  plugins attached there and its last write. "Invalid only" lists just the
+  fields with errors.
+
+An error that one of our packages raised shows as its code, linked to its
+entry on the [errors page](https://forms.lunarhue.dev/errors).
+
+The panel renders in a shadow root, so the page's styles and its own stay
+apart. It is one chunk, with Preact bundled in, and an app doesn't install
+Preact. While it's open it reads the forms on each animation frame and never
+subscribes to a store, so it never keeps a plugin's `onActive` running.
