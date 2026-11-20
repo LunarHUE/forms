@@ -31,6 +31,10 @@ export function useFrame(read: () => readonly unknown[]): void {
       frame = requestAnimationFrame(tick);
     };
     let frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    // A page torn down before the panel (a test environment closing) has no
+    // frames left to cancel, and no `cancelAnimationFrame` either.
+    return () => {
+      if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
+    };
   }, []);
 }
