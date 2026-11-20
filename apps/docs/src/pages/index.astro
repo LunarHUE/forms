@@ -2,13 +2,19 @@
 import Layout from "@/layouts/Layout.astro";
 import { AVAILABLE_FRAMEWORKS, DEFAULT_FRAMEWORK } from "@/lib/frameworks";
 import { frameworkHref } from "@/lib/routes";
+import { websiteData } from "@/lib/seo";
+import { SITE_DESCRIPTION } from "@/lib/site";
 
 // `/` opens the Introduction of the framework the visitor used last.
 const hrefs = Object.fromEntries(AVAILABLE_FRAMEWORKS.map((framework) => [framework, frameworkHref(framework)]));
 const fallback = frameworkHref(DEFAULT_FRAMEWORK);
 ---
 
-<Layout title="LunarHUE Forms">
+<Layout
+  title="LunarHUE Forms"
+  description={SITE_DESCRIPTION}
+  meta={{ canonical: fallback, structuredData: [websiteData()] }}
+>
   <Fragment slot="head">
     <script is:inline define:vars={{ hrefs, fallback }}>
       let last = null;

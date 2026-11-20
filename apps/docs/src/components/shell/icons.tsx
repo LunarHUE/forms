@@ -55,4 +55,4 @@ export function FrameworkIcon({ name, className }: { name: string } & IconProps)
   return Icon ? <Icon className={className} /> : null;
 }
 
-export const GITHUB_URL = "https://github.com/LunarHUE/forms";
+export { GITHUB_URL } from "@/lib/site";

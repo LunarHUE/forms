@@ -12,7 +12,7 @@
  *   </Shell>
  *
  * Props:
- *   title, description, noindex   passed to Layout.
+ *   title, description, noindex, meta   passed to Layout.
  *   framework     the page's framework. Leave it out on framework-free pages
  *                 (errors, 404): Shell then builds a sidebar per framework
  *                 itself and shows the last-used one (React by default).
@@ -32,11 +32,13 @@ import { getDocs, toNavPage } from "@/lib/content";
 import { AVAILABLE_FRAMEWORKS, type Framework } from "@/lib/frameworks";
 import { alternates as alternatesFor, sidebar, type NavGroup } from "@/lib/nav";
 import { INTRODUCTION_SLUG } from "@/lib/routes";
+import type { PageMeta } from "@/lib/seo";
 import { LATEST_VERSION } from "@/lib/versions";
 import Layout from "@/layouts/Layout.astro";
 
 import Search from "@/components/search/Search.astro";
 
+import Footer from "./Footer.astro";
 import Header from "./Header.astro";
 import { pickerItems } from "./picker";
 import Sidebar from "./Sidebar.astro";
@@ -47,6 +49,7 @@ interface Props {
   title: string;
   description?: string;
   noindex?: boolean;
+  meta?: PageMeta;
   framework?: Framework;
   version?: string;
   groups?: readonly NavGroup[];
@@ -58,6 +61,7 @@ const {
   title,
   description,
   noindex,
+  meta,
   framework,
   version = LATEST_VERSION,
   groups = [],
@@ -84,7 +88,7 @@ if (framework) {
 }
 ---
 
-<Layout title={title} description={description} framework={framework} noindex={noindex}>
+<Layout title={title} description={description} framework={framework} noindex={noindex} meta={meta}>
   <slot name="head" slot="head" />
   <a
     href="#content"
@@ -208,6 +212,7 @@ if (framework) {
     </script>
     <div id="content" class="min-w-0 flex-1">
       <slot />
+      <Footer framework={framework} />
     </div>
   </div>
 </Layout>
