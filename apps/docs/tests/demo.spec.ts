@@ -48,13 +48,12 @@ for (const framework of frameworks) {
 }
 
 for (const framework of frameworks) {
-  test(`${framework}: the devtools pick the masks demo's form`, async ({ page }) => {
+  test(`${framework}: the devtools select the masks demo's form from its outline tag`, async ({ page }) => {
     const demo = await openMasks(page, framework);
-    await page.getByRole("button", { name: "Pick a form on the page" }).click();
-    await page.getByRole("button", { name: "Pick form contact" }).click();
+    await page.getByRole("button", { name: "Select form contact" }).click();
     await expect(page.getByRole("button", { name: "Form contact. Choose a form" })).toBeVisible();
 
-    // Picking opens the Fields tab, which follows typing.
+    // Selecting opens the Fields tab, which follows typing.
     await expect(page.getByRole("region", { name: "Devtools fields" })).toBeVisible();
     const phone = page.locator(`[data-path='["phone"]']`);
     await demo.getByRole("textbox").pressSequentially("555");
