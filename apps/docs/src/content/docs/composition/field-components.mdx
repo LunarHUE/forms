@@ -1,0 +1,127 @@
+---
+title: Reusable field components
+description: Write an input component once, register it, and use it on every form by name.
+section: composition
+order: 1
+navTitle: Field components
+---
+
+A component that takes a field, like the ones in [Fields](../basics/fields),
+can be registered on `createForms`. Every form from it then has the component
+as a member, `form.TextField`, that takes a field name instead of the `field`
+prop. Still no plugins.
+
+<Demo name="field-components/profile" />
+
+## Registering a component
+
+Type the prop as `FieldApi<T>`, where `T` is the value type the component
+edits, and list the component under `fields`:
+
+```tsx framework=react
+import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-react";
+
+function TextField({ field, label }: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {label}
+      <input {...inputProps(field)} />
+    </label>
+  );
+}
+
+export const forms = createForms({ fields: { TextField } });
+```
+
+```tsx framework=solid
+import { createForms, type FieldApi, inputProps } from "@lunarhue/forms-solid";
+
+function TextField(props: { field: FieldApi<string>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...inputProps(props.field)} />
+    </label>
+  );
+}
+
+export const forms = createForms({ fields: { TextField } });
+```
+
+Make `forms` once and import it wherever you define a form.
+
+## Using it
+
+`form.TextField` takes the component's own props, minus `field`, plus one of:
+
+- `name`, a field name such as `"address.city"`. The compiler checks it, and
+  accepts only names whose value fits the component: a `FieldApi<string>`
+  component won't take a number field. See
+  [Typed names and handles](./typed-paths).
+- `handle`, a field handle from `form.root.at(...)` or an array row.
+
+```tsx
+<form.TextField name="name" label="Name" />
+<form.NumberField name="age" label="Age" />
+```
+
+It also takes `validate`, which adds a validator while it is mounted, as on
+`form.Field`:
+
+```tsx
+<form.TextField name="name" label="Name" validate={(name) => (name ? undefined : { message: "Enter your name." })} />
+```
+
+## Optional fields
+
+A `FieldApi<string>` component takes required string fields only. An optional
+field such as `nickname?: string` starts out `undefined`, and a component that
+reads `field.value` as a `string` would get it wrong. To render optional
+fields too, put `undefined` in the type:
+
+```tsx framework=react
+function TextField({ field, label }: { field: FieldApi<string | undefined>; label: string }) {
+  return (
+    <label>
+      {label}
+      <input {...inputProps(field)} />
+    </label>
+  );
+}
+```
+
+```tsx framework=solid
+function TextField(props: { field: FieldApi<string | undefined>; label: string }) {
+  return (
+    <label>
+      {props.label}
+      <input {...inputProps(props.field)} />
+    </label>
+  );
+}
+```
+
+This component takes `name: string` and `nickname?: string` alike. A checkbox
+does the same with `FieldApi<boolean | undefined>`. `null` works the same way:
+`FieldApi<string | null>` takes `string` and `string | null` fields.
+
+The type checker doesn't stop such a component from writing `undefined` into
+a required field, so leave writes to `inputProps` or write a value of the
+field's own type. A `FieldApi<number>` component has the same gap, since its
+`value` is `number | undefined`.
+
+## Field types
+
+`defineField(component)` makes a field type, and `fields` takes one where it
+takes a component:
+
+```ts
+const NameField = defineField(TextField);
+
+const forms = createForms({ fields: { TextField, NameField } });
+```
+
+With no other arguments it renders the same as `TextField`. The arguments
+after the component are plugin parts that every field it renders gets, such
+as a mask on a phone input. See
+[Parts on field components](../plugins/masks).
