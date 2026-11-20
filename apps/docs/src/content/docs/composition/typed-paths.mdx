@@ -1,8 +1,9 @@
 ---
-title: Typed paths
+title: Typed names and handles
 description: Field names the compiler checks, and handles you can pass around.
-section: concepts
+section: composition
 order: 2
+navTitle: Names and handles
 ---
 
 Every `name` prop is checked against the form's value type. A typo, or a
@@ -38,7 +39,7 @@ isn't offered.
 
 Names go through objects and stop at arrays. `tasks` names the array, but
 there is no `tasks.0.title`. Rows are reached through
-handles, see [Arrays](./arrays). A name has at most 8 segments.
+handles, see [Arrays](../plugins/arrays). A name has at most 8 segments.
 
 ## Handles
 

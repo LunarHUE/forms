@@ -1,8 +1,8 @@
 ---
 title: Fields
 description: Write an input component once, register it, and use it on every form.
-section: concepts
-order: 1
+section: basics
+order: 6
 ---
 
 A field component is your own component with a `field` prop. Register it on
@@ -57,7 +57,7 @@ once and the component stops updating.
 
 - `name`, a field name such as `"address.city"`. The compiler checks it, and
   only names whose value fits the component are accepted: a `FieldApi<string>`
-  component won't take a number field. See [Typed paths](./typed-paths).
+  component won't take a number field. See [Typed paths](../composition/typed-paths).
 - `handle`, a field handle from `form.root.at(...)` or an array row.
 
 For a one-off input, `form.Field` passes the same object to a function

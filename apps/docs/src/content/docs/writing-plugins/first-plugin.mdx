@@ -1,8 +1,8 @@
 ---
 title: Writing a plugin
 description: Hooks, meta, writes and tests for a plugin of your own.
-section: plugins
-order: 8
+section: writing-plugins
+order: 1
 ---
 
 Make a plugin with `definePlugin` from `@lunarhue/forms-core/plugins`. Its
@@ -12,7 +12,7 @@ for that field. A plugin can have either or both.
 
 Writes go through `ctx.write`, which runs after every plugin in the round has
 run. Their records have `cause: { plugin: name }`. A plugin that moves the
-baseline to a value from outside, as [`rebase`](rebase) does, can pass
+baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pass
 `"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
 plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
 write to every plugin with its cause, and each plugin decides what to do with
@@ -25,7 +25,7 @@ and on the client. What it writes (values, flags and meta) is part of the
 store's starting state:
 
 - The server snapshot shows it, so the server HTML and the first client
-  render agree, and hydrating renders once. This is how [`rules`](rules) puts
+  render agree, and hydrating renders once. This is how [`rules`](../plugins/rules) puts
   `disabled` and `hidden` in the server HTML.
 - It makes no write records, so no plugin's `onWrite` sees it and no
   `deferred` or `idle` delivery is scheduled. A store that is made and never
@@ -37,7 +37,7 @@ store's starting state:
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
 `onActive`, which runs when the store gets its first listener. The server
-never listens, so it never runs there. [`persist`](persist) restores in
+never listens, so it never runs there. [`persist`](../plugins/persist) restores in
 `onActive`.
 
 ## Parts
@@ -171,7 +171,7 @@ meta and the form meta. `history()` is a
 
 ### Display text from a plugin
 
-A plugin can change what a field's text inputs show, as [`mask`](masks) does.
+A plugin can change what a field's text inputs show, as [`mask`](../plugins/masks) does.
 Return these hooks from `attach`:
 
 - `display(value)`: the text to show for the stored value.
@@ -325,7 +325,7 @@ you install only the ones you use. Adapters don't re-export these.
 
 The schema plugins are in `@lunarhue/forms-schema`. They give their library's
 schemas default values. Every form validates on its own, so that is all they
-add. [Schemas](schemas) shows how to make one for another library.
+add. [Schemas](../plugins/schemas) shows how to make one for another library.
 
 ```ts
 import { valibot } from "@lunarhue/forms-schema/valibot";

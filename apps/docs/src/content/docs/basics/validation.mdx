@@ -1,8 +1,8 @@
 ---
 title: Validation
 description: Check fields with a schema or your own functions, sync or async.
-section: concepts
-order: 4
+section: basics
+order: 2
 ---
 
 <Demo name="validation/sign-up" />
@@ -107,7 +107,7 @@ every error and `field.shownErrors` only the ones to show now.
 you set yourself with `setErrors`, such as a server's answer. Those also sit
 in `field.userErrors`, and they don't block a submit: the form's `valid`
 only counts validation errors. The next user edit clears them.
-[Submit](submit) shows how to put server errors on fields.
+[Submit](./submit) shows how to put server errors on fields.
 
 `errors` lists validation errors in a fixed order: the schema's, then the
 form validator's, then field validators' in the order they were added. To

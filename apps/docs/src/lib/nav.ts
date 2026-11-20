@@ -2,14 +2,29 @@ import { FRAMEWORKS, type Framework } from "./frameworks";
 import { docHref, ERRORS_HREF, INTRODUCTION_SLUG } from "./routes";
 
 /** Sidebar sections in display order. The content schema validates against this list. */
-export const SECTION_IDS = ["start", "concepts", "plugins", "integrations", "reference"] as const;
+export const SECTION_IDS = [
+  "start",
+  "basics",
+  "composition",
+  "plugins",
+  "plugin-composition",
+  "writing-plugins",
+  // No pages yet. Empty sections stay out of the sidebar.
+  "compared",
+  "integrations",
+  "reference",
+] as const;
 
 export type Section = (typeof SECTION_IDS)[number];
 
 export const SECTION_LABELS: Record<Section, string> = {
   start: "Start",
-  concepts: "Concepts",
+  basics: "Basics",
+  composition: "Composition",
   plugins: "Plugins",
+  "plugin-composition": "Plugins with composition",
+  "writing-plugins": "Writing plugins",
+  compared: "Compared with TanStack Form",
   integrations: "Integrations",
   reference: "Reference",
 };
