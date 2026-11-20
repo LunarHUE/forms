@@ -22,9 +22,7 @@ export const asyncScenario = {
     defaultValues: { username: "" },
     validate: {
       fields: {
-        username: {
-          validate: async (name: string) => ((await fakeServer.check(name)) ? { message: "That name is taken." } : undefined),
-        },
+        username: async (name: string) => ((await fakeServer.check(name)) ? { message: "That name is taken." } : undefined),
       },
     },
     onSubmit: (value: v.InferOutput<typeof SignUp>) => `Signed up ${value.username}.`,

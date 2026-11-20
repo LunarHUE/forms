@@ -1,4 +1,4 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, debounced, useForm } from "@lunarhue/forms-react";
 import { isUsernameTaken, signUp } from "../../shared/server.ts";
 import { Page } from "../../shared/ui.tsx";
 import { Checkbox, TextField } from "./fields.tsx";
@@ -14,16 +14,13 @@ const signUpForm = forms.define({
   validate: {
     fields: {
       email: (email) => (emailPattern.test(email) ? undefined : { message: "Enter a valid email." }),
-      username: {
-        // The sync rules answer at once. Only a well-formed name goes to the
-        // server. A newer run aborts the older request.
-        validate: (name, { signal }) => {
-          if (name.length < 3) return { message: "Use at least 3 characters." };
-          if (!/^[a-z0-9_]+$/i.test(name)) return { message: "Use letters, digits and underscores." };
-          return isUsernameTaken(name, signal).then((taken) => (taken ? { message: "That username is taken." } : undefined));
-        },
-        debounce: 400,
-      },
+      // The sync rules answer at once. Only a well-formed name goes to the
+      // server. A newer run aborts the older request.
+      username: debounced((name, { signal }) => {
+        if (name.length < 3) return { message: "Use at least 3 characters." };
+        if (!/^[a-z0-9_]+$/i.test(name)) return { message: "Use letters, digits and underscores." };
+        return isUsernameTaken(name, signal).then((taken) => (taken ? { message: "That username is taken." } : undefined));
+      }, 400),
       password: (password) => (password.length >= 8 ? undefined : { message: "Use at least 8 characters." }),
       terms: (accepted) => (accepted ? undefined : { message: "Accept the terms to continue." }),
     },

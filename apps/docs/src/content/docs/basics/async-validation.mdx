@@ -14,21 +14,24 @@ const account = forms.define({
   defaultValues: { username: "" },
   validate: {
     fields: {
-      username: {
-        validate: async (name, { signal }) =>
-          (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
-        debounce: 400,
-        on: "input",
-      },
+      username: validateOn(
+        debounced(
+          async (name, { signal }) =>
+            (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+          400,
+        ),
+        "input",
+      ),
     },
   },
   show: "always",
 });
 ```
 
-An object with `validate` takes options: `debounce` waits for a pause in
-typing, and `on` sets when it first runs. The same object works in a
-`validate` prop. Errors show once the field is blurred by default, so
+`debounced(check, ms)` waits for a pause in typing before it calls `check`, and
+`validateOn(check, "input")` runs it from the first keystroke instead of the
+first blur. Both return a validator, so they nest, and they work in a
+`validate` prop too. Errors show once the field is blurred by default, so
 `show: "always"` lets the answer appear while the user is still typing. See
 [Showing errors](./validation#showing-errors).
 
@@ -58,5 +61,9 @@ state's `validating` while any does. Show it next to the input:
 
 A submit skips the debounce. It waits for a check that is still running and
 goes on only if it passed. A check whose result is still current doesn't run
-again. Set `recheckOnSubmit: true` on the validator to run it on every submit
-anyway, as for a check that can go stale.
+again. Wrap the check in `recheckOnSubmit(check)` to run it on every submit
+anyway, as for a check that can go stale:
+
+```ts
+username: recheckOnSubmit(validateOn(debounced(checkName, 400), "input")),
+```

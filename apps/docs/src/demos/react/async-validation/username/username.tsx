@@ -1,4 +1,4 @@
-import { createForms, useForm } from "@lunarhue/forms-react";
+import { createForms, debounced, useForm, validateOn } from "@lunarhue/forms-react";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -19,15 +19,17 @@ const account = forms.define({
   defaultValues: { username: "" },
   validate: {
     fields: {
-      username: {
-        // A newer run aborts this one's `signal` and drops its result.
-        validate: async (name, { signal }) =>
-          (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+      // Checks while the user types, not only after they leave the field.
+      username: validateOn(
         // Waits for a pause in typing. Submit skips the wait.
-        debounce: 400,
-        // Checks while the user types, not only after they leave the field.
-        on: "input",
-      },
+        debounced(
+          // A newer run aborts this one's `signal` and drops its result.
+          async (name, { signal }) =>
+            (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+          400,
+        ),
+        "input",
+      ),
     },
   },
   // Shows the answer while the user is still in the field.

@@ -93,12 +93,17 @@ returns the function that removes it.
 
 A validator first runs on the field's first blur. After that it runs on every
 input. To change the first run, set `validate` on `createForms` to `"input"`,
-`"blur"` or `"submit"` for every form, `validate.on` in a definition for one
-form, or `on` on one validator:
+`"blur"` or `"submit"` for every form, or `validate.on` in a definition for one
+form. For one validator, wrap it in `validateOn`:
 
 ```ts
-username: { validate: checkName, on: "input" },
+username: validateOn(checkName, "input"),
 ```
+
+`validateOn`, `debounced` and `recheckOnSubmit` take a function or a Standard
+Schema and nest in any order. They work everywhere a validator does:
+`validate.fields`, `validate.form`, the `validate` prop and
+`registerValidator`. [Async validation](./async-validation) uses all three.
 
 A submit runs every validator and stops if any field has an error.
 `field.validate()` runs one field's validators now and resolves true when it
