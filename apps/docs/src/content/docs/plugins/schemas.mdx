@@ -7,21 +7,15 @@ order: 3
 
 import Install from "@/components/mdx/Install.astro";
 
-A form already [validates with any schema](../basics/schema-validation), but
-core only sees what Standard Schema exposes: a validate function and types.
-Everything else the schema says stays inside it, so you write the shape a
-second time as `defaultValues`. A schema plugin knows its library and reads
-the schema itself. Today it gives the form its starting values. The demo has
-no `defaultValues` at all.
+You can already [validate with any Standard Schema](../basics/schema-validation) with no plugin installed. The catch is that Standard Schema only exposes a `validate` function and TypeScript types, so core can't inspect your schema's fields to infer starting values.
+
+Schema plugins fill that gap. Because a schema plugin understands Zod or Valibot directly, it can walk your schema and generate starting values automatically, letting you omit `defaultValues` completely, just like the demo below.
 
 <Demo name="schemas/sign-up" />
 
-## Zod and Valibot
+## Installing Zod or Valibot support
 
-`zod()` from `@lunarhue/forms-schema/zod` takes Zod 4 schemas, from `zod` or
-`zod/mini`. `valibot()` from `@lunarhue/forms-schema/valibot` takes Valibot
-schemas, sync or async. The library is an optional peer dependency, so install
-only the one you use:
+`@lunarhue/forms-schema/zod` supports Zod 4 (both `zod` and `zod/mini`), and `@lunarhue/forms-schema/valibot` supports Valibot (sync and async). Both schema libraries are optional peer dependencies, so install only the one you use:
 
 <Install packages="@lunarhue/forms-schema zod" />
 
@@ -42,31 +36,25 @@ const signUp = forms.define({
 });
 ```
 
-## Starting values
+## How default values are generated
 
-The starting values come from the schema: strings start empty, booleans
-false, arrays empty, and a declared `.default()` wins. A number or an enum has
-no empty value, so it starts `undefined`. `defaultValues` is optional and
-overrides any part of what the schema gives.
+The plugin derives starting values straight from your schema:
+- **Strings** start as `""`, **booleans** as `false`, and **arrays** as `[]`.
+- Any explicit `.default(...)` in your schema wins.
+- **Numbers** and **enums** have no obvious empty value, so they start as `undefined`.
 
-A schema from a library no installed plugin takes still validates. It just
-needs complete `defaultValues`, as in Basics.
+`defaultValues` becomes optional. If you do pass it, anything you specify overrides the schema-generated defaults.
 
-## What comes next
+If a form uses a schema from a library without an installed plugin, validation still works via Standard Schema; you just provide complete `defaultValues` as shown in Basics.
 
-The plugin is where more of the schema will reach the form. Constraints such
-as `min`, `max` and `maxLength` are planned, so an input can take its limits
-from the schema instead of repeating them as props.
+## What's planned next
 
-## A helper generic over the schema
+Schema plugins are also the foundation for pulling field constraints (like `min`, `max`, and `maxLength`) directly from your schema into inputs so you don't have to repeat them in JSX.
 
-A helper that takes any schema and returns a definition fails with TS2353
-when its type parameter is the schema type. Make it generic over the schema's
-values instead. [Writing a plugin](../writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema)
-explains why and has both fixes.
+## Writing a generic helper around `define`
 
-## Another library
+If you write a helper function that accepts *any* schema and calls `forms.define({ schema })`, making the function generic over the schema type itself can trigger a `TS2353` error. Make it generic over the schema's value type instead. [Writing a schema adapter](../writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema) explains why and shows both patterns.
 
-A schema plugin for another Standard Schema library is a plugin with a
-`schema` adapter. See
-[Writing a plugin](../writing-plugins/schema-adapters).
+## Adding another schema library
+
+Want the same automatic defaults for ArkType or another Standard Schema library? You can build a custom schema plugin using the `schema` adapter hook. See [Schema adapters](../writing-plugins/schema-adapters).

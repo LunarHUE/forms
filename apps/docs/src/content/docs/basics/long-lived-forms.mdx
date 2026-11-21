@@ -6,20 +6,15 @@ order: 7
 navTitle: Long-lived forms
 ---
 
-A form often outlives the props it was made with: a detail pane that
-switches between customers, or a parent that passes a new limit or a new
-save callback.
+Some forms outlive the props they were created with, like a detail pane that switches between customers or a transfer form whose parent passes a changing account balance or `onSave` callback.
 
 <Only framework="react">
 
-`useForm` reads its arguments on the first render only. A later render with
-a different record, or a different callback in the definition's input,
-changes nothing. The sections below cover what to do for each.
+`useForm` only reads its arguments on the first render. If props change on a later render (a different record, a new limit, or a fresh callback), the existing form instance keeps what it started with. Here is how to handle each case.
 
-## Switching records
+## Switching between records
 
-Give the form's component a `key` per record. A new key mounts a new
-component, and with it a new form whose default values are the new record:
+The simplest way to switch records is to give your form component a `key` tied to the record's ID. When the key changes, React mounts a fresh component and initializes a new form with the new record's values:
 
 ```tsx
 const customerForm = forms.define((saved: Customer) => ({
@@ -37,16 +32,11 @@ function CustomerForm({ saved }: { readonly saved: Customer }) {
 }
 ```
 
-The old record's unsaved edits go with the old form. When a fresher copy of
-the same record arrives, keep the key and [rebase](../plugins/rebase) onto
-the copy, so the user's edits survive.
+Unsaved edits from the previous record go away with the old form. If you're receiving an updated copy of the *same* record (like a background refetch), keep the same `key` and [rebase](../plugins/rebase) the form onto the fresh data so the user doesn't lose what they're typing.
 
-## Validating against props
+## Validating against live props
 
-A check that reads a prop can't go in the definition, which is made once,
-outside the component. Add it from the component. Both `useValidator` and
-the `validate` prop call the latest function you gave them, so the check
-sees the prop's current value each time it runs:
+Because form definitions live outside your component, they can't close over React props. Instead, attach prop-dependent rules inside the component with `useValidator` or the `validate` prop. Both always call the latest function from the current render:
 
 ```tsx
 function TransferForm({ balance }: { readonly balance: number }) {
@@ -58,18 +48,12 @@ function TransferForm({ balance }: { readonly balance: number }) {
 }
 ```
 
-Which handle to pass decides how long the check lives:
+Where you register the validator decides how long it stays active:
 
-- The `validate` prop on `form.Field`, or `useValidator` on a field handle in
-  the field's component, adds the check while that field renders. A field
-  on a hidden step isn't checked, so a submit can pass without it.
-- `useValidator(form.root, check)` in the form's component adds it for as
-  long as the form is mounted. `check` gets the whole value, so it can
-  compare fields with each other and with props. Its errors land on the
-  root, so render the root's errors.
+- **On a field component** (`form.Field`'s `validate` prop or `useValidator` on a field handle): active only while that field is mounted. Good for conditional UI, though a hidden wizard step won't block submit.
+- **On the form root** (`useValidator(form.root, check)`): active for the entire lifetime of the form. `check` receives the whole form value, so it can compare multiple fields against props at once. Its errors land on the root, so render root errors.
 
-A prop change alone doesn't run a validator. If the error has to update the
-moment the prop does, run the field's validators from an effect:
+Note that a prop change by itself doesn't re-run validation. If you want an error to update the moment `balance` changes, call `validate()` in an effect:
 
 ```tsx
 const amount = form.root.at("amount");
@@ -78,14 +62,11 @@ useEffect(() => {
 }, [amount, balance]);
 ```
 
-## Callbacks from props on submit
+## Calling the latest prop callback on submit
 
-`onSubmit` sits in the definition. With the function form of `define`, it
-can read a callback from the input, but `useForm` reads that input once, so
-the callback stays the one from the first render.
+When you use the function form of `forms.define((input) => ...)`, `useForm` only passes `input` once on mount, so a callback passed directly through `input` would keep stale closures from that first render.
 
-When the work after a save belongs to the component, await the submit there
-instead. A submit handler runs with the current props:
+If the callback runs *after* a successful save (like closing a modal or showing a toast), you don't need to pass it into the definition at all. Await `form.submit()` in your component's submit handler, where you always have the latest props:
 
 ```tsx
 async function save(event: FormEvent) {
@@ -97,9 +78,7 @@ async function save(event: FormEvent) {
 <form {...form.formProps} onSubmit={(event) => void save(event)}>
 ```
 
-When `onSubmit` itself needs the prop, such as a `save` function the parent
-passes, hand the definition a stable function that calls the latest one
-through a ref:
+If `onSubmit` itself needs a changing callback prop (such as a parent-provided `onSave` function), store the latest callback in a ref and pass a stable wrapper into `useForm`:
 
 ```tsx
 const customerForm = forms.define((input: { saved: Customer; save: (value: Customer) => Promise<void> }) => ({
@@ -117,24 +96,17 @@ function CustomerForm({ saved, onSave }: CustomerFormProps) {
 }
 ```
 
-React 19.2's `useEffectEvent` reads the latest props the same way, but React
-only allows calling its function from inside effects. A submit isn't one, so
-use the ref.
+Why a ref instead of React 19.2's `useEffectEvent`? React only allows calling `useEffectEvent` functions from inside effects, whereas a form submit runs from an event handler. A ref works reliably everywhere.
 
 </Only>
 
 <Only framework="solid">
 
-`createForm` reads its arguments once, when it runs. Props in Solid are
-getters, though, so a function that reads `props.something` when it runs
-sees the current value. That covers validators and callbacks. Only
-switching records needs a new form.
+`createForm` runs once when your component initializes. Because Solid props are reactive getters, any callback that reads `props.something` when invoked sees the latest value, which covers both validators and submit callbacks. Only switching between records needs a fresh form instance.
 
-## Switching records
+## Switching between records
 
-Make a new form per record by creating the form's component under a keyed
-`<Show>`. It runs its children again each time `when` becomes a different
-object:
+Wrap your form component in a keyed `<Show>` so Solid creates a fresh component (and form) whenever the record changes:
 
 ```tsx
 const customerForm = forms.define((saved: Customer) => ({
@@ -151,15 +123,11 @@ function CustomerPane(props: { readonly customer: Customer }) {
 }
 ```
 
-The old record's unsaved edits go with the old form. A refetch of the same
-record is a new object too, so for a fresher copy, keep the object passed to
-`when` and [rebase](../plugins/rebase) the form onto the copy instead.
+Unsaved edits from the previous record go away with the old form. Keep in mind that a refetched copy of the *same* record is a new object reference too. If you want to absorb a fresh server copy without wiping the user's typing, keep the `<Show>` value stable and [rebase](../plugins/rebase) the form instead.
 
-## Validating against props
+## Validating against live props
 
-A check that reads a prop can't go in the definition, which is made once,
-outside the component. Add it from the component, where it reads the prop
-each time it runs:
+Since form definitions live outside components, attach prop-dependent rules inside your component with `createValidator` or the `validate` prop. Reading `props.balance` inside the check always sees the latest value:
 
 ```tsx
 function TransferForm(props: { readonly balance: number }) {
@@ -171,19 +139,13 @@ function TransferForm(props: { readonly balance: number }) {
 }
 ```
 
-`createValidator` on a field handle in the field's component, or the
-`validate` prop, adds the check while that field renders. On `form.root` in
-the form's component, it stays as long as the form, gets the whole value,
-and puts its errors on the root.
+Using `createValidator` on a field handle (or `form.Field`'s `validate` prop) ties the rule to that field's lifetime. Registering it on `form.root` in the form component keeps it active for the whole form, gives it the full form value, and puts its errors on the root.
 
-A prop change alone doesn't run a validator. To update the error when the
-prop changes, call `form.root.at("amount").validate()` from an effect that
-reads `props.balance`.
+A prop update alone doesn't trigger revalidation. If the error should update immediately when `props.balance` changes, call `form.root.at("amount").validate()` inside an effect that tracks `props.balance`.
 
-## Callbacks from props on submit
+## Calling the latest prop callback on submit
 
-Give the definition a function that reads the prop when it runs, and it
-calls the parent's current callback:
+Pass a small wrapper function that reads `props.onSave` at call time, and your definition will always call the parent's latest callback:
 
 ```tsx
 const customerForm = forms.define((input: { saved: Customer; save: (value: Customer) => Promise<void> }) => ({

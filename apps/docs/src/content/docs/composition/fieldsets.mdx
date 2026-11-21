@@ -6,15 +6,13 @@ order: 3
 navTitle: Fieldsets
 ---
 
-One component renders both addresses below. It takes a handle, and its names
-are relative to it.
+In the demo below, a single `AddressFields` component renders both the shipping and billing addresses. You hand it a field handle, and all of its field names are scoped relative to that handle, so it works on any form that contains an address.
 
 <Demo name="fieldsets/order" />
 
-## Typing the handle
+## Creating a fieldset and typing the handle
 
-A component that renders part of a form takes a handle prop. To type it,
-make a fieldset from the part's schema and use `HandleOf`:
+Start by creating a fieldset with `forms.fieldset(Schema)` (or `forms.fieldset<Address>()` if you're not using a schema), then type your component's `field` prop with `HandleOf<typeof AddressFieldset>`:
 
 ```tsx framework=react
 import type { HandleOf } from "@lunarhue/forms-react";
@@ -60,27 +58,21 @@ function AddressFields(props: AddressFieldsProps) {
 <AddressFields field={form.root.at("shipping")} />;
 ```
 
-## Scopes
+## How scopes work
 
-`scope(handle)` returns the same members a form has, `Field`, `Items` and
-your registered components, with names relative to the handle. It is a cached
-lookup, not a hook, so call it anywhere.
+`AddressFieldset.scope(handle)` returns `root`, `Field`, and all of your registered field components with every `name` resolved relative to `handle`. It's a cached lookup rather than a hook, so you can call it anywhere without hook-order rules. (For arrays inside a fieldset, import `Items` from your adapter and pass `handle.at("items")`.)
 
-The fieldset's schema only types the shape. The form's own schema does the
-validating. Without a schema, write the type: `forms.fieldset<Address>()`.
+Note that passing a schema to `forms.fieldset(Address)` is only for typing the shape. The form's own schema still handles validation.
 
-## Which handles fit
+## Why handles check exact shapes
 
-A handle fits when its value has exactly the shape: an array row, or a field
-of another form from the same `createForms`. A handle of an object with more
-keys doesn't. The component could replace the whole value and drop the keys
-it doesn't know, so handles are strict in their value type. A handle of a
-form with more plugins still fits one that asks for fewer.
+Any handle with the exact `Address` shape fits `AddressFields`, whether it's a nested object on another form from the same `createForms`, or a row inside an array.
 
-## Generic fieldsets
+A handle for an object with *extra* keys (say, `Address & { phone: string }`) won't fit by default. Because a handle can call `setValue` to replace the entire object, allowing a narrower type could accidentally drop keys the component doesn't know about. Plugins work the opposite way: a handle from a form with *more* plugins always fits a fieldset that asks for fewer.
 
-To take objects with more keys, make the component generic in the value and
-pass it as the second argument of `HandleOf`:
+## Accepting extra keys with generic fieldsets
+
+If you want `AddressFields` to work on any object that *extends* `Address` (like an office address that also has a `phone` field), make the component generic and pass the type parameter as the second argument to `HandleOf`:
 
 ```tsx framework=react
 interface AddressFieldsProps<A extends Address> {
@@ -120,24 +112,16 @@ function AddressFields<A extends Address>(props: AddressFieldsProps<A>) {
 <AddressFields field={form.root.at("office")} />;
 ```
 
-A child that `Address` names, such as `field.at("city")`, reads as its type
-in `Address`, so it fits a `FieldApi<string>` component. A child that is an
-object itself stays generic and needs a generic component of its own. A
-merge write such as `field.setValue({ city: "Oslo" })` doesn't type-check on
-a generic handle. Write the child instead: `field.at("city").setValue("Oslo")`.
+Any primitive child defined on `Address` (like `field.at("city")`) resolves to its known type, so it fits a `FieldApi<string>` component. Nested object children stay generic and should be handed to their own generic fieldset. You also can't call `field.setValue({ city: "Oslo" })` directly on a generic handle; write to the child handle instead (`field.at("city").setValue("Oslo")`).
 
 <Only framework="react">
 
-`useField` reads the value type from the handle's own type, so type the
-child first, `const city: FieldHandle<string> = field.at("city")`, before
-`inputProps(useField(city))`.
+When calling `useField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = field.at("city")`) so `useField(city)` infers `string` before you pass it to `inputProps`.
 
 </Only>
 
 <Only framework="solid">
 
-`createField` reads the value type from the handle's own type, so type the
-child first, `const city: FieldHandle<string> = props.field.at("city")`,
-before `inputProps(createField(city))`.
+When calling `createField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = props.field.at("city")`) so `createField(city)` infers `string` before you pass it to `inputProps`.
 
 </Only>

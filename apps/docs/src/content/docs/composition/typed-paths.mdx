@@ -6,16 +6,13 @@ order: 2
 navTitle: Names and handles
 ---
 
-Every `name` prop is checked against the form's value type. A typo, or a
-field the component can't edit, fails the build. For the parts of a form you
-pass around, use a handle: a typed object for one field.
+Every `name` prop is type-checked against your form's value type. Misspell a path or wire a text input to a number field, and TypeScript catches it at build time. When you want to pass a slice of a form down to another component, use a **handle**: a lightweight, typed reference to a single field.
 
 <Demo name="typed-paths/shipping" />
 
-## Names
+## Dotted field names
 
-A name is a dotted path through the value, such as `"shipping.city"`. With
-the form above, a typo gets this:
+For nested objects, `name` uses dot notation like `"shipping.city"`. Type a typo into the form above and TypeScript points you to the valid paths:
 
 ```tsx framework=react
 <form.TextField name="shipping.cty" label="City" />
@@ -33,18 +30,13 @@ error TS2769: No overload matches this call.
     Did you mean '"shipping.city"'?
 ```
 
-The list holds only the names `TextField` can edit. `shipping` is a name too,
-but its value is an object and `TextField` takes a `FieldApi<string>`, so it
-isn't offered.
+Notice that `"shipping"` isn't in that list: even though it's a valid path in the form, its value is an object, and `TextField` expects `FieldApi<string>`.
 
-Names go through objects and stop at arrays. `tasks` names the array, but
-there is no `tasks.0.title`. Rows are reached through
-handles, see [Arrays](../plugins/arrays). A name has at most 8 segments.
+Dotted names walk through nested objects (up to 8 segments deep) and stop at arrays. You can reference `"tasks"`, for example, but not `"tasks.0.title"`. Individual array rows are accessed through handles instead; see [Arrays](../plugins/arrays).
 
-## Handles
+## Working with handles
 
-`form.root` is the handle of the whole value. `at(key)` returns a child's
-handle, typed from the value, and also catches typos:
+`form.root` is the handle for the whole form value. Call `.at(key)` to step down into any child field, with autocomplete and typo checking along the way:
 
 ```ts
 const shipping = form.root.at("shipping"); // handle to { street, city }
@@ -55,10 +47,9 @@ form.root.at("shiping");
 // '"billing" | "shipping"'.
 ```
 
-A handle holds no state. It is the same object on every call, it carries the
-field's commands (`setValue`, `reset`, `validate`, `push` on arrays and so
-on), and `peek()` reads the current snapshot in event handlers. Pass one as
-`handle` instead of `name`:
+A handle holds no state itself; calling `.at("city")` always returns the same stable object reference. It carries the field's commands (`setValue`, `reset`, `validate`, and array methods like `push`), plus `peek()` for reading the current snapshot inside event handlers without subscribing.
+
+You can pass a handle directly to any field component via the `handle` prop instead of `name`:
 
 ```tsx framework=react
 <form.TextField handle={form.root.at("shipping").at("city")} label="City" />
@@ -70,21 +61,16 @@ on), and `peek()` reads the current snapshot in event handlers. Pass one as
 
 <Only framework="react">
 
-To render something from a handle's state, read it with `useField(handle)`,
-or `useField(handle, select)` to re-render only when the selected part
-changes. `useField(handle)` returns the same field object `form.Field` gives
-its children, so `inputProps(useField(handle))` binds an input to it.
+To subscribe to a handle's state directly in a component, call `useField(handle)` (or `useField(handle, select)` to only re-render when a specific slice changes). `useField(handle)` returns the same `FieldApi` object as `form.Field`, so `inputProps(useField(handle))` works directly.
 
 </Only>
 
 <Only framework="solid">
 
-To render something from a handle's state, read it with
-`createField(handle)`. Its members are reactive.
+To read a handle's state reactively in a component, call `createField(handle)`. All of its properties are reactive getters.
 
 </Only>
 
 ## Next
 
-A component that renders a whole part of a form, such as an address, takes a
-handle. [Fieldsets and scopes](./fieldsets) types it.
+When a component needs to render a whole group of related fields, like a reusable shipping/billing address section, pass it a handle and scope its field names. Head to [Fieldsets and scopes](./fieldsets) to see how.

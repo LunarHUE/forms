@@ -6,10 +6,11 @@ order: 4
 navTitle: Other plugins
 ---
 
-## Plugins a plugin requires
+Plugins can build on top of each other and inspect what else is installed without tight coupling.
 
-A plugin that calls another one's API or reads what it adds names it in
-`requires`, as a function that returns factories:
+## Declaring plugin dependencies with `requires`
+
+If your plugin reads state or calls APIs from another plugin, list that plugin's factory in `requires`:
 
 ```ts
 import { definePlugin, dirty } from "@lunarhue/forms-core/plugins";
@@ -20,30 +21,23 @@ const autosave = definePlugin({
   setup: (ctx, wait: number) => ({
     when: "deferred",
     onWrite() {
-      // ctx.store has changes() because autosave requires dirty.
+      // ctx.store.changes() is typed because autosave requires dirty.
       if (ctx.store.changes().length > 0) schedule(wait);
     },
   }),
 });
 ```
 
-`requires` doesn't install anything. A form whose plugins list lacks one is a
-type error, `Add dirty() to the plugins: autosave requires it`, and without
-types the store throws [`plugins:missing`](/errors#core:plugins:missing) in
-development. The
-plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
-APIs. `requires` is also how hooks are ordered: there is no other way to run
-after a plugin. Requirements that loop throw
-[`plugins:cycle`](/errors#core:plugins:cycle).
+`requires` declares a requirement rather than auto-installing the dependency. If someone installs `autosave()` without `dirty()`, TypeScript stops them with `Add dirty() to the plugins: autosave requires it`, and untyped code throws [`plugins:missing`](/errors#core:plugins:missing) in development.
 
-`ctx.store` is typed from `requires` too. A plugin that adds rows with `push`
-requires `arrays`, and one that reads `changes()` or the dirty flags requires
-`dirty`.
+Declaring `requires` gives you three things at once:
+- **Typed `ctx.store` and `ctx.plugins`:** requiring `dirty` unlocks `ctx.store.changes()` and dirty flags; requiring `arrays` unlocks array commands like `push`; and required plugins' APIs appear on `ctx.plugins`.
+- **Guaranteed hook order:** your plugin's hooks always run *after* the plugins it requires (this is the only ordering mechanism, keeping execution predictable).
+- **Cycle detection:** circular dependencies fail fast with [`plugins:cycle`](/errors#core:plugins:cycle).
 
-## Other plugins
+## Inspecting installed plugins and parts
 
-`ctx.installed` lists the store's plugins in the order their hooks run.
-`ctx.parts(path)` lists the parts attached at a path and above it, in
-hook order, each as `{ name, path }`. A part with no plugin is listed under
-the name `part`. A plugin can read them to stay out of another's way, such as
-a formatter that does nothing where another plugin's part is attached.
+Sometimes a plugin wants to back off when another plugin or part is already handling a field, for example a generic formatter yielding to a field-specific mask.
+
+- **`ctx.installed`** lists every installed plugin on the store in hook execution order.
+- **`ctx.parts(path)`** returns the parts attached at or above `path` in hook order as `{ name, path }` entries (standalone parts without a plugin use the name `"part"`).

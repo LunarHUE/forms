@@ -1,9 +1,17 @@
 import { definePlugin } from "@lunarhue/forms-solid/plugins";
 
-// Every string written to the form loses its doubled spaces.
+// Trims and collapses doubled spaces on every string field when the user leaves it.
+// Running on blur keeps the user's caret steady while they type.
 export const collapseSpaces = definePlugin({
   name: "collapseSpaces",
-  setup: () => ({
-    beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
+  setup: (ctx) => ({
+    onBlur(path) {
+      const value = ctx.store.getSnapshot(path).value;
+      if (typeof value !== "string") return;
+      const clean = value.trim().replace(/ {2,}/g, " ");
+      if (clean !== value) {
+        ctx.write(() => ctx.store.fieldAt(path)?.setValue(clean, { edited: false }));
+      }
+    },
   }),
 });

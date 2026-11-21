@@ -31,4 +31,7 @@ function PhoneInput(props: PhoneInputProps) {
 // The input and its mask as one field type. Register it on any `createForms`,
 // and every field it renders stores digits and shows them formatted. The
 // mask needs no plugin.
-export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
+export const PhoneField = defineField(
+  PhoneInput,
+  masked({ clean: (value, input) => digits(value, input).slice(0, 10), display: formatPhone }),
+);

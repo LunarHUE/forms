@@ -5,94 +5,61 @@ section: plugins
 order: 8
 ---
 
-A phone number should be stored as digits but read as `(555) 123-4567`.
-A `masked(...)` part cleans what a field stores and chooses what its input
-shows. Type a phone number, then type in the middle of it.
+Phone numbers are a common example: you want to store clean digits (`5551234567`), but show the user `(555) 123-4567` as they type, without the cursor jumping to the end when they edit the middle.
+
+The `masked(...)` part handles both cleaning and formatting, with no plugin required. Try typing a phone number in the demo below, then click into the middle of it and insert or delete digits.
 
 <Demo name="masks/contact" />
 
-A mask cleans a field's value before the store takes it. Put a `masked(...)`
-part on the field type it cleans, and export the field type so every form
-uses the same one. `masked`, `digits` and `upper` come from your adapter's
-`text` entry, or from `@lunarhue/forms-core/text`:
+## Attaching a mask to a field type
+
+Import `masked`, `digits`, and `upper` from your adapter's `/text` entry (or `@lunarhue/forms-core/text`), attach `masked(...)` to a field type with `defineField`, and register it on `createForms`:
 
 ```ts title="PhoneField.tsx"
-export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
+export const PhoneField = defineField(
+  PhoneInput,
+  masked({ clean: (value, input) => digits(value, input).slice(0, 10), display: formatPhone }),
+);
 ```
-
-The mask needs no plugin. A form registers the field type and nothing else:
 
 ```ts title="contact.tsx"
 const forms = createForms({ fields: { PhoneField } });
 ```
 
-Every field `<form.PhoneField>` renders gets the mask, and only those. Every
-value that reaches the field goes through `clean` first, whether the user
-typed it, a reset wrote it or another plugin did. `digits` and `upper` are
-ready-made cleaners, and any function from string to string works.
+Because masks are standalone parts, you don't install any plugin. Register `PhoneField` and use `<form.PhoneField name="phone" />`. Every value entering that field runs through `clean` first, whether the user typed it, `reset()` wrote it, or another plugin updated it. `digits` and `upper` are built-in cleaners, or you can pass any `(value: string) => string` function.
 
-`masked` fits string fields only, so `defineField(NumberInput, masked(...))` is a
-type error.
+`masked` is strictly typed for string fields, so attaching it to a `NumberInput` is a compile error.
 
-The same entry has the halves on their own. `cleaned(clean)` only cleans,
-`displayed(display, clean?)` only sets the text the input shows, and
-`replaceText` keeps the caret for a display you write yourself.
+If you only need one half of a mask, the `/text` entry exports them separately too: `cleaned(clean)` only transforms stored values, `displayed(display, clean?)` only formats what the input shows, and `replaceText` helps preserve caret position if you write a custom display helper.
 
-A field type's parts attach the first time it renders a field. To attach
-one earlier, pin it on the definition. See
-[Parts on field components](../plugin-composition/field-parts).
+By default, a field type's mask attaches the first time it renders. If you need it active earlier (such as on an unvisited wizard step or in SSR), pin it on the form definition. See [Parts on field components](../plugin-composition/field-parts).
 
-## Display text
+## How display text works
 
-A cleaner changes what the store holds, not what the input shows. Give the
-part a `display` to show the value formatted. With `formatPhone` above, the
-input shows `(555) 123-4567` and the store, `field.value` and `onSubmit` get
-`5551234567`.
+`clean` decides what gets stored; `display` decides what the user sees in the `<input>`. With `formatPhone` above, the input displays `(555) 123-4567`, while `field.value`, schemas, `onSubmit`, `dirty`, `history`, and `persist` all work with `5551234567`.
 
-`display` gets the clean value and returns the text to show. A value that
-isn't a string reaches it as `""`. Keep it a pure function of the value, since
-the server and the browser both call it. Text inputs and textareas show the
-display text, on the server too, so the page hydrates with it. Number,
-checkbox, radio and select inputs ignore it.
+`display` receives the cleaned string (non-string values arrive as `""`) and returns the formatted string. Keep it pure, since both SSR and the browser call it so server-rendered inputs hydrate with formatted text already in place. Text inputs and `<textarea>` use display text; numbers, checkboxes, radios, and selects ignore it.
 
-Everything except the input reads the stored value: `field.value`, the
-schema, `onSubmit`, `dirty`, history and persistence. The display text lives
-only in `field.text`, which `inputProps(field)` uses too. An input bound to
-`field.value` instead shows the stored value. To keep the caret in place,
-write with `field.setText(text, event)`. See
-[Binding an element](../basics/fields#binding-an-element).
+Under the hood, display text lives on `field.text`, which `inputProps(field)` wires up automatically. If you're binding a custom input by hand, bind `field.text` and write edits through `field.setText(text, event)` so caret tracking keeps working. See [Binding UI component libraries](../basics/fields#binding-ui-component-libraries).
 
-A part of your own can give a field display text too. See
-[Display text](../writing-plugins/meta#display-text).
+Want your own custom part to provide display text? See [Display text](../writing-plugins/meta#display-text).
 
 ## Caret
 
-The caret stays where the user is typing. After typing or pasting it steps
-over the characters the display adds, so typing carries on past a `-`. After a
-backspace it doesn't, so the next backspace deletes a digit. A character
-`clean` drops leaves the text and the caret as they were.
+`masked` tracks the cursor across formatting characters:
+- Typing or pasting steps over inserted punctuation like `-` or `)`.
+- Pressing Backspace stays on the right side of formatting characters so the next Backspace deletes an actual digit.
+- Typing a character that `clean` strips out leaves both the text and cursor untouched.
 
-A field with only a cleaner shows the clean value. When the cleaner changes
-the text, as `upper` does, React or Solid may move the caret to the end when
-it rewrites the input. `{ clean: upper, display: (value) => value }` keeps it
-in place.
+If you only supply a `clean` function (like `upper`) without `display`, React or Solid may jump the cursor to the end when rewriting the input value. Passing `{ clean: upper, display: (value) => value }` keeps the caret in place.
 
-## Two masks on one field
+## Stacking multiple masks
 
-A field type can carry more than one `masked` part. Each cleans in turn, in
-the order listed. If both give a display, the first one wins: the input shows
-its text and keeps the caret with its `clean`.
+You can pass more than one `masked` part to a single `defineField`. Each cleaner runs in order; if multiple parts define `display`, the first one wins and controls both the displayed text and caret tracking.
 
-## What gets cleaned
+## What gets cleaned (and what doesn't)
 
-- A write above a field, such as `setValue` on `address`, a root replace from
-  `bind`, or a row that `push` or `insert` adds, is cleaned at each masked
-  field below it.
-- The field's value is cleaned when the part attaches, and so is its baseline
-  while the field isn't dirty, so the form doesn't start dirty and a reset
-  leaves it clean.
-- User edits, resets and other plugins' writes are cleaned. A value `persist`
-  restores comes out clean.
-- Rebases aren't. The incoming value is the server's copy, and the baseline
-  moves to it as it came. Cleaning it would make the form dirty against its
-  own baseline.
+- **Parent and array writes:** calling `setValue` on a parent object, syncing a root value via `bind`, or pushing a new array row all run the mask's `clean` on any masked fields underneath.
+- **Initial attach:** when the mask attaches, it cleans the current value (and cleans the baseline too if the field isn't dirty yet), so your form doesn't start dirty and `reset()` stays clean.
+- **User edits, resets, and `persist`:** all pass through `clean`, so restored drafts come back clean.
+- **Rebases are skipped:** incoming rebase values represent the server's baseline, so cleaning them would immediately make the form dirty against its own baseline.

@@ -5,18 +5,13 @@ section: writing-plugins
 order: 3
 ---
 
-`ctx.setMeta` and `ctx.setFormMeta` write the plugin's own slot on a field or
-on the form. Annotate the context parameter of `setup` or `part` as
-`PluginContext<M, F>` to type them. Read them back with the `meta` and
-`formMeta` readers on the factory `definePlugin` returns, as
-`history.formMeta(state)`.
+Plugins often need their own reactive state, like `history`'s `{ canUndo, canRedo }` on the form or `rules`'s `{ hidden }` on a field. Each plugin gets a private meta slot on fields and on the form, and parts can customize what text inputs display.
 
-A plugin with meta gives its starting value as `initialMeta` for fields or
-`initialFormMeta` for the form. Leaving it out is a type error. The reader
-returns it until the plugin sets its own, so a reader never returns undefined
-unless `undefined` is part of the meta type. The reader works it out from the
-snapshot alone, so the server and the first client render read the same value.
-`history` starts from `{ canUndo: false, canRedo: false }`:
+## Field and form meta
+
+Use `ctx.setMeta(path, value)` and `ctx.setFormMeta(value)` to update your plugin's slot. Annotate `ctx` on `setup` or `part` as `PluginContext<FieldMeta, FormMeta>` so TypeScript knows the shapes. Consumers read them back with the `.meta(snapshot)` and `.formMeta(snapshot)` helpers attached to the factory returned by `definePlugin` (such as `history.formMeta(state)`).
+
+Any plugin that uses meta must also supply `initialMeta` (for fields) or `initialFormMeta` (for the form); omitting it is a type error. Until your plugin writes a value, the reader returns that initial value directly from the snapshot, so readers never return `undefined` (unless you include `undefined` in your meta type) and SSR matches the first client render:
 
 ```ts
 const history = definePlugin({
@@ -28,9 +23,7 @@ const history = definePlugin({
 });
 ```
 
-Every field shares the one `initialMeta` value. Freeze it and keep it in one
-place, so a selector that returns it gets the same object each time. `rules`
-starts every field as shown:
+Because every untouched field shares the same `initialMeta` reference, define it once and freeze it so selectors stay referentially stable:
 
 ```ts
 const shown: RulesMeta = Object.freeze({ hidden: false });
@@ -44,37 +37,20 @@ const rules = definePlugin({
 });
 ```
 
-Meta with no sensible start says so in its type, as `M | undefined` with
-`initialMeta: undefined`.
+If a meta type has no meaningful default, type it as `M | undefined` and set `initialMeta: undefined`.
 
-`definePlugin` returns a `PluginFactory<A, N, M, F>`: the API, the name, the
-field meta and the form meta, then the schemas, the plugins it requires, the
-options and the part config. The factory has a `meta` reader when `M` isn't
-`never`, and a `formMeta` reader when `F` isn't. `history` is a
-`PluginFactory<HistoryApi, "history", never, HistoryMeta, never, readonly [], number | undefined>`,
-and `history()` is the plugin it makes.
+Under the hood, `definePlugin` returns a `PluginFactory<A, N, M, F, ...>` (API, name, field meta, form meta, schemas, requirements, options, part config). `.meta` is exposed whenever `M` isn't `never`, and `.formMeta` whenever `F` isn't `never`.
 
 ## Display text
 
-A part can change what a field's text inputs show, as
-[`masked`](../plugins/masks) does. These two hooks are for parts only:
+Just like [`masked`](../plugins/masks), any part can separate what a text input *shows* from what the store *holds* using two part-only hooks:
 
-- `display(value)`: the text to show for the stored value.
-- `afterInput(input, value, event)`, optional: the adapter calls it after each
-  edit in the input, once the typed text went to the store. `input` still
-  holds the typed text and its caret, and `value` is the field's value now.
-  Put the display text in `input` and place the caret.
+- **`display(value)`**: returns the formatted string to display for the stored value.
+- **`afterInput(input, value, event)`** *(optional)*: called by the adapter right after an edit hits the store while `input` still holds the raw typed text and caret position, letting you write the formatted string back and place the caret accurately.
 
-When several parts on one field give a `display`, the first in hook order
-wins. A display from a part that attaches before the store has listeners is
-in the server HTML.
+If multiple parts on the same field provide `display`, the first one in hook order wins. Any display attached before the store has listeners also renders in SSR HTML.
 
-`text(display, afterInput?)` from `@lunarhue/forms-core/plugins` makes a part
-with just these two. For `afterInput`, reuse `replaceText` from
-`@lunarhue/forms-core/text`, or the same path under your adapter. It takes the
-input, the text to show, a cleaner and the input event, and keeps the caret
-the way `masked` does. Pass the cleaner the field's value goes through, so
-the caret counts the characters the store keeps:
+To build a standalone formatting part without a plugin, use `text(display, afterInput?)` from `@lunarhue/forms-core/plugins`. For `afterInput`, reuse `replaceText` from `@lunarhue/forms-core/text` (or your adapter's `/text` entry), passing the same cleaner function your field uses so caret math counts only the characters kept in the store:
 
 ```ts
 import { text, transform } from "@lunarhue/forms-core/plugins";
@@ -87,6 +63,4 @@ export const CardField = defineField(
 );
 ```
 
-For a cleaner and a display with nothing else, `masked({ clean, display })`
-from `@lunarhue/forms-core/text` makes the same part. A plugin's `part` hook
-can return `display` and `afterInput` alongside its other hooks.
+If all you need is a cleaner plus a display formatter, `masked({ clean, display })` from `/text` bundles this pattern into one call. Plugin-backed `part` hooks can also return `display` and `afterInput` alongside their other hooks.
