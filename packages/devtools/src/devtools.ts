@@ -1,4 +1,4 @@
-import { type AnyFieldHandle, type AnyFormStore, type Plugin, trackElements } from "@lunarhue/forms-core";
+import { type NamedAnyFieldHandle, type AnyFormStore, type Plugin, trackElements } from "@lunarhue/forms-core";
 import { definePlugin } from "@lunarhue/forms-core/plugins";
 import { type FormEntry, type Hook, hookKey, logCap, ring } from "./hook.js";
 
@@ -49,7 +49,7 @@ function listen(element: object, key: object, added: boolean, adapter: string): 
   }
   // A handle has a path and its store. A key without one is the store.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const store = "path" in key ? (key as AnyFieldHandle<unknown>).store : key;
+  const store = "path" in key ? (key as NamedAnyFieldHandle<unknown>).store : key;
   if (adapters.has(store)) return;
   adapters.set(store, adapter);
   const entry = entries.get(store);

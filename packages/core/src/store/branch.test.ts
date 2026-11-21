@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectHandle } from "../handle.js";
+import type { NamedObjectHandle } from "../handle.js";
 import { branch } from "./branch.js";
 import { createFormStore } from "./form-store.js";
 
@@ -10,7 +10,7 @@ const make = (initial: Shape) => createFormStore<{ shape: Shape }>({ id: "f", in
 describe("branch", () => {
   it("returns the same handle when the snapshot holds the value at the key", () => {
     const store = make({ kind: "circle", radius: 1 });
-    const shape: ObjectHandle<Shape> = store.root.at("shape");
+    const shape: NamedObjectHandle<Shape> = store.root.at("shape");
     expect(branch(shape, shape.peek(), "kind", "circle")).toBe(shape);
   });
 

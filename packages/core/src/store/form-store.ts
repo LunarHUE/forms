@@ -1,6 +1,6 @@
 import type { Flags } from "../definition.js";
 import type { FormError, Show } from "../errors.js";
-import type { FieldHandle, ResetOptions } from "../handle.js";
+import type { NamedFieldHandle, ResetOptions } from "../handle.js";
 import type { Path } from "../path.js";
 import type { AnyPlugin, Part, PluginErrorHandler } from "../plugin.js";
 import { problem } from "../problem.js";
@@ -141,7 +141,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     get root() {
       // The runtime handle has every member, and the value type is the caller's.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return handles.root() as FieldHandle<V, E, "dirty" | "arrays">;
+      return handles.root() as NamedFieldHandle<V, E, "dirty" | "arrays">;
     },
     subscribe: core.subscribe,
     getSnapshot: core.getSnapshot,

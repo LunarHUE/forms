@@ -1,4 +1,4 @@
-import { type AnyFieldHandle, attach, type Part, type Validator, type ValidatorInput } from "@lunarhue/forms-core";
+import { type NamedAnyFieldHandle, attach, type Part, type Validator, type ValidatorInput } from "@lunarhue/forms-core";
 import { merge, omit } from "#solid";
 import { createComponent, untrack } from "solid-js";
 import type { SolidElement } from "./element.js";
@@ -7,7 +7,7 @@ import { problem } from "./problem.js";
 import { addValidator } from "./validator.js";
 
 /** A handle with its types erased, as the runtime uses it. */
-export type RuntimeHandle = AnyFieldHandle<unknown>;
+export type RuntimeHandle = NamedAnyFieldHandle<unknown>;
 
 /** A Solid component with its props erased. */
 // `any` lets the app's components, whose props the types checked, be called here.

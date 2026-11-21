@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, defineField, type FieldType, type FormError, type HandleOf, type ObjectHandle, type Part } from "./index.js";
+import { createForms, type FieldApi, defineField, type FieldType, type FormError, type HandleOf, type NamedObjectHandle, type Part } from "./index.js";
 import { definePlugin, dirty, part, ruled, rules } from "./plugins.js";
 import { digits, masked } from "./text.js";
 
@@ -60,7 +60,7 @@ describe("fieldsets with parts", () => {
   const Shape = forms.fieldset<Address, typeof rules>(ruled({ street: (address) => ({ hidden: address.same }) }));
 
   it("scope with the shared plugins and the parts', and take handles of forms that have the parts' plugins", () => {
-    expectTypeOf<HandleOf<typeof Shape>>().toEqualTypeOf<ObjectHandle<Address, FormError, "rules">>();
+    expectTypeOf<HandleOf<typeof Shape>>().toEqualTypeOf<NamedObjectHandle<Address, FormError, "rules">>();
     const store = forms.define({ defaultValues: { billing: { same: true, street: "" } } }).createStore();
     expectTypeOf(Shape.scope(store.root.at("billing")).root.peek().dirty).toEqualTypeOf<boolean>();
     const other = createForms().define({ defaultValues: { billing: { same: true, street: "" } } }).createStore();

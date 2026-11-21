@@ -1,7 +1,7 @@
 import type {
   Draft,
   ErrorOf,
-  FieldHandle,
+  NamedFieldHandle,
   FieldSnapshot,
   FormError,
   NamesOf,
@@ -54,7 +54,7 @@ type HiddenHandleMembers = "peek" | "store" | "registerValidator" | "~types" | "
 
 /** The commands of the handle for a value of type `V`. */
 export type FieldCommands<V, E = FormError, Installed extends string = never> = Omit<
-  FieldHandle<V, E, Installed>,
+  NamedFieldHandle<V, E, Installed>,
   HiddenHandleMembers
 >;
 
@@ -86,7 +86,7 @@ export type FieldCommands<V, E = FormError, Installed extends string = never> = 
 export type ExactFieldApi<V, E = FormError, Installed extends string = never> = FieldSnapshot<V, E, Installed> &
   FieldCommands<V, E, Installed> & {
     /** The field's handle. */
-    readonly handle: FieldHandle<V, E, Installed>;
+    readonly handle: NamedFieldHandle<V, E, Installed>;
     /** The id for the element that renders this field's errors. See `errorId`. */
     readonly errorId: string;
     /** See `FieldPieces.text`. Reactive. */

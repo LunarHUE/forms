@@ -2,7 +2,7 @@ import {
   createFormsCore,
   type FormError,
   type FormStore,
-  type LeafHandle,
+  type NamedLeafHandle,
   type NoSchemaPlugin,
   type Plugins,
   type SchemaDefinition,
@@ -83,7 +83,7 @@ describe("zod()", () => {
         auth: { type: "password"; password: string } | { type: "key"; port: number | undefined };
       }>
     >();
-    expectTypeOf(store.root.at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "zod">>();
+    expectTypeOf(store.root.at("qty")).toEqualTypeOf<NamedLeafHandle<number | undefined, FormError, "zod">>();
     const listed = core.define({ schema: order }).createStore(undefined, { plugins: [arrays()] });
     listed.root.at("lines").push({ sku: "", price: undefined });
     listed.root.at("channels").push("sms");

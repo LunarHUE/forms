@@ -1,7 +1,7 @@
 import type { FormError, Plugin, StandardSchemaV1 } from "@lunarhue/forms-core";
 import { definePlugin, dirty } from "./plugins.js";
 import { describe, expectTypeOf, it } from "vitest";
-import { debounced, createForms, type FieldApi, type FormOf, inputProps, type LeafHandle, type UnknownForm, useForm, useFormContext, fieldValidators } from "./index.js";
+import { debounced, createForms, type FieldApi, type FormOf, inputProps, type NamedLeafHandle, type UnknownForm, useForm, useFormContext, fieldValidators } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -100,7 +100,7 @@ describe("useFormContext(forms)", () => {
   forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
 
   interface SharedProps {
-    readonly name: LeafHandle<string>;
+    readonly name: NamedLeafHandle<string>;
   }
 
   function Shared({ name }: SharedProps) {

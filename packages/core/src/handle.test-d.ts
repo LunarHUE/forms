@@ -1,22 +1,29 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type {
   AnyFieldHandle,
+  NamedAnyFieldHandle,
   ArrayHandle,
+  NamedArrayHandle,
   Branch,
   ErrorOf,
   FieldHandle,
+  NamedFieldHandle,
   FieldSnapshot,
   FormError,
   HandleBase,
   ItemHandle,
+  NamedItemHandle,
   LeafHandle,
+  NamedLeafHandle,
   ObjectHandle,
+  NamedObjectHandle,
   Patch,
   ValueOf,
   WriteOptions,
 } from "./index.js";
 import { createFormsCore } from "./index.js";
 import { arrays } from "./plugins/arrays.js";
+import { dirty } from "./plugins/dirty.js";
 
 interface Address {
   street: string;
@@ -28,11 +35,11 @@ interface Row {
   done: boolean;
 }
 
-declare const channels: ArrayHandle<("email" | "sms")[], FormError, "arrays">;
-declare const optionalChannels: ArrayHandle<("email" | "sms" | undefined)[], FormError, "arrays">;
-declare const nullableChannels: ArrayHandle<("email" | "sms" | null)[], FormError, "arrays">;
-declare const flags: ArrayHandle<boolean[], FormError, "arrays">;
-declare const emails: ArrayHandle<"email"[], FormError, "arrays">;
+declare const channels: NamedArrayHandle<("email" | "sms")[], FormError, "arrays">;
+declare const optionalChannels: NamedArrayHandle<("email" | "sms" | undefined)[], FormError, "arrays">;
+declare const nullableChannels: NamedArrayHandle<("email" | "sms" | null)[], FormError, "arrays">;
+declare const flags: NamedArrayHandle<boolean[], FormError, "arrays">;
+declare const emails: NamedArrayHandle<"email"[], FormError, "arrays">;
 
 type Shape = { kind: "circle"; radius: number } | { kind: "square"; side: number };
 
@@ -44,73 +51,73 @@ interface Profile {
   tags: string[];
 }
 
-declare const profile: ObjectHandle<Profile>;
-declare const listed: ObjectHandle<Profile, FormError, "arrays">;
-declare const shape: ObjectHandle<Shape>;
+declare const profile: NamedObjectHandle<Profile>;
+declare const listed: NamedObjectHandle<Profile, FormError, "arrays">;
+declare const shape: NamedObjectHandle<Shape>;
 declare const branch: Branch;
 declare const other: FieldSnapshot<Address>;
-declare const nameHandle: LeafHandle<string, { code: string }>;
+declare const nameHandle: NamedLeafHandle<string, { code: string }>;
 
 describe("FieldHandle picks the handle from the value type", () => {
   it("gives leaves for primitives, Date, Map, Set and functions", () => {
-    expectTypeOf<FieldHandle<string>>().toEqualTypeOf<LeafHandle<string>>();
-    expectTypeOf<FieldHandle<number | undefined>>().toEqualTypeOf<LeafHandle<number | undefined>>();
-    expectTypeOf<FieldHandle<Date>>().toEqualTypeOf<LeafHandle<Date>>();
-    expectTypeOf<FieldHandle<Date | null>>().toEqualTypeOf<LeafHandle<Date | null>>();
-    expectTypeOf<FieldHandle<Map<string, number>>>().toEqualTypeOf<LeafHandle<Map<string, number>>>();
-    expectTypeOf<FieldHandle<Set<string>>>().toEqualTypeOf<LeafHandle<Set<string>>>();
-    expectTypeOf<FieldHandle<() => void>>().toEqualTypeOf<LeafHandle<() => void>>();
-    expectTypeOf<FieldHandle<"a" | "b">>().toEqualTypeOf<LeafHandle<"a" | "b">>();
+    expectTypeOf<NamedFieldHandle<string>>().toEqualTypeOf<NamedLeafHandle<string>>();
+    expectTypeOf<NamedFieldHandle<number | undefined>>().toEqualTypeOf<NamedLeafHandle<number | undefined>>();
+    expectTypeOf<NamedFieldHandle<Date>>().toEqualTypeOf<NamedLeafHandle<Date>>();
+    expectTypeOf<NamedFieldHandle<Date | null>>().toEqualTypeOf<NamedLeafHandle<Date | null>>();
+    expectTypeOf<NamedFieldHandle<Map<string, number>>>().toEqualTypeOf<NamedLeafHandle<Map<string, number>>>();
+    expectTypeOf<NamedFieldHandle<Set<string>>>().toEqualTypeOf<NamedLeafHandle<Set<string>>>();
+    expectTypeOf<NamedFieldHandle<() => void>>().toEqualTypeOf<NamedLeafHandle<() => void>>();
+    expectTypeOf<NamedFieldHandle<"a" | "b">>().toEqualTypeOf<NamedLeafHandle<"a" | "b">>();
   });
 
   it("gives objects for plain objects, optional or not", () => {
-    expectTypeOf<FieldHandle<Address>>().toEqualTypeOf<ObjectHandle<Address>>();
-    expectTypeOf<FieldHandle<Address | undefined>>().toEqualTypeOf<ObjectHandle<Address | undefined>>();
-    expectTypeOf<FieldHandle<Shape>>().toEqualTypeOf<ObjectHandle<Shape>>();
+    expectTypeOf<NamedFieldHandle<Address>>().toEqualTypeOf<NamedObjectHandle<Address>>();
+    expectTypeOf<NamedFieldHandle<Address | undefined>>().toEqualTypeOf<NamedObjectHandle<Address | undefined>>();
+    expectTypeOf<NamedFieldHandle<Shape>>().toEqualTypeOf<NamedObjectHandle<Shape>>();
   });
 
   it("gives arrays for arrays, including arrays of objects", () => {
-    expectTypeOf<FieldHandle<string[]>>().toEqualTypeOf<ArrayHandle<string[]>>();
-    expectTypeOf<FieldHandle<Row[]>>().toEqualTypeOf<ArrayHandle<Row[]>>();
-    expectTypeOf<FieldHandle<readonly Row[] | undefined>>().toEqualTypeOf<ArrayHandle<readonly Row[] | undefined>>();
+    expectTypeOf<NamedFieldHandle<string[]>>().toEqualTypeOf<NamedArrayHandle<string[]>>();
+    expectTypeOf<NamedFieldHandle<Row[]>>().toEqualTypeOf<NamedArrayHandle<Row[]>>();
+    expectTypeOf<NamedFieldHandle<readonly Row[] | undefined>>().toEqualTypeOf<NamedArrayHandle<readonly Row[] | undefined>>();
   });
 
   it("gives the loose handle for unknown and any", () => {
-    expectTypeOf<FieldHandle<unknown>>().toEqualTypeOf<AnyFieldHandle>();
+    expectTypeOf<NamedFieldHandle<unknown>>().toEqualTypeOf<AnyFieldHandle>();
     // oxlint-disable-next-line typescript/no-explicit-any
-    expectTypeOf<FieldHandle<any, string>>().toEqualTypeOf<AnyFieldHandle<string>>();
+    expectTypeOf<NamedFieldHandle<any, string>>().toEqualTypeOf<NamedAnyFieldHandle<string>>();
   });
 
   it("treats a union of a leaf and an object as a leaf", () => {
-    expectTypeOf<FieldHandle<string | Address>>().toEqualTypeOf<LeafHandle<string | Address>>();
+    expectTypeOf<NamedFieldHandle<string | Address>>().toEqualTypeOf<NamedLeafHandle<string | Address>>();
   });
 });
 
 describe("child handles", () => {
 
   it("at returns the child handle for the key's type", () => {
-    expectTypeOf(profile.at("name")).toEqualTypeOf<LeafHandle<string>>();
-    expectTypeOf(profile.at("born")).toEqualTypeOf<LeafHandle<Date>>();
-    expectTypeOf(profile.at("address")).toEqualTypeOf<ObjectHandle<Address | undefined>>();
-    expectTypeOf(profile.at("rows")).toEqualTypeOf<ArrayHandle<Row[]>>();
+    expectTypeOf(profile.at("name")).toEqualTypeOf<NamedLeafHandle<string>>();
+    expectTypeOf(profile.at("born")).toEqualTypeOf<NamedLeafHandle<Date>>();
+    expectTypeOf(profile.at("address")).toEqualTypeOf<NamedObjectHandle<Address | undefined>>();
+    expectTypeOf(profile.at("rows")).toEqualTypeOf<NamedArrayHandle<Row[]>>();
   });
 
   it("children of a missing object read undefined", () => {
-    expectTypeOf(profile.at("address").at("city")).toEqualTypeOf<LeafHandle<string | undefined>>();
+    expectTypeOf(profile.at("address").at("city")).toEqualTypeOf<NamedLeafHandle<string | undefined>>();
   });
 
   it("rejects a key the value doesn't have", () => {
-    expectTypeOf<Parameters<ObjectHandle<Profile>["at"]>[0]>().toEqualTypeOf<keyof Profile>();
+    expectTypeOf<Parameters<NamedObjectHandle<Profile>["at"]>[0]>().toEqualTypeOf<keyof Profile>();
     // @ts-expect-error: Profile has no key "nope"
     profile.at("nope");
   });
 
   it("item returns the item handle with its key", () => {
     const row = profile.at("rows").item("k1");
-    expectTypeOf(row).toEqualTypeOf<ItemHandle<Row>>();
+    expectTypeOf(row).toEqualTypeOf<NamedItemHandle<Row>>();
     expectTypeOf(row.key).toEqualTypeOf<string>();
-    expectTypeOf(row.at("title")).toEqualTypeOf<LeafHandle<string>>();
-    expectTypeOf(profile.at("tags").item("k2")).toEqualTypeOf<LeafHandle<string> & { readonly key: string }>();
+    expectTypeOf(row.at("title")).toEqualTypeOf<NamedLeafHandle<string>>();
+    expectTypeOf(profile.at("tags").item("k2")).toEqualTypeOf<NamedLeafHandle<string> & { readonly key: string }>();
   });
 
   it("array commands need arrays()", () => {
@@ -126,8 +133,8 @@ describe("child handles", () => {
     // Reading keys and items needs no plugin.
     expectTypeOf(rows.item("k0").key).toEqualTypeOf<string>();
     // A handle of a form with arrays() fits where one without is asked for.
-    expectTypeOf(listed.at("rows")).toExtend<ArrayHandle<Row[]>>();
-    expectTypeOf(rows).not.toExtend<ArrayHandle<Row[], FormError, "arrays">>();
+    expectTypeOf(listed.at("rows")).toExtend<NamedArrayHandle<Row[]>>();
+    expectTypeOf(rows).not.toExtend<NamedArrayHandle<Row[], FormError, "arrays">>();
   });
 
   it("array commands take the item type", () => {
@@ -184,16 +191,16 @@ describe("child handles", () => {
 describe("discriminated unions", () => {
 
   it("at accepts every member's keys and adds undefined where a member lacks one", () => {
-    expectTypeOf(shape.at("kind")).toEqualTypeOf<LeafHandle<"circle" | "square">>();
-    expectTypeOf(shape.at("radius")).toEqualTypeOf<LeafHandle<number | undefined>>();
-    expectTypeOf(shape.at("side")).toEqualTypeOf<LeafHandle<number | undefined>>();
+    expectTypeOf(shape.at("kind")).toEqualTypeOf<NamedLeafHandle<"circle" | "square">>();
+    expectTypeOf(shape.at("radius")).toEqualTypeOf<NamedLeafHandle<number | undefined>>();
+    expectTypeOf(shape.at("side")).toEqualTypeOf<NamedLeafHandle<number | undefined>>();
   });
 
   it("branch narrows to the matching member", () => {
     const snapshot = shape.peek();
     const circle = branch(shape, snapshot, "kind", "circle");
-    expectTypeOf(circle).toEqualTypeOf<ObjectHandle<{ kind: "circle"; radius: number }> | undefined>();
-    expectTypeOf(circle?.at("radius")).toEqualTypeOf<LeafHandle<number> | undefined>();
+    expectTypeOf(circle).toEqualTypeOf<NamedObjectHandle<{ kind: "circle"; radius: number }> | undefined>();
+    expectTypeOf(circle?.at("radius")).toEqualTypeOf<NamedLeafHandle<number> | undefined>();
     // @ts-expect-error: "triangle" is not a kind
     branch(shape, snapshot, "kind", "triangle");
   });
@@ -207,47 +214,47 @@ describe("discriminated unions", () => {
 
 describe("scopes", () => {
   it("a handle for a wider object does not fit where a narrower shape is asked for", () => {
-    expectTypeOf<ObjectHandle<{ a: string; b: number }>>().not.toExtend<ObjectHandle<{ a: string }>>();
-    expectTypeOf<FieldHandle<{ a: string; b: number }>>().not.toExtend<FieldHandle<{ a: string }>>();
-    expectTypeOf<FieldHandle<{ inner: { a: string; b: number } }>>().not.toExtend<FieldHandle<{ inner: { a: string } }>>();
-    expectTypeOf<FieldHandle<{ rows: { a: string; b: number }[] }>>().not.toExtend<FieldHandle<{ rows: { a: string }[] }>>();
+    expectTypeOf<NamedObjectHandle<{ a: string; b: number }>>().not.toExtend<NamedObjectHandle<{ a: string }>>();
+    expectTypeOf<NamedFieldHandle<{ a: string; b: number }>>().not.toExtend<NamedFieldHandle<{ a: string }>>();
+    expectTypeOf<NamedFieldHandle<{ inner: { a: string; b: number } }>>().not.toExtend<NamedFieldHandle<{ inner: { a: string } }>>();
+    expectTypeOf<NamedFieldHandle<{ rows: { a: string; b: number }[] }>>().not.toExtend<NamedFieldHandle<{ rows: { a: string }[] }>>();
   });
 
   it("a narrower object does not fit where a wider one is asked for", () => {
-    expectTypeOf<ObjectHandle<{ a: string }>>().not.toExtend<ObjectHandle<{ a: string; b: number }>>();
+    expectTypeOf<NamedObjectHandle<{ a: string }>>().not.toExtend<NamedObjectHandle<{ a: string; b: number }>>();
   });
 
   it("leaf handles are invariant", () => {
-    expectTypeOf<LeafHandle<string>>().not.toExtend<LeafHandle<string | undefined>>();
-    expectTypeOf<LeafHandle<string | undefined>>().not.toExtend<LeafHandle<string>>();
-    expectTypeOf<LeafHandle<"a">>().not.toExtend<LeafHandle<string>>();
+    expectTypeOf<NamedLeafHandle<string>>().not.toExtend<NamedLeafHandle<string | undefined>>();
+    expectTypeOf<NamedLeafHandle<string | undefined>>().not.toExtend<NamedLeafHandle<string>>();
+    expectTypeOf<NamedLeafHandle<"a">>().not.toExtend<NamedLeafHandle<string>>();
   });
 
   it("an array or nested object with a leaf of the wrong type does not fit", () => {
-    expectTypeOf<ArrayHandle<string[]>>().not.toExtend<ArrayHandle<(string | undefined)[]>>();
-    expectTypeOf<ArrayHandle<{ a: string }[]>>().not.toExtend<ArrayHandle<{ a: string | undefined }[]>>();
-    expectTypeOf<FieldHandle<{ x: { a: string } }>>().not.toExtend<FieldHandle<{ x: { a: string | undefined } }>>();
+    expectTypeOf<NamedArrayHandle<string[]>>().not.toExtend<NamedArrayHandle<(string | undefined)[]>>();
+    expectTypeOf<NamedArrayHandle<{ a: string }[]>>().not.toExtend<NamedArrayHandle<{ a: string | undefined }[]>>();
+    expectTypeOf<NamedFieldHandle<{ x: { a: string } }>>().not.toExtend<NamedFieldHandle<{ x: { a: string | undefined } }>>();
   });
 
   it("an object with a leaf of the wrong type does not fit", () => {
-    expectTypeOf<ObjectHandle<{ a: string | undefined }>>().not.toExtend<ObjectHandle<{ a: string }>>();
-    expectTypeOf<ObjectHandle<{ a: string }>>().not.toExtend<ObjectHandle<{ a: string | undefined }>>();
+    expectTypeOf<NamedObjectHandle<{ a: string | undefined }>>().not.toExtend<NamedObjectHandle<{ a: string }>>();
+    expectTypeOf<NamedObjectHandle<{ a: string }>>().not.toExtend<NamedObjectHandle<{ a: string | undefined }>>();
   });
 
   it("every handle fits HandleBase of unknown", () => {
-    expectTypeOf<LeafHandle<string>>().toExtend<HandleBase<unknown>>();
-    expectTypeOf<ArrayHandle<Row[]>>().toExtend<HandleBase<unknown>>();
-    expectTypeOf<ObjectHandle<Shape>>().toExtend<HandleBase<unknown>>();
+    expectTypeOf<NamedLeafHandle<string>>().toExtend<HandleBase<unknown>>();
+    expectTypeOf<NamedArrayHandle<Row[]>>().toExtend<HandleBase<unknown>>();
+    expectTypeOf<NamedObjectHandle<Shape>>().toExtend<HandleBase<unknown>>();
   });
 });
 
 describe("ValueOf and ErrorOf", () => {
   it("recover the value and error types", () => {
-    expectTypeOf<ValueOf<LeafHandle<string>>>().toEqualTypeOf<string>();
-    expectTypeOf<ErrorOf<LeafHandle<string>>>().toEqualTypeOf<FormError>();
-    expectTypeOf<ValueOf<FieldHandle<Row[], "required">>>().toEqualTypeOf<Row[]>();
-    expectTypeOf<ErrorOf<FieldHandle<Row[], "required">>>().toEqualTypeOf<"required">();
-    expectTypeOf<ValueOf<ItemHandle<Row>>>().toEqualTypeOf<Row>();
+    expectTypeOf<ValueOf<NamedLeafHandle<string>>>().toEqualTypeOf<string>();
+    expectTypeOf<ErrorOf<NamedLeafHandle<string>>>().toEqualTypeOf<FormError>();
+    expectTypeOf<ValueOf<NamedFieldHandle<Row[], "required">>>().toEqualTypeOf<Row[]>();
+    expectTypeOf<ErrorOf<NamedFieldHandle<Row[], "required">>>().toEqualTypeOf<"required">();
+    expectTypeOf<ValueOf<NamedItemHandle<Row>>>().toEqualTypeOf<Row>();
     expectTypeOf<ValueOf<AnyFieldHandle>>().toEqualTypeOf<unknown>();
   });
 });
@@ -268,7 +275,7 @@ describe("handle commands", () => {
     expectTypeOf<(typeof nameHandle)["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
     expectTypeOf<HandleBase<number>["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
     expectTypeOf<AnyFieldHandle["setTouched"]>().parameter(0).toEqualTypeOf<boolean | undefined>();
-    expectTypeOf<FieldHandle<Row[]>["setTouched"]>().returns.toEqualTypeOf<void>();
+    expectTypeOf<NamedFieldHandle<Row[]>["setTouched"]>().returns.toEqualTypeOf<void>();
     // @ts-expect-error: the flag is a boolean
     nameHandle.setTouched("yes");
   });
@@ -318,9 +325,9 @@ describe("writing back a value read from a snapshot", () => {
 
   it("leaves inference from defaultValues as it was", () => {
     expectTypeOf(store.root).toEqualTypeOf<
-      ObjectHandle<{ name: string; tags: string[]; address: { street: string; city: string }; rows: { title: string; done: boolean }[] }, FormError, "arrays">
+      NamedObjectHandle<{ name: string; tags: string[]; address: { street: string; city: string }; rows: { title: string; done: boolean }[] }, FormError, "arrays">
     >();
-    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; done: boolean }, FormError, "arrays">>();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<NamedItemHandle<{ title: string; done: boolean }, FormError, "arrays">>();
   });
 
   it("still checks object literals", () => {
@@ -366,42 +373,42 @@ describe("writes are strict in the value type", () => {
 
   it("a narrow array handle does not take the form's wider one", () => {
     // Its push and setValue would store items without `enabled`.
-    expectTypeOf(store.root.at("tags")).not.toExtend<ArrayHandle<Tag[], FormError, "arrays">>();
-    expectTypeOf(store.root.at("tags")).not.toExtend<ArrayHandle<Tag[]>>();
-    expectTypeOf<ArrayHandle<WideTag[]>>().not.toExtend<ArrayHandle<Tag[]>>();
+    expectTypeOf(store.root.at("tags")).not.toExtend<NamedArrayHandle<Tag[], FormError, "arrays">>();
+    expectTypeOf(store.root.at("tags")).not.toExtend<NamedArrayHandle<Tag[]>>();
+    expectTypeOf<NamedArrayHandle<WideTag[]>>().not.toExtend<NamedArrayHandle<Tag[]>>();
   });
 
   it("a narrow object or item handle does not take a wider one", () => {
-    expectTypeOf(store.root.at("one")).not.toExtend<ObjectHandle<Tag, FormError, "arrays">>();
-    expectTypeOf(store.root.at("tags").item("k")).not.toExtend<ObjectHandle<Tag, FormError, "arrays">>();
-    expectTypeOf<ItemHandle<WideTag>>().not.toExtend<ItemHandle<Tag>>();
+    expectTypeOf(store.root.at("one")).not.toExtend<NamedObjectHandle<Tag, FormError, "arrays">>();
+    expectTypeOf(store.root.at("tags").item("k")).not.toExtend<NamedObjectHandle<Tag, FormError, "arrays">>();
+    expectTypeOf<NamedItemHandle<WideTag>>().not.toExtend<NamedItemHandle<Tag>>();
   });
 
   it("a handle of a form with more plugins still fits one asking for fewer", () => {
-    expectTypeOf<ArrayHandle<WideTag[], FormError, "arrays" | "dirty">>().toExtend<ArrayHandle<WideTag[], FormError, "arrays">>();
-    expectTypeOf<ObjectHandle<WideTag, FormError, "arrays" | "dirty">>().toExtend<ObjectHandle<WideTag>>();
-    expectTypeOf(store.root.at("tags")).toExtend<ArrayHandle<WideTag[]>>();
-    expectTypeOf<ArrayHandle<WideTag[]>>().not.toExtend<ArrayHandle<WideTag[], FormError, "arrays">>();
+    expectTypeOf<NamedArrayHandle<WideTag[], FormError, "arrays" | "dirty">>().toExtend<NamedArrayHandle<WideTag[], FormError, "arrays">>();
+    expectTypeOf<NamedObjectHandle<WideTag, FormError, "arrays" | "dirty">>().toExtend<NamedObjectHandle<WideTag>>();
+    expectTypeOf(store.root.at("tags")).toExtend<NamedArrayHandle<WideTag[]>>();
+    expectTypeOf<NamedArrayHandle<WideTag[]>>().not.toExtend<NamedArrayHandle<WideTag[], FormError, "arrays">>();
   });
 
   it("unions keep one handle for the whole value", () => {
-    expectTypeOf<FieldHandle<boolean>>().toEqualTypeOf<LeafHandle<boolean>>();
-    expectTypeOf<FieldHandle<undefined>>().toEqualTypeOf<LeafHandle<undefined>>();
-    expectTypeOf<FieldHandle<null | undefined>>().toEqualTypeOf<LeafHandle<null | undefined>>();
-    expectTypeOf<FieldHandle<string[] | undefined>>().toEqualTypeOf<ArrayHandle<string[] | undefined>>();
-    expectTypeOf<FieldHandle<Address | Row[]>>().toEqualTypeOf<ObjectHandle<Address | Row[]>>();
-    expectTypeOf<FieldHandle<string[] | number>>().toEqualTypeOf<LeafHandle<string[] | number>>();
+    expectTypeOf<NamedFieldHandle<boolean>>().toEqualTypeOf<NamedLeafHandle<boolean>>();
+    expectTypeOf<NamedFieldHandle<undefined>>().toEqualTypeOf<NamedLeafHandle<undefined>>();
+    expectTypeOf<NamedFieldHandle<null | undefined>>().toEqualTypeOf<NamedLeafHandle<null | undefined>>();
+    expectTypeOf<NamedFieldHandle<string[] | undefined>>().toEqualTypeOf<NamedArrayHandle<string[] | undefined>>();
+    expectTypeOf<NamedFieldHandle<Address | Row[]>>().toEqualTypeOf<NamedObjectHandle<Address | Row[]>>();
+    expectTypeOf<NamedFieldHandle<string[] | number>>().toEqualTypeOf<NamedLeafHandle<string[] | number>>();
   });
 });
 
 // A reusable list, generic in its item type so it takes items with more keys.
-function tagList<T extends Tag>(tags: ArrayHandle<T[], FormError, "arrays">, create: (base: Tag) => T) {
+function tagList<T extends Tag>(tags: ArrayHandle<T[], typeof arrays>, create: (base: Tag) => T) {
   const tag = tags.item("k");
   // Children that T's constraint names read as the constraint's types. These
   // are plain assignments: expectTypeOf can't check a type that depends on T.
-  const name: LeafHandle<string, FormError, "arrays"> = tag.at("name");
+  const name: LeafHandle<string, typeof arrays> = tag.at("name");
   const id: FieldHandle<number> = tag.at("id");
-  const same: ObjectHandle<T, FormError, "arrays"> = tag;
+  const same: ObjectHandle<T, typeof arrays> = tag;
   tags.push(create({ id: 1, name: "a" }));
   // @ts-expect-error: a Tag may lack T's other keys
   tags.push({ id: 1, name: "a" });
@@ -418,5 +425,20 @@ describe("generic components", () => {
     expectTypeOf(tagList(store.root.at("tags"), (base) => ({ ...base, enabled: true }))).toBeArray();
     // @ts-expect-error: create has to return the form's item type
     tagList(store.root.at("tags"), (base) => base);
+  });
+});
+
+describe("handle types written by hand", () => {
+  it("take the plugins by factory and the error type last", () => {
+    type Error = { readonly code: string };
+    expectTypeOf<ArrayHandle<string[], typeof arrays>>().toEqualTypeOf<NamedArrayHandle<string[], FormError, "arrays">>();
+    expectTypeOf<ObjectHandle<Profile, typeof arrays | typeof dirty, Error>>().toEqualTypeOf<
+      NamedObjectHandle<Profile, Error, "arrays" | "dirty">
+    >();
+    expectTypeOf<LeafHandle<string, typeof dirty>>().toEqualTypeOf<NamedLeafHandle<string, FormError, "dirty">>();
+    expectTypeOf<ItemHandle<string, typeof arrays>>().toEqualTypeOf<NamedItemHandle<string, FormError, "arrays">>();
+    expectTypeOf<FieldHandle<string[], typeof arrays>>().toEqualTypeOf<NamedFieldHandle<string[], FormError, "arrays">>();
+    expectTypeOf<AnyFieldHandle<typeof arrays, Error>>().toEqualTypeOf<NamedAnyFieldHandle<Error, "arrays">>();
+    expectTypeOf<ArrayHandle<string[]>>().toEqualTypeOf<NamedArrayHandle<string[]>>();
   });
 });

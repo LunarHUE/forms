@@ -1,13 +1,13 @@
 import type {
-  ArrayHandle,
+  NamedArrayHandle,
   DisabledInvalid,
-  FieldHandle,
+  NamedFieldHandle,
   FormError,
   FormStore,
   HandleBase,
-  ItemHandle,
-  LeafHandle,
-  ObjectHandle,
+  NamedItemHandle,
+  NamedLeafHandle,
+  NamedObjectHandle,
   Submission,
 } from "@lunarhue/forms-core";
 import { valibot } from "@lunarhue/forms-schema/valibot";
@@ -162,7 +162,7 @@ function GeoFields(props: { field: HandleOf<typeof GeoShape> }) {
 
 function AddressFields(props: { field: HandleOf<typeof AddressShape>; title: string }) {
   const scope = AddressShape.scope(props.field);
-  expectTypeOf(scope.root).toEqualTypeOf<ObjectHandle<Address, FormError, "valibot" | "arrays">>();
+  expectTypeOf(scope.root).toEqualTypeOf<NamedObjectHandle<Address, FormError, "valibot" | "arrays">>();
   return (
     <fieldset>
       <legend>{props.title}</legend>
@@ -237,7 +237,7 @@ function AnyAddressFields<A extends Address>(props: { field: HandleOf<typeof Add
   const scope = AddressShape.scope(props.field);
   // A child that A's constraint names reads as the constraint's type.
   // (A plain assignment: expectTypeOf can't check a type that depends on A.)
-  const street: LeafHandle<string> = props.field.at("street");
+  const street: NamedLeafHandle<string> = props.field.at("street");
   void street;
   return (
     <fieldset>
@@ -295,7 +295,7 @@ describe("the form object", () => {
     const form = createForm(Signup);
     expectTypeOf(form).toEqualTypeOf<SignupForm>();
     expectTypeOf(form.store).toEqualTypeOf<FormStore<SignupDraft, FormError, Intent, SignupResult, {}, "valibot" | "arrays">>();
-    expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<SignupDraft, FormError, "valibot" | "arrays">>();
+    expectTypeOf(form.root).toEqualTypeOf<NamedObjectHandle<SignupDraft, FormError, "valibot" | "arrays">>();
     expectTypeOf(form.id).toBeString();
     expectTypeOf(form.submit("save")).toEqualTypeOf<Promise<Submission<Intent, SignupResult>>>();
     expectTypeOf(form.handleSubmit()).toEqualTypeOf<Promise<void>>();
@@ -345,7 +345,7 @@ describe("the form object", () => {
       schema: v.object({ rows: v.array(v.object({ title: v.string() })) }),
       defaultValues: { rows: Array.from({ length: count }, () => ({ title: "" })) },
     }));
-    expectTypeOf(createForm(Lines, 3, { id: "lines" }).root.at("rows")).toEqualTypeOf<ArrayHandle<{ title: string }[], FormError, "valibot" | "arrays">>();
+    expectTypeOf(createForm(Lines, 3, { id: "lines" }).root.at("rows")).toEqualTypeOf<NamedArrayHandle<{ title: string }[], FormError, "valibot" | "arrays">>();
     // @ts-expect-error: the function form needs its options
     createForm(Lines);
   });
@@ -383,7 +383,7 @@ describe("Field", () => {
       <form.Field name="billing.geo.lat">
         {(field) => {
           expectTypeOf(field).toEqualTypeOf<ExactFieldApi<number | undefined, FormError, "valibot" | "arrays">>();
-          expectTypeOf(field.handle).toEqualTypeOf<LeafHandle<number | undefined, FormError, "valibot" | "arrays">>();
+          expectTypeOf(field.handle).toEqualTypeOf<NamedLeafHandle<number | undefined, FormError, "valibot" | "arrays">>();
           expectTypeOf(field.setValue).parameter(0).toEqualTypeOf<number | undefined | ((previous: number | undefined) => number | undefined)>();
           expectTypeOf(field.errorId).toBeString();
           return <span>{field.value}</span>;
@@ -402,7 +402,7 @@ describe("Field", () => {
     void (
       <form.Field name="billing">
         {(field) => {
-          expectTypeOf(field.at("city")).toEqualTypeOf<LeafHandle<string, FormError, "valibot" | "arrays">>();
+          expectTypeOf(field.at("city")).toEqualTypeOf<NamedLeafHandle<string, FormError, "valibot" | "arrays">>();
           return null;
         }}
       </form.Field>
@@ -470,7 +470,7 @@ describe("Items", () => {
     void (
       <Items handle={form.root.at("rows")}>
         {(row, index) => {
-          expectTypeOf(row).toEqualTypeOf<ItemHandle<Row, FormError, "valibot" | "arrays">>();
+          expectTypeOf(row).toEqualTypeOf<NamedItemHandle<Row, FormError, "valibot" | "arrays">>();
           expectTypeOf(index).toEqualTypeOf<Accessor<number>>();
           return <form.Field handle={row.at("qty")}>{(field) => <span>{field.value}</span>}</form.Field>;
         }}
@@ -479,7 +479,7 @@ describe("Items", () => {
     void (
       <Items handle={form.root.at("tags")}>
         {(tag) => {
-          expectTypeOf(tag).toEqualTypeOf<ItemHandle<string, FormError, "valibot" | "arrays">>();
+          expectTypeOf(tag).toEqualTypeOf<NamedItemHandle<string, FormError, "valibot" | "arrays">>();
           return <form.TextField handle={tag} label="Tag" />;
         }}
       </Items>
@@ -495,7 +495,7 @@ describe("Items", () => {
 
   it("needs arrays()", () => {
     const form = createForm(exactForms.define({ defaultValues: { tags: ["a"] } }));
-    expectTypeOf(form.root.at("tags")).toEqualTypeOf<ArrayHandle<string[]>>();
+    expectTypeOf(form.root.at("tags")).toEqualTypeOf<NamedArrayHandle<string[]>>();
     // @ts-expect-error: Add arrays() to this form's plugins
     void (<Items handle={form.root.at("tags")}>{() => null}</Items>);
     // @ts-expect-error: Add arrays() to this form's plugins
@@ -542,7 +542,7 @@ describe("registered field components", () => {
     };
     const Plain = forms.define({ defaultValues: plainDefaults });
     const form = createForm(Plain);
-    expectTypeOf(form.root.at("count")).toEqualTypeOf<LeafHandle<number, FormError, "valibot" | "arrays">>();
+    expectTypeOf(form.root.at("count")).toEqualTypeOf<NamedLeafHandle<number, FormError, "valibot" | "arrays">>();
     // FieldApi<number> is the field of a Draft<number>, number | undefined.
     expectTypeOf<FieldApi<number>["value"]>().toEqualTypeOf<number | undefined>();
     expectTypeOf<FieldApi<number>["setValue"]>().parameter(0).toEqualTypeOf<number | undefined | ((previous: number | undefined) => number | undefined)>();
@@ -631,7 +631,7 @@ describe("registered field components", () => {
     }
     const appForms = createForms({ mapError: (raw): AppError => ({ code: raw.message }), fields: { TextField } });
     const form = createForm(appForms.define({ defaultValues: { handle: "" } }));
-    expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ handle: string }, AppError>>();
+    expectTypeOf(form.root).toEqualTypeOf<NamedObjectHandle<{ handle: string }, AppError>>();
     // @ts-expect-error: TextField renders FormError messages, and this form's errors are AppError
     void (<form.TextField name="handle" label="Handle" />);
   });
@@ -647,15 +647,15 @@ describe("scopes and fieldsets", () => {
     // @ts-expect-error: names are relative to the scope
     void (<billing.TextField name="billing.city" label="City" />);
     const row = forms.scope(form.root.at("rows").item("k"));
-    expectTypeOf(row.root).toEqualTypeOf<ObjectHandle<Row, FormError, "valibot" | "arrays">>();
+    expectTypeOf(row.root).toEqualTypeOf<NamedObjectHandle<Row, FormError, "valibot" | "arrays">>();
   });
 
   it("types the fieldset prop from the shape", () => {
-    expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<FieldHandle<Address>>();
-    expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<FieldHandle<Geo>>();
+    expectTypeOf<HandleOf<typeof AddressShape>>().toEqualTypeOf<NamedFieldHandle<Address>>();
+    expectTypeOf<HandleOf<typeof GeoShape>>().toEqualTypeOf<NamedFieldHandle<Geo>>();
     // A fieldset types the scope, with the shared plugins: `scope` takes the handle and nothing else.
     expectTypeOf<Parameters<typeof AddressShape.scope>>().toEqualTypeOf<[handle: HandleBase<Address>]>();
-    expectTypeOf<ReturnType<typeof AddressShape.scope<FieldHandle<Address>>>>().toEqualTypeOf<Scope<Address, FormError, Fields, "valibot" | "arrays">>();
+    expectTypeOf<ReturnType<typeof AddressShape.scope<NamedFieldHandle<Address>>>>().toEqualTypeOf<Scope<Address, FormError, Fields, "valibot" | "arrays">>();
   });
 
   it("takes handles of the shape at any path, in rows and in other forms", () => {
@@ -665,7 +665,7 @@ describe("scopes and fieldsets", () => {
 
   it("rejects a handle of the wrong shape", () => {
     const form = createForm(Signup);
-    expectTypeOf(form.root.at("billing").at("geo")).toEqualTypeOf<ObjectHandle<Geo, FormError, "valibot" | "arrays">>();
+    expectTypeOf(form.root.at("billing").at("geo")).toEqualTypeOf<NamedObjectHandle<Geo, FormError, "valibot" | "arrays">>();
     // @ts-expect-error: a geo object is not an address
     void (<AddressFields field={form.root.at("billing").at("geo")} title="Geo" />);
     // @ts-expect-error: rows is an array
@@ -720,7 +720,7 @@ describe("context", () => {
     expectTypeOf<FormOf<typeof Signup>>().toEqualTypeOf<SignupForm>();
     const Seeded = forms.define((title: string) => ({ defaultValues: { title } }));
     expectTypeOf(useFormContext(Seeded)).toEqualTypeOf<FormOf<typeof Seeded>>();
-    expectTypeOf(createForm(Seeded, "a").root).toEqualTypeOf<ObjectHandle<{ title: string }, FormError, "valibot" | "arrays">>();
+    expectTypeOf(createForm(Seeded, "a").root).toEqualTypeOf<NamedObjectHandle<{ title: string }, FormError, "valibot" | "arrays">>();
     // @ts-expect-error: the options have the wrong type
     createForm(Seeded, 1);
     // @ts-expect-error: a definition from a plain config takes no options
@@ -750,7 +750,7 @@ describe("free functions", () => {
     const form = createForm(Signup);
     const name = createField(form.root.at("name"));
     expectTypeOf(name).toEqualTypeOf<ExactFieldApi<string, FormError, "valibot" | "arrays">>();
-    expectTypeOf(createItems(form.root.at("rows"))).toEqualTypeOf<Accessor<readonly ItemHandle<Row, FormError, "valibot" | "arrays">[]>>();
+    expectTypeOf(createItems(form.root.at("rows"))).toEqualTypeOf<Accessor<readonly NamedItemHandle<Row, FormError, "valibot" | "arrays">[]>>();
     expectTypeOf(createValidator(form.root.at("age"), (value) => (value === undefined ? { message: "Required" } : null))).toBeVoid();
     expectTypeOf(errorId(form.root.at("name"))).toBeString();
     expectTypeOf(fieldRef(form.root.at("name"))).toEqualTypeOf<(element: HTMLElement) => void>();
@@ -793,7 +793,7 @@ describe("free functions", () => {
         <div ref={fieldRef(root.at("billing").at("zip"))} tabindex={0} />
       </>
     );
-    expectTypeOf(root).toEqualTypeOf<ObjectHandle<SignupDraft, FormError, "valibot" | "arrays">>();
+    expectTypeOf(root).toEqualTypeOf<NamedObjectHandle<SignupDraft, FormError, "valibot" | "arrays">>();
   });
 });
 
@@ -830,7 +830,7 @@ function PickupFields() {
 describe("literals in defaultValues", () => {
   it("widens false from satisfies or as const, so a FieldApi<boolean> component fits", () => {
     expectTypeOf(PickupFields).toBeFunction();
-    expectTypeOf(createForm(PickupOrder).root.at("pickup")).toEqualTypeOf<LeafHandle<boolean>>();
+    expectTypeOf(createForm(PickupOrder).root.at("pickup")).toEqualTypeOf<NamedLeafHandle<boolean>>();
   });
 });
 
@@ -843,7 +843,7 @@ const treeForm = createForms({ plugins: [arrays()] }).define<TreeNode>({ default
 
 describe("recursive value types", () => {
   it("defines a form whose value holds itself", () => {
-    expectTypeOf(createForm(treeForm).root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "arrays">>();
+    expectTypeOf(createForm(treeForm).root.at("name")).toEqualTypeOf<NamedLeafHandle<string, FormError, "arrays">>();
     createForm(treeForm).root.at("children").push({ name: "leaf", children: [] });
   });
 });

@@ -1,4 +1,4 @@
-import type { AnyFieldHandle } from "../handle.js";
+import type { NamedAnyFieldHandle } from "../handle.js";
 import type { PluginContext, PluginFactory, WriteRecord } from "../plugin.js";
 import { defineWith } from "../store/define.js";
 import { createTiming } from "../store/timing.js";
@@ -78,7 +78,7 @@ export const history: PluginFactory<HistoryApi, "history", never, HistoryMeta, n
           for (const record of list) {
             // Array records come only from a store with arrays(), so its handles have the commands.
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            const field = store.fieldAt(record.path) as AnyFieldHandle<unknown, "arrays"> | undefined;
+            const field = store.fieldAt(record.path) as NamedAnyFieldHandle<unknown, "arrays"> | undefined;
             if (!field) continue;
             if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
             else if (record.type === "move") field.move(back ? record.to : record.from, back ? record.from : record.to);

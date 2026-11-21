@@ -1,4 +1,4 @@
-import { type AnyFieldHandle, trackedField } from "@lunarhue/forms-core";
+import { type NamedAnyFieldHandle, trackedField } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
 import { elementsFor, fields } from "./refs.js";
 
@@ -25,11 +25,11 @@ export function elementsOf(handle: HandleLike): HTMLElement[] {
  * `trackElements()` before the form rendered. Elements mounted before that
  * call aren't found. `devtools()` calls it for you.
  */
-export function fieldOf(element: Element): AnyFieldHandle<unknown> | undefined {
+export function fieldOf(element: Element): NamedAnyFieldHandle<unknown> | undefined {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     // Only field refs fill the map, and they get core handles.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return fields.get(element) as AnyFieldHandle<unknown> | undefined;
+    return fields.get(element) as NamedAnyFieldHandle<unknown> | undefined;
   }
   return trackedField(element);
 }

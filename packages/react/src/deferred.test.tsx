@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { useDebugValue, useDeferredValue, useEffect, useState } from "react";
 import { expect, it } from "vitest";
-import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, useForm, inputProps } from "./index.js";
+import { createForms, type FieldApi, type FormOf, type NamedLeafHandle, useField, useForm, inputProps } from "./index.js";
 
 // TanStack Table issue 6577: a table object that reads live mutable state
 // through methods, passed through an unrelated hook such as useDeferredValue
@@ -13,14 +13,14 @@ import { createForms, type FieldApi, type FormOf, type LeafHandle, useField, use
 const forms = createForms();
 const note = forms.define({ defaultValues: { text: "" } });
 
-function DeferredValue(props: { readonly handle: LeafHandle<string> }) {
+function DeferredValue(props: { readonly handle: NamedLeafHandle<string> }) {
   const value = useField(props.handle, (snapshot) => snapshot.value);
   const deferred = useDeferredValue(value);
   useDebugValue(deferred);
   return <output aria-label="from useField">{deferred}</output>;
 }
 
-function DeferredSnapshot(props: { readonly handle: LeafHandle<string> }) {
+function DeferredSnapshot(props: { readonly handle: NamedLeafHandle<string> }) {
   const snapshot = useField(props.handle);
   const deferred = useDeferredValue(snapshot);
   useDebugValue(deferred.value);
@@ -33,7 +33,7 @@ function DeferredFieldObject(props: { readonly field: FieldApi<string> }) {
 }
 
 // The stable handle goes through useDeferredValue and the read comes after it.
-function DeferredHandle(props: { readonly handle: LeafHandle<string> }) {
+function DeferredHandle(props: { readonly handle: NamedLeafHandle<string> }) {
   const handle = useDeferredValue(props.handle);
   const value = useField(handle).value;
   return <output aria-label="from deferred handle">{value}</output>;

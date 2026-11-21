@@ -1,5 +1,5 @@
 import type {
-  AnyFieldHandle,
+  NamedAnyFieldHandle,
   ChoiceHandle,
   ChoiceValue,
   Combined,
@@ -10,7 +10,7 @@ import type {
   InvalidField,
   Draft,
   ErrorOf,
-  FieldHandle,
+  NamedFieldHandle,
   HandleBase,
   FormDefinition,
   FormError,
@@ -20,7 +20,7 @@ import type {
   IntentArgs,
   Needs,
   Nested,
-  ObjectHandle,
+  NamedObjectHandle,
   NamedPart,
   NamedParts,
   Part,
@@ -52,7 +52,7 @@ import type { FieldPath, ValueAt } from "./path.js";
  */
 export interface FocusTarget<E = FormError> {
   /** Core's `firstInvalid()`: the first enabled field with a validation error, or undefined. */
-  readonly field: AnyFieldHandle<E> | undefined;
+  readonly field: NamedAnyFieldHandle<E> | undefined;
   /**
    * Core's `disabledInvalid()`: the disabled fields whose errors blocked the
    * submit. Their inputs can't take focus, so `createDisabledErrors` lists
@@ -263,12 +263,12 @@ export type ComponentHandle<C> =
       | DraftOrExact<C, Exclude<FieldValueOf<C>, undefined>>
       | DraftOrExact<C, Exclude<FieldValueOf<C>, null>>
       | DraftOrExact<C, NonNullable<FieldValueOf<C>>>
-    : FieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>;
+    : NamedFieldHandle<FieldValueOf<C>, FieldErrorOf<C>, FieldPluginsOf<C>>;
 
 /** The handles of `Draft<T>` and of `T` for component `C`. Nothing for `never`. */
 type DraftOrExact<C, T> = [T] extends [never]
   ? never
-  : FieldHandle<Draft<T>, FieldErrorOf<C>, FieldPluginsOf<C>> | FieldHandle<T, FieldErrorOf<C>, FieldPluginsOf<C>>;
+  : NamedFieldHandle<Draft<T>, FieldErrorOf<C>, FieldPluginsOf<C>> | NamedFieldHandle<T, FieldErrorOf<C>, FieldPluginsOf<C>>;
 
 /** A registered component's own props: all of them except `field`. */
 export type OwnProps<C> = Omit<PropsOf<C>, "field">;
@@ -286,7 +286,7 @@ export type PartValueOf<C> = ValueOf<ComponentHandle<C>>;
  * `string` one. An object field may have more keys than the component's
  * type names. `Installed` is the names of the form's plugins.
  */
-export type FitsComponent<V, E, C, Installed extends string = never> = [FieldHandle<V, E, Installed>] extends [ComponentHandle<C>]
+export type FitsComponent<V, E, C, Installed extends string = never> = [NamedFieldHandle<V, E, Installed>] extends [ComponentHandle<C>]
   ? true
   : false;
 
@@ -342,7 +342,7 @@ export type ChoiceFieldOf<C> =
 export type ChoicePath<V, E, C, Installed extends string = never> =
   FieldPath<V> extends infer P
     ? P extends string
-      ? [FieldHandle<ValueAt<V, P>, E, Installed>] extends [
+      ? [NamedFieldHandle<ValueAt<V, P>, E, Installed>] extends [
           ChoiceHandle<ChoiceFieldOf<C>, ValueAt<V, P>, FieldErrorOf<C>, FieldPluginsOf<C>>,
         ]
         ? P
@@ -402,7 +402,7 @@ export type BoundFieldComponents<V, E, F extends FieldComponents, Installed exte
  */
 export interface ScopeMembers<V, E, Installed extends string = never, R = V> {
   /** The handle the scope is rooted at. Names are relative to it. */
-  readonly root: FieldHandle<R, E, Installed>;
+  readonly root: NamedFieldHandle<R, E, Installed>;
   /** Renders one field of the scope. */
   readonly Field: BoundField<V, E, Installed>;
 }
@@ -558,6 +558,13 @@ export const createForm: <V, E, I, R, O, F extends FieldComponents, P extends Pl
   createFormRuntime as never;
 
 /**
+ * A fieldset's type written by hand: `P` the plugins its parts need and `I`
+ * the shared plugins of the `createForms` call, each a union of factories.
+ * Inferred fieldsets have the name-keyed `NamedFieldset`.
+ */
+export type Fieldset<V, P = never, E = FormError, F extends FieldComponents = NoFieldComponents, I = never> = NamedFieldset<V, E, F, NamesOf<I>, NamesOf<P>>;
+
+/**
  * A reusable value shape, not tied to one form: a token with the shape type,
  * `scope`, and the parts that travel with it, such as `ruled(...)`. It
  * registers no validator: the form's own schema validates. An app's
@@ -567,7 +574,7 @@ export const createForm: <V, E, I, R, O, F extends FieldComponents, P extends Pl
  * `Installed` is the shared plugins of the `createForms` call, and `N` the
  * plugins the parts need. A handle fits only when its form has `N`.
  */
-export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents, Installed extends string = never, N extends string = never> {
+export interface NamedFieldset<V, E = FormError, F extends FieldComponents = NoFieldComponents, Installed extends string = never, N extends string = never> {
   /** Type information only, always undefined at runtime. */
   readonly "~shape"?: FieldTypes<V, E, N>;
   /**
@@ -608,7 +615,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldC
 export type HandleOf<T, W extends ShapeValue<T> = ShapeValue<T>> = T extends {
   readonly "~shape"?: FieldTypes<unknown, infer E, infer N>;
 }
-  ? FieldHandle<W, E, N>
+  ? NamedFieldHandle<W, E, N>
   : never;
 
 /** The value type of a fieldset's shape. */
@@ -663,7 +670,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
    * scope object, and so the same component functions, every time for the
    * same handle. It needs no context. Call it in a component body.
    */
-  scope<S, Installed extends string = never>(handle: ObjectHandle<S, E, Installed>): Scope<S, E, F, Installed>;
+  scope<S, Installed extends string = never>(handle: NamedObjectHandle<S, E, Installed>): Scope<S, E, F, Installed>;
   /** Defines a fieldset shape, with parts that attach where its scope is taken. Neither form registers anything. */
   readonly fieldset: {
     /**
@@ -671,7 +678,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
      * With parts, name their plugins' factories too:
      * `forms.fieldset<Address, typeof rules>(ruled(...))`.
      */
-    <V, Q = never>(...parts: readonly Parts<Q, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+    <V, Q = never>(...parts: readonly Parts<Q, V>[]): NamedFieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
     /**
      * The shape from a schema: the `Draft` of its input when an installed
      * schema plugin accepts it, as `define` types it, and the input itself
@@ -680,7 +687,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
     <S extends StandardSchemaV1, N extends string = never>(
       schema: S,
       ...parts: readonly NamedParts<N, SchemaValue<S, P>>[]
-    ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
+    ): NamedFieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   };
 }
 

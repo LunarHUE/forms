@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { createForms, type FieldApi, defineField, type FieldType, type FormError, type Part, type HandleOf, type ObjectHandle, type StandardSchemaV1 } from "./index.js";
+import { createForms, type FieldApi, defineField, type FieldType, type FormError, type Part, type HandleOf, type NamedObjectHandle, type StandardSchemaV1 } from "./index.js";
 import { definePlugin, dirty, part, ruled, rules } from "./plugins.js";
 import { digits, masked } from "./text.js";
 
@@ -48,7 +48,7 @@ describe("field types", () => {
   it("bind on a form with the parts' plugins, and name the missing plugin on one without", () => {
     const withLimit = createForms({ plugins: [limit()], fields: { PhoneField } }).define({ defaultValues: { phone: "" } });
     const form = withLimit.createStore();
-    expectTypeOf(form.root).toEqualTypeOf<ObjectHandle<{ phone: string }, FormError, "limit">>();
+    expectTypeOf(form.root).toEqualTypeOf<NamedObjectHandle<{ phone: string }, FormError, "limit">>();
     const bare = createForms({ fields: { PhoneField } });
     const scope = bare.scope(bare.define({ defaultValues: { phone: "" } }).createStore().root);
     expectTypeOf(scope.PhoneField).toEqualTypeOf<{ readonly "Add limit() to this form's plugins: PhoneField uses it": never }>();
@@ -92,15 +92,15 @@ describe("fieldsets with parts", () => {
         },
       }),
     );
-    expectTypeOf<HandleOf<typeof FromSchema>>().toEqualTypeOf<ObjectHandle<Address, FormError, "rules">>();
-    expectTypeOf<HandleOf<typeof NoParts>>().toEqualTypeOf<ObjectHandle<Address>>();
+    expectTypeOf<HandleOf<typeof FromSchema>>().toEqualTypeOf<NamedObjectHandle<Address, FormError, "rules">>();
+    expectTypeOf<HandleOf<typeof NoParts>>().toEqualTypeOf<NamedObjectHandle<Address>>();
   });
 
   it("scope with the shared plugins and the parts', and take handles of forms that have the parts' plugins", () => {
     const store = forms.define({ defaultValues: { billing: { same: true, street: "" } } }).createStore();
     const scope = Shape.scope(store.root.at("billing"));
     expectTypeOf(scope.root.peek().dirty).toEqualTypeOf<boolean>();
-    expectTypeOf<HandleOf<typeof Shape>>().toEqualTypeOf<ObjectHandle<Address, FormError, "rules">>();
+    expectTypeOf<HandleOf<typeof Shape>>().toEqualTypeOf<NamedObjectHandle<Address, FormError, "rules">>();
     const other = createForms().define({ defaultValues: { billing: { same: true, street: "" } } }).createStore();
     // @ts-expect-error: the other form has no rules()
     Shape.scope(other.root.at("billing"));

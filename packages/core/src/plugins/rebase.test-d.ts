@@ -1,4 +1,4 @@
-import type { AnyFieldHandle, FormStore, ObjectHandle, Plugin } from "@lunarhue/forms-core";
+import type { AnyFieldHandle, FormStore, NamedObjectHandle, Plugin } from "@lunarhue/forms-core";
 import { type Rebase, rebase, type RebaseLeaf, type RebaseResult } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore } from "../index.js";
@@ -9,7 +9,7 @@ declare const any: AnyFieldHandle;
 
 describe("rebase", () => {
   it("takes the incoming value of the handle's value type, for any error type", () => {
-    expectTypeOf(store.root).toEqualTypeOf<ObjectHandle<{ name: string; tags: string[] }, { code: number }>>();
+    expectTypeOf(store.root).toEqualTypeOf<NamedObjectHandle<{ name: string; tags: string[] }, { code: number }>>();
     expectTypeOf(api(store.root, { name: "a", tags: [] }, () => "keep")).toEqualTypeOf<RebaseResult>();
     api(store.root.at("tags"), ["a"], () => "take");
     api(any, 1, () => "keep");

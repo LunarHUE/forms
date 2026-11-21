@@ -1,7 +1,7 @@
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { Submission } from "./snapshot.js";
-import type { AnyFieldHandle } from "./handle.js";
+import type { NamedAnyFieldHandle } from "./handle.js";
 import type { AnyFormStore, DirtyStoreMembers } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
@@ -197,7 +197,7 @@ export interface PartContext<M = never, F = never, Q extends Plugins = readonly 
    * a `name` prop names it. It is there for a key the value doesn't have
    * yet, and a write to a path that can't hold a field does nothing.
    */
-  at(this: void, name: string): AnyFieldHandle<unknown, PluginNames<Q>>;
+  at(this: void, name: string): NamedAnyFieldHandle<unknown, PluginNames<Q>>;
 }
 
 /** What `setup` returns. Every hook is optional. */

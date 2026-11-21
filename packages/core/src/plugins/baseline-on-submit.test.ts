@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FormError } from "../errors.js";
-import type { ArrayHandle } from "../handle.js";
+import type { NamedArrayHandle } from "../handle.js";
 import { definePlugin, refuse } from "../plugins.js";
 import { bind } from "./bind.js";
 import { baselineOnSubmit } from "./baseline-on-submit.js";
@@ -172,7 +172,7 @@ describe("arrays saved while the user changes them", () => {
     expect(store.getSnapshot(["tags"]).value).toEqual(saved);
     return flags;
   }
-  type TagsHandle = ArrayHandle<string[], FormError, "arrays">;
+  type TagsHandle = NamedArrayHandle<string[], FormError, "arrays">;
 
   it("keeps an item inserted at the front dirty and the saved ones clean", async () => {
     expect(await saveWhile(nothing, (tags) => tags.insert(0, "x"))).toEqual([

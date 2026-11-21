@@ -3,7 +3,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import type { FormError } from "@lunarhue/forms-core";
-import { debounced, createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf, fieldValidators } from "./index.js";
+import { debounced, createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type NamedFieldHandle, type FormOf, fieldValidators } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -103,7 +103,7 @@ describe("useFormContext(forms)", () => {
   forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
 
   interface SharedProps {
-    readonly name: FieldHandle<string>;
+    readonly name: NamedFieldHandle<string>;
   }
 
   function Shared(props: SharedProps) {

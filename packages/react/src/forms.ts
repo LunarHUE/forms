@@ -1,5 +1,5 @@
 import type {
-  AnyFieldHandle,
+  NamedAnyFieldHandle,
   AnyFormStore,
   Combined,
   DefineConfig,
@@ -36,7 +36,7 @@ import type { HandleLike, IsEqual } from "./field.js";
 import { problem } from "./problem.js";
 import { focusInvalid, refFor } from "./refs.js";
 import { pin } from "./field-type.js";
-import type { FieldComponentMap, FieldPropOf, Fieldset, NoFields, PropsOf, Scope } from "./scope.js";
+import type { FieldComponentMap, FieldPropOf, NamedFieldset, NoFields, PropsOf, Scope } from "./scope.js";
 import { cached, useSelected } from "./select.js";
 import { formSource, storeOf } from "./sources.js";
 
@@ -46,7 +46,7 @@ import { formSource, storeOf } from "./sources.js";
  */
 export interface FocusTarget<E = FormError> {
   /** Core's `firstInvalid()`: the first enabled field with a validation error, or undefined. */
-  readonly field: AnyFieldHandle<E> | undefined;
+  readonly field: NamedAnyFieldHandle<E> | undefined;
   /**
    * Core's `disabledInvalid()`: the disabled fields whose errors blocked the
    * submit. Their inputs can't take focus, so `useDisabledErrors` shows them
@@ -336,13 +336,13 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
   fieldset<S extends StandardSchemaV1, N extends string = never>(
     schema: S,
     ...parts: readonly NamedParts<N, SchemaValue<S, P>>[]
-  ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
+  ): NamedFieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   /**
    * Makes a reusable shape from a type, with no schema:
    * `forms.fieldset<Address>()`. With parts, name their plugins' factories
    * too: `forms.fieldset<Address, typeof rules>(ruled(...))`.
    */
-  fieldset<V, Q = never>(...parts: readonly Parts<Q, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+  fieldset<V, Q = never>(...parts: readonly Parts<Q, V>[]): NamedFieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
 }
 
 /** A form as the runtime builds it. */

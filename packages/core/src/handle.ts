@@ -1,4 +1,5 @@
 import type { FormError, Many } from "./errors.js";
+import type { NamesOf } from "./plugin.js";
 import type { Path, PathSegment } from "./path.js";
 import type { FieldSnapshot } from "./snapshot.js";
 import type { AnyFormStore } from "./store.js";
@@ -117,7 +118,7 @@ export interface HandleBase<V, E = FormError, N extends string = never> {
 }
 
 /** The handle for a leaf value: a primitive, `Date`, `Blob`, `File`, `Map`, `Set` or function. */
-export interface LeafHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
+export interface NamedLeafHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
   /**
    * Writes a new value, or the result of calling an updater with the current
    * value. For a function-typed value pass an updater that returns the function.
@@ -130,7 +131,7 @@ export interface LeafHandle<V, E = FormError, N extends string = never> extends 
 export type Patch<V> = V extends object ? Partial<V> : never;
 
 /** The handle for a plain object value. */
-export interface ObjectHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
+export interface NamedObjectHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N> {
   // No write changes its argument, so every write on every handle kind
   // also takes the readonly value a snapshot holds. The NoInfer keeps write
   // parameters out of inference. Without it, a function that infers V from
@@ -161,7 +162,7 @@ export interface ObjectHandle<V, E = FormError, N extends string = never> extend
    */
   // `keyof V` takes the keys a generic V's constraint names, which KeysOf,
   // a deferred conditional type for a generic V, doesn't.
-  at<K extends KeysOf<V> | (keyof V & (string | number))>(key: K): FieldHandle<ChildValue<V, K>, E, N>;
+  at<K extends KeysOf<V> | (keyof V & (string | number))>(key: K): NamedFieldHandle<ChildValue<V, K>, E, N>;
   /**
    * Type information only, always undefined at runtime. It makes TypeScript
    * compare child handles when one object handle is assigned to another, so
@@ -178,7 +179,7 @@ export interface ObjectHandle<V, E = FormError, N extends string = never> extend
 /** The child handles of an object value, by key. `ObjectHandle.at` returns one of them. */
 // Keep the `-?`. See the comment on ObjectHandle's "~children".
 export type ChildHandles<V, E = FormError, N extends string = never> = {
-  readonly [K in KeysOf<V>]-?: FieldHandle<ChildValue<V, K>, E, N>;
+  readonly [K in KeysOf<V>]-?: NamedFieldHandle<ChildValue<V, K>, E, N>;
 };
 
 /**
@@ -228,7 +229,7 @@ export interface ArrayCommands<V, T> {
  * index. `push`, `insert`, `remove` and `move` need `arrays()` among the
  * form's plugins `N`.
  */
-export interface ArrayHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N>,
+export interface NamedArrayHandle<V, E = FormError, N extends string = never> extends HandleBase<V, E, N>,
     // Written out rather than aliased, so the type error shows the text.
     // No conditional type, so a handle of a form with more plugins still
     // fits where one with fewer is asked for. See `Gate`.
@@ -248,11 +249,11 @@ export interface ArrayHandle<V, E = FormError, N extends string = never> extends
    * returns its handle, which keeps its last snapshot and ignores commands,
    * for the life of the store.
    */
-  item(key: string): ItemHandle<ItemOf<V>, E, N>;
+  item(key: string): NamedItemHandle<ItemOf<V>, E, N>;
 }
 
 /** An array item's handle: the handle for its value plus its stable key. The handle follows the item when it moves. */
-export type ItemHandle<V, E = FormError, N extends string = never> = FieldHandle<V, E, N> & {
+export type NamedItemHandle<V, E = FormError, N extends string = never> = NamedFieldHandle<V, E, N> & {
   /** The item's stable key. It is also the last segment of `path`. */
   readonly key: string;
 };
@@ -262,7 +263,7 @@ export type ItemHandle<V, E = FormError, N extends string = never> = FieldHandle
  * without knowing their types. Structure members exist on every handle at
  * runtime but only do something on fields of that shape.
  */
-export interface AnyFieldHandle<E = FormError, N extends string = never>
+export interface NamedAnyFieldHandle<E = FormError, N extends string = never>
   extends HandleBase<unknown, E, N>,
     LooseArrayCommands<
       void | Omit<{ readonly "Add arrays() to this form's plugins": never }, { readonly [K in "arrays"]: "Add arrays() to this form's plugins" }["arrays" & N]>
@@ -272,9 +273,9 @@ export interface AnyFieldHandle<E = FormError, N extends string = never>
   /** Writes a value. On an object it merges unless `replace` is true. */
   setValue(value: unknown, options?: WriteOptions & { readonly replace?: boolean }): void;
   /** The child handle at `key`, as on `ObjectHandle`. */
-  at(key: PathSegment): AnyFieldHandle<E, N>;
+  at(key: PathSegment): NamedAnyFieldHandle<E, N>;
   /** The item handle for stable key `key`, as on `ArrayHandle`. */
-  item(key: string): AnyFieldHandle<E, N> & { readonly key: string };
+  item(key: string): NamedAnyFieldHandle<E, N> & { readonly key: string };
 }
 
 /** `ArrayCommands` loosely typed, for `AnyFieldHandle`. */
@@ -301,7 +302,24 @@ export interface LooseArrayCommands<T> {
  * reads as the handle of `Tag["name"]`, so it fits a field component for a
  * string. See `HandleFor`.
  */
-export type FieldHandle<V, E = FormError, N extends string = never> = HandleFor<V, V, E, N>;
+export type NamedFieldHandle<V, E = FormError, N extends string = never> = HandleFor<V, V, E, N>;
+
+// The handle types users write. `P` is the form's plugins as a union of
+// factories, `typeof arrays | typeof dirty`, and `E` its error type. The
+// `Named` forms take plugin names and are what inference produces.
+
+/** The handle for a value of type `V`, with plugins `P`. See `NamedFieldHandle`. */
+export type FieldHandle<V, P = never, E = FormError> = NamedFieldHandle<V, E, NamesOf<P>>;
+/** The handle for a leaf value, with plugins `P`. See `NamedLeafHandle`. */
+export type LeafHandle<V, P = never, E = FormError> = NamedLeafHandle<V, E, NamesOf<P>>;
+/** The handle for a plain object value, with plugins `P`. See `NamedObjectHandle`. */
+export type ObjectHandle<V, P = never, E = FormError> = NamedObjectHandle<V, E, NamesOf<P>>;
+/** The handle for an array value, with plugins `P`: `ArrayHandle<Tag[], typeof arrays>`. See `NamedArrayHandle`. */
+export type ArrayHandle<V, P = never, E = FormError> = NamedArrayHandle<V, E, NamesOf<P>>;
+/** An array item's handle, with plugins `P`. See `NamedItemHandle`. */
+export type ItemHandle<V, P = never, E = FormError> = NamedItemHandle<V, E, NamesOf<P>>;
+/** A loosely typed handle, with plugins `P`. See `NamedAnyFieldHandle`. */
+export type AnyFieldHandle<P = never, E = FormError> = NamedAnyFieldHandle<E, NamesOf<P>>;
 
 /**
  * Picks the handle for `All`, one member `V` of it at a time.
@@ -317,15 +335,15 @@ export type FieldHandle<V, E = FormError, N extends string = never> = HandleFor<
  */
 export type HandleFor<V, All, E, N extends string> = V extends null | undefined
   ? [KindsOf<All>] extends [never]
-    ? LeafHandle<All, E, N>
+    ? NamedLeafHandle<All, E, N>
     : never
   : 0 extends 1 & V
-    ? AnyFieldHandle<E, N>
+    ? NamedAnyFieldHandle<E, N>
     : V extends LeafValue
-      ? LeafHandle<V | All, E, N>
+      ? NamedLeafHandle<V | All, E, N>
       : V extends readonly unknown[]
         ? [KindsOf<All>] extends ["array"]
-          ? ArrayHandle<All, E, N>
+          ? NamedArrayHandle<All, E, N>
           : never
         : // Not `unknown extends V`: for a constraint TypeScript keeps a true
           // branch whose extends type its check type might hold, which would
@@ -336,8 +354,8 @@ export type HandleFor<V, All, E, N extends string> = V extends null | undefined
             // is assignable where `ObjectHandle<All>` is.
             "leaf" extends KindsOf<All>
             ? never
-            : ObjectHandle<All, E, N>
-          : AnyFieldHandle<E, N>;
+            : NamedObjectHandle<All, E, N>
+          : NamedAnyFieldHandle<E, N>;
 
 /** The handle kinds the members of `V` ask for, ignoring `null` and `undefined`. */
 type KindsOf<V> = V extends null | undefined ? never : V extends LeafValue ? "leaf" : V extends readonly unknown[] ? "array" : "object";
@@ -365,8 +383,8 @@ export type Narrow<V, K extends PropertyKey, L> = Extract<NonNullable<V>, { read
  * itself, so pass the snapshot the adapter gave you.
  */
 export type Branch = <V, E, K extends KeysOf<V>, const L extends Discriminant<V, K>, N extends string = never>(
-  handle: ObjectHandle<V, E, N>,
+  handle: NamedObjectHandle<V, E, N>,
   snapshot: FieldSnapshot<NoInfer<V>, NoInfer<E>>,
   key: K,
   value: L,
-) => FieldHandle<Narrow<V, K, L>, E, N> | undefined;
+) => NamedFieldHandle<Narrow<V, K, L>, E, N> | undefined;

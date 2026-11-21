@@ -7,9 +7,9 @@ import {
   inputProps,
   useField,
   useForm,
-  type ArrayHandle,
+  type NamedArrayHandle,
   type FieldApi,
-  type FieldHandle,
+  type NamedFieldHandle,
   type FormError,
   type HandleOf,
 } from "./index.js";
@@ -44,7 +44,7 @@ function TagRow<T extends Tag>(props: { readonly tag: HandleOf<typeof TagShape, 
   const value: string = useField(props.tag.at("name")).value;
   // Hooks that read the value type from the handle's own type need the child
   // typed by the constraint first.
-  const name: FieldHandle<string> = props.tag.at("name");
+  const name: NamedFieldHandle<string> = props.tag.at("name");
   const other = useForm(Other);
   return (
     <>
@@ -55,7 +55,7 @@ function TagRow<T extends Tag>(props: { readonly tag: HandleOf<typeof TagShape, 
   );
 }
 
-function TagList<T extends Tag>(props: { readonly tags: ArrayHandle<T[], FormError, "arrays">; readonly create: (base: Tag) => T }) {
+function TagList<T extends Tag>(props: { readonly tags: NamedArrayHandle<T[], FormError, "arrays">; readonly create: (base: Tag) => T }) {
   return (
     <>
       <Items handle={props.tags}>{(tag) => <TagRow tag={tag} />}</Items>
@@ -81,7 +81,7 @@ function PageForm() {
   );
 }
 
-declare function NarrowList(props: { readonly tags: ArrayHandle<Tag[], FormError, "arrays"> }): null;
+declare function NarrowList(props: { readonly tags: NamedArrayHandle<Tag[], FormError, "arrays"> }): null;
 declare function NarrowFields(props: { readonly field: HandleOf<typeof TagShape> }): null;
 
 function NarrowUses() {
