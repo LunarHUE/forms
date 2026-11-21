@@ -1,5 +1,5 @@
 import { defineField, type FieldApi, inputProps } from "@lunarhue/forms-react";
-import { digits, masked } from "@lunarhue/forms-react/plugins";
+import { digits, masked } from "@lunarhue/forms-react/text";
 
 // "5551234567" shows as "(555) 123-4567".
 function formatPhone(value: string) {
@@ -28,7 +28,7 @@ function PhoneInput({ field, label }: PhoneInputProps) {
   );
 }
 
-// The input and its mask as one field type. Register it on any `createForms`
-// that has `mask()`, and every field it renders stores digits and shows them
-// formatted.
+// The input and its mask as one field type. Register it on any `createForms`,
+// and every field it renders stores digits and shows them formatted. The
+// mask needs no plugin.
 export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));

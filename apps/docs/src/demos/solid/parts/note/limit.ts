@@ -1,4 +1,5 @@
-import { definePlugin } from "@lunarhue/forms-solid/plugins";
+import type { Part } from "@lunarhue/forms-solid";
+import { definePlugin, part } from "@lunarhue/forms-solid/plugins";
 
 interface Limit {
   readonly max: number;
@@ -13,4 +14,4 @@ export const limit = definePlugin({
 });
 
 // The part. It fits string fields only and needs limit() in the form's plugins.
-export const limited = (max: number) => limit.part<string>({ max });
+export const limited = (max: number): Part<"limit", string> => part(limit, { max });

@@ -1,5 +1,5 @@
 import { defineField } from "@lunarhue/forms-react";
-import { digits, masked, upper } from "@lunarhue/forms-react/plugins";
+import { digits, masked, upper } from "@lunarhue/forms-react/text";
 import { TextInput } from "./TextInput";
 
 // "5551234567" shows as "(555) 123-4567".

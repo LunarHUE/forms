@@ -231,7 +231,6 @@ them, so you import from the package you already have.
 | `dirty()`      | Tracks which fields differ from their baseline, for `dirty` and `store.changes()`.             |
 | `arrays()`     | Lists: `Items`, row keys that follow moves, and `push`, `insert`, `remove` and `move`.         |
 | `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
-| `mask()`       | Cleans a value on its way into the store, for each field type that carries `masked(...)`.      |
 | `rules()`      | Works out `disabled` and `hidden` for a field from the form's value, with `ruled(...)` parts.  |
 | `persist()`    | Saves the draft to storage when the page is idle and restores it on load.                      |
 | `rebase()`     | Takes a fresh copy of the data and lets you decide, leaf by leaf, whether to keep the user's edit. |
@@ -264,8 +263,10 @@ can bind to two different stores.
 `definePlugin` gives you hooks for writes, resets and submit, your own slot for
 field and form state, and an API that shows up typed at `form.plugins.<name>`.
 A plugin can also take parts: config for one field type, fieldset or form,
-as in `defineField(PhoneInput, masked({ clean: digits }))`. A form that uses a field
-type without the plugin its parts need is a type error.
+as in `forms.fieldset<Address, typeof rules>(ruled({ ... }))`. A form that uses a field
+type or fieldset without the plugin its parts need is a type error. A part
+can also bring hooks of its own and need no plugin, as `transform`, `text`,
+`observe` and the masks from `/text` do.
 Plugins can't step on each other: a write made inside a hook is queued, and
 each plugin sees the records frozen. A plugin depends on core and never on an
 adapter, so it works under React and Solid alike. If you publish one, call it

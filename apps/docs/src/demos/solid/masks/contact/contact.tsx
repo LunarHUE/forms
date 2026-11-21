@@ -1,10 +1,9 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { mask } from "@lunarhue/forms-solid/plugins";
 import { PhoneField } from "./PhoneField";
 import { docsDevtools } from "@/devtools/enabled";
 
-// PhoneField brings its mask part. The form only installs the plugin.
-const forms = createForms({ plugins: [mask(), docsDevtools], fields: { PhoneField } });
+// PhoneField brings its mask part, which needs no plugin.
+const forms = createForms({ plugins: [docsDevtools], fields: { PhoneField } });
 
 const contact = forms.define({
   defaultValues: { phone: "" },

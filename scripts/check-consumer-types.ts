@@ -30,7 +30,8 @@ interface Consumer {
 
 const plugins = (adapter: string) => `
 import { createForms, defineField, type FieldApi, type refuse as fromMain } from "@lunarhue/forms-${adapter}";
-import { digits, history, mask, masked, refuse, ruled, rules } from "@lunarhue/forms-${adapter}/plugins";
+import { history, refuse, ruled, rules } from "@lunarhue/forms-${adapter}/plugins";
+import { digits, masked } from "@lunarhue/forms-${adapter}/text";
 
 // refuse is a unique symbol, so a second copy of core's types would be a second type.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -38,7 +39,7 @@ export const oneCopy: Same<typeof fromMain, typeof refuse> = true;
 
 export const PhoneField = defineField((_props: { readonly field: FieldApi<string> }) => null, masked({ clean: digits }));
 
-export const forms = createForms({ plugins: [history(), mask(), rules()], fields: { PhoneField } });
+export const forms = createForms({ plugins: [history(), rules()], fields: { PhoneField } });
 
 export const Contact = forms.fieldset<{ email: string; phone: string }, typeof rules>(
   ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),

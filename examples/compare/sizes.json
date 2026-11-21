@@ -16,14 +16,14 @@
     "signup": {
       "lunarhue": {
         "total": {
-          "min": 255188,
-          "gzip": 80847,
-          "brotli": 70042
+          "min": 255351,
+          "gzip": 80902,
+          "brotli": 70103
         },
         "forms": {
-          "min": 35509,
-          "gzip": 13408,
-          "brotli": 12211
+          "min": 35673,
+          "gzip": 13464,
+          "brotli": 12267
         },
         "app": {
           "min": 3712,
@@ -52,14 +52,14 @@
     "profile": {
       "lunarhue": {
         "total": {
-          "min": 345608,
-          "gzip": 106804,
-          "brotli": 92703
+          "min": 345124,
+          "gzip": 106674,
+          "brotli": 92443
         },
         "forms": {
-          "min": 46311,
-          "gzip": 17268,
-          "brotli": 15677
+          "min": 45832,
+          "gzip": 17125,
+          "brotli": 15555
         },
         "app": {
           "min": 5105,
@@ -88,19 +88,19 @@
     "backoffice": {
       "lunarhue": {
         "total": {
-          "min": 361629,
-          "gzip": 111957,
-          "brotli": 97120
+          "min": 362217,
+          "gzip": 112240,
+          "brotli": 97243
         },
         "forms": {
-          "min": 61764,
-          "gzip": 22179,
-          "brotli": 20184
+          "min": 62355,
+          "gzip": 22427,
+          "brotli": 20412
         },
         "app": {
-          "min": 12603,
-          "gzip": 4472,
-          "brotli": 3984
+          "min": 12627,
+          "gzip": 4468,
+          "brotli": 3976
         }
       },
       "tanstack": {
