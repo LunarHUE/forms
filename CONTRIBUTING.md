@@ -7,7 +7,10 @@ are all written down here. What CI enforces is marked as such.
 
 You need [Bun](https://bun.sh) at the version in `package.json`'s
 `packageManager` field and Node at the version in `.node-version`. With Nix,
-`nix develop` gives you both.
+`nix develop` gives you both (`nix develop .#e2e` adds the system libraries
+Playwright's browsers need so `bunx playwright install` works on NixOS). You can
+also open the repo in a Dev Container (VS Code, DevPod or GitHub Codespaces),
+which installs Bun, Node, dependencies and Chromium automatically.
 
 ```sh
 bun install
