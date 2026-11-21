@@ -360,7 +360,7 @@ tests.
 | `handleSubmit(event?)` | The same, for a submit event. |
 | `setErrors(errorMap)` | Replaces user errors across the form. A name no field has goes to the root. |
 | `validate()` | Runs every validator now. |
-| `reset(options?)` | Resets the whole form. |
+| `reset(options?)` | Resets the whole form, to the baseline or, with `{ to: "initial" }`, the starting value. `{ values }` sets new values and makes them the baseline. |
 | `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
 | `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
 | `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |

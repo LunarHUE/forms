@@ -316,6 +316,25 @@ describe("abort on reset", () => {
     expect(store.getFormSnapshot().submission).toBe(idle);
   });
 
+  it("aborts the same way when the reset takes new values", async () => {
+    const gate = deferred<string>();
+    let signal: SubmitContext<Value, FormError, Intent>["signal"] | undefined;
+    const { store } = make({
+      onSubmit: (_value, ctx) => {
+        signal = ctx.signal;
+        return gate.promise;
+      },
+    });
+    const done = store.submit("save");
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    store.reset({ values: { name: "saved", rows: [] } });
+    expect(signal?.aborted).toBe(true);
+    expect(store.getFormSnapshot()).toMatchObject({ submission: { status: "idle" }, submitting: false });
+    gate.resolve("late");
+    expect(await done).toEqual({ status: "idle" });
+    expect(store.getSnapshot([]).value).toEqual({ name: "saved", rows: [] });
+  });
+
   it("drops a late error too", async () => {
     const gate = deferred<string>();
     const { store } = make({ onSubmit: () => gate.promise });

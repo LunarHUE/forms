@@ -328,6 +328,64 @@ describe("reset", () => {
     expect(dirty(store, ["a"])).toBe(true);
   });
 
+  it("takes new values, makes them the baseline and clears every field's state", () => {
+    const { store, root, core } = make({ name: "old", rows: [{ title: "a" }] });
+    root.at("name").setValue("typed");
+    root.at("name").handleBlur();
+    root.at("name").setErrors(err("user"));
+    core.setValidationErrors("v", ["rows", "k0", "title"], [err("bad")]);
+    const runs = count(store, ["form"]);
+    store.reset({ values: { name: "saved", rows: [{ title: "b" }, { title: "c" }] } });
+    expect(store.getSnapshot([]).value).toEqual({ name: "saved", rows: [{ title: "b" }, { title: "c" }] });
+    expect(store.getSnapshot(["name"])).toMatchObject({ touched: false, edited: false, dirty: false, errors: [] });
+    expect(store.getSnapshot(["rows", "k0", "title"])).toMatchObject({ value: "b", dirty: false, errors: [] });
+    expect(store.getFormSnapshot()).toMatchObject({ dirty: false, valid: true });
+    expect(store.changes()).toEqual([]);
+    expect(runs).toEqual([1]);
+    // A later reset comes back to the new values, and `to: "initial"` still to the first ones.
+    root.at("name").setValue("again");
+    root.at("rows").remove(0);
+    expect(store.getFormSnapshot().dirty).toBe(true);
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ name: "saved", rows: [{ title: "b" }, { title: "c" }] });
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    store.reset({ to: "initial" });
+    expect(store.getSnapshot([]).value).toEqual({ name: "old", rows: [{ title: "a" }] });
+    expect(store.getFormSnapshot().dirty).toBe(false);
+  });
+
+  it("pairs a new array's items with their keys, whatever its length", () => {
+    const { store, root } = make({ rows: ["a", "b", "c"] });
+    root.at("rows").move(0, 2);
+    store.reset({ values: { rows: ["x", "y", "z", "w"] } });
+    const keys = store.getSnapshot(["rows"]).keys ?? [];
+    expect(keys).toHaveLength(4);
+    expect(keys.map((key) => store.getSnapshot(["rows", key])).map((s) => [s.value, s.dirty])).toEqual([
+      ["x", false],
+      ["y", false],
+      ["z", false],
+      ["w", false],
+    ]);
+    // Each item's baseline follows its key from here on.
+    root.at("rows").move(3, 0);
+    expect(dirty(store, ["rows", keys[3] ?? ""])).toBe(false);
+    expect(dirty(store, ["rows"])).toBe(true);
+    store.reset({ values: { rows: ["only"] } });
+    expect(store.getSnapshot(["rows"]).value).toEqual(["only"]);
+    expect(store.getFormSnapshot().dirty).toBe(false);
+    root.at("rows").push("more");
+    expect(store.changes()).toEqual([{ path: ["rows"], baseline: ["only"], value: ["only", "more"] }]);
+  });
+
+  it("replaces nested objects whole, dropping keys the new values lack", () => {
+    const { store } = make({ address: { city: "Oslo", zip: "0150" } });
+    store.reset({ values: { address: { city: "Bergen" } } });
+    expect(store.getSnapshot(["address"]).value).toEqual({ city: "Bergen" });
+    expect(store.getSnapshot(["address", "zip"])).toMatchObject({ value: undefined, dirty: false });
+    store.root.at("address").at("zip").setValue("5003");
+    expect(store.changes()).toEqual([{ path: ["address", "zip"], baseline: undefined, value: "5003" }]);
+  });
+
   it("keeps every container in the baseline frozen through resets and rebases", () => {
     const { baseline, root, rebase } = make({ rows: [{ t: "a", tags: ["x"] }], other: { n: 1 } });
     const check = () => expect(unfrozen(baseline.read([])?.value)).toEqual([]);
@@ -405,6 +463,18 @@ describe("without dirty()", () => {
     expect(store.getServerSnapshot(["name"]).dirty).toBe(false);
     expect(() => store.changes()).toThrow(/dirty:missing/);
     expect(equals).not.toHaveBeenCalled();
+  });
+
+  it("takes new values on reset with no plugins at all, and comes back to them", () => {
+    const { store, root } = make({ a: 1, rows: ["x"] }, { plugins: [] });
+    root.at("a").setValue(2);
+    root.at("a").handleBlur();
+    store.reset({ values: { a: 5, rows: ["y", "z"] } });
+    expect(store.getSnapshot(["a"])).toMatchObject({ value: 5, touched: false, edited: false });
+    root.at("a").setValue(6);
+    root.at("rows").setValue(["w"]);
+    store.reset();
+    expect(store.getSnapshot([]).value).toEqual({ a: 5, rows: ["y", "z"] });
   });
 
   it("still resets to the baseline and rebases it", () => {

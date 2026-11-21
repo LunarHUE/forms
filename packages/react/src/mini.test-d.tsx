@@ -33,6 +33,14 @@ describe("mini's types are full's, narrowed", () => {
     expectTypeOf<full.NamedAnyFieldHandle>().toExtend<NamedAnyFieldHandle>();
   });
 
+  it("takes new values on reset, as full's store does", () => {
+    expectTypeOf<typeof form.store.reset>().toBeFunction();
+    form.store.reset({ values: { q: "", page: 2, filters: { brand: "acme" } } });
+    form.store.reset({ to: "initial" });
+    // @ts-expect-error: values must be a whole Search value
+    form.store.reset({ values: { q: "" } });
+  });
+
   it("accepts perField in full's createForms", () => {
     expectTypeOf<full.FormsOptions>().toHaveProperty("subscribe");
     expectTypeOf(perField()).toExtend<NonNullable<full.FormsOptions["subscribe"]>>();

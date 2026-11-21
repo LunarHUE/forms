@@ -131,7 +131,17 @@ export type {
   ValueOf,
   WriteOptions,
 } from "./handle.js";
-export type { AnyFormStore, Change, DisabledInvalid, ErrorsByKind, FormStore, IntentArgs, InvalidField } from "./store.js";
+export type {
+  AnyFormStore,
+  Change,
+  DisabledInvalid,
+  ErrorsByKind,
+  FormResetOptions,
+  FormStore,
+  IntentArgs,
+  InvalidField,
+  ResetValues,
+} from "./store.js";
 export type { SchemaAdapter } from "./schema-adapter.js";
 export type {
   CreateFormsCore,
