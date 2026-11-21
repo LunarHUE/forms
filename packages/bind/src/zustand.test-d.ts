@@ -33,6 +33,36 @@ describe("zustand types", () => {
     zustand(app, { select: (state) => state.count, update: (value: string) => ({ count: Number(value) }) });
   });
 
+  it("hands update the state, and takes a one-argument update", () => {
+    zustand(app, {
+      select: (state) => state.profile,
+      update: (value, state) => {
+        expectTypeOf(value).toEqualTypeOf<Profile>();
+        expectTypeOf(state).toEqualTypeOf<App>();
+        return { profile: value, count: state.count + 1 };
+      },
+    });
+    const update = (value: Profile) => ({ profile: value });
+    expectTypeOf(zustand(app, { select: (state) => state.profile, update })).toEqualTypeOf<BindPlugin<Profile>>();
+  });
+
+  it("types isEqual with the slice", () => {
+    expectTypeOf(
+      zustand(app, {
+        select: (state) => ({ name: state.profile.name, count: state.count }),
+        update: (value) => ({ count: value.count }),
+        isEqual: (previous, next) => {
+          expectTypeOf(previous).toEqualTypeOf<{ name: string; count: number }>();
+          return previous.name === next.name && previous.count === next.count;
+        },
+      }),
+    ).toEqualTypeOf<BindPlugin<{ name: string; count: number }>>();
+    // @ts-expect-error `isEqual` takes slices, not strings.
+    zustand(app, { select: (state) => state.count, update: (count) => ({ count }), isEqual: (a: string, b: string) => a === b });
+    // @ts-expect-error The whole state has no `isEqual`.
+    zustand(app, { isEqual: Object.is });
+  });
+
   it("needs the form value type to be the bound type, on an instance", () => {
     expectTypeOf(profile.createStore(undefined, { plugins: [zustand(whole)] }).id).toBeString();
     profile.createStore(undefined, {

@@ -21,8 +21,19 @@ export type ZustandOptions = Pick<BindOptions<unknown>, "incoming" | "initial">;
 export interface ZustandSliceOptions<S, T> extends ZustandOptions {
   /** Picks the slice that is the form value. */
   select(state: S): T;
-  /** Turns a form value into the state to merge in, such as `(profile) => ({ profile })`. */
-  update(value: T): Partial<S>;
+  /**
+   * Turns a form value into the state to merge in, such as
+   * `(profile) => ({ profile })`. `state` is the store's state before the
+   * write, for a slice that sits inside a bigger object, such as one key of
+   * a map.
+   */
+  update(value: T, state: S): Partial<S>;
+  /**
+   * Whether two slices are the same, `Object.is` by default. Pass one when
+   * `select` builds a new object each time, such as `{ verdict, body }`, so
+   * a store change that leaves those fields alone doesn't reach the form.
+   */
+  readonly isEqual?: (previous: T, next: T) => boolean;
 }
 
 /**
@@ -33,30 +44,29 @@ export interface ZustandSliceOptions<S, T> extends ZustandOptions {
 export function zustand<S>(store: ZustandStore<S>, options?: ZustandOptions): BindPlugin<S>;
 /**
  * Binds the form value to the slice of a zustand store's state that `select`
- * picks. A form write calls `setState(update(value))`. A store change whose
- * slice is the same reference doesn't reach the form.
+ * picks. A form write calls `setState(update(value, state))`. A store change
+ * whose slice `isEqual` finds the same doesn't reach the form.
  */
 export function zustand<S, T>(store: ZustandStore<S>, options: ZustandSliceOptions<S, T>): BindPlugin<T>;
-export function zustand<S, T>(
+export function zustand<S>(
   store: ZustandStore<S>,
-  options: ZustandOptions & Partial<ZustandSliceOptions<S, T>> = {},
-): BindPlugin<S> | BindPlugin<T> {
-  const { select, update, ...rest } = options;
-  if (!select || !update) {
-    return bind<S>({
-      ...rest,
-      get: () => store.getState(),
-      set: (value) => store.setState(value),
-      subscribe: (listener) => store.subscribe(listener),
-    });
-  }
-  return bind<T>({
+  {
+    select = (state) => state,
+    update = (value) => value,
+    isEqual = Object.is,
+    ...rest
+  }: ZustandOptions & Partial<ZustandSliceOptions<S, S>> = {},
+): BindPlugin<S> {
+  // The slice `get` last returned. `bind` compares slices by reference, so an
+  // equal slice hands back this one and doesn't count as a change.
+  let last = select(store.getState());
+  return bind<S>({
     ...rest,
-    get: () => select(store.getState()),
-    set: (value) => store.setState(update(value)),
-    subscribe: (listener) =>
-      store.subscribe((state, previous) => {
-        if (select(state) !== select(previous)) listener();
-      }),
+    get() {
+      const next = select(store.getState());
+      return isEqual(last, next) ? last : (last = next);
+    },
+    set: (value) => store.setState(update(value, store.getState())),
+    subscribe: (listener) => store.subscribe(listener),
   });
 }
