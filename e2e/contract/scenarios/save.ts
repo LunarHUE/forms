@@ -19,7 +19,6 @@ const renamedName = "Grace Hopper";
 const messages = {
   email: "This email already has an account.",
   form: "The server refused the save. Fix the errors and try again.",
-  refused: "The server refused the save.",
   renamed: "Use your full legal name.",
 };
 
@@ -45,13 +44,14 @@ export const saveScenario = {
     onSubmit: async (value: v.InferOutput<typeof Account>, { store }: SaveContext) => {
       const count = await fakeServer.save(value);
       if (value.email === takenEmail) {
+        // Errors set here end the submit as invalid, so nothing reads as saved.
         store.setErrors({ form: { message: messages.form }, fields: { email: { message: messages.email } } });
-        return messages.refused;
+        return null;
       }
       if (value.name === renamedName) {
         // The server still calls the name field by an old name, which no field has.
         store.setErrors({ fields: { fullName: { message: messages.renamed } } });
-        return messages.refused;
+        return null;
       }
       store.setErrors({});
       return `Saved ${value.name} (save ${count}).`;
