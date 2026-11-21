@@ -67,7 +67,7 @@ function ChangedMark({ field }: { field: FieldApi<string, typeof dirty> }) {}
 const Billing = forms.fieldset<Billing, typeof rules>(ruled({ ... }));
 ```
 
-`FieldApi`'s parameters are now `<T, P, E>`: the plugins come before the error type. Name several plugins as a union, `typeof dirty | typeof history`.
+`FieldApi`'s parameters are now `<T, P, E>`: the plugins come before the error type. Name several plugins as a union, `typeof dirty | typeof history`. The handle types follow the same order: `FieldHandle`, `LeafHandle`, `ObjectHandle`, `ArrayHandle` and `ItemHandle` are `<V, P, E>`, as in `ArrayHandle<Tag[], typeof arrays>`, and `AnyFieldHandle` is `<P, E>`. A fieldset's type written out is `Fieldset<V, P, E, F, I>`, with `P` the plugins its parts need and `I` the shared plugins. The name-keyed forms that inference produces are `NamedFieldHandle`, `NamedArrayHandle`, `NamedFieldset` and so on.
 
 Renames for plugin authors:
 
