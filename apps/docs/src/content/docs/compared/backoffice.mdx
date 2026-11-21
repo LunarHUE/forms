@@ -92,14 +92,6 @@ And the choices it needed:
   there goes on the fields with `form.setErrorMap`, and `isSubmitSuccessful`
   is still set, so the "saved" line is React state.
 
-Our side has a known bug here. The company form puts the tax ID refusal on the
-field with `setErrors` in `onSubmit`, as the submit docs say, but that ends the
-submit as succeeded. `baselineOnSubmit()` then takes the refused values as the
-baseline, and the form reads as clean although nothing was saved. This is
-[#224](https://github.com/LunarHUE/forms/issues/224). The app keeps the
-documented pattern until the fix lands, and its spec marks the case as an
-expected failure for our build.
-
 ## How it was measured
 
 [`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts)

@@ -116,10 +116,7 @@ test.describe("back office", () => {
     await expect(company.getByText("No company has this tax ID.")).toHaveCount(0);
   });
 
-  test("leaves a refused save unsaved", async ({ page, library }) => {
-    // Ours marks the refused values clean until #224 is fixed:
-    // https://github.com/LunarHUE/forms/issues/224
-    test.fail(library === "lunarhue", "baselineOnSubmit() takes a refused save as the baseline (#224).");
+  test("leaves a refused save unsaved", async ({ page }) => {
     const company = page.getByRole("region", { name: "Company settings" });
     await company.getByLabel("Tax ID").fill("000000000");
     await company.getByRole("button", { name: "Save" }).click();
