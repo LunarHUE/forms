@@ -44,9 +44,10 @@ it sets must fit the form's `mapError`, if it has one.
 
 `onSubmitted(submission, input)` runs once a submit ends. `input` is the form
 value the definition's `onSubmit` got as `ctx.input`, read when validation
-finished, so it holds edits the user made while validation ran. It is
-undefined when the submit ended `"invalid"`. A submit that a reset stops never
-reaches `onSubmitted`.
+finished, so it holds edits the user made while validation ran. It is there
+whenever `onSubmit` ran, including a submit that `onSubmit` ended `"invalid"`
+with `setErrors`, and undefined when validation or a plugin stopped the submit
+first. A submit that a reset stops never reaches `onSubmitted`.
 
 To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
 Each array in `value` pairs its items with the current items by index. `keep`
