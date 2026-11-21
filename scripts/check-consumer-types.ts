@@ -95,7 +95,7 @@ export const signUp = forms.define({ schema: z.object({ email: z.string() }), pl
 
 // /mini: a form with each portable part, and the same refuse as the main entry's.
 const reactMini = `
-import { createForms, fieldValidators, observe, perField, refuse, text, transform, type FieldApi, type FormOf } from "@lunarhue/forms-react/mini";
+import { createForms, fieldValidators, observe, perField, refuse, text, transform, useForm, type FieldApi, type FormOf } from "@lunarhue/forms-react/mini";
 import type { refuse as fromPlugins } from "@lunarhue/forms-react/plugins";
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -119,6 +119,9 @@ export const search = forms.define(
 );
 
 export const label = (field: FieldApi<string>) => field.text;
+
+export const filtered = forms.define((options: { readonly brand: string }) => ({ defaultValues: { q: "", brand: options.brand } }));
+export const useFiltered = () => useForm(filtered, { brand: "acme" }, { id: "filtered" });
 
 export const TextField = (_props: { readonly field: FieldApi<string>; readonly label: string }) => null;
 export const withFields = createForms({ fields: { TextField } });

@@ -60,31 +60,36 @@ export type Definition<V, S extends StandardSchemaV1, E, R> = [S] extends [never
 /** The value type of a definition. */
 export type DefinedValue<V, S extends StandardSchemaV1> = [S] extends [never] ? Widened<V> : StandardSchemaV1.InferInput<S>;
 
-/** A form type that makes stores. */
-export interface FormDefinition<V, E = FormError, I = undefined, R = unknown> {
-  /** Makes a new store. Mini definitions take no options, so `options` is always undefined. */
-  createStore(options?: void, instance?: { readonly id?: string }): FormStore<V, E, I, R>;
+/** What `define` takes: a config, or a function of per-store options that returns one. */
+export type DefineConfig<V, S extends StandardSchemaV1, O, E, R> = Definition<V, S, E, R> | ((options: O) => Definition<V, S, E, R>);
+
+/** A form type that makes stores. `O` is what the definition's function form takes, and `void` for a plain config. */
+export interface FormDefinition<V, E = FormError, I = undefined, R = unknown, O = void> {
+  /** Makes a new store. `options` goes to the definition's function form. A plain config takes none. */
+  createStore(options: O, instance?: { readonly id?: string }): FormStore<V, E, I, R>;
 }
 
 /** Defines forms, as full's `FormsCore` does, without plugins. */
 export interface FormsCore<E = FormError> {
   /**
-   * Defines a form from a config. Parts after the config attach at the
-   * root, or at the name a part's `path` gives. Parts of full's, and
-   * plugins, are type errors.
+   * Defines a form from a config, or from a function of per-store options
+   * that returns one: `define((options: O) => config)` runs once per
+   * `createStore(options)`. Parts after the config attach at the root, or
+   * at the name a part's `path` gives. Parts of full's, and plugins, are
+   * type errors.
    */
-  define<V = never, S extends StandardSchemaV1 = never, R = unknown>(
-    config: Definition<V, S, E, R>,
+  define<V = never, S extends StandardSchemaV1 = never, O = void, R = unknown>(
+    config: DefineConfig<V, S, O, E, R>,
     ...parts: readonly Parts<NoInfer<DefinedValue<V, S>>>[]
-  ): FormDefinition<DefinedValue<V, S>, E, undefined, R>;
+  ): FormDefinition<DefinedValue<V, S>, E, undefined, R, O>;
 }
 
 /** Mini's entry point. Framework adapters wrap it in their own `createForms`. */
 export const createFormsCore = (config?: FormsConfig): FormsCore => ({
   define: (definition: object, ...parts: readonly (Part<never, unknown> | readonly Part<never, unknown>[])[]) => ({
-    createStore: (_options?: void, instance?: { readonly id?: string }) =>
-      // The definition's types were checked by `define`'s signature.
+    createStore: (options?: unknown, instance?: { readonly id?: string }) =>
+      // The definition's types were checked by `define`'s signature. The function form runs once per store.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      createStore({ ...(definition as { defaultValues: unknown }), id: instance?.id, parts: parts.flat(), subscribe: config?.subscribe }) as never,
+      createStore({ ...((typeof definition === "function" ? definition(options) : definition) as { defaultValues: unknown }), id: instance?.id, parts: parts.flat(), subscribe: config?.subscribe }) as never,
   }),
 });
