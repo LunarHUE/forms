@@ -112,7 +112,7 @@ field types (`PhoneField`, `TaxIdField`, `MoneyField`, `QuantityField`), so
 a form only names the field. The state rule is on an `AddressFieldset`, so
 every address gets it. The save bar, the error summary and the address
 fields find their form with `useFormContext(forms)`, and the invite draft
-is `persist()` on its definition.
+is `persist("backoffice-invite")` on its definition.
 
 The invite dialog's submit handler calls `form.submit()` and resets the form
 once it succeeds. A reset puts the submission back to idle, so the "sent"
