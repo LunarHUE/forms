@@ -1,7 +1,7 @@
 export { attach } from "./attach.js";
 export { createFormsCore } from "./forms-core.js";
 export { branch } from "./store/branch.js";
-export { debounced, recheckOnSubmit, validateOn } from "./validate-timing.js";
+export { debounced, pipe, recheckOnSubmit, validateOn } from "./validate-timing.js";
 export { errorsByKind } from "./error-kinds.js";
 export { trackElements, trackedField, type ElementListener } from "./elements.js";
 /** Internal: a field's display, for the adapters' text pieces. */

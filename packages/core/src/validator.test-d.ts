@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { createFormsCore, debounced, fieldValidators, formValidator, recheckOnSubmit, validateOn } from "./index.js";
+import { createFormsCore, debounced, fieldValidators, formValidator, pipe, recheckOnSubmit, validateOn } from "./index.js";
 import type {
   ErrorMap,
   FieldValidatorSet,
@@ -189,6 +189,61 @@ describe("timing wrappers", () => {
   });
 });
 
+describe("pipe", () => {
+  it("types inline checks from where the pipe goes, through wrappers on either side", () => {
+    const fields: FieldValidators<Order> = {
+      email: validateOn(
+        pipe(
+          (value) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            return value ? undefined : { message: "required" };
+          },
+          stringSchema,
+          debounced(async (value, { signal }) => {
+            expectTypeOf(value).toEqualTypeOf<string>();
+            expectTypeOf(signal.aborted).toEqualTypeOf<boolean>();
+            return undefined;
+          }, 300),
+        ),
+        "input",
+      ),
+      lines: [{ qty: recheckOnSubmit(pipe((value) => (value > 0 ? undefined : { message: "qty" }), numberSchema)) }],
+    };
+    expectTypeOf(fields).toExtend<FieldValidators<Order>>();
+  });
+
+  it("types a pipe of form validators", () => {
+    const form: FormValidatorInput<Order> = pipe(
+      (value) => {
+        expectTypeOf(value).toEqualTypeOf<Order>();
+        return value.email ? undefined : { fields: { email: { message: "required" } } };
+      },
+      orderSchema,
+      debounced((value) => (value.lines.length ? undefined : { form: { message: "empty" } }), 300),
+    );
+    expectTypeOf(form).toExtend<FormValidatorInput<Order>>();
+  });
+
+  it("returns a wrapped schema for a pipe of schemas", () => {
+    expectTypeOf(pipe(stringSchema, debounced(stringSchema, 300))).toEqualTypeOf<WrappedSchema<string>>();
+    expectTypeOf(formValidator(pipe(orderSchema, orderSchema))).toEqualTypeOf<FormValidatorSet<Order>>();
+  });
+
+  it("takes the value type from an annotated check on its own", () => {
+    const check = pipe(sync, async);
+    expectTypeOf(check).toExtend<ValidatorInput<string>>();
+    expectTypeOf(check).not.toExtend<ValidatorInput<number>>();
+  });
+
+  it("rejects a check for another value type", () => {
+    const fields: FieldValidators<Order> = {
+      // @ts-expect-error: email holds a string, the schema checks numbers
+      email: pipe(sync, numberSchema),
+    };
+    expectTypeOf(fields).toExtend<FieldValidators<Order>>();
+  });
+});
+
 describe("fieldValidators and formValidator", () => {
   const core = createFormsCore();
   const order: Order = { email: "", address: { city: "", zip: "" }, lines: [], tags: [] };
@@ -203,6 +258,13 @@ describe("fieldValidators and formValidator", () => {
             return undefined;
           }, 300),
           lines: [{ qty: (value) => (value > 0 ? undefined : { message: "qty" }) }],
+          tags: pipe(
+            (value) => {
+              expectTypeOf(value).toEqualTypeOf<string[]>();
+              return undefined;
+            },
+            debounced(() => undefined, 300),
+          ),
         }),
         form: formValidator((value) => {
           expectTypeOf(value).toEqualTypeOf<Order>();

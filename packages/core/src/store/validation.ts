@@ -7,7 +7,7 @@ import type { FormContext } from "./context.js";
 import { addErrors, type Placed } from "./placed.js";
 import type { SchemaOutput, Validation, ValidationOptions } from "./runner.js";
 import type { ItemValidators } from "./validate/fields.js";
-import { type Spec, toSpec } from "./validate/inputs.js";
+import { isThenable, type Spec, toSpec } from "./validate/inputs.js";
 import { place, thrownMessage } from "./validate/place.js";
 import { keyOf, type Pattern, startsWith } from "./validate/paths.js";
 import { copyTree } from "./tree.js";
@@ -68,11 +68,6 @@ interface Call {
   /** Ends the wait of a `debounced` check, so it runs now. */
   flush?: (() => void) | undefined;
 }
-
-// A primitive's `then` comes from its prototype, which nothing sets.
-const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  typeof (value as { then?: unknown } | null | undefined)?.then === "function";
 
 /** The promise a `debounced` check returns. */
 interface Flushable {

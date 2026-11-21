@@ -5,7 +5,7 @@ import type { ValidatorResult } from "../../validator.js";
 import type { StoreCore } from "../core.js";
 import { errorList } from "../handles.js";
 import { addErrors, type Placed } from "../placed.js";
-import type { Spec } from "./inputs.js";
+import type { Spec, Tags } from "./inputs.js";
 
 export const listOf = <E>(errors: ValidatorResult<E>): readonly E[] =>
   errors === undefined || errors === null ? [] : errorList(errors);
@@ -43,7 +43,9 @@ export function place<E, I, R>(
 ): Placed<E> {
   const placed: Placed<E> = new Map();
   if (result === undefined || result === null) return placed;
-  if (spec.schema) {
+  // `pipe` marks a failing schema check's result, since its other checks may return errors.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  if (spec.schema || (result as Tags)["~schema"]) {
     // An issue whose path resolves to no field lands on the validated field, so it still blocks submit.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     for (const issue of (result as StandardSchemaV1.Result<unknown>).issues ?? []) {
