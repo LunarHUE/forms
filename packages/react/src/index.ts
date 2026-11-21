@@ -35,10 +35,8 @@ export type {
   NamedFieldset,
   HandleOf,
   NoFields,
-  // Stays public: declarations inferred from a bound field component,
-  as
-  // `typeof form.TextField`,
-  name it as `OwnPropsOf<typeof TextField>`.
+  // Stays public: declarations inferred from a bound field component, as
+  // `typeof form.TextField`, name it as `OwnPropsOf<typeof TextField>`.
   OwnPropsOf,
   Scope,
   ScopeMembers,
