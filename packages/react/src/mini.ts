@@ -6,7 +6,7 @@ import type { Draft, ErrorOf, NamedLeafHandle, Nested, PluginsOf, TextControl } 
 import {
   createFormsCore,
   type DefinedValue,
-  type Definition,
+  type DefineConfig,
   type FieldSnapshot,
   type FormDefinition,
   type FormError,
@@ -95,6 +95,12 @@ export interface FormsOptions<F extends FieldComponentMap = NoFields> extends Pi
 /** Per-form settings for `useForm`: the members of full's that mini keeps. */
 export type UseFormOptions = Pick<FullUseFormOptions, "id">;
 
+/**
+ * The arguments `useForm` takes after the definition, as full's: the
+ * definition's options unless they are `void`, then per-form settings.
+ */
+type UseFormArgs<O> = [O] extends [void] ? [instance?: UseFormOptions] : [options: O, instance?: UseFormOptions];
+
 /** Props for `<input>` on a string field: the members of full's that mini keeps. */
 export type TextInputProps = Pick<FullTextInputProps, "id" | "name" | "type" | "value" | "onChange" | "onBlur" | "aria-invalid" | "aria-describedby">;
 
@@ -180,13 +186,13 @@ export type FormInstance<V, E = FormError, I = undefined, R = unknown, F extends
   BoundFieldComponents<V, E, F>;
 
 /**
- * A form definition for React: what `useForm` takes. Mini's definitions take
- * no options, so `O` is unused. It keeps full's parameter order, so an
- * annotation keeps working after the move to the full entry.
+ * A form definition for React: what `useForm` takes. `O` is what the
+ * function form of `define` takes, and `void` for a plain config. It keeps
+ * full's parameter order, so an annotation keeps working after the move to
+ * the full entry.
  */
-// oxlint-disable-next-line typescript/no-unused-vars
 export interface ReactFormDefinition<V, E = FormError, I = undefined, R = unknown, O = void, F extends FieldComponentMap = NoFields>
-  extends FormDefinition<V, E, I, R> {
+  extends FormDefinition<V, E, I, R, O> {
   /** Type information only: the form `useForm` makes from this definition. */
   readonly "~form"?: FormInstance<V, E, I, R, F>;
 }
@@ -204,13 +210,15 @@ export interface Fieldset<V> {
 export interface Forms<E = FormError, F extends FieldComponentMap = NoFields> {
   /**
    * Defines a form. Without a schema `defaultValues` sets the value type.
-   * With one, any Standard Schema, `defaultValues` is required. Parts after
-   * the config attach where their `path` says, as `Query.at("q")` gives.
+   * With one, any Standard Schema, `defaultValues` is required. The config
+   * can be a function of per-form options, `define((options: O) => config)`,
+   * and `useForm(definition, options)` then passes them. Parts after the
+   * config attach where their `path` says, as `Query.at("q")` gives.
    */
-  define<V = never, S extends StandardSchemaV1 = never, R = unknown>(
-    config: Definition<V, S, E, R>,
+  define<V = never, S extends StandardSchemaV1 = never, O = void, R = unknown>(
+    config: DefineConfig<V, S, O, E, R>,
     ...parts: readonly Parts<NoInfer<DefinedValue<V, S>>>[]
-  ): ReactFormDefinition<DefinedValue<V, S>, E, undefined, R, void, F>;
+  ): ReactFormDefinition<DefinedValue<V, S>, E, undefined, R, O, F>;
   /** Groups parts for a shape `V`, to pin at a field with `at`: `forms.fieldset<string>(trimmed)`. */
   fieldset<V>(...parts: readonly Parts<V>[]): Fieldset<V>;
 }
@@ -223,8 +231,8 @@ export function createForms<F extends FieldComponentMap = NoFields>(options?: Fo
   // The runtime is untyped inside. The type tests check the types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
-    // `useForm` reads the components from the definition.
-    define: (...args: Parameters<typeof define>) => ({ ...define(...args), "~fields": options?.fields }),
+    // `useForm` reads the components from the definition, and takes options first when the config is a function.
+    define: (...args: Parameters<typeof define>) => ({ ...define(...args), "~fields": options?.fields, "~options": typeof args[0] === "function" }),
     fieldset: (...parts: readonly Parts<unknown>[]) => ({
       at: (name: string) => parts.flat().map((part) => ({ ...part, path: part.path === undefined ? name : `${name}.${part.path}` })),
     }),
@@ -332,25 +340,27 @@ function makeForm(store: FormStore<unknown, unknown>, fields: FieldComponentMap 
 
 /**
  * Makes the form on the first render and returns the same object on every
- * render after. The id defaults to one from `useId`, which matches between
- * server and client on React 18 and later.
+ * render after. `options` is required when the definition was made with the
+ * function form of `define`, and absent otherwise. `options` and `instance`
+ * are read on the first render only. The id defaults to one from `useId`,
+ * which matches between server and client on React 18 and later.
  */
 export function useForm<V, E, I, R, O, F extends FieldComponentMap>(
   definition: ReactFormDefinition<V, E, I, R, O, F>,
-  instance?: UseFormOptions,
+  ...args: UseFormArgs<NoInfer<O>>
 ): FormInstance<V, E, I, R, F> {
   const generatedId = useId();
   const [form] = useState(() => {
-    const id = instance?.id;
+    // `createForms` marks each definition with its components and whether its config is a function.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const { "~fields": fields, "~options": takesOptions } = definition as { readonly "~fields"?: FieldComponentMap; readonly "~options"?: boolean };
+    // A plain config ignores the options, so the first argument goes to the store either way.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const id = (args[takesOptions ? 1 : 0] as UseFormOptions | undefined)?.id;
     if (id === undefined) generatedIdUsed();
-    return makeForm(
-      // The store's types follow the definition's.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      definition.createStore(undefined, { id: id ?? generatedId }) as FormStore<unknown, unknown>,
-      // `createForms` puts its components on each definition.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      (definition as { readonly "~fields"?: FieldComponentMap })["~fields"],
-    );
+    // The store's types follow the definition's.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return makeForm(definition.createStore(args[0] as O, { id: id ?? generatedId }) as FormStore<unknown, unknown>, fields);
   });
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return form as unknown as FormInstance<V, E, I, R, F>;
