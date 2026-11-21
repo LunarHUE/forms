@@ -16,7 +16,7 @@ export interface MarkdownPage {
   readonly body: string;
   /** The framework the page renders for. Leave out on framework-free pages. */
   readonly framework?: Framework;
-  /** The page's path, like `/react/plugins/masks`. Relative links resolve against it. */
+  /** The page's absolute URL. Relative links resolve against it. */
   readonly url: string;
   /** The files of a `<Demo name>`, entry file first. */
   readonly demo?: (name: string) => readonly DemoSource[];
@@ -53,19 +53,13 @@ function openingFence(indent: string, marker: string, info: string): string {
   return `${indent}${marker}${lang}${name ? ` title="${name}"` : ""}`;
 }
 
-/** Stands in for whichever host serves the docs, so paths resolve against a page's path. */
-const ORIGIN = "https://docs.invalid";
-
-/**
- * Turn a link into a root-relative path, to the `.md` copy when it points at
- * a docs page. Paths stay relative to the host, so each deployment's copies
- * link to that deployment.
- */
+/** Turn a link into an absolute one, to the `.md` copy when it points at a docs page. */
 function resolveLink(href: string, base: URL): string {
   if (href.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(href)) return href;
   const url = new URL(href, base);
+  if (url.origin !== base.origin) return url.href;
   if (url.pathname !== "/" && !/\.[a-z0-9]+$/i.test(url.pathname)) url.pathname += ".md";
-  return `${url.pathname}${url.search}${url.hash}`;
+  return url.href;
 }
 
 function fence(lang: string, code: string, title?: string): string {
@@ -84,12 +78,12 @@ function fence(lang: string, code: string, title?: string): string {
  * - `<Compare app>` becomes its sizes table and both libraries' files.
  * - `<Install>` becomes an npm command.
  * - `<Callout>` becomes a blockquote.
- * - Links become root-relative paths, and links to docs pages point at their `.md`.
- * The MDX imports go. A `Source:` line with the page's path follows the
+ * - Links become absolute, and links to docs pages point at their `.md`.
+ * The MDX imports go. A `Source:` line with the page's URL follows the
  * description.
  */
 export function toMarkdown({ title, description, body, framework, url, demo, compare }: MarkdownPage): string {
-  const base = new URL(url, ORIGIN);
+  const base = new URL(url);
   const out: string[] = [];
   const shown: boolean[] = [];
   let open: { marker: string; keep: boolean } | undefined;

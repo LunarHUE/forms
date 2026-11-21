@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 
 import { LLMS_FULL_HREF, LLMS_HREF } from "@/lib/llms";
 import { textResponse } from "@/lib/responses";
-import { absoluteUrl, CHANNEL } from "@/lib/site";
+import { absoluteUrl, CHANNEL, deployUrl } from "@/lib/site";
 
 const release = [
   "User-agent: *",
@@ -11,8 +11,8 @@ const release = [
   `Sitemap: ${absoluteUrl("/sitemap.xml")}`,
   "",
   "# For language models and agents:",
-  `# ${LLMS_HREF} indexes the docs (also at /agents.txt).`,
-  `# ${LLMS_FULL_HREF} has every page as Markdown.`,
+  `# ${deployUrl(LLMS_HREF)} indexes the docs (also at ${deployUrl("/agents.txt")}).`,
+  `# ${deployUrl(LLMS_FULL_HREF)} has every page as Markdown.`,
   "# Any docs page's URL plus .md is that page as Markdown.",
 ];
 
