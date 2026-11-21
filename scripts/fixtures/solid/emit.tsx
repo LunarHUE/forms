@@ -61,7 +61,7 @@ export const forms = createForms({
 
 export const AddressSchema = v.object({ street: v.string(), city: v.pipe(v.string(), v.minLength(1)) });
 export const Address = forms.fieldset(AddressSchema);
-export const Contact = forms.fieldset<{ email: string; phone: string }, "rules">(
+export const Contact = forms.fieldset<{ email: string; phone: string }, typeof rules>(
   ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),
 );
 

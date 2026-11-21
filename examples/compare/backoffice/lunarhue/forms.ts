@@ -8,9 +8,6 @@ import { cleanMoney, digitsOnly, formatMoney, formatPhone, formatTaxId } from ".
 import { Address } from "../schemas.ts";
 import { Checkbox, MaskedInput, Select, TextArea, TextField } from "./fields.tsx";
 
-// Kept apart so the undo button can read its form meta.
-export const undoHistory = history();
-
 // Each masked type stores the clean value and shows it formatted.
 const PhoneField = defineField(MaskedInput, masked({ clean: digitsOnly(10), display: formatPhone }));
 const TaxIdField = defineField(MaskedInput, masked({ clean: digitsOnly(9), display: formatTaxId }));
@@ -18,7 +15,7 @@ const MoneyField = defineField(MaskedInput, masked({ clean: cleanMoney, display:
 const QuantityField = defineField(MaskedInput, masked({ clean: digitsOnly(4) }));
 
 export const forms = createForms({
-  plugins: [zod(), dirty(), rebase(), rules(), mask(), arrays(), undoHistory],
+  plugins: [zod(), dirty(), rebase(), rules(), mask(), arrays(), history()],
   fields: { TextField, TextArea, Select, Checkbox, PhoneField, TaxIdField, MoneyField, QuantityField },
 });
 

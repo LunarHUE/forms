@@ -40,7 +40,7 @@ export const PhoneField = defineField((_props: { readonly field: FieldApi<string
 
 export const forms = createForms({ plugins: [history(), mask(), rules()], fields: { PhoneField } });
 
-export const Contact = forms.fieldset<{ email: string; phone: string }, "rules">(
+export const Contact = forms.fieldset<{ email: string; phone: string }, typeof rules>(
   ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),
 );
 

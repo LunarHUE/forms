@@ -1,7 +1,8 @@
-import { type FieldApi, type FormError, inputProps } from "@lunarhue/forms-solid";
+import { type FieldApi, inputProps } from "@lunarhue/forms-solid";
+import type { dirty } from "@lunarhue/forms-solid/plugins";
 
 interface TextFieldProps {
-  readonly field: FieldApi<string, FormError, "dirty">;
+  readonly field: FieldApi<string, typeof dirty>;
   readonly label: string;
 }
 
