@@ -9,10 +9,9 @@ import type { Part, PartContext, PartWrite } from "./store.js";
  * The same call as full's `transform`.
  */
 export const transform = <V>(fn: (value: V, write: PartWrite<V>) => V | typeof refuse): Part<never, V> => ({
-  // The hooks run at a path whose value is `V`, which the part's type checks where it attaches.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   "~mini": (ctx) => {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    // The hook runs at a path whose value is `V`, which the part's type checks where it attaches.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, unicorn/consistent-function-scoping
     const hook = (write: PartWrite<unknown>) => fn(write.value as V, write as PartWrite<V>);
     ctx["~field"].writes.push(hook);
     const before = ctx.value();

@@ -5,7 +5,7 @@ import type { FieldDisplay, WriteCause } from "../plugin.js";
 import type { PartWrite as FullPartWrite, ValuePartContext } from "../plugins/part.js";
 import type { FieldSnapshotBase, FormSnapshotBase, Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { FormStoreBase, IntentArgs } from "../store.js";
+import type { FormStoreBase } from "../store.js";
 import type { ValidatorContext as FullValidatorContext } from "../validator.js";
 import type { ChildValue, DeepReadonly, KeysOf, ShapeOf } from "../value.js";
 import type { Cell, Cells } from "../store/cells.js";
@@ -151,6 +151,8 @@ interface Field<E> extends Cell<FieldSnapshot<unknown, E>>, PartTarget {
 
 const none: readonly never[] = [];
 
+// `Many<E>` is one `E` or a list of them, so what isn't an array is one.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 const list = <E>(result: Many<E> | null | undefined): readonly E[] => (result == null ? none : Array.isArray(result) ? result : [result as E]);
 
 /** True when both lists hold the same elements in the same order. */
@@ -173,8 +175,12 @@ const split = (name: string): Path => (name ? name.split(".") : []);
 const read = (root: unknown, path: Path): unknown => path.reduce((node: any, key) => node?.[key], root);
 
 /** A copy of `root` with `next` at `path`, through objects only. A missing step becomes an object. */
-const write = (root: unknown, path: Path, next: unknown, at = 0): unknown =>
-  at < path.length ? { ...(root as object), [path[at] as string]: write(read(root, [path[at] as string]), path, next, at + 1) } : next;
+const write = (root: unknown, path: Path, next: unknown, at = 0): unknown => {
+  const key = path[at];
+  // A spread of a missing step is an empty object.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return key === undefined ? next : { ...(root as object), [key]: write(read(root, [key]), path, next, at + 1) };
+};
 
 /** True when one dotted name is at, above or below the other. */
 const related = (a: string, b: string): boolean => !a || !b || `${a}.`.startsWith(`${b}.`) || `${b}.`.startsWith(`${a}.`);
@@ -309,6 +315,8 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
       if (only === undefined || only === name) add(name, list(sync(validators[name]?.(read(value, split(name)), { path: split(name), store }))));
     }
     if (schema) {
+      // `sync` throws in development when the result is a promise.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const result = sync(schema["~standard"].validate(value)) as StandardSchemaV1.Result<unknown>;
       if (result.issues) {
         for (const issue of result.issues) {
@@ -351,6 +359,7 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
         batch(() => {
           const before = read(value, path);
           // An updater gets the value there now, as full's leaf handles do.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           let next = typeof input === "function" ? (input as (previous: unknown) => unknown)(before) : input;
           const cause: WriteCause = quiet ? { plugin: "part" } : "user";
           for (const hook of field!.writes) {
@@ -361,8 +370,8 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
           value = write(value, path, next);
           if (writeOptions?.edited ?? !quiet) {
             field!.user = none;
-            // A field showing an error, or any field after a submit, is checked again as it changes.
-            if (submitCount || field!.found.length) check(name);
+            // Once a field was blurred, has an error, or the form was submitted, each change checks it again.
+            if (field!.touched || submitCount || field!.found.length) check(name);
           }
           refresh();
           observe(name);
@@ -418,8 +427,7 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
     getServerFormSnapshot: () => idleForm,
     peek: () => form.snapshot,
     batch,
-    // With no intents, every submit's intent is undefined.
-    submit: submit as (...args: IntentArgs<undefined>) => Promise<Submission<undefined, R>>,
+    submit,
     async handleSubmit(event) {
       event?.preventDefault();
       await submit();
@@ -436,8 +444,8 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
       batch(() => {
         runs++;
         running = undefined;
+        // As in full, the submit count stays: it counts every submit the store has run.
         value = start;
-        submitCount = 0;
         submission = idle;
         for (const field of fields.values()) {
           field.touched = false;

@@ -86,7 +86,9 @@ export interface FieldProps<V, E, N extends string> {
 }
 
 /** `form.Field`: renders one field by name. */
-export type FieldComponent<V, E> = <N extends LeafPath<V>>(props: FieldProps<V, E, N>) => ReactElement;
+export interface FieldComponent<in out V, in out E> {
+  <N extends LeafPath<V>>(props: FieldProps<V, E, N>): ReactElement;
+}
 
 /** Props for `form.State`, where `T` is the form that owns it. */
 export interface FormStateProps<I, R, S, T> {
@@ -147,13 +149,16 @@ export interface Forms<E = FormError> {
 
 /** Mini's entry point. Call it once at module scope. */
 export function createForms(options?: FormsOptions): Forms {
+  // Core's `define` is an arrow function.
+  // oxlint-disable-next-line typescript/unbound-method
   const { define } = createFormsCore(options);
+  // The runtime is untyped inside. The type tests check the types.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
     define,
     fieldset: (...parts: readonly Parts<unknown>[]) => ({
       at: (name: string) => parts.flat().map((part) => ({ ...part, path: part.path === undefined ? name : `${name}.${part.path}` })),
     }),
-    // The runtime is untyped inside. The types are checked by the type tests.
   } as never;
 }
 
@@ -164,12 +169,14 @@ interface Handle extends NamedAnyFieldHandle<unknown> {
   readonly "~errorId": string;
 }
 
-type AnyForm = FormInstance<unknown, unknown, undefined, unknown>;
+type AnyForm = FormInstance<unknown, unknown>;
 
 // The field object for each snapshot.
 const fieldApis = new WeakMap<object, unknown>();
 
 /** `null`, `undefined`, `NaN` and objects show as `""`. */
+// What reaches `String` is a primitive.
+// oxlint-disable-next-line typescript/no-base-to-string
 const asText = (value: unknown): string => (value == null || typeof value === "object" || Number.isNaN(value) ? "" : String(value));
 
 function fieldApiOf(handle: Handle, snapshot: FieldSnapshot<unknown, unknown>): unknown {
@@ -201,7 +208,9 @@ function fieldApiOf(handle: Handle, snapshot: FieldSnapshot<unknown, unknown>): 
 }
 
 /** Builds the form object around a new store. */
-function makeForm(store: FormStore<unknown, unknown, undefined, unknown>): AnyForm {
+// The store's members are arrow functions, so they need no `this`.
+// oxlint-disable typescript/unbound-method
+function makeForm(store: FormStore<unknown, unknown>): AnyForm {
   const { handleSubmit } = store;
   const formProps: FormElementProps = {
     id: store.id,
@@ -229,9 +238,12 @@ function makeForm(store: FormStore<unknown, unknown, undefined, unknown>): AnyFo
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return children(select(snapshot), form) as ReactElement;
   }
+  // The generic component types are the public ones. The runtime takes any name and selector.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const form: AnyForm = { store, id: store.id, formProps, submit: store.submit, handleSubmit, Form, Field: Field as never, State: State as never };
   return form;
 }
+// oxlint-enable typescript/unbound-method
 
 /**
  * Makes the form on the first render and returns the same object on every
@@ -245,7 +257,7 @@ export function useForm<V, E, I, R>(definition: ReactFormDefinition<V, E, I, R>,
     if (id === undefined) generatedIdUsed();
     // The store's types follow the definition's.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return makeForm(definition.createStore(undefined, { id: id ?? generatedId }) as FormStore<unknown, unknown, undefined, unknown>);
+    return makeForm(definition.createStore(undefined, { id: id ?? generatedId }) as FormStore<unknown, unknown>);
   });
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return form as unknown as FormInstance<V, E, I, R>;
