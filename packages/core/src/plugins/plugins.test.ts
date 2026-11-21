@@ -809,6 +809,35 @@ describe("reset and submit", () => {
     expect(runs).toHaveBeenCalledOnce();
   });
 
+  it("calls onReset after new values land, and history, persist and rules follow them", () => {
+    const seen: unknown[] = [];
+    const watch = definePlugin({
+      name: "watch",
+      setup: (ctx) => ({ onReset: (path) => void seen.push({ path, value: ctx.store.getSnapshot([]).value }) }),
+    })();
+    const { plugin, calls } = watcher("writes");
+    const saved = new Map<string, string>();
+    const storage = { getItem: (key: string) => saved.get(key) ?? null, setItem: (key: string, value: string) => void saved.set(key, value), removeItem: () => {} };
+    const codeRules = ruled<Contact>({ code: (value) => ({ disabled: value.phone === "" }) });
+    const store = makeWith(contact(), [watch, plugin, rules(), history(), persist({ key: "contact", storage })], [codeRules]);
+    store.root.at("phone").setValue("1");
+    flushPlugins();
+    expect(store.getSnapshot(["code"]).disabled).toBe(false);
+    expect(store.plugins.history.undo()).toBe(true);
+    store.root.at("phone").setValue("2");
+    flushPlugins();
+    calls.length = 0;
+    store.reset({ values: { phone: "", code: "x" } });
+    flushPlugins();
+    expect(seen).toEqual([{ path: [], value: { phone: "", code: "x" } }]);
+    expect(calls.flat().filter((record) => record.type === "value").map((record) => record.cause)).toEqual(["reset"]);
+    expect(store.getSnapshot(["code"]).disabled).toBe(true);
+    expect(history.formMeta(store.getFormSnapshot())).toEqual({ canUndo: false, canRedo: false });
+    expect(store.plugins.history.undo()).toBe(false);
+    expect(saved.get("contact")).toBe('{"phone":"","code":"x"}');
+    expect(store.getFormSnapshot().dirty).toBe(false);
+  });
+
   it("waits for beforeSubmit before onSubmit of the definition, and tells onSubmitted how it ended", async () => {
     const order: string[] = [];
     const upload = definePlugin({

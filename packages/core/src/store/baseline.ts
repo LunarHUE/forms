@@ -1,7 +1,6 @@
-import type { ResetOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
 import type { PluginBaseline } from "../plugin.js";
-import type { Change } from "../store.js";
+import type { Change, FormResetOptions } from "../store.js";
 import { type BuildKeys, indexKeys, indexOfItem, keysOf, locate, type KeysFor, type KeyTrie } from "./baseline/keys.js";
 import type { FormContext } from "./context.js";
 import type { CreateDirty, DirtyOptions } from "./dirty.js";
@@ -35,10 +34,11 @@ export interface Baseline extends PluginBaseline {
   dirty(path: Path, value: unknown): boolean;
   /**
    * Puts the subtree at `path` back and clears its touched, edited and error
-   * state. The form store calls it inside a batch, after validation has
+   * state. With `values` it writes those instead and they become the
+   * baseline. The form store calls it inside a batch, after validation has
    * stopped work in the subtree, and only for a live path.
    */
-  reset(path: Path, options?: ResetOptions): void;
+  reset(path: Path, options?: FormResetOptions<unknown>): void;
   /**
    * Every dirty leaf at and below `path`, the whole form by default, in value
    * order. Objects are walked key by key. An array is walked item by item
@@ -159,7 +159,12 @@ export function createBaseline<V, E, I, R>(
     reset(path, resetOptions) {
       const p = path.map(String);
       core.batch(() => {
-        const target = resetOptions?.to === "initial" ? locate(initial, undefined, p).value : find(p).value;
+        const target =
+          resetOptions && "values" in resetOptions
+            ? resetOptions.values
+            : resetOptions?.to === "initial"
+              ? locate(initial, undefined, p).value
+              : find(p).value;
         core.set(p, target);
         core.clearState(p, { validation: true });
         // Writing kept the items' keys by index, so the baseline pairs with them from now on.

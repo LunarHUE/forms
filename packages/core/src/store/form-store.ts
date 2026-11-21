@@ -1,10 +1,10 @@
 import type { Flags } from "../definition.js";
 import type { FormError, Show } from "../errors.js";
-import type { NamedFieldHandle, ResetOptions } from "../handle.js";
+import type { NamedFieldHandle } from "../handle.js";
 import type { Path } from "../path.js";
 import type { AnyPlugin, Part, PluginErrorHandler } from "../plugin.js";
 import { problem } from "../problem.js";
-import type { FormStore } from "../store.js";
+import type { FormResetOptions, FormStore } from "../store.js";
 import { type Baseline, type BaselineOptions, createBaseline } from "./baseline.js";
 import type { FormContext } from "./context.js";
 import type { BuildKeys } from "./baseline/keys.js";
@@ -116,7 +116,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   const validation = createValidation(context, options);
   const submit = createSubmit(context, options, validation, host);
 
-  const reset = (path: Path, resetOptions?: ResetOptions) => {
+  const reset = (path: Path, resetOptions?: FormResetOptions<unknown>) => {
     const run = () =>
       core.batch(() => {
         validation.reset(path);

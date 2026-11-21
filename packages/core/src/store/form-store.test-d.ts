@@ -32,6 +32,21 @@ describe("createFormStore", () => {
     createFormStore({ id: "f", initial: { tags: ["a"] }, disabled: { nope: true } });
   });
 
+  it("takes new values on reset, typed by V, or a target, not both", () => {
+    const store = createFormStore<Profile>({ id: "f", initial });
+    store.reset();
+    store.reset({ to: "initial" });
+    store.reset({ values: initial });
+    store.reset({ values: { name: "a", shape: { kind: "square", side: 2 }, rows: [] } });
+    // @ts-expect-error: values must be a whole Profile
+    store.reset({ values: { name: "a" } });
+    // @ts-expect-error: values and to don't go together
+    store.reset({ values: initial, to: "initial" });
+    // A field handle resets to a target only.
+    // @ts-expect-error: no values on a handle's reset
+    store.root.reset({ values: initial });
+  });
+
   it("types disabledInvalid with the form's error type", () => {
     const store = createFormStore<Profile, string>({ id: "f", initial });
     expectTypeOf(store.disabledInvalid()).toEqualTypeOf<readonly DisabledInvalid<string>[]>();

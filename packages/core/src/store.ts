@@ -5,6 +5,24 @@ import type { Gate } from "./plugin.js";
 import type { FieldSnapshot, FormSnapshot, Submission } from "./snapshot.js";
 import type { ValidatorInput } from "./validator.js";
 
+/**
+ * Options for the store's `reset`: `to` names the value to go back to, and
+ * `values` gives new values that also become the baseline. Pass one or the
+ * other.
+ */
+export type FormResetOptions<V> = (ResetOptions & { readonly values?: never }) | ResetValues<V>;
+
+/** `reset` options that set new values and move the baseline to them. */
+export interface ResetValues<V> {
+  /**
+   * The values the form takes. They become the baseline, so the form is
+   * clean afterwards and a later `reset()` comes back to them. The initial
+   * value stays the one the store started with.
+   */
+  readonly values: V;
+  readonly to?: never;
+}
+
 /** One dirty leaf. An array that changed length or order counts as one leaf. */
 export interface Change {
   /** The leaf's stable path. */
@@ -155,9 +173,10 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
   /**
    * Puts the whole form back to its baseline, or to the initial value with
    * `to: "initial"`, and clears touched, edited and error state. A running
-   * submit's `signal` aborts.
+   * submit's `signal` aborts. With `values`, the form takes those values and
+   * they become the baseline, as for a record the server just sent.
    */
-  reset(options?: ResetOptions): void;
+  reset(options?: FormResetOptions<V>): void;
   /**
    * Adds a validator at stable path `path`. The returned function removes it
    * and the errors it set.
