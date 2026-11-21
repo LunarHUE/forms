@@ -48,6 +48,7 @@ When a part needs to write plugin meta, coordinate with a form-level API, or req
 ```ts
 import type { Part } from "@lunarhue/forms-core";
 import { definePlugin, part } from "@lunarhue/forms-core/plugins";
+import { replaceText } from "@lunarhue/forms-core/text";
 
 interface Limit {
   readonly max: number;
@@ -55,16 +56,21 @@ interface Limit {
 
 export const limit = definePlugin({
   name: "limit",
-  part: (_ctx, { max }: Limit) => ({
-    beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
-  }),
+  part: (_ctx, { max }: Limit) => {
+    const cap = (value: string) => value.slice(0, max);
+    return {
+      beforeWrite: (write) => (typeof write.value === "string" ? cap(write.value) : write.value),
+      display: (value) => (typeof value === "string" ? value : ""),
+      afterInput: (input, value, event) => replaceText(input, typeof value === "string" ? value : "", cap, event),
+    };
+  },
 });
 
 // Fits string fields only.
 export const limited = (max: number): Part<typeof limit, string> => part(limit, { max });
 ```
 
-Consumers install `limit()` in `plugins` and attach `limited(...)` wherever needed. Annotating the return type as `Part<typeof limit, string>` enforces both compile-time checks: attaching `limited` to a non-string field fails, and using it on a form without `limit()` installed fails. (You can also pass the type arguments directly on `part<typeof limit, string>(limit, { max })`.)
+Returning `display` and `afterInput` with `replaceText` keeps the user's caret in place if they edit in the middle of the text rather than jumping it to the end. Consumers install `limit()` in `plugins` and attach `limited(...)` wherever needed. Annotating the return type as `Part<typeof limit, string>` enforces both compile-time checks: attaching `limited` to a non-string field fails, and using it on a form without `limit()` installed fails. (You can also pass the type arguments directly on `part<typeof limit, string>(limit, { max })`.)
 
 ## How and where parts attach
 

@@ -6,21 +6,24 @@ order: 1
 navTitle: First plugin
 ---
 
-When none of the built-in plugins fits what your app needs, you can write your own. Suppose pasted text keeps introducing double spaces into your forms, and you want to collapse them across every string field. Try typing two spaces in a row below.
+When none of the built-in plugins fits what your app needs, you can write your own. Suppose pasted text keeps introducing extra spaces into your forms, and you want to trim and collapse them across every string field as soon as the user leaves an input. Try typing extra spaces below and tabbing or clicking out.
 
 <Demo name="first-plugin/note" />
 
 ## A part or a plugin?
 
-Before reaching for `definePlugin`, check whether a standalone [part](./parts) is enough. If the behavior only targets specific field types, holds no internal state, and doesn't need to expose a form-level API, `transform`, `text`, and `observe` from `@lunarhue/forms-core/plugins` work with no plugin installation:
+Before reaching for `definePlugin`, check whether a standalone [part](./parts) is enough. If the behavior only targets specific field types, holds no internal state, and doesn't need to expose a form-level API, `masked` from `/text` or `transform`, `text`, and `observe` from `/plugins` work with no plugin installation:
 
 ```ts
-import { transform } from "@lunarhue/forms-core/plugins";
+import { masked } from "@lunarhue/forms-core/text";
 
-export const NoteField = defineField(NoteInput, transform<string>((value) => value.replace(/ {2,}/g, " ")));
+export const NoteField = defineField(
+  NoteInput,
+  masked({ clean: (value) => value.replace(/ {2,}/g, " "), display: (value) => value }),
+);
 ```
 
-Write a plugin when the behavior covers the whole form (like collapsing spaces everywhere), needs field or form meta, exposes a `form.plugins.<name>` API, or depends on another plugin.
+Write a plugin when the behavior covers the whole form (like cleaning up every string field on blur), needs field or form meta, exposes a `form.plugins.<name>` API, or depends on another plugin.
 
 ## Creating a plugin with `definePlugin`
 
@@ -31,23 +34,39 @@ import { definePlugin } from "@lunarhue/forms-core/plugins";
 
 export const collapseSpaces = definePlugin({
   name: "collapseSpaces",
-  setup: () => ({
-    beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
+  setup: (ctx) => ({
+    onBlur(path) {
+      const value = ctx.store.getSnapshot(path).value;
+      if (typeof value !== "string") return;
+      const clean = value.trim().replace(/ {2,}/g, " ");
+      if (clean !== value) {
+        ctx.write(() => ctx.store.fieldAt(path)?.setValue(clean, { edited: false }));
+      }
+    },
   }),
 });
 
 const forms = createForms({ plugins: [collapseSpaces()] });
 ```
 
-`setup` runs once per store and returns form-wide hooks. Here, `beforeWrite` intercepts every value write and returns the cleaned string. A plugin can also define a `part` hook (which runs once per attached [part](./parts) and returns hooks scoped to that path), or both.
+`setup` runs once per store and returns form-wide hooks. Here, `onBlur(path)` fires every time the user leaves a field (not just the first blur that sets `touched`), reads the current value, and writes the cleaned string back via `ctx.write(...)`. A plugin can also define a `part` hook (which runs once per attached [part](./parts) and returns hooks scoped to that path), or both.
+
+Why `onBlur` instead of rewriting strings in `beforeWrite`? Because `beforeWrite` runs on every keystroke, and changing a string's length mid-edit without caret tracking jumps the cursor to the end of the input (for example, pressing Space in the middle of `"Test |input"` would jump to `"Test input|"`). Form-wide text cleanup belongs on `onBlur` (or `beforeSubmit`), while live per-keystroke rewriting belongs on a field part with `masked` or `afterInput` + `replaceText` (see [Masks](../plugins/masks#caret) and [Parts](./parts)).
 
 Need plugin options? Add a typed second parameter to `setup`, and the generated factory accepts the same argument:
 
 ```ts
 export const squeeze = definePlugin({
   name: "squeeze",
-  setup: (_ctx, max: number) => ({
-    beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ +/g, (run) => run.slice(0, max)) : write.value),
+  setup: (ctx, max: number) => ({
+    onBlur(path) {
+      const value = ctx.store.getSnapshot(path).value;
+      if (typeof value !== "string") return;
+      const clean = value.replace(/ +/g, (run) => run.slice(0, max));
+      if (clean !== value) {
+        ctx.write(() => ctx.store.fieldAt(path)?.setValue(clean, { edited: false }));
+      }
+    },
   }),
 });
 
