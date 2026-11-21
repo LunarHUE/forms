@@ -11,7 +11,7 @@ const limit = definePlugin({
   name: "limit",
   part: (_ctx, max: number) => ({ beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value) }),
 });
-const limited = (max: number): Part<"limit", string> => part(limit, max);
+const limited = (max: number): Part<typeof limit, string> => part(limit, max);
 
 const PhoneField = defineField(PhoneInput, limited(10));
 
@@ -48,7 +48,7 @@ describe("field types", () => {
   });
 
   it("pin their parts at a name of a definition that fits them", () => {
-    expectTypeOf(PhoneField.at("phone")).toEqualTypeOf<readonly Part<"limit", { readonly phone: string }>[]>();
+    expectTypeOf(PhoneField.at("phone")).toEqualTypeOf<readonly Part<typeof limit, { readonly phone: string }>[]>();
     createForms({ plugins: [limit()] }).define({ defaultValues: { phone: "" } }, PhoneField.at("phone"));
     // @ts-expect-error: the form has no limit()
     createForms().define({ defaultValues: { phone: "" } }, PhoneField.at("phone"));

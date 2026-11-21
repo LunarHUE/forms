@@ -21,6 +21,8 @@ export type {
   FormMetaReader,
   MetaHolder,
   MetaReader,
+  NamedPart,
+  NamedParts,
   NamesOf,
   Needs,
   Nested,

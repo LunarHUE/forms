@@ -1,4 +1,4 @@
-import type { Part, Parts } from "@lunarhue/forms-core";
+import type { NamedParts, Part } from "@lunarhue/forms-core";
 import type { FieldComponentType, FieldType, FieldValueOf } from "./scope.js";
 
 /** `parts` pinned at the dotted name `name`, below any name they had. A copy attaches once with the part it copies. */
@@ -19,7 +19,7 @@ export const pin = (parts: readonly Part[], name: string): readonly Part[] =>
  */
 export const defineField = <C extends FieldComponentType, N extends string = never>(
   component: C,
-  ...given: readonly Parts<N, FieldValueOf<C>>[]
+  ...given: readonly NamedParts<N, FieldValueOf<C>>[]
 ): FieldType<C, N> => {
   const parts: readonly Part[] = given.flat();
   return {

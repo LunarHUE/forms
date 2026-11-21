@@ -14,6 +14,7 @@ import type {
   FormStore,
   IntentArgs,
   InvalidField,
+  NamedParts,
   Part,
   Parts,
   PluginApis,
@@ -334,14 +335,14 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    */
   fieldset<S extends StandardSchemaV1, N extends string = never>(
     schema: S,
-    ...parts: readonly Parts<N, SchemaValue<S, P>>[]
+    ...parts: readonly NamedParts<N, SchemaValue<S, P>>[]
   ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   /**
    * Makes a reusable shape from a type, with no schema:
    * `forms.fieldset<Address>()`. With parts, name their plugins' factories
    * too: `forms.fieldset<Address, typeof rules>(ruled(...))`.
    */
-  fieldset<V, Q = never>(...parts: readonly Parts<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+  fieldset<V, Q = never>(...parts: readonly Parts<Q, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
 }
 
 /** A form as the runtime builds it. */

@@ -1,5 +1,5 @@
 import type { Path } from "../path.js";
-import type { AnyPlugin, NamesOf, Part, PartContext, TextControl, Write, WriteRecord } from "../plugin.js";
+import type { AnyPlugin, Part, PartContext, TextControl, Write, WriteRecord } from "../plugin.js";
 import type { Submission } from "../snapshot.js";
 import { createParts } from "../store/parts.js";
 import { createPluginHost } from "../store/plugins.js";
@@ -66,7 +66,7 @@ export type PartConfig<P> = P extends { readonly "~config"?: (config: infer C) =
  * Put a part on a field type (`defineField(Input, part)`), a fieldset, or
  * after a definition's config.
  */
-export function part<P extends PartPlugin, V = unknown>(plugin: P, ...config: PartConfig<P>): Part<NamesOf<P>, V>;
+export function part<P extends PartPlugin, V = unknown>(plugin: P, ...config: PartConfig<P>): Part<P, V>;
 export function part<V>(hooks: ValuePartHooks<V> | ((ctx: ValuePartContext<V>) => ValuePartHooks<V>)): Part<never, V>;
 export function part(first: object, config?: unknown): Part {
   // A factory `definePlugin` made has readers. Calling it with no options gives its name, as `requires` does.

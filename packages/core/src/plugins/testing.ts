@@ -2,7 +2,7 @@ import type { DefinedValue, Definition, WithPlugins } from "../definition.js";
 import type { FormError } from "../errors.js";
 import { createFormsCore } from "../forms-core.js";
 import type { Path } from "../path.js";
-import type { Parts, PluginApis, PluginNames, Plugins, When, WriteRecord } from "../plugin.js";
+import type { NamedParts, PluginApis, PluginNames, Plugins, When, WriteRecord } from "../plugin.js";
 import { definePlugin, flushPlugins } from "../plugins.js";
 import type { FieldSnapshot, FormSnapshot } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
@@ -70,7 +70,7 @@ const timings: readonly When[] = ["sync", "deferred", "idle"];
  */
 export function testStore<V = never, S extends StandardSchemaV1 = never, I = undefined, R = unknown, const D extends Plugins = []>(
   config: TestStoreConfig<V, S, I, R, D>,
-  ...parts: readonly Parts<PluginNames<D>, NoInfer<DefinedValue<V, S, D>>>[]
+  ...parts: readonly NamedParts<PluginNames<D>, NoInfer<DefinedValue<V, S, D>>>[]
 ): TestStore<DefinedValue<V, S, D>, I, R, PluginApis<D>, PluginNames<D>> {
   type Store = TestStore<DefinedValue<V, S, D>, I, R, PluginApis<D>, PluginNames<D>>["store"];
   const errors: PluginFailure[] = [];

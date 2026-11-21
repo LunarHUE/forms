@@ -14,7 +14,7 @@ const forms = createFormsCore({ plugins: [rules()] });
 
 describe("ruled types", () => {
   it("takes the dotted names of the value's fields, nested ones included", () => {
-    expectTypeOf(ruled<Order>({ "address.street": (value) => ({ disabled: value.pickup }) })).toEqualTypeOf<Part<"rules", Order>>();
+    expectTypeOf(ruled<Order>({ "address.street": (value) => ({ disabled: value.pickup }) })).toEqualTypeOf<Part<typeof rules, Order>>();
     ruled<Order>({ address: () => ({ disabled: true }), items: (value) => ({ hidden: value.items.length === 0 }) });
     // @ts-expect-error: no field is named "address.stret"
     ruled<Order>({ "address.stret": (value) => ({ disabled: value.pickup }) });
@@ -50,7 +50,7 @@ describe("ruled types", () => {
   });
 
   it("needs rules() on the form", () => {
-    expectTypeOf(ruled<Order>({})).toExtend<Part<"rules", Order>>();
+    expectTypeOf(ruled<Order>({})).toExtend<Part<typeof rules, Order>>();
     createFormsCore().define(
       { defaultValues: order },
       // @ts-expect-error: the form has no rules()

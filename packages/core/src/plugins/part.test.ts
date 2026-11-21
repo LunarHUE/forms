@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFormsCore } from "../forms-core.js";
-import type { AttachedPart, Part } from "../plugin.js";
+import type { AttachedPart, NamedPart, Part } from "../plugin.js";
 import { definePlugin, refuse } from "../plugins.js";
 import { displayOf } from "../store/display.js";
 import { dirty } from "./dirty.js";
@@ -18,7 +18,7 @@ const derived = <V>(name: string, compute: (value: V) => unknown) =>
 
 /** `part` pinned at the dotted name `path`, typed to fit any form, as the test can't type the pin. */
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const at = <N extends string>(piece: Part<N>, path: string) => ({ ...piece, path }) as Part<N, unknown>;
+const at = <N extends string>(piece: NamedPart<N>, path: string) => ({ ...piece, path }) as NamedPart<N, unknown>;
 
 const slugify = (title: string) => title.toLowerCase().replace(/\W+/g, "-");
 
@@ -112,7 +112,7 @@ describe("part", () => {
       name: "limit",
       part: (_ctx, max: number) => ({ beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value) }),
     });
-    const limited: Part<"limit", string> = part(limit, 2);
+    const limited: Part<typeof limit, string> = part(limit, 2);
     const { store, errors } = testStore({ defaultValues: { name: "abc" }, plugins: [limit()] }, at(limited, "name"));
     expect(store.getSnapshot(["name"]).value).toBe("ab");
     expect(errors).toEqual([]);

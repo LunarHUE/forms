@@ -11,7 +11,7 @@ const limit = definePlugin({
   name: "limit",
   part: (_ctx, max: number) => ({ beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value) }),
 });
-const limited = (max: number): Part<"limit", string> => part(limit, max);
+const limited = (max: number): Part<typeof limit, string> => part(limit, max);
 
 const PhoneField = defineField(PhoneInput, limited(10));
 
@@ -29,7 +29,8 @@ describe("field types", () => {
     // @ts-expect-error: limited fits strings, and NumberInput's field holds a number
     defineField(NumberInput, limited(10));
     defineField(NumberInput);
-    const tagged: Part<"tag", string> = { plugin: "tag" };
+    const tags = definePlugin({ name: "tag", part: (_ctx, _config: void) => ({}) });
+    const tagged: Part<typeof tags, string> = part(tags);
     expectTypeOf(defineField(PhoneInput, limited(10), tagged)).toEqualTypeOf<FieldType<typeof PhoneInput, "limit" | "tag">>();
   });
 
@@ -55,7 +56,7 @@ describe("field types", () => {
 
   it("pin their parts at a name of a definition that fits them", () => {
     const forms = createForms({ plugins: [limit()] });
-    expectTypeOf(PhoneField.at("phone")).toEqualTypeOf<readonly Part<"limit", { readonly phone: string }>[]>();
+    expectTypeOf(PhoneField.at("phone")).toEqualTypeOf<readonly Part<typeof limit, { readonly phone: string }>[]>();
     forms.define({ defaultValues: { phone: "", age: 1 } }, PhoneField.at("phone"));
     // @ts-expect-error: age holds a number
     forms.define({ defaultValues: { phone: "", age: 1 } }, PhoneField.at("age"));

@@ -1,6 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type { HasSchemaPlugin, Needs, Part, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
+import type { HasSchemaPlugin, Needs, NamedParts, Part, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidatorSet, FormValidatorSet, ValidateTiming } from "./validator.js";
@@ -305,7 +305,7 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
  * read `D`, and a schema plugin among `D` would make it the schema's input
  * rather than its `Draft`. Internal.
  */
-export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = Parts<
+export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = NamedParts<
   PluginNames<Combined<P, D>>,
   NoInfer<DefinedValue<V, S, P>>
 >;

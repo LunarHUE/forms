@@ -552,10 +552,11 @@ export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<
     };
 
 /**
- * Hooks for one place: a field type's value, a fieldset, or a form. `N` is
- * the plugin it needs, or `never` for a part that needs none, and `V` the
- * value it fits. A part fits a place whose value is assignable to `V`, so a
- * `Part<never, string>` fits string fields only.
+ * Hooks for one place: a field type's value, a fieldset, or a form. `P` is
+ * the factory of the plugin it needs, as `Part<typeof limit, string>`, or
+ * `never` for a part that needs none, and `V` the value it fits. A part fits
+ * a place whose value is assignable to `V`, so a `Part<never, string>` fits
+ * string fields only. `Part` with no arguments is any part.
  *
  * `part(plugin, config)` makes a part of a plugin: the plugin's `part` hook
  * gets the config, and the plugin must be in the form's plugins. `part`,
@@ -570,7 +571,10 @@ export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<
  * fieldset (`forms.fieldset(Billing, ruled(...))`), or after a definition's
  * config (`define(config, ruled(...))`).
  */
-export interface Part<N extends string = string, V = never> {
+export type Part<P = unknown, V = never> = NamedPart<unknown extends P ? string : NamesOf<P>, V>;
+
+/** A part as the types track it: by the name of the plugin it needs. See `Part`. Internal. */
+export interface NamedPart<N extends string = string, V = never> {
   /** The name of the plugin whose `part` hook gets the config. Undefined for a part with hooks of its own. */
   readonly plugin?: N;
   /** What the plugin's `part` hook gets. */
@@ -589,11 +593,14 @@ export interface Part<N extends string = string, V = never> {
   readonly "~host"?: CreateHost;
 }
 
-/** One part or a list of them, as `define` takes them after the config. */
-export type Parts<N extends string = string, V = never> = Part<N, V> | readonly Part<N, V>[];
+/** One part or a list of them, as `define` takes them after the config. `P` is as on `Part`. */
+export type Parts<P = unknown, V = never> = Part<P, V> | readonly Part<P, V>[];
+
+/** One part or a list of them, by plugin name. Internal. */
+export type NamedParts<N extends string = string, V = never> = NamedPart<N, V> | readonly NamedPart<N, V>[];
 
 /** The plugin names the parts in `P` need. Internal. */
-export type PartNames<P> = P extends readonly (infer T)[] ? PartNames<T> : P extends Part<infer N> ? N : never;
+export type PartNames<P> = P extends readonly (infer T)[] ? PartNames<T> : P extends NamedPart<infer N> ? N : never;
 
 /** The value type `{ a: { b: V } }` for dotted name `"a.b"`, what a part pinned at that name fits. Internal. */
 export type Nested<K extends string, V> = K extends `${infer H}.${infer T}` ? { readonly [P in H]: Nested<T, V> } : { readonly [P in K]: V };

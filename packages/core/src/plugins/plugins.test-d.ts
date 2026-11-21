@@ -28,7 +28,9 @@ const upload = uploads();
 
 const required = (value: string) => (value ? undefined : { message: "Required" });
 
-const tagged = (prefix: string): Part<"tag", string> => ({ plugin: "tag", config: { prefix } });
+/** A plugin whose parts take a prefix. */
+const prefixes = definePlugin({ name: "tag", part: (_ctx, _config: { readonly prefix: string }) => ({}) });
+const tagged = (prefix: string): Part<typeof prefixes, string> => part(prefixes, { prefix });
 const counting = () => definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) })();
 
 describe("plugin types", () => {
@@ -146,7 +148,7 @@ describe("plugin types", () => {
     expectTypeOf(tag.name).toEqualTypeOf<"tag">();
     // @ts-expect-error The config needs a prefix.
     part(tags, {});
-    const pinned: Part<"tag", { readonly a: string }> = { ...part<typeof tags, { readonly a: string }>(tags, { prefix: "#" }), path: "a" };
+    const pinned: Part<typeof tags, { readonly a: string }> = { ...part<typeof tags, { readonly a: string }>(tags, { prefix: "#" }), path: "a" };
     createFormsCore({ plugins: [tag] }).define({ defaultValues: { a: "" } }, pinned);
     // @ts-expect-error the form has no tag()
     createFormsCore().define({ defaultValues: { a: "" } }, pinned);

@@ -12,6 +12,7 @@ import type {
   HasChoice,
   Nested,
   Needs,
+  NamedPart,
   Part,
   Path,
   PluginsOf,
@@ -207,7 +208,7 @@ export interface FieldType<C extends FieldComponentType = FieldComponentType, N 
    * the store is made: `forms.define(config, PhoneField.at("phone"))`. Use
    * it for a field that may not render before its value matters.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, FieldValueOf<C>>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, FieldValueOf<C>>>[];
 }
 
 /** The app's field components by the name they get on every scope: plain components or `defineField(...)` results. */
@@ -438,7 +439,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
    * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
    * for a fieldset that may not render before its rules matter.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, V>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, V>>[];
 }
 
 /**

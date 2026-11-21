@@ -18,7 +18,7 @@ const tagger = definePlugin({
     return { beforeWrite: (write) => (typeof write.value === "string" && write.cause !== "attach" ? `${write.value}${suffix}` : write.value) };
   },
 });
-const tag = (suffix: string, path?: string, seen?: Seen): Part<"tag", unknown> => ({ ...part(tagger, { suffix, ...(seen && { seen }) }), ...(path && { path }) });
+const tag = (suffix: string, path?: string, seen?: Seen): Part<typeof tagger, unknown> => ({ ...part(tagger, { suffix, ...(seen && { seen }) }), ...(path && { path }) });
 
 describe("attach", () => {
   it("runs attach once per path, with the context's path", () => {
@@ -33,7 +33,7 @@ describe("attach", () => {
   it("attaches a pinned copy of a part once with the part", () => {
     const seen: { path: Path; config: unknown }[] = [];
     const tagged = tag("!", undefined, seen);
-    const pinned: Part<"tag", unknown> = { ...tagged, path: "a", "~of": tagged };
+    const pinned: Part<typeof tagger, unknown> = { ...tagged, path: "a", "~of": tagged };
     const { store } = testStore({ defaultValues: { a: "" }, plugins: [arrays(), tagger()] }, pinned);
     attach(store.root.at("a"), [tagged]);
     expect(seen).toEqual([{ path: ["a"], config: "!" }]);

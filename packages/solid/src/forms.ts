@@ -21,6 +21,8 @@ import type {
   Needs,
   Nested,
   ObjectHandle,
+  NamedPart,
+  NamedParts,
   Part,
   Parts,
   PluginApis,
@@ -178,7 +180,7 @@ export interface FieldType<C extends AnyComponent = AnyComponent, N extends stri
    * the store is made: `forms.define(config, PhoneField.at("phone"))`. Use
    * it for a field that may not render before its value matters.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, PartValueOf<C>>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, PartValueOf<C>>>[];
 }
 
 /** The field components an app registers, by the name they get on every scope: plain components or `defineField(...)` results. */
@@ -590,7 +592,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponents = NoFieldC
    * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
    * for a fieldset that may not render before its rules matter.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, V>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, V>>[];
 }
 
 /**
@@ -669,7 +671,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
      * With parts, name their plugins' factories too:
      * `forms.fieldset<Address, typeof rules>(ruled(...))`.
      */
-    <V, Q = never>(...parts: readonly Parts<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+    <V, Q = never>(...parts: readonly Parts<Q, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
     /**
      * The shape from a schema: the `Draft` of its input when an installed
      * schema plugin accepts it, as `define` types it, and the input itself
@@ -677,7 +679,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
      */
     <S extends StandardSchemaV1, N extends string = never>(
       schema: S,
-      ...parts: readonly Parts<N, SchemaValue<S, P>>[]
+      ...parts: readonly NamedParts<N, SchemaValue<S, P>>[]
     ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   };
 }
