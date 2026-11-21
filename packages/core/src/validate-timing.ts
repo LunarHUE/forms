@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { isPlainObject } from "./store/tree.js";
-import { isSchema, isThenable, type Tags } from "./store/validate/inputs.js";
+import { isSchema, isThenable, stepSlot, type StepHook, type Tags } from "./store/validate/inputs.js";
 import type { SchemaInput, ValidateTiming, WrappedSchema } from "./validator.js";
 import type { PlatformAbortSignal } from "./value.js";
 
@@ -96,7 +96,10 @@ export function recheckOnSubmit(check: object): unknown {
 }
 
 /** What a validator gets besides the value, as the wrappers need it. */
-type Ctx = { readonly signal: PlatformAbortSignal };
+type Ctx = { readonly signal: PlatformAbortSignal; readonly [stepSlot]?: StepHook };
+
+/** Direct `pipe()` functions mapped to their flattened checks, so nested pipes share one step index space. */
+const pipedSteps = new WeakMap<object, readonly AnyCheck[]>();
 
 /** A check in a `pipe` with function checks: a validator, a schema, or either wrapped. */
 type Step<V, C, R> = ((value: V, ctx: C) => R | Promise<R>) | StandardSchemaV1<V, unknown> | WrappedSchema<V>;
@@ -163,18 +166,23 @@ export function pipe<V, C extends Ctx, A, B, D, F, G>(
 // Past five checks, every check's result type must fit one `R`.
 export function pipe<V, C extends Ctx, R>(...steps: readonly Step<V, C, R>[]): Piped<V, C, R>;
 export function pipe(...steps: object[]): unknown {
-  const checks = steps.map(checkOf);
-  return Object.assign(
+  const checks = steps.flatMap((step) => pipedSteps.get(step) ?? [checkOf(step)]);
+  const run = Object.assign(
     (value: unknown, ctx: Ctx) => {
       // Set once submit or `validate()` flushes the run, so a `debounced` check reached later skips its wait.
       let flushed = false;
       let flush: (() => void) | undefined;
+      const onStep = ctx[stepSlot];
       // Runs the checks from `index` on. Sync until a check returns a promise.
       const from = (index: number): unknown => {
         const check = checks[index];
         if (!check) return undefined;
         const next = (answer: unknown) => {
-          if (!failed(answer, check["~schema"])) return from(index + 1);
+          if (!failed(answer, check["~schema"])) {
+            onStep?.(index, false);
+            return from(index + 1);
+          }
+          onStep?.(index, true);
           // Marks a schema check's issues, so they go through `mapError` in a pipe whose other checks return errors.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           return check["~schema"] ? { "~schema": true, issues: (answer as StandardSchemaV1.FailureResult).issues } : answer;
@@ -199,4 +207,6 @@ export function pipe(...steps: object[]): unknown {
     // A pipe of schemas returns schema results, so it reads as a schema.
     { "~schema": checks.every((check) => check["~schema"]), "~recheck": checks.some((check) => check["~recheck"]) },
   );
+  pipedSteps.set(run, checks);
+  return run;
 }
