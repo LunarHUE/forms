@@ -26,6 +26,11 @@ export interface FieldPieces {
    * Records the element for focus after an invalid submit. On a native
    * input, textarea or select it also puts back what React rendered when the
    * browser restored what the user typed before a reload. See `FieldRef`.
+   *
+   * Under React Compiler, take it out of the field before JSX passes it:
+   * `const { ref } = field`, then `ref={ref}`. With `ref={field.ref}` the
+   * Compiler treats the whole field object as a ref and bails out on the
+   * component.
    */
   readonly ref: FieldRef;
 }

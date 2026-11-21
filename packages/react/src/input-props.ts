@@ -88,7 +88,10 @@ const textChange =
  * are in `shownErrors`. The callbacks keep their identity for the life of the
  * handle, and the props object changes only when the field object does. A
  * component library's primitives usually own their ids and aria, so bind
- * those with the field's pieces instead.
+ * those with the field's pieces instead. Take `ref` out of the field before
+ * passing it, `const { ref } = field`, or get it from `useFieldRef(handle)`.
+ * React Compiler reads `ref={field.ref}` as making `field` a ref, and bails
+ * out on every other read of `field` during render.
  */
 export const inputProps = (field: FieldObjectLike<string | null | undefined>, options?: TextInputOptions): TextInputProps => {
   const type = options?.type ?? "text";

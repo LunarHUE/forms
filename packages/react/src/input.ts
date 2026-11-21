@@ -175,7 +175,9 @@ export interface FieldObjectLike<V = unknown> extends FieldSnapshot<unknown, unk
 /**
  * Returns a ref callback that records an element for a field, for custom
  * inputs bound without the props functions. The callback keeps its identity for
- * the life of the handle.
+ * the life of the handle. It is the same function as the field object's
+ * `ref`. Under React Compiler, pass it instead of `field.ref`, which makes
+ * the Compiler treat `field` as a ref.
  */
 // It reads no state, so it is a plain lookup.
 export const useFieldRef = (handle: HandleLike): FieldRef => refFor(handle);
