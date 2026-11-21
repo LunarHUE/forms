@@ -46,7 +46,7 @@ It needs two repository secrets:
 
 Create the project once as a Direct Upload project, with `main` as its production branch: `bunx wrangler pages project create lunarhue-forms-docs --production-branch=main`. Then point `forms.lunarhue.dev` at it under the project's Custom domains.
 
-Both deploy workflows run `wrangler pages deploy dist` from this folder, so Wrangler reads `wrangler.jsonc` and bundles `functions/` with the upload.
+Both deploy workflows run `wrangler pages deploy dist` from this folder, so Wrangler reads `wrangler.jsonc` and bundles `functions/` with the upload. To deploy `main` (or another ref) to production without cutting a release, run `.github/workflows/docs-production.yml` manually with the `ref` input (for example `gh workflow run docs-production.yml -f ref=main`).
 
 `build.format: "file"` writes `errors.html`, `react/install.html` and so on. Pages serves `errors.html` at `/errors` without a redirect and redirects `/errors.html` to `/errors`, so the extensionless URLs the site links to need no `_redirects` or `_headers` file. `404.html` at the root is Pages' not-found page.
 
