@@ -133,8 +133,9 @@ and attach at the root when the store is made. It returns:
 
 - `store`: the store, typed as an app's would be, so `store.plugins.<name>`
   has your plugin's API. Drive it as an app would. `store.root.at("name")`
-  writes, `store.submit()` runs `beforeSubmit` and `onSubmitted`, and
-  `store.reset()` or a field's `reset()` runs `onReset`.
+  writes, `store.submit()` runs `beforeSubmit` and `onSubmitted`,
+  `store.reset()` or a field's `reset()` runs `onReset`, and a field's
+  `handleBlur()` runs `onBlur`.
 - `records`: the write records each timing delivered, as `records.sync`,
   `records.deferred` and `records.idle`. Three recording plugins run after
   yours to fill them. Empty one with `records.sync.length = 0`.
