@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "include": [
+    "/_/t",
+    "/llms.txt",
+    "/llms-full.txt",
+    "/agents.txt",
+    "/errors.md",
+    "/react/*",
+    "/solid/*"
+  ],
+  "exclude": [
+    "/_astro/*",
+    "/pagefind/*",
+    "/compare/*",
+    "/lunarhue-forms-sizes.json",
+    "/sitemap.xml",
+    "/robots.txt"
+  ]
+}

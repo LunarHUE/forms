@@ -103,8 +103,13 @@ jobs:
         run: bun install --frozen-lockfile
       - if: steps.release.outputs.deploy == 'true'
         working-directory: apps/docs
+        env:
+          # Loads Cloudflare Web Analytics' beacon when the secret is set.
+          CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
         run: bun run build
 
+      # From apps/docs, for wrangler.jsonc and functions/, with Bun installing
+      # Wrangler (docs-deploy.yml says why).
       - id: candidate
         if: steps.release.outputs.deploy == 'true'
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
@@ -112,7 +117,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.165.0"
-          command: pages deploy apps/docs/dist --project-name=lunarhue-forms-docs --branch=release-candidate
+          workingDirectory: apps/docs
+          packageManager: bun
+          command: pages deploy dist --project-name=lunarhue-forms-docs --branch=release-candidate
 
       # The deployment's own URL, not the alias, so the test reads exactly this build.
       - if: steps.release.outputs.deploy == 'true'
@@ -144,7 +151,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.165.0"
-          command: pages deploy apps/docs/dist --project-name=lunarhue-forms-docs --branch=main
+          workingDirectory: apps/docs
+          packageManager: bun
+          command: pages deploy dist --project-name=lunarhue-forms-docs --branch=main
 
       - if: steps.release.outputs.deploy == 'true'
         env:

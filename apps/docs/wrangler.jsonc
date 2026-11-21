@@ -1,0 +1,10 @@
+// Cloudflare Pages config for `wrangler pages deploy`, which the deploy
+// workflows run from this folder. It also picks up functions/ here, and
+// dist/_routes.json (from public/) limits which paths run them. The dataset
+// holds the docs' analytics (functions/_analytics.ts).
+{
+  "name": "lunarhue-forms-docs",
+  "compatibility_date": "2026-11-01",
+  "pages_build_output_dir": "./dist",
+  "analytics_engine_datasets": [{ "binding": "DOCS_ANALYTICS", "dataset": "lunarhue_forms_docs" }]
+}

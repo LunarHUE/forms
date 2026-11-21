@@ -15,6 +15,8 @@
  *                html[data-framework] and saves it as the last-used framework.
  *   noindex      adds robots noindex (the 404 page). Every page of the next
  *                site gets it anyway, and no canonical link.
+ *   status       the HTTP status the page is served with, as html[data-status].
+ *                Only the 404 page sets it; the pageview tracker reads it.
  *   meta         canonical path, Markdown copy, og:type, modified date and
  *                JSON-LD (lib/seo.ts). The canonical defaults to the page's
  *                own URL.
@@ -33,6 +35,8 @@
  * page also reads right without JavaScript.
  *
  * lib/edge-fade.ts fades the edges of scroll areas marked `data-edge-fade`.
+ * lib/analytics.ts reports pageviews on the public sites. Cloudflare Web
+ * Analytics' beacon loads only when the build has CF_WEB_ANALYTICS_TOKEN.
  */
 import { ClientRouter } from "astro:transitions";
 import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
@@ -41,7 +45,7 @@ import geistMonoLatin from "@fontsource-variable/geist-mono/files/geist-mono-lat
 import type { Framework } from "@/lib/frameworks";
 import { bootScript } from "@/lib/boot";
 import { jsonForScript, type PageMeta } from "@/lib/seo";
-import { CHANNEL, SITE_NAME } from "@/lib/site";
+import { CF_WEB_ANALYTICS_TOKEN, CHANNEL, SITE_NAME } from "@/lib/site";
 import { DEFAULT_STATE } from "@/lib/store";
 import "@/styles/global.css";
 
@@ -50,11 +54,20 @@ interface Props {
   description?: string;
   framework?: Framework;
   noindex?: boolean;
+  status?: number;
   meta?: PageMeta;
   class?: string;
 }
 
-const { title, description, framework, noindex: pageNoindex = false, meta = {}, class: bodyClass } = Astro.props;
+const {
+  title,
+  description,
+  framework,
+  noindex: pageNoindex = false,
+  status,
+  meta = {},
+  class: bodyClass,
+} = Astro.props;
 // The next site documents unreleased APIs, so search engines only see production.
 const noindex = pageNoindex || CHANNEL === "next";
 const fullTitle = title === SITE_NAME ? title : `${title} · ${SITE_NAME}`;
@@ -72,6 +85,7 @@ const canonical = absolute(meta.canonical ?? pathname);
   data-pm={DEFAULT_STATE.pm}
   data-devtools="on"
   data-framework={framework}
+  data-status={status}
 >
   <head>
     <meta charset="utf-8" />
@@ -102,15 +116,28 @@ const canonical = absolute(meta.canonical ?? pathname);
     <link rel="preload" href={geistMonoLatin} as="font" type="font/woff2" crossorigin />
     <script is:inline set:html={bootScript(framework ?? null)} />
     <ClientRouter />
+    {
+      CF_WEB_ANALYTICS_TOKEN && (
+        <script
+          is:inline
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN, spa: true })}
+        />
+      )
+    }
     <slot name="head" />
   </head>
   <body class={bodyClass}>
     <slot />
     <script>
-      // Soft edges on scroll areas. Bundled, so it runs once and outlives page swaps.
+      // Soft edges on scroll areas and pageviews. Bundled, so it runs once and
+      // outlives page swaps.
+      import { startAnalytics } from "@/lib/analytics";
       import { startEdgeFade } from "@/lib/edge-fade";
 
       startEdgeFade();
+      startAnalytics();
     </script>
   </body>
 </html>

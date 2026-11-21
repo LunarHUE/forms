@@ -12,7 +12,7 @@
  *   </Shell>
  *
  * Props:
- *   title, description, noindex, meta   passed to Layout.
+ *   title, description, noindex, status, meta   passed to Layout.
  *   framework     the page's framework. Leave it out on framework-free pages
  *                 (errors, 404): Shell then builds a sidebar per framework
  *                 itself and shows the last-used one (React by default).
@@ -49,6 +49,7 @@ interface Props {
   title: string;
   description?: string;
   noindex?: boolean;
+  status?: number;
   meta?: PageMeta;
   framework?: Framework;
   version?: string;
@@ -61,6 +62,7 @@ const {
   title,
   description,
   noindex,
+  status,
   meta,
   framework,
   version = LATEST_VERSION,
@@ -88,7 +90,14 @@ if (framework) {
 }
 ---
 
-<Layout title={title} description={description} framework={framework} noindex={noindex} meta={meta}>
+<Layout
+  title={title}
+  description={description}
+  framework={framework}
+  noindex={noindex}
+  status={status}
+  meta={meta}
+>
   <slot name="head" slot="head" />
   <a
     href="#content"
