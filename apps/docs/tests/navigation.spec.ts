@@ -83,13 +83,11 @@ test("the header and sidebar persist, and the sidebar mark moves", async ({ page
   await markLoaded(page);
   const header = await page.locator("astro-island:has([aria-label='Forms devtools'])").elementHandle();
   const nav = sidebar(page).locator("[data-sidebar-scroll]");
-  await nav.evaluate((element) => element.scrollTo(0, 120));
-  const dirty = sidebar(page).getByRole("link", { name: "Dirty" });
-  await dirty.scrollIntoViewIfNeeded();
+  await nav.evaluate((element) => element.scrollTo(0, 60));
   const scroll = await nav.evaluate((element) => element.scrollTop);
-  expect(scroll).toBeGreaterThan(0);
+  expect(scroll).toBe(60);
 
-  await dirty.click();
+  await sidebar(page).getByRole("link", { name: "Dirty" }).click();
   await page.waitForURL("**/react/plugins/dirty");
   await stillLoaded(page);
 
