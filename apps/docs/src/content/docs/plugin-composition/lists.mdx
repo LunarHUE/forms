@@ -13,13 +13,13 @@ about. Both lists below use one component.
 
 ## A generic list
 
-Type the prop as `ArrayHandle<T[], FormError, "arrays">`, where `"arrays"`
+Type the prop as `ArrayHandle<T[], typeof arrays>`, where `typeof arrays`
 says it needs the [`arrays()`](../plugins/arrays) plugin. The component can't
 build the keys it doesn't know, so it takes a function that makes a full item:
 
 ```tsx framework=react
 interface NamedListProps<T extends Named> {
-  items: ArrayHandle<T[], FormError, "arrays">;
+  items: ArrayHandle<T[], typeof arrays>;
   create: (base: Named) => T;
 }
 
@@ -40,7 +40,7 @@ function NamedList<T extends Named>({ items, create }: NamedListProps<T>) {
 
 ```tsx framework=solid
 interface NamedListProps<T extends Named> {
-  items: ArrayHandle<T[], FormError, "arrays">;
+  items: ArrayHandle<T[], typeof arrays>;
   create: (base: Named) => T;
 }
 

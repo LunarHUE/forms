@@ -1,4 +1,5 @@
-import { type ArrayHandle, type FormError, type HandleOf, Items } from "@lunarhue/forms-solid";
+import { type ArrayHandle, type HandleOf, Items } from "@lunarhue/forms-solid";
+import type { arrays } from "@lunarhue/forms-solid/plugins";
 import { type Named, NamedFieldset } from "./forms";
 
 interface NameFieldProps<T extends Named> {
@@ -11,7 +12,7 @@ function NameField<T extends Named>(props: NameFieldProps<T>) {
 }
 
 interface NamedListProps<T extends Named> {
-  readonly items: ArrayHandle<T[], FormError, "arrays">;
+  readonly items: ArrayHandle<T[], typeof arrays>;
   readonly create: (base: Named) => T;
 }
 
