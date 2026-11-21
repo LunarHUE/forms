@@ -63,6 +63,41 @@ describe("zustand types", () => {
     zustand(app, { isEqual: Object.is });
   });
 
+  it("infers a slice that also passes incoming and initial", () => {
+    expectTypeOf(
+      zustand(app, {
+        select: (state) => {
+          expectTypeOf(state).toEqualTypeOf<App>();
+          return state.profile;
+        },
+        update: (value, state) => {
+          expectTypeOf(value).toEqualTypeOf<Profile>();
+          expectTypeOf(state).toEqualTypeOf<App>();
+          return { profile: value };
+        },
+        isEqual: (previous, next) => {
+          expectTypeOf(previous).toEqualTypeOf<Profile>();
+          expectTypeOf(next).toEqualTypeOf<Profile>();
+          return previous.name === next.name;
+        },
+        incoming: "rebase",
+        initial: "form",
+      }),
+    ).toEqualTypeOf<BindPlugin<Profile>>();
+    expectTypeOf(
+      zustand(app, { select: (state) => state.count, update: (count) => ({ count }), incoming: "rebase" }),
+    ).toEqualTypeOf<BindPlugin<number>>();
+    expectTypeOf(
+      zustand(app, { select: (state) => state.count, update: (count) => ({ count }), initial: "form" }),
+    ).toEqualTypeOf<BindPlugin<number>>();
+  });
+
+  it("binds the whole state with incoming and initial", () => {
+    expectTypeOf(zustand(whole, { incoming: "rebase", initial: "form" })).toEqualTypeOf<BindPlugin<Profile>>();
+    // @ts-expect-error The whole state has no `isEqual`, with other options too.
+    zustand(whole, { incoming: "rebase", initial: "form", isEqual: Object.is });
+  });
+
   it("needs the form value type to be the bound type, on an instance", () => {
     expectTypeOf(profile.createStore(undefined, { plugins: [zustand(whole)] }).id).toBeString();
     profile.createStore(undefined, {

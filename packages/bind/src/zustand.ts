@@ -36,18 +36,21 @@ export interface ZustandSliceOptions<S, T> extends ZustandOptions {
   readonly isEqual?: (previous: T, next: T) => boolean;
 }
 
-/**
- * Binds the form value to a zustand store's whole state. A form write merges
- * the form value into the state with `setState`, so give the store no
- * actions, or bind a slice.
- */
-export function zustand<S>(store: ZustandStore<S>, options?: ZustandOptions): BindPlugin<S>;
+// The slice overload comes first. Declared after the whole-state one, it lost
+// any slice call that also passed `incoming` or `initial`: TypeScript picked
+// the whole-state overload and left `select`, `update` and `isEqual` untyped.
 /**
  * Binds the form value to the slice of a zustand store's state that `select`
  * picks. A form write calls `setState(update(value, state))`. A store change
  * whose slice `isEqual` finds the same doesn't reach the form.
  */
 export function zustand<S, T>(store: ZustandStore<S>, options: ZustandSliceOptions<S, T>): BindPlugin<T>;
+/**
+ * Binds the form value to a zustand store's whole state. A form write merges
+ * the form value into the state with `setState`, so give the store no
+ * actions, or bind a slice.
+ */
+export function zustand<S>(store: ZustandStore<S>, options?: ZustandOptions): BindPlugin<S>;
 export function zustand<S>(
   store: ZustandStore<S>,
   {
