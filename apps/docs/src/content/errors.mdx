@@ -68,11 +68,24 @@ requirements.
 
 Thrown when the store is made, or when a field type or fieldset attaches
 its parts. A plugin's `requires` names a plugin the form doesn't have, or
-a part, such as `masked(...)` on a field type, needs a plugin the form
+a part, such as `ruled(...)` on a fieldset, needs a plugin the form
 doesn't have. The types report this too, so it shows up where the types
 don't reach, such as a `define` call with a cast. It is development only:
 a production build skips the check, and a part with no plugin does nothing.
 Add the plugin to the form's `plugins` or to the definition's.
+
+<a id="core:parts:late"></a>
+
+### `parts:late`
+
+> A fieldset made after this form's store attached parts the store can't run.
+
+Thrown when a fieldset attaches parts that need no plugin, such as
+`transform(...)`, to a store that has no plugin with hooks and was made
+before the fieldset. A store sets up its hooks when it is made, from its
+plugins and the parts it knows of then. Make the fieldset at module scope,
+next to `createForms`. It is development only: a production build skips
+the check, and the parts do nothing.
 
 <a id="core:plugins:write"></a>
 

@@ -15,11 +15,15 @@ import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
 import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
-import type { PartsKit } from "./parts.js";
+import type { ArrayCommands, ArrayHost } from "./array-records.js";
+import type { PartsHost, PartsKit } from "./parts.js";
 import type { Validation } from "./runner.js";
 import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 import { type HostLink, hosts } from "./hosts.js";
+import { refuse } from "./refuse.js";
+
+export { refuse } from "./refuse.js";
 
 // Core has no DOM or node types, so this declares the globals the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
@@ -27,9 +31,6 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** How many rounds of plugin writes one batch may set off before the host stops them. */
 const maxRounds = 10;
-
-/** Returned from `beforeWrite` to stop the write. */
-export const refuse: unique symbol = Symbol("refuse");
 
 // The default report: throw on a later task, so the error reaches the page's
 // error handler without breaking the write that is running.
@@ -308,7 +309,11 @@ export function createPluginHost(
     };
 
   const valueOf = (path: Path) => raw.getSnapshot(path).value;
-  const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
+  // The opaque slot `arrays()` fills: its array code, its keys code and the records of its commands.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const recordArrays = (plugins.find((plugin) => plugin["~arrays"])?.["~arrays"] as readonly unknown[] | undefined)?.[2] as
+    | ((host: ArrayHost) => ArrayCommands)
+    | undefined;
 
   /**
    * Runs `input` through each `beforeWrite` the write at `path` reaches.
@@ -345,44 +350,8 @@ export function createPluginHost(
         push({ type: "value", path, before, after: value, cause });
         return true;
       }),
-    // The row's key exists only once it is in, so `beforeWrite` sees the row
-    // after the insert, as a write at the row's path. A refused row comes out again.
-    insert: (path, index, input) =>
-      recorded(() => {
-        const before = valueOf(path);
-        let key = raw.insert(path, index, input);
-        let item = input;
-        if (key !== undefined) {
-          const row = [...path, key];
-          item = transform(row, input, undefined);
-          if (item === refuse) {
-            raw.remove(path, keysAt(path).indexOf(key));
-            key = undefined;
-          } else if (!Object.is(item, input)) raw.set(row, item);
-        }
-        if (key !== undefined)
-          push({ type: "insert", path, before, after: valueOf(path), index: keysAt(path).indexOf(key), key, item, cause });
-        return key;
-      }),
-    remove: (path, index) =>
-      recorded(() => {
-        const before = valueOf(path);
-        const key = raw.remove(path, index);
-        if (key !== undefined) {
-          const item: unknown = Array.isArray(before) ? before[index] : undefined;
-          push({ type: "remove", path, before, after: valueOf(path), index, key, item, cause });
-        }
-        return key;
-      }),
-    move: (path, from, to) =>
-      recorded(() => {
-        const before = valueOf(path);
-        const key = keysAt(path)[from];
-        if (!raw.move(path, from, to)) return false;
-        const at = key === undefined ? to : keysAt(path).indexOf(key);
-        push({ type: "move", path, before, after: valueOf(path), from, to: at, cause });
-        return true;
-      }),
+    // `arrays()` brings the array commands' records. Without it they throw `arrays:missing`.
+    ...recordArrays?.({ raw, recorded, push, transform, cause: () => cause }),
     setTouched: flag("touched", (path, on) => raw.setTouched(path, on)),
     setDisabled: flag("disabled", (path, on) => raw.setDisabled(path, on)),
     setReadOnly: flag("readOnly", (path, on) => raw.setReadOnly(path, on)),
@@ -403,7 +372,7 @@ export function createPluginHost(
       path: at.path,
       plugins: apis,
       installed,
-      parts: (path) => listParts?.(attached, path) ?? [],
+      parts: (path) => kit?.list(path) ?? [],
       setMeta: (path, value) => later(at, () => raw.setMeta(name, value, path)),
       setFormMeta: (value) => later(at, () => raw.setMeta(name, value)),
       // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
@@ -453,18 +422,14 @@ export function createPluginHost(
     }
   };
 
-  // The parts code, from the first plugin that brings it, as every plugin
-  // with `part` does. Made in `start`, once the baseline is there.
-  const createParts = plugins.find((plugin) => plugin["~parts"])?.["~parts"];
+  // The parts code, from the first part that brings it, as every part
+  // does. Made when parts first attach, which is after `start`.
   let kit: PartsKit<Attached> | undefined;
-  // What `ctx.parts` returns, from the first plugin that brings it.
-  const listParts = plugins.find((plugin) => plugin["~list"])?.["~list"];
+  let lent: PartsHost<Attached>;
 
   const attach = (base: Path, parts: readonly Part[], now?: boolean) => {
-    if (kit) kit.attach(base, parts, now);
-    else if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && parts[0]) {
-      throw new Error(problem("plugins:missing", parts[0].plugin));
-    }
+    kit ??= parts.find((part) => part["~parts"])?.["~parts"]?.(lent);
+    kit?.attach(base, parts, now);
   };
 
   // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
@@ -482,7 +447,7 @@ export function createPluginHost(
       validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
-      kit = createParts?.({ raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call });
+      lent = { raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call };
       // Setup's writes wait until every plugin's setup has run. They are the
       // store's starting state, so the server snapshot shows them.
       quietly(() => {

@@ -1,5 +1,5 @@
 import type { FieldSnapshot, Part, Path, Plugin, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin, dirty, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
+import { definePlugin, dirty, history, type HistoryMeta, part } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore, fieldValidators } from "../index.js";
 
@@ -145,8 +145,8 @@ describe("plugin types", () => {
     const tag = tags();
     expectTypeOf(tag.name).toEqualTypeOf<"tag">();
     // @ts-expect-error The config needs a prefix.
-    tags.part({});
-    const pinned: Part<"tag", { readonly a: string }> = { ...tags.part<{ readonly a: string }>({ prefix: "#" }), path: "a" };
+    part(tags, {});
+    const pinned: Part<"tag", { readonly a: string }> = { ...part<typeof tags, { readonly a: string }>(tags, { prefix: "#" }), path: "a" };
     createFormsCore({ plugins: [tag] }).define({ defaultValues: { a: "" } }, pinned);
     // @ts-expect-error the form has no tag()
     createFormsCore().define({ defaultValues: { a: "" } }, pinned);

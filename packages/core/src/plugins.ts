@@ -2,7 +2,6 @@ import type { PluginFactory, RequiredPlugins, Requirements } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import { defineWith, type PluginDefinition } from "./store/define.js";
 import { hosts } from "./store/hosts.js";
-import { createParts, listParts } from "./store/parts.js";
 import { createTiming } from "./store/timing.js";
 
 export { refuse } from "./store/plugins.js";
@@ -15,10 +14,11 @@ export { refuse } from "./store/plugins.js";
  * `setup` takes after its context, so a plugin whose `setup` takes none is
  * installed as `autosave()`.
  *
- * The plugin carries the code that runs plugin hooks, delivers `deferred`
- * and `idle` records and attaches parts. `dirty()` and the schema plugins
- * are built without it, so an app that installs only those doesn't bundle
- * it.
+ * The plugin carries the code that runs plugin hooks and delivers
+ * `deferred` and `idle` records. `dirty()` and the schema plugins are built
+ * without it, so an app that installs only those doesn't bundle it. The
+ * code that attaches parts comes with `part`, so a plugin with only `setup`
+ * doesn't bring it.
  *
  * A plugin keeps meta when it gives a starting value: `initialMeta` for its
  * meta on a field, `initialFormMeta` for its meta on the form. The meta
@@ -28,8 +28,8 @@ export { refuse } from "./store/plugins.js";
  * another. Without a starting value it has no reader and can't set meta.
  *
  * Give `part` for hooks at the paths the plugin's parts attach at, and make
- * the parts with the factory's `part`, typed by the config the hook takes:
- * `limit.part<string>(10)`. Give `requires` for the plugins it needs, as
+ * the parts with `part(plugin, config)`, typed by the config the hook
+ * takes: `part(limit, 10)`. Give `requires` for the plugins it needs, as
  * factories: `requires: () => [dirty]`. Its context's store then has what
  * they add, such as `changes()`. Give `schema` to make a schema plugin,
  * which gives one library's schemas their default values. Validation needs
@@ -48,7 +48,7 @@ export function definePlugin<
   definition: PluginDefinition<A, N, M, F, S, R, O, C>,
   // NoInfer: a `plugins` list's element type must not pick the meta types, only the definition.
 ): PluginFactory<NoInfer<A>, NoInfer<N>, NoInfer<M>, NoInfer<F>, NoInfer<S>, RequiredPlugins<R>, NoInfer<O>, NoInfer<C>> {
-  return defineWith(definition, { "~timing": createTiming, "~parts": createParts, "~list": listParts });
+  return defineWith(definition, { "~timing": createTiming });
 }
 
 /**

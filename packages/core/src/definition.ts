@@ -1,6 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type { HasSchemaPlugin, Needs, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
+import type { HasSchemaPlugin, Needs, Part, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidatorSet, FormValidatorSet, ValidateTiming } from "./validator.js";
@@ -77,6 +77,11 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * task, where the page's error handler sees it.
    */
   readonly onPluginError?: PluginErrorHandler;
+  /**
+   * The parts of the adapter's field types and fieldsets, which may attach
+   * to any store this makes. A fieldset made later adds its own. Internal.
+   */
+  readonly "~parts"?: readonly Part[];
 }
 
 /** The context `onSubmit` gets. Each submit gets a new one. */

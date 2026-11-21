@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "plugins"
+    "plugins",
+    "text"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -41,6 +42,17 @@
       "require": {
         "types": "./dist/cjs/plugins/index.d.ts",
         "default": "./dist/cjs/plugins/index.js"
+      }
+    },
+    "./text": {
+      "@lunarhue/source": "./src/text/index.ts",
+      "import": {
+        "types": "./dist/esm/text/index.d.ts",
+        "default": "./dist/esm/text/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/text/index.d.ts",
+        "default": "./dist/cjs/text/index.js"
       }
     },
     "./plugins/testing": {
@@ -76,7 +88,7 @@
       "name": "./plugins, plugin authoring",
       "path": "dist/esm/plugins/index.js",
       "import": "{ definePlugin, flushPlugins, refuse }",
-      "limit": "3.5 kB"
+      "limit": "2.3 kB"
     },
     {
       "name": "./plugins dirty()",
@@ -97,10 +109,16 @@
       "limit": "2.85 kB"
     },
     {
-      "name": "./plugins mask()",
+      "name": "./plugins transform()",
       "path": "dist/esm/plugins/index.js",
-      "import": "{ mask }",
-      "limit": "3.5 kB"
+      "import": "{ transform }",
+      "limit": "3.15 kB"
+    },
+    {
+      "name": "./text masked()",
+      "path": "dist/esm/text/index.js",
+      "import": "{ masked }",
+      "limit": "3.35 kB"
     },
     {
       "name": "./plugins persist()",
@@ -118,7 +136,7 @@
       "name": "./plugins rules()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
-      "limit": "3.45 kB"
+      "limit": "2.3 kB"
     },
     {
       "name": "./plugins/testing",
@@ -127,9 +145,11 @@
       "limit": "12.05 kB"
     },
     {
-      "name": "history() + mask()",
-      "path": "dist/esm/plugins/index.js",
-      "import": "{ history, mask }",
+      "name": "history() + masked()",
+      "import": {
+        "dist/esm/plugins/index.js": "{ history }",
+        "dist/esm/text/index.js": "{ masked }"
+      },
       "limit": "4.0 kB"
     },
     {

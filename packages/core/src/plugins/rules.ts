@@ -1,7 +1,7 @@
 import type { FieldPath, Path } from "../path.js";
 import type { MetaHolder, PartContext, PluginFactory } from "../plugin.js";
 import { defineWith } from "../store/define.js";
-import { createParts } from "../store/parts.js";
+import { part } from "./part.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
 export interface RuleResult {
@@ -73,7 +73,6 @@ export const rules: PluginFactory<undefined, "rules", RulesMeta, never, never, r
       };
     },
   },
-  { "~parts": createParts },
 );
 
 /**
@@ -82,4 +81,4 @@ export const rules: PluginFactory<undefined, "rules", RulesMeta, never, never, r
  * Each rule gets the value where the part attaches, typed from the
  * fieldset or the definition it goes on. Needs `rules()`.
  */
-export const ruled = <V>(fields: RuleFields<V>) => rules.part<V>(fields);
+export const ruled = <V>(fields: RuleFields<V>) => part<typeof rules, V>(rules, fields);

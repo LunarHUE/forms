@@ -18,12 +18,14 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
  * rendering. Pass `now` from a framework whose listeners take writes while
  * it renders, as Solid's do, to attach now every time. What the parts write
  * makes no write records. In development, a part whose plugin the store
- * doesn't have throws `plugins:missing`.
+ * doesn't have throws `plugins:missing`, and a part with no plugin on a
+ * store with no plugin host throws `parts:late`.
  */
 export function attach(handle: { readonly store: object; readonly path: Path }, parts: readonly Part[], now?: boolean): void {
   const host = hosts.get(handle.store);
   if (host) host.attach(handle.path, parts, now);
   else if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && parts[0]) {
-    throw new Error(problem("plugins:missing", parts[0].plugin));
+    // A part with no plugin brings the host, so the store would have one had it known of the part when it was made.
+    throw new Error(parts[0].plugin ? problem("plugins:missing", parts[0].plugin) : problem("parts:late"));
   }
 }

@@ -5,7 +5,8 @@ import type { StoreCore } from "./core.js";
 import { displaySlot } from "./display.js";
 import { freeze } from "./freeze.js";
 import { reach } from "./handles.js";
-import { type AnyHooks, refuse } from "./plugins.js";
+import type { AnyHooks } from "./plugins.js";
+import { refuse } from "./refuse.js";
 import { related, setAt, valueAt } from "./tree.js";
 
 // Core has no node types, so this declares the global the development check reads.
@@ -13,11 +14,18 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** One set of hooks at a path, as the host keeps it. */
 export interface Placed {
-  readonly entry: { readonly plugin: AnyPlugin };
+  readonly entry: PlacedEntry;
   readonly path: Path;
   /** The part, or undefined for setup's hooks. */
   readonly part: Part | undefined;
   readonly hooks: AnyHooks;
+}
+
+/** The plugin a set of hooks belongs to, its place in hook order and the cause of its writes. */
+export interface PlacedEntry {
+  readonly plugin: AnyPlugin;
+  readonly rank: number;
+  readonly cause: WriteCause;
 }
 
 /** What the host lends the parts code. */
@@ -64,6 +72,8 @@ export interface PartsKit<At extends Placed> {
   down(at: At, path: Path, input: unknown, value: unknown, was: unknown, cause: WriteCause): unknown;
   /** Runs what new hooks of a part do when they arrive: `beforeWrite` on the value there, and `display`. */
   arrive(at: At): void;
+  /** The parts attached at `path` and above, in hook order, for `ctx.parts`. */
+  list(path: Path): readonly AttachedPart[];
 }
 
 /** Makes the parts code of one store's host. */
@@ -71,32 +81,39 @@ export type CreateParts = <At extends Placed>(host: PartsHost<At>) => PartsKit<A
 
 const keyOf = (path: Path) => JSON.stringify(path);
 
+/** The name parts with hooks of their own go by, in `ctx.parts`, errors and their write cause. */
+const own = "part";
+
 /**
  * The parts code: attaching, writes walked down to a part, starting values
- * and display. In a module of its own so plugins with only `setup` don't
- * bring it.
+ * and display. Every part brings it, so a form whose plugins have only
+ * `setup` doesn't.
  */
 export const createParts: CreateParts = (host) => {
   const { raw, attached, baseline } = host;
+  // Parts with hooks of their own run after every plugin's, in the order they attach.
+  const loose = { plugin: { name: own }, rank: Infinity, cause: freeze({ plugin: own }) };
   // The paths each part is attached at, so attaching twice does nothing. A
   // pinned copy counts as the part it copies.
   const done = new Map<Part, Set<string>>();
 
-  // Adds the hooks the part's plugin makes at `path`.
+  // Adds the hooks the part, or its plugin, makes at `path`.
   const add = (path: Path, part: Part) => {
-    const entry = host.entries.get(part.plugin);
-    if (!entry?.plugin.part) {
+    const { hooks, plugin: name = own } = part;
+    const found = host.entries.get(name);
+    const entry = hooks ? loose : found;
+    const make = hooks ?? found?.plugin.part;
+    if (!entry || !make) {
       // The types catch a missing plugin, so production skips the part.
-      if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", part.plugin));
+      if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", name));
       return;
     }
-    const { plugin } = entry;
     const value = () => raw.getSnapshot(path).value;
     host.add(entry, path, part, (ctx) => {
-      const at = (name: string) => reach(ctx.store, [...path, ...name.split(".")]);
-      // `part` takes the config its factory's `part` typed.
+      const at = (dotted: string) => reach(ctx.store, [...path, ...dotted.split(".")]);
+      // A plugin's `part` takes the config `part(plugin, config)` typed.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      return plugin.part?.({ ...ctx, value, at }, part.config as never) ?? {};
+      return make({ ...ctx, value, at }, part.config as never) ?? {};
     });
   };
 
@@ -185,18 +202,9 @@ export const createParts: CreateParts = (host) => {
       const shown = freeze({ display: hooks.display, afterInput: hooks.afterInput });
       host.later(at, () => raw.setMeta(displaySlot, shown, path));
     },
+    list: (path) =>
+      attached
+        .filter((other) => other.part && related(other.path, path) && other.path.length <= path.length)
+        .map((other) => ({ name: other.part!.plugin ?? own, path: other.path })),
   };
 };
-
-/**
- * What `ctx.parts(path)` returns: the parts attached at `path` and above,
- * in hook order. Only plugins that bring it, as `definePlugin`'s do, put it
- * in a bundle.
- */
-export const listParts = (attached: readonly Placed[], path: Path): readonly AttachedPart[] =>
-  attached
-    .filter((other) => other.part && related(other.path, path) && other.path.length <= path.length)
-    .map((other) => ({ name: other.part!.plugin, path: other.path }));
-
-/** Makes the list `ctx.parts` returns. */
-export type ListParts = typeof listParts;

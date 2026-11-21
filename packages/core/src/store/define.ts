@@ -9,15 +9,12 @@ import type {
 } from "../plugin.js";
 import type { SchemaAdapter } from "../schema-adapter.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { CreateParts, ListParts } from "./parts.js";
 import { createPluginHost } from "./plugins.js";
 import type { CreateTiming } from "./timing.js";
 
-/** The optional host code a plugin carries: the `deferred` and `idle` timings, attaching parts and listing them. */
+/** The optional host code a plugin carries: the `deferred` and `idle` timings. Parts bring the parts code. */
 export interface HostCode {
   readonly "~timing"?: CreateTiming;
-  readonly "~parts"?: CreateParts;
-  readonly "~list"?: ListParts;
 }
 
 /**
@@ -39,7 +36,7 @@ export type PluginDefinition<A, N extends string, M, F, S extends StandardSchema
   /**
    * Runs once per path a part of this plugin attaches at and returns the
    * hooks there. It gets the part's config: type it on this parameter, and
-   * the factory's `part` takes it. See `Plugin`.
+   * `part(plugin, config)` takes it. See `Plugin`.
    */
   part?(this: void, ctx: PartContext<M, F, RequiredPlugins<R>>, config: C): PartHooks;
   /** Gives the form's starting value, with the factory's options. See `Plugin`. */
@@ -60,9 +57,8 @@ export type PluginDefinition<A, N extends string, M, F, S extends StandardSchema
 
 /**
  * Makes a plugin factory that carries only the host code in `code`, for the
- * built-in plugins. Each passes what it uses: `createTiming` for a
- * `deferred` or `idle` `onWrite`, `createParts` for `part`, `listParts`
- * for `ctx.parts`. `definePlugin` passes all three.
+ * built-in plugins: `createTiming` for a `deferred` or `idle` `onWrite`.
+ * `definePlugin` passes it.
  */
 export function defineWith<
   const N extends string,
@@ -89,5 +85,5 @@ export function defineWith<
   });
   // The readers are there for every plugin. `PluginFactory` types them only where the plugin keeps meta.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return Object.assign(factory, { part: (config: C) => ({ plugin: name, config }), meta: reader(initialMeta), formMeta: reader(initialFormMeta) }) as never;
+  return Object.assign(factory, { meta: reader(initialMeta), formMeta: reader(initialFormMeta) }) as never;
 }

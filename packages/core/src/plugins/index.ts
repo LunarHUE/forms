@@ -5,7 +5,7 @@ export * from "./arrays.js";
 export * from "./bind.js";
 export * from "./dirty.js";
 export * from "./history.js";
-export * from "./mask.js";
+export * from "./part.js";
 export * from "./persist.js";
 export * from "./rebase.js";
 export * from "./rules.js";

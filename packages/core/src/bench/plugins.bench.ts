@@ -2,10 +2,10 @@ import { test } from "vitest";
 import { createFormsCore, type Part, type Plugins } from "../index.js";
 import type { When } from "../plugin.js";
 import { history } from "../plugins/history.js";
-import { mask, masked, upper } from "../plugins/mask.js";
 import { persist } from "../plugins/persist.js";
 import { ruled, rules } from "../plugins/rules.js";
 import { definePlugin } from "../plugins.js";
+import { masked, upper } from "../text/index.js";
 import { pluginRowsForm } from "./plugin-rows.js";
 
 // The row benchmark with and without plugins. "zero plugins" is the store as
@@ -34,8 +34,8 @@ const cases: readonly (readonly [label: string, plugins: Plugins, parts?: readon
     [noopBefore("a"), noopBefore("b"), noopObserver("c", "sync"), noopObserver("d", "deferred"), noopObserver("e", "idle")],
   ],
   [
-    "four shipped plugins",
-    [mask(), rules(), history(), persist({ key: "bench", storage })],
+    "three shipped plugins and a mask",
+    [rules(), history(), persist({ key: "bench", storage })],
     [
       { ...masked({ clean: upper }), path: `rows.${String(firstKey)}.name` },
       ruled<{ rows: { name: string }[] }>({ rows: (value) => ({ hidden: value.rows[0]?.name === "HIDE" }) }),

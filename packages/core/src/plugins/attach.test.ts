@@ -6,6 +6,7 @@ import { definePlugin, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
 import { testStore } from "./testing.js";
 import { arrays } from "./arrays.js";
+import { part } from "./part.js";
 
 type Seen = { path: Path; config: unknown }[];
 
@@ -17,7 +18,7 @@ const tagger = definePlugin({
     return { beforeWrite: (write) => (typeof write.value === "string" && write.cause !== "attach" ? `${write.value}${suffix}` : write.value) };
   },
 });
-const tag = (suffix: string, path?: string, seen?: Seen): Part<"tag", unknown> => ({ ...tagger.part({ suffix, ...(seen && { seen }) }), ...(path && { path }) });
+const tag = (suffix: string, path?: string, seen?: Seen): Part<"tag", unknown> => ({ ...part(tagger, { suffix, ...(seen && { seen }) }), ...(path && { path }) });
 
 describe("attach", () => {
   it("runs attach once per path, with the context's path", () => {
@@ -31,10 +32,10 @@ describe("attach", () => {
 
   it("attaches a pinned copy of a part once with the part", () => {
     const seen: { path: Path; config: unknown }[] = [];
-    const part = tag("!", undefined, seen);
-    const pinned: Part<"tag", unknown> = { ...part, path: "a", "~of": part };
+    const tagged = tag("!", undefined, seen);
+    const pinned: Part<"tag", unknown> = { ...tagged, path: "a", "~of": tagged };
     const { store } = testStore({ defaultValues: { a: "" }, plugins: [arrays(), tagger()] }, pinned);
-    attach(store.root.at("a"), [part]);
+    attach(store.root.at("a"), [tagged]);
     expect(seen).toEqual([{ path: ["a"], config: "!" }]);
   });
 
@@ -49,7 +50,7 @@ describe("attach", () => {
         },
       }),
     });
-    const { store, records, errors } = testStore({ defaultValues: { a: " x " }, plugins: [arrays(), dirty(), trims()] }, { ...trims.part(), path: "a" });
+    const { store, records, errors } = testStore({ defaultValues: { a: " x " }, plugins: [arrays(), dirty(), trims()] }, { ...part(trims), path: "a" });
     expect(store.getSnapshot(["a"])).toMatchObject({ value: "x", dirty: false });
     expect(causes).toEqual(["attach"]);
     expect(records.sync).toEqual([]);
@@ -67,7 +68,7 @@ describe("attach", () => {
         },
       }),
     });
-    const { store, errors } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [arrays(), lock()] }, { ...lock.part(), path: "a" });
+    const { store, errors } = testStore({ defaultValues: { a: { b: "", c: "" } }, plugins: [arrays(), lock()] }, { ...part(lock), path: "a" });
     store.root.at("a").at("c").setValue("x");
     expect(seen[0]).toEqual({ b: "", c: "x" });
     expect(store.getSnapshot(["a", "b"]).disabled).toBe(true);

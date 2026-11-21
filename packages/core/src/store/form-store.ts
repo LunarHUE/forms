@@ -42,6 +42,12 @@ export interface FormStoreOptions<V, E = FormError, I = undefined, R = unknown, 
   readonly onPluginError?: PluginErrorHandler | undefined;
   /** Parts to attach at the root once the plugins are set up, as `define` takes them after the config. */
   readonly parts?: readonly Part[] | undefined;
+  /**
+   * Parts that may attach later, from the adapter's field types and
+   * fieldsets. A store whose plugins have no hooks gets a host when one of
+   * these or of `parts` brings one.
+   */
+  readonly known?: readonly Part[] | undefined;
 }
 
 /**
@@ -87,14 +93,15 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
     dirty: createDirty && ((path, value) => baseline.dirty(path, value)),
     arrays: arrays?.[0],
   });
-  // Only a store with hook plugins gets a host. The plugins bring its code
-  // with them, so core neither carries nor runs it for a store without.
+  // Only a store with hook plugins, or with parts, gets a host. The plugins
+  // and parts bring its code with them, so core neither carries nor runs it
+  // for a store without.
   const hooked = plugins.filter((plugin) => plugin.setup !== undefined || plugin.part !== undefined);
-  const createHost = hooked[0]?.["~host"];
+  const createHost = hooked[0]?.["~host"] ?? [...parts, ...(options.known ?? [])].find((part) => part["~host"])?.["~host"];
   const host = createHost?.(raw, plugins, options.onPluginError);
   // A part's plugin is missing. The types catch it, so production doesn't check again.
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && !host && parts[0]) {
-    throw new Error(problem("plugins:missing", parts[0].plugin));
+    throw new Error(problem("plugins:missing", parts[0].plugin ?? "part"));
   }
   // Each copy of core has its own host and its own `refuse`, so plugins from
   // two copies don't work together. Development only: production drops it.

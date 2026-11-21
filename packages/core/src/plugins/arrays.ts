@@ -1,8 +1,9 @@
 import type { Plugin } from "../plugin.js";
+import { recordArrays } from "../store/array-records.js";
 import { createArrays } from "../store/arrays.js";
 import { buildKeys } from "../store/baseline/keys.js";
 
-const plugin: Plugin<undefined, "arrays"> = { name: "arrays", "~arrays": [createArrays, buildKeys] };
+const plugin: Plugin<undefined, "arrays"> = { name: "arrays", "~arrays": [createArrays, buildKeys, recordArrays] };
 
 /**
  * Array commands as a plugin: `push`, `insert`, `remove` and `move`, with

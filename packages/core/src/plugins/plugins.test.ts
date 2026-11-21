@@ -14,11 +14,12 @@ import type { AnyPlugin } from "../plugin.js";
 import { definePlugin, flushPlugins, refuse } from "../plugins.js";
 import { dirty } from "./dirty.js";
 import { history } from "./history.js";
-import { mask, masked, upper } from "./mask.js";
 import { persist } from "./persist.js";
 import { ruled, rules } from "./rules.js";
 import { rebase } from "./rebase.js";
 import { arrays } from "./arrays.js";
+import { part } from "./part.js";
+import { cleaned, upper } from "../text/index.js";
 import { formValidator } from "../store/validate/form.js";
 
 interface Contact {
@@ -44,8 +45,15 @@ const makeWith = <V, const D extends Plugins>(defaultValues: V, plugins: D, part
     .define<V, never, void, undefined, unknown, D>({ defaultValues, plugins }, ...(parts as never[]))
     .createStore();
 
-/** `code` upper-cased by a mask part. */
-const upperCode = { ...masked({ clean: upper }), path: "code" };
+/** `code` upper-cased by a part that needs no plugin. */
+const upperCode = { ...cleaned(upper), path: "code" };
+
+/** A plugin whose parts upper-case the string written at their path. */
+const upperPlugin = definePlugin({
+  name: "upper",
+  part: (_ctx, _config: void) => ({ beforeWrite: (write) => (typeof write.value === "string" ? write.value.toUpperCase() : write.value) }),
+});
+const upperPart = { ...part(upperPlugin), path: "code" };
 
 /** A plugin that records every `onWrite` delivery it gets. */
 const watcher = (name: string, when?: "sync" | "deferred" | "idle") => {
@@ -190,13 +198,13 @@ describe("beforeWrite", () => {
       }),
     })();
     // Installed first, but runs after `tag`, which it requires.
-    const late = makeWith(contact(), [{ ...mask(), requires: () => [() => tag] }, tag], [upperCode]);
+    const late = makeWith(contact(), [{ ...upperPlugin(), requires: () => [() => tag] }, tag], [upperPart]);
     late.root.at("code").setValue("ab");
     expect(late.root.at("code").peek().value).toBe("X-AB");
     expect(seen).toEqual([{ input: "ab", value: "ab" }]);
 
     seen.length = 0;
-    const early = makeWith(contact(), [mask(), tag], [upperCode]);
+    const early = makeWith(contact(), [upperPlugin(), tag], [upperPart]);
     early.root.at("code").setValue("ab");
     expect(early.root.at("code").peek().value).toBe("x-AB");
     expect(seen).toEqual([{ input: "ab", value: "AB" }]);
@@ -706,14 +714,14 @@ describe("timing", () => {
   it("flushes without history or persist, when no installed plugin brings the timings", async () => {
     vi.useFakeTimers();
     const flusher = definePlugin({ name: "flusher", setup: (ctx) => ({ api: { flush: () => ctx.flush() } }) })();
-    const store = makeWith(contact(), [mask()], [upperCode]);
+    const store = makeWith(contact(), [], [upperCode]);
     store.root.at("code").setValue("ab");
     expect(() => flushPlugins(store)).not.toThrow();
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
     expect(store.root.at("code").peek().value).toBe("AB");
     // The public `definePlugin` brings the timings, so its `ctx.flush` works next to them.
-    const withFlusher = makeWith(contact(), [mask(), flusher], [upperCode]);
+    const withFlusher = makeWith(contact(), [flusher], [upperCode]);
     withFlusher.root.at("code").setValue("ab");
     expect(() => withFlusher.plugins.flusher.flush()).not.toThrow();
   });
@@ -721,7 +729,7 @@ describe("timing", () => {
   it("flushes history and persist when a plugin before them brings no timings", () => {
     vi.useFakeTimers();
     const storage = memory();
-    const store = makeWith(contact(), [mask(), history(), persist({ key: "contact", storage })], [upperCode]);
+    const store = makeWith(contact(), [history(), persist({ key: "contact", storage })], [upperCode]);
     store.root.at("code").setValue("ab");
     flushPlugins(store);
     expect(JSON.parse(storage.saved.get("contact") ?? "null")).toEqual({ phone: "", code: "AB" });

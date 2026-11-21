@@ -6,7 +6,7 @@ import type { AnyFormStore, DirtyStoreMembers } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
-import type { CreateParts, ListParts } from "./store/parts.js";
+import type { CreateParts } from "./store/parts.js";
 import type { CreateTiming } from "./store/timing.js";
 
 /**
@@ -180,7 +180,7 @@ export interface PluginContext<M = never, F = never, Q extends Plugins = readonl
 
 /** One part attached at a path, as `ctx.parts` lists it. */
 export interface AttachedPart {
-  /** The name of the plugin the part belongs to. */
+  /** The name of the plugin the part belongs to, or `"part"` for a part with no plugin. */
   readonly name: string;
   readonly path: Path;
 }
@@ -352,7 +352,7 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
    * part lasts as long as the path: removing an array item removes the
    * parts in it.
    */
-  part?(ctx: PartContext<M, F, Q>, config: never): PartHooks;
+  part?(this: void, ctx: PartContext<M, F, Q>, config: never): PartHooks;
   /**
    * A schema adapter, which gives the default values of its library's
    * schemas of type `S`, so their forms need no `defaultValues`. A plugin
@@ -363,10 +363,6 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~host"?: CreateHost;
   /** Makes the host's `deferred` and `idle` timings. Internal. */
   readonly "~timing"?: CreateTiming;
-  /** Attaches parts and runs the hooks they make. Internal. */
-  readonly "~parts"?: CreateParts;
-  /** Lists the parts for `ctx.parts`. Internal. */
-  readonly "~list"?: ListParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
   /**
@@ -416,10 +412,10 @@ export type OptionArgs<O> = [O] extends [void] ? [] : undefined extends O ? [opt
 
 /**
  * A plugin factory, as `definePlugin` returns it. Call it for the plugin to
- * put in a `plugins` list, with the options `setup` takes. `part` makes a
- * part of the plugin with the config its `part` hook takes. A plugin that
- * keeps field meta has a `meta` reader and one with form meta a `formMeta`
- * reader. `O` is the options and `C` the part config.
+ * put in a `plugins` list, with the options `setup` takes. Pass it to
+ * `part` for a part of the plugin, with the config its `part` hook takes. A
+ * plugin that keeps field meta has a `meta` reader and one with form meta a
+ * `formMeta` reader. `O` is the options and `C` the part config.
  */
 export type PluginFactory<
   A = undefined,
@@ -431,12 +427,8 @@ export type PluginFactory<
   O = void,
   C = void,
 > = ((...options: OptionArgs<O>) => Plugin<A, N, M, F, S, Q>) & {
-  /**
-   * A part of this plugin for a value of type `V`, as
-   * `defineField(Input, limit.part<string>(10))`. It fits places whose value
-   * is assignable to `V`. The plugin must be in the form's plugins.
-   */
-  part<V = unknown>(this: void, ...config: [C] extends [void] ? [] : [config: C]): Part<N, V>;
+  /** Type information only: the config `part` takes for this plugin's parts. */
+  readonly "~config"?: (config: C) => void;
 } & ([M] extends [never] ? unknown : MetaReader<M>) &
   ([F] extends [never] ? unknown : FormMetaReader<F>);
 
@@ -527,7 +519,7 @@ type AddPlugins<N extends string, By extends string> = {
  * form's plugins (see `PluginNames`). Otherwise a type with one key per
  * missing plugin, such as `"Add dirty() to this form's plugins"`, so a value
  * given for it is a type error that names what to install. `By` names what
- * needs it, as in `"Add mask() to this form's plugins: PhoneField uses it"`.
+ * needs it, as in `"Add dirty() to this form's plugins: TextField uses it"`.
  * A definition's `equals` is typed `Needs<Installed, "dirty", Equals>`.
  */
 export type Needs<Installed extends string, N extends string, T, By extends string = ""> = [Exclude<N, Installed>] extends [never]
@@ -560,32 +552,41 @@ export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<
     };
 
 /**
- * A plugin's config for one place: a field type's value, a fieldset, or a
- * form. `N` is the plugin it needs and `V` the value it fits. A part fits
- * a place whose value is assignable to `V`, so a `Part<"mask", string>`
- * fits string fields only. A plugin factory makes its parts, typed by the
- * config its `part` hook takes, with `V` given:
+ * Hooks for one place: a field type's value, a fieldset, or a form. `N` is
+ * the plugin it needs, or `never` for a part that needs none, and `V` the
+ * value it fits. A part fits a place whose value is assignable to `V`, so a
+ * `Part<never, string>` fits string fields only.
+ *
+ * `part(plugin, config)` makes a part of a plugin: the plugin's `part` hook
+ * gets the config, and the plugin must be in the form's plugins. `part`,
+ * `transform`, `text` and `observe` make parts with hooks of their own,
+ * which need no plugin:
  *
  * ```ts
- * export const limited = (max: number) => limit.part<string>(max);
+ * export const capped = (max: number) => transform<string>((value) => value.slice(0, max));
  * ```
  *
  * The parts go on a field type (`defineField(PhoneInput, masked(...))`), a
  * fieldset (`forms.fieldset(Billing, ruled(...))`), or after a definition's
- * config (`define(config, ruled(...))`). The plugin must be in the form's
- * plugins: a part doesn't install it.
+ * config (`define(config, ruled(...))`).
  */
 export interface Part<N extends string = string, V = never> {
-  /** The name of the plugin whose `part` hook gets the config. */
-  readonly plugin: N;
+  /** The name of the plugin whose `part` hook gets the config. Undefined for a part with hooks of its own. */
+  readonly plugin?: N;
   /** What the plugin's `part` hook gets. */
   readonly config?: unknown;
+  /** Makes the hooks of a part with no plugin, once per path it attaches at. Internal. */
+  readonly hooks?: (ctx: PartContext) => PartHooks;
   /** A dotted name below where the part attaches, for parts pinned at a field, as `fieldset.at("billing")` makes. */
   readonly path?: string;
   /** Type information only: the values the part fits. */
   readonly "~fits"?: (value: V) => void;
   /** The part this one is a pinned copy of, so the two attach once at a path. Internal. */
   readonly "~of"?: Part;
+  /** Attaches parts and runs the hooks they make. Every part brings it. Internal. */
+  readonly "~parts"?: CreateParts;
+  /** Makes the store's plugin host, for a part with no plugin. Internal. */
+  readonly "~host"?: CreateHost;
 }
 
 /** One part or a list of them, as `define` takes them after the config. */

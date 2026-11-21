@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { attach } from "../attach.js";
 import type { Part } from "../plugin.js";
 import { displayOf } from "../store/display.js";
-import { dirty } from "./dirty.js";
-import { digits, mask, type MaskConfig, masked, upper } from "./mask.js";
-import { persist } from "./persist.js";
-import { rebase } from "./rebase.js";
-import { testStore } from "./testing.js";
-import { arrays } from "./arrays.js";
+import { createFormsCore } from "../forms-core.js";
+import { arrays } from "../plugins/arrays.js";
+import { dirty } from "../plugins/dirty.js";
+import { persist } from "../plugins/persist.js";
+import { rebase } from "../plugins/rebase.js";
+import { testStore } from "../plugins/testing.js";
+import { cleaned, digits, displayed, type MaskConfig, masked, upper } from "./index.js";
 
 interface Account {
   phone: string;
@@ -19,7 +20,7 @@ const account = (): Account => ({ phone: "(555) 01", address: { zip: "ab 1", cit
 
 /** A mask pinned at a dotted name, as `.at(name)` makes it. Typed to fit any form, as the test can't type the pin. */
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const at = (path: string, config: MaskConfig) => ({ ...masked(config), path }) as Part<"mask", unknown>;
+const at = (path: string, config: MaskConfig) => ({ ...masked(config), path }) as Part<never, unknown>;
 const masks = () => [at("phone", { clean: digits }), at("address.zip", { clean: upper })];
 
 /** Masks every row's sku, as a field type's part does when each row renders. */
@@ -39,16 +40,16 @@ const phone = (value: string) => (value.length > 3 ? `(${value.slice(0, 3)}) ${v
 
 const shown = (meta: Readonly<Record<string, unknown>> | undefined) => displayOf({ meta });
 
-describe("mask", () => {
+describe("masked", () => {
   it("stores the value it cleans", () => {
-    const { store, errors } = testStore({ defaultValues: { phone: "" }, plugins: [arrays(), mask()] }, at("phone", { clean: digits }));
+    const { store, errors } = testStore({ defaultValues: { phone: "" }, plugins: [arrays()] }, at("phone", { clean: digits }));
     store.root.at("phone").setValue("(555) 01-23");
     expect(store.root.at("phone").peek().value).toBe("5550123");
     expect(errors).toEqual([]);
   });
 
   it("cleans the starting value, so the baseline is clean and the form starts clean", () => {
-    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty(), mask()] }, masks());
+    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty()] }, masks());
     maskRows(store);
     expect(store.getSnapshot([]).value).toEqual({ phone: "55501", address: { zip: "AB 1", city: "x" }, lines: [{ sku: "A-1" }] });
     expect(store.getServerSnapshot([]).value).toEqual(store.getSnapshot([]).value);
@@ -58,7 +59,7 @@ describe("mask", () => {
   });
 
   it("leaves the form not dirty after a reset from a clean start", () => {
-    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty(), mask()] }, masks());
+    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty()] }, masks());
     store.root.at("phone").setValue("9");
     store.reset();
     expect(store.getFormSnapshot().dirty).toBe(false);
@@ -70,7 +71,7 @@ describe("mask", () => {
   });
 
   it("cleans a row added later when its part attaches, on a microtask once the store has listeners", async () => {
-    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] });
+    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays()] });
     maskRows(store);
     listen();
     const lines = store.root.at("lines");
@@ -86,7 +87,7 @@ describe("mask", () => {
   });
 
   it("attaches a list once per field, however often it is called", () => {
-    const { store, records, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] });
+    const { store, records, errors } = testStore({ defaultValues: account(), plugins: [arrays()] });
     const parts = [masked({ clean: (value) => `${value}!` })];
     maskRows(store, parts);
     maskRows(store, parts);
@@ -96,7 +97,7 @@ describe("mask", () => {
   });
 
   it("cleans the fields below a written parent object or a replaced root", () => {
-    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] }, masks());
+    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays()] }, masks());
     maskRows(store);
     store.root.at("address").setValue({ zip: "cd 2" });
     expect(store.getSnapshot(["address"]).value).toEqual({ zip: "CD 2", city: "x" });
@@ -107,7 +108,7 @@ describe("mask", () => {
   });
 
   it("writes an untouched parent as it came, the same object", () => {
-    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] }, masks());
+    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays()] }, masks());
     const address = { zip: "CLEAN", city: "z" };
     store.root.at("address").setValue(address, { replace: true });
     expect(store.getSnapshot(["address"]).value).toBe(address);
@@ -116,7 +117,7 @@ describe("mask", () => {
 
   it("cleans plugin writes, such as a value persist restores", () => {
     const storage = memory(new Map([["account", JSON.stringify({ ...account(), phone: "(7) 7" })]]));
-    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask(), persist({ key: "account", storage })] }, masks());
+    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays(), persist({ key: "account", storage })] }, masks());
     listen();
     expect(store.getSnapshot(["phone"]).value).toBe("77");
     expect(store.getSnapshot(["phone"]).edited).toBe(false);
@@ -124,7 +125,7 @@ describe("mask", () => {
   });
 
   it("skips rebase writes, so the baseline moves to the server's copy as it came", () => {
-    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty(), mask(), rebase()] }, masks());
+    const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), dirty(), rebase()] }, masks());
     const incoming = { ...account(), phone: "(555) 02" };
     store.plugins.rebase(store.root, incoming, () => "take");
     expect(store.getSnapshot(["phone"]).value).toBe("(555) 02");
@@ -133,7 +134,7 @@ describe("mask", () => {
   });
 
   it("leaves a value that isn't a string alone", () => {
-    const { store, errors } = testStore({ defaultValues: { phone: 5 }, plugins: [arrays(), mask()] }, at("phone", { clean: digits }));
+    const { store, errors } = testStore({ defaultValues: { phone: 5 }, plugins: [arrays()] }, at("phone", { clean: digits }));
     store.root.at("phone").setValue(7);
     expect(store.getSnapshot(["phone"]).value).toBe(7);
     expect(errors).toEqual([]);
@@ -141,7 +142,7 @@ describe("mask", () => {
 
   describe("display", () => {
     it("gives a field with a display its meta, on the server too, and leaves a mask without one out", () => {
-      const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] }, at("phone", { clean: digits, display: phone }), at("address.zip", { clean: upper }));
+      const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays()] }, at("phone", { clean: digits, display: phone }), at("address.zip", { clean: upper }));
       const display = shown(store.getSnapshot(["phone"]).meta);
       expect(display?.display("55501")).toBe("(555) 01");
       expect(display?.afterInput).toBeTypeOf("function");
@@ -152,7 +153,7 @@ describe("mask", () => {
     });
 
     it("keeps the meta's identity across writes", () => {
-      const { store } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] }, at("phone", { clean: digits, display: phone }));
+      const { store } = testStore({ defaultValues: account(), plugins: [arrays()] }, at("phone", { clean: digits, display: phone }));
       const before = shown(store.getSnapshot(["phone"]).meta);
       store.root.at("phone").setValue("(555) 9");
       expect(shown(store.getSnapshot(["phone"]).meta)).toBe(before);
@@ -160,14 +161,14 @@ describe("mask", () => {
 
     it("shows a value that isn't a string as empty text", () => {
       const { store } = testStore(
-        { defaultValues: { phone: undefined as string | undefined }, plugins: [mask()] },
+        { defaultValues: { phone: undefined as string | undefined }, plugins: [] },
         at("phone", { clean: digits, display: (value) => `[${value}]` }),
       );
       expect(shown(store.getSnapshot(["phone"]).meta)?.display(undefined)).toBe("[]");
     });
 
     it("gives every row a part attaches to its display", () => {
-      const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] });
+      const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays()] });
       const parts = [masked({ clean: upper, display: (value) => `#${value}` })];
       const lines = store.root.at("lines");
       lines.push({ sku: "b" });
@@ -179,12 +180,28 @@ describe("mask", () => {
 
     it("lets the first part at a field own its display", () => {
       const { store, errors } = testStore(
-        { defaultValues: account(), plugins: [mask()] },
+        { defaultValues: account(), plugins: [] },
         at("phone", { clean: (value) => value, display: (value) => `first ${value}` }),
         at("phone", { clean: digits, display: phone }),
       );
       expect(shown(store.getSnapshot(["phone"]).meta)?.display("1")).toBe("first 1");
       expect(errors).toEqual([]);
     });
+  });
+});
+
+describe("cleaned and displayed", () => {
+  it("clean and display with no plugins installed", () => {
+    const store = createFormsCore()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      .define({ defaultValues: { code: "ab", phone: "55501" } }, { ...cleaned(upper), path: "code" } as Part<never, unknown>, { ...displayed(phone, digits), path: "phone" } as Part<never, unknown>)
+      .createStore();
+    expect(store.getSnapshot(["code"]).value).toBe("AB");
+    expect(store.getSnapshot(["code"]).meta).toBeUndefined();
+    store.root.at("code").setValue("cd");
+    expect(store.getSnapshot(["code"]).value).toBe("CD");
+    store.root.at("phone").setValue("(555) 9");
+    expect(store.getSnapshot(["phone"]).value).toBe("(555) 9");
+    expect(shown(store.getSnapshot(["phone"]).meta)?.display("55501")).toBe("(555) 01");
   });
 });
