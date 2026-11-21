@@ -134,7 +134,10 @@
   --color-devtools-muted: var(--devtools-muted);
   --color-devtools-border: var(--devtools-border);
 
-  /* Paper: 6px for controls, tabs and nav items; 8px for blocks, panels and popovers. */
+  /* Paper: 6px for controls, tabs and nav items; 8px for blocks, panels and
+     popovers. Rows in a popover sit 4px in from its 8px corner, so they take
+     4px and the two curves stay parallel. */
+  --radius-xs: 0.25rem;
   --radius-sm: 0.375rem;
   --radius-md: 0.375rem;
   --radius-lg: var(--radius);
@@ -154,6 +157,25 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Set for one frame while the theme flips (lib/store.ts, lib/boot.ts). */
+  [data-theme-switching],
+  [data-theme-switching] *,
+  [data-theme-switching] *::before,
+  [data-theme-switching] *::after {
+    transition: none !important;
+  }
+  /* With reduced motion, popups (menus, the picker, tooltips, the search
+     dialog) only fade: no zoom, no slide. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot$="-content"] {
+      --tw-enter-scale: 1 !important;
+      --tw-exit-scale: 1 !important;
+      --tw-enter-translate-x: 0 !important;
+      --tw-enter-translate-y: 0 !important;
+      --tw-exit-translate-x: 0 !important;
+      --tw-exit-translate-y: 0 !important;
+    }
+  }
   /* Thin scrollbars in the theme's colours, page and panels alike. */
   * {
     scrollbar-width: thin;
@@ -162,63 +184,28 @@
 }
 
 /*
- * Soft edges on a scroll area: `scroll-fade-y` fades the top while there is
- * content above and the bottom while there is content below, `scroll-fade-x`
- * the same sideways. Scroll-driven animations move the two stops, so it needs
- * no script and survives page swaps. Browsers without them get hard edges.
- * Put it on the scrolling element itself.
+ * Soft edges on a scroll area marked `data-edge-fade="y"` or `"x"`. The edge
+ * fades in as content scrolls behind it; lib/edge-fade.ts sets the two
+ * ratios and `data-edge-fade-on` only while the area overflows, so areas that
+ * fit keep hard edges. `--edge-fade-size` sets the depth.
  */
-@property --fade-start {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
+[data-edge-fade][data-edge-fade-on] {
+  --edge-fade-from: calc(var(--edge-fade-size, 2rem) * var(--edge-fade-start, 0));
+  --edge-fade-to: calc(100% - var(--edge-fade-size, 2rem) * var(--edge-fade-end, 0));
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--edge-fade-from),
+    #000 var(--edge-fade-to),
+    transparent
+  );
 }
-@property --fade-end {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-@keyframes fade-start {
-  from {
-    --fade-start: 0px;
-  }
-  to {
-    --fade-start: 2rem;
-  }
-}
-@keyframes fade-end {
-  from {
-    --fade-end: 2rem;
-  }
-  to {
-    --fade-end: 0px;
-  }
-}
-@utility scroll-fade-y {
-  @supports (animation-timeline: scroll()) {
-    mask-image: linear-gradient(
-      to bottom,
-      transparent,
-      #000 var(--fade-start),
-      #000 calc(100% - var(--fade-end)),
-      transparent
-    );
-    animation: fade-start linear both, fade-end linear both;
-    animation-timeline: scroll(self block), scroll(self block);
-    animation-range: 0 2rem, calc(100% - 2rem) 100%;
-  }
-}
-@utility scroll-fade-x {
-  @supports (animation-timeline: scroll()) {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 var(--fade-start),
-      #000 calc(100% - var(--fade-end)),
-      transparent
-    );
-    animation: fade-start linear both, fade-end linear both;
-    animation-timeline: scroll(self inline), scroll(self inline);
-    animation-range: 0 2rem, calc(100% - 2rem) 100%;
-  }
+[data-edge-fade="x"][data-edge-fade-on] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--edge-fade-from),
+    #000 var(--edge-fade-to),
+    transparent
+  );
 }

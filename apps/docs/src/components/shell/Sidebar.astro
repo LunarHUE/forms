@@ -35,7 +35,7 @@ const persist = `${framework}-${version}${switchable ? "-all" : ""}`;
       version={version}
     />
   </div>
-  <div data-sidebar-scroll transition:persist={`sidebar-nav-${persist}`} class="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-8">
+  <div data-sidebar-scroll transition:persist={`sidebar-nav-${persist}`} data-edge-fade="y" class="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-8">
     <NavTree groups={groups} currentSlug={currentSlug} />
   </div>
 </aside>

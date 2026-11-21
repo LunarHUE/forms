@@ -15,7 +15,7 @@ interface MobileTocProps {
 /**
  * The bar under the header below 1280px: breadcrumb on the left, an "On
  * this page" toggle on the right. Open, the list sits in the bar and pushes
- * the page down. Hydrated with `client:media="(max-width: 1279px)"`.
+ * the page down, and scrolls on its own when it is taller than the screen. Hydrated with `client:media="(max-width: 1279px)"`.
  */
 export default function MobileToc({ items, children }: MobileTocProps) {
   const [open, setOpen] = useState(false);
@@ -64,7 +64,14 @@ export default function MobileToc({ items, children }: MobileTocProps) {
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <nav ref={stagger} aria-label="On this page" className="pt-3 pb-4">
+        {/* The bar is sticky, so a long list scrolls inside it rather than
+            running off the bottom of the screen. */}
+        <nav
+          ref={stagger}
+          aria-label="On this page"
+          data-edge-fade="y"
+          className="max-h-[calc(100dvh-var(--docs-header-height)-2.75rem)] overflow-y-auto overscroll-contain pt-3 pb-4"
+        >
           <TocList items={items} active={active} onClick={jump} linkClassName="py-2 text-[15px] leading-5" />
         </nav>
       </CollapsibleContent>

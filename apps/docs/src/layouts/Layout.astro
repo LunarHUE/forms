@@ -31,6 +31,8 @@
  * data-framework and data-devtools from localStorage before first paint. The server
  * markup carries the defaults (data-pm="bun", data-theme="system") so the
  * page also reads right without JavaScript.
+ *
+ * lib/edge-fade.ts fades the edges of scroll areas marked `data-edge-fade`.
  */
 import { ClientRouter } from "astro:transitions";
 import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
@@ -104,5 +106,11 @@ const canonical = absolute(meta.canonical ?? pathname);
   </head>
   <body class={bodyClass}>
     <slot />
+    <script>
+      // Soft edges on scroll areas. Bundled, so it runs once and outlives page swaps.
+      import { startEdgeFade } from "@/lib/edge-fade";
+
+      startEdgeFade();
+    </script>
   </body>
 </html>

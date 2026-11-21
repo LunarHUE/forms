@@ -21,8 +21,10 @@ const { items, class: className } = Astro.props;
     {
       items.map((item, index) => {
         const last = index === items.length - 1;
+        // On a narrow bar the sections truncate and the current page keeps
+        // its full name, down to the bar's whole width.
         return (
-          <li class:list={["flex min-w-0 items-center gap-1.5", last ? "text-foreground" : "shrink-0"]}>
+          <li class:list={["flex min-w-0 items-center gap-1.5", last && "max-w-full shrink-0 text-foreground"]}>
             {index > 0 && (
               <svg
                 aria-hidden="true"
@@ -44,12 +46,12 @@ const { items, class: className } = Astro.props;
             ) : item.href ? (
               <a
                 href={item.href}
-                class="rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                class="truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 {item.label}
               </a>
             ) : (
-              <span>{item.label}</span>
+              <span class="truncate">{item.label}</span>
             )}
           </li>
         );

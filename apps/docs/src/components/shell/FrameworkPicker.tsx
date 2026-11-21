@@ -29,7 +29,7 @@ export type { PickerItem } from "./picker";
 
 const labelClass = "px-2 pt-2 pb-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase";
 const itemClass =
-  "h-8 gap-2 rounded-md pl-2 text-sm data-[selected]:bg-brand-tint data-[selected]:data-highlighted:bg-brand-tint [&>span:last-child_*]:text-brand!";
+  "h-8 gap-2 pl-2 text-sm data-[selected]:bg-brand-tint data-[selected]:data-highlighted:bg-brand-tint [&>span:last-child_*]:text-brand!";
 
 /** Follows the item's link, or switches the last-used framework when it has none. */
 function go(item: PickerItem): void {

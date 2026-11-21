@@ -2,6 +2,7 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { useState } from "react";
 
 import { usePackageManager } from "@/components/hooks/store";
+import { IconSwap } from "@/components/ui/icon-swap";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PACKAGE_MANAGERS, setPackageManager } from "@/lib/store";
 
@@ -34,7 +35,7 @@ export default function Install({ packages }: InstallProps) {
       data-install
       className="not-prose my-4 flex flex-col overflow-hidden rounded-lg border bg-sidebar text-foreground sm:h-13 sm:flex-row sm:items-center sm:gap-3 sm:pr-2.5 sm:pl-4"
     >
-      <div className="scroll-fade-x order-2 min-w-0 flex-1 overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 sm:order-1 sm:p-0">
+      <div data-edge-fade="x" className="order-2 min-w-0 flex-1 overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 sm:order-1 sm:p-0">
         <code className="whitespace-pre">
           {PACKAGE_MANAGERS.map((id) => (
             <span key={id} data-pm-command={id}>
@@ -65,11 +66,11 @@ export default function Install({ packages }: InstallProps) {
             onClick={() => void copy(installCommand(pm, packages))}
             className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            {copied ? (
-              <CheckIcon className="size-4 text-brand" strokeWidth={1.5} />
-            ) : (
-              <CopyIcon className="size-4" strokeWidth={1.5} />
-            )}
+            <IconSwap
+              swapped={copied}
+              from={<CopyIcon className="size-4" strokeWidth={1.5} />}
+              to={<CheckIcon className="size-4 text-brand" strokeWidth={1.5} />}
+            />
           </TooltipTrigger>
           <TooltipContent sideOffset={6}>{copied ? "Copied" : "Copy"}</TooltipContent>
         </Tooltip>

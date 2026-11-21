@@ -46,7 +46,8 @@ export function DemoTabs({ label, tabs, value, onChange, tabId, className }: Dem
     <div
       role="tablist"
       aria-label={label}
-      className={cn("scroll-fade-x flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", className)}
+      data-edge-fade="x"
+      className={cn("flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", className)}
       onKeyDown={onKeyDown}
     >
       {tabs.map((tab) => (
