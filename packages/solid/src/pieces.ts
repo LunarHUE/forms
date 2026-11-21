@@ -1,7 +1,7 @@
 import type { FieldSnapshot, Path, TextControl } from "@lunarhue/forms-core";
 import { afterProps, batch } from "#solid";
 import { untrack } from "solid-js";
-import { displayOf } from "./display.js";
+import { displayOf } from "@lunarhue/forms-core";
 import { elementRegistrar, elementsOf } from "./refs.js";
 
 /**
@@ -74,7 +74,7 @@ function showState(element: HTMLElement, value: unknown, text: string): void {
 
 /** The text an element shows: the display text a plugin gives, else the value. */
 function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
-  const shown = displayOf(meta);
+  const shown = displayOf({ meta });
   return shown ? shown.display(value) : asText(value);
 }
 
@@ -94,13 +94,13 @@ export function addPieces(field: object, handle: PiecesHandle, read: () => Field
       batch(() => {
         handle.setValue(text);
         const { value, meta } = current();
-        const edit = displayOf(meta)?.edit;
-        if (edit === undefined) return;
+        const afterInput = displayOf({ meta })?.afterInput;
+        if (afterInput === undefined) return;
         const target = from === undefined || isControl(from) ? from : from.target;
         const active = typeof document === "undefined" ? null : document.activeElement;
         const focused = elementsOf(handle).some((element) => active !== null && element.contains(active)) ? active : undefined;
         const control = isControl(target) ? target : focused;
-        if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : from);
+        if (isControl(control)) afterInput(control, value, from === undefined || isControl(from) ? {} : from);
       });
     },
     ref(element) {

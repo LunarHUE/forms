@@ -16,6 +16,7 @@ import type {
   InvalidField,
   Part,
   PluginApis,
+  NamesOf,
   PluginNames,
   Plugins,
   PluginsOf,
@@ -336,10 +337,10 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
   ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   /**
    * Makes a reusable shape from a type, with no schema:
-   * `forms.fieldset<Address>()`. With parts, name their plugins too:
-   * `forms.fieldset<Address, "rules">(ruled(...))`.
+   * `forms.fieldset<Address>()`. With parts, name their plugins' factories
+   * too: `forms.fieldset<Address, typeof rules>(ruled(...))`.
    */
-  fieldset<V, N extends string = never>(...parts: readonly Part<N, V>[]): Fieldset<V, E, F, PluginNames<P>, N>;
+  fieldset<V, Q = never>(...parts: readonly Part<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
 }
 
 /** A form as the runtime builds it. */

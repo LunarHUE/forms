@@ -23,6 +23,7 @@ import type {
   ObjectHandle,
   Part,
   PluginApis,
+  NamesOf,
   PluginNames,
   Plugins,
   PluginsFor,
@@ -664,10 +665,10 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
   readonly fieldset: {
     /**
      * The shape from a type, with no schema: `forms.fieldset<Address>()`.
-     * With parts, name their plugins too:
-     * `forms.fieldset<Address, "rules">(ruled(...))`.
+     * With parts, name their plugins' factories too:
+     * `forms.fieldset<Address, typeof rules>(ruled(...))`.
      */
-    <V, N extends string = never>(...parts: readonly Part<N, V>[]): Fieldset<V, E, F, PluginNames<P>, N>;
+    <V, Q = never>(...parts: readonly Part<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
     /**
      * The shape from a schema: the `Draft` of its input when an installed
      * schema plugin accepts it, as `define` types it, and the input itself

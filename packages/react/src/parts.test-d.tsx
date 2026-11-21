@@ -47,10 +47,10 @@ describe("field types", () => {
 
 describe("fieldsets with parts", () => {
   const forms = createForms({ plugins: [dirty(), rules()] });
-  const Shape = forms.fieldset<Address, "rules">(ruled({ street: (address) => ({ hidden: address.same }) }));
+  const Shape = forms.fieldset<Address, typeof rules>(ruled({ street: (address) => ({ hidden: address.same }) }));
 
   it("type each part's value from the shape", () => {
-    forms.fieldset<Address, "rules">(
+    forms.fieldset<Address, typeof rules>(
       ruled({
         street: (address) => {
           expectTypeOf(address).toEqualTypeOf<Address>();
@@ -59,7 +59,7 @@ describe("fieldsets with parts", () => {
       }),
     );
     // @ts-expect-error: no field is named "stret"
-    forms.fieldset<Address, "rules">(ruled({ stret: () => ({}) }));
+    forms.fieldset<Address, typeof rules>(ruled({ stret: () => ({}) }));
   });
 
   it("take parts after a schema, typed from it", () => {

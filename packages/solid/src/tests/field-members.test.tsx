@@ -196,7 +196,7 @@ const chars = definePlugin({
 
 describe("a field object's meta", () => {
   it("is reactive, so a plugin's meta reader tracks it", () => {
-    const Named = createForms({ plugins: [arrays(), chars] }).define({ defaultValues: { name: "" } });
+    const Named = createForms({ plugins: [arrays(), chars()] }).define({ defaultValues: { name: "" } });
     const { field, length, dispose } = createRoot((stop) => {
       const name = createField(createForm(Named).root.at("name"));
       return { field: name, length: createMemo(() => chars.meta(name)), dispose: stop };

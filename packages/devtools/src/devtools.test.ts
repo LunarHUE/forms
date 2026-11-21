@@ -145,7 +145,7 @@ describe("devtools()", () => {
 
   it("holds no listener, so other plugins' onActive cleanups still run", () => {
     const cleanup = vi.fn<() => void>();
-    const watcher = definePlugin({ name: "watcher", setup: () => ({ onActive: () => cleanup }) });
+    const watcher = definePlugin({ name: "watcher", setup: () => ({ onActive: () => cleanup }) })();
     const store = storeWith({}, watcher);
     const off = store.subscribeForm(() => {});
     store.root.at("name").setValue("a");

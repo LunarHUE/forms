@@ -403,7 +403,7 @@ describe("Plugins", () => {
         ctx.setFormMeta({ count: 1 });
         return { api: { bump() {}, reset() {} } };
       },
-    });
+    })();
     const store = createFormsCore({ plugins: [counter, devtools()] })
       .define({ defaultValues: { name: "" } })
       .createStore();
@@ -594,7 +594,7 @@ describe("listeners", () => {
           };
         },
       }),
-    });
+    })();
     const store = createFormsCore({ plugins: [devtools(), probe] })
       .define({ defaultValues: { name: "", address: { city: "" } } })
       .createStore();

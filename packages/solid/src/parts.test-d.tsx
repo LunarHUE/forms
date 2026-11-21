@@ -38,7 +38,7 @@ describe("field types", () => {
 
 describe("fieldsets with parts", () => {
   const forms = createForms({ plugins: [dirty(), rules()] });
-  const Shape = forms.fieldset<Address, "rules">(ruled({ street: (address) => ({ hidden: address.same }) }));
+  const Shape = forms.fieldset<Address, typeof rules>(ruled({ street: (address) => ({ hidden: address.same }) }));
 
   it("scope with the shared plugins and the parts', and take handles of forms that have the parts' plugins", () => {
     expectTypeOf<HandleOf<typeof Shape>>().toEqualTypeOf<ObjectHandle<Address, FormError, "rules">>();

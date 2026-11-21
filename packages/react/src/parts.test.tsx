@@ -33,7 +33,7 @@ interface Address {
   street: string;
 }
 
-const AddressShape = forms.fieldset<Address, "rules">(ruled({ street: (address) => ({ hidden: address.same }) }));
+const AddressShape = forms.fieldset<Address, typeof rules>(ruled({ street: (address) => ({ hidden: address.same }) }));
 
 function AddressFields({ handle, label }: { readonly handle: HandleOf<typeof AddressShape>; readonly label: string }) {
   const scope = AddressShape.scope(handle);

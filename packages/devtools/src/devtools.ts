@@ -166,7 +166,7 @@ export function devtools(options: DevtoolsOptions = {}): Plugin<undefined, "devt
             entry.lastWrite.set(JSON.stringify(record.path), seq);
           }
         },
-        onSubmit() {
+        beforeSubmit() {
           if (hook?.on) entry.submissions.push({ seq: ++seq, status: "open" });
           return undefined;
         },
@@ -187,7 +187,7 @@ export function devtools(options: DevtoolsOptions = {}): Plugin<undefined, "devt
         },
       };
     },
-  });
+  })();
 }
 
 /** Reads every installed form's `enabled` now and shows or hides the panel to match. */

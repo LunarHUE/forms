@@ -1,5 +1,5 @@
 import type { FieldSnapshot, TextControl } from "@lunarhue/forms-core";
-import { displayOf } from "./display.js";
+import { displayOf } from "@lunarhue/forms-core";
 import type { FieldRef } from "./input.js";
 import { focusedElement, refFor } from "./refs.js";
 import { cached } from "./select.js";
@@ -46,7 +46,7 @@ export const asText = (value: unknown): string =>
  * gives one, else the value. `NaN` shows as `""`.
  */
 export function textOf({ value, meta }: FieldSnapshot<unknown, unknown>): string {
-  const shown = displayOf(meta);
+  const shown = displayOf({ meta });
   if (shown) return shown.display(value);
   return typeof value === "number" && Number.isNaN(value) ? "" : asText(value);
 }
@@ -70,11 +70,11 @@ export const piecesFor = (handle: object): FieldPieces =>
         if (commands.peek().readOnly) return;
         commands.setValue(text);
         const { value, meta } = commands.peek();
-        const edit = displayOf(meta)?.edit;
-        if (edit === undefined) return;
+        const afterInput = displayOf({ meta })?.afterInput;
+        if (afterInput === undefined) return;
         const target = from === undefined || isControl(from) ? from : from.target;
         const control = isControl(target) ? target : focusedElement(handle);
-        if (isControl(control)) edit(control, value, from === undefined || isControl(from) ? {} : nativeOf(from));
+        if (isControl(control)) afterInput(control, value, from === undefined || isControl(from) ? {} : nativeOf(from));
       },
       handleBlur: () => commands.handleBlur(),
       ref: refFor(handle),

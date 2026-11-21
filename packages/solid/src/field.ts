@@ -4,6 +4,7 @@ import type {
   FieldHandle,
   FieldSnapshot,
   FormError,
+  NamesOf,
   FormSnapshot,
   FormStore,
   HandleTypes,
@@ -126,13 +127,14 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * props. The component then fits any field of string options, and each use
  * checks the options against the named field. See `Choice`.
  *
- * A component that reads a plugin's members names the plugin in
- * `Installed`: `FieldApi<string, FormError, "dirty">` has `dirty`, and fits
- * only fields of forms with `dirty()`.
+ * A component that reads a plugin's members names the plugin's factory in
+ * `P`: `FieldApi<string, typeof dirty>` has `dirty`, and fits only fields
+ * of forms with `dirty()`. Name several as a union,
+ * `typeof dirty | typeof history`.
  */
-export type FieldApi<T, E = FormError, Installed extends string = never> = ExactFieldApi<Draft<T>, E, Installed> & {
+export type FieldApi<T, P = never, E = FormError> = ExactFieldApi<Draft<T>, E, NamesOf<P>> & {
   /** Type information only: the `T` the component was written for. */
-  readonly "~fits"?: FieldTypes<T, E, Installed>;
+  readonly "~fits"?: FieldTypes<T, E, NamesOf<P>>;
 };
 
 /**

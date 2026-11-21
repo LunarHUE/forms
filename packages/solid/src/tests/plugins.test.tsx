@@ -31,8 +31,8 @@ const upper = definePlugin({
   },
 });
 
-const forms = createForms({ plugins: [arrays(), chars] });
-const Profile = forms.define({ defaultValues: { name: "" }, plugins: [upper] });
+const forms = createForms({ plugins: [arrays(), chars()] });
+const Profile = forms.define({ defaultValues: { name: "" }, plugins: [upper()] });
 
 function Name() {
   const form = createForm(Profile);
@@ -109,7 +109,7 @@ function NotePage() {
   return (
     <>
       <form.Field name="text">{(field) => <input {...inputProps(field)} />}</form.Field>
-      <button type="button" disabled={!undoHistory.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
+      <button type="button" disabled={!history.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
         Undo
       </button>
     </>
@@ -217,13 +217,13 @@ describe("baselineOnSubmit through the adapter", () => {
 const captcha = definePlugin({
   name: "captcha",
   setup: (ctx) => ({
-    async onSubmit() {
+    async beforeSubmit() {
       await Promise.resolve();
       ctx.store.root.setErrors({ message: "No token" });
       return refuse;
     },
   }),
-});
+})();
 
 describe("a plugin that refuses a submit through the adapter", () => {
   it("ends the submit invalid, skips onSubmit and shows the plugin's form error", async () => {

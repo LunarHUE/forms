@@ -193,7 +193,7 @@ function StreetInput(props: { readonly field: FieldApi<string> }) {
 
 const contactForms = createForms({ plugins: [mask(), rules()], fields: { PhoneField, StreetInput } });
 
-const AddressShape = contactForms.fieldset<{ same: boolean; street: string }, "rules">(
+const AddressShape = contactForms.fieldset<{ same: boolean; street: string }, typeof rules>(
   ruled({ street: (address) => ({ hidden: address.same }) }),
 );
 

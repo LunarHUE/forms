@@ -115,7 +115,7 @@ function savedDraft(value: unknown) {
 const settings = createForms().define(
   {
     defaultValues: { phone: "", price: 3, terms: false, size: "s" },
-    plugins: [persist("draft", savedDraft({ phone: "5551234", price: 12, terms: true, size: "l" })), mask()],
+    plugins: [persist({ key: "draft", storage: savedDraft({ phone: "5551234", price: 12, terms: true, size: "l" }) }), mask()],
   },
   PhoneField.at("phone"),
 );

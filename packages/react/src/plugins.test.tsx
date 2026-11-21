@@ -5,7 +5,7 @@ import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createForms, type FieldApi, type FormOf, inputProps, useForm, useFormState } from "./index.js";
 
 // Shared: stores each written string's length as the field's meta.
-const chars = definePlugin({
+const charCount = definePlugin({
   name: "chars",
   initialMeta: 0,
   setup: (ctx: PluginContext<number>) => ({
@@ -14,9 +14,10 @@ const chars = definePlugin({
     },
   }),
 });
+const chars = charCount();
 
 // The definition's own: upper-cases every value and counts the writes on the form.
-const upper = definePlugin({
+const uppers = definePlugin({
   name: "writes",
   initialFormMeta: 0,
   setup(ctx: PluginContext<never, number>) {
@@ -28,13 +29,14 @@ const upper = definePlugin({
     };
   },
 });
+const upper = uppers();
 
 function TextField(props: { readonly field: FieldApi<string> }) {
   const { field } = props;
   return (
     <>
       <input aria-label="name" {...inputProps(field)} />
-      <output>{chars.meta(field)}</output>
+      <output>{charCount.meta(field)}</output>
     </>
   );
 }
@@ -44,7 +46,7 @@ const profile = forms.define({ defaultValues: { name: "" }, plugins: [upper] });
 
 function Profile() {
   const form = useForm(profile);
-  const writes = useFormState(form, (snapshot) => upper.formMeta(snapshot));
+  const writes = useFormState(form, (snapshot) => uppers.formMeta(snapshot));
   return (
     <>
       <form.TextField name="name" />
@@ -112,7 +114,7 @@ function NotePage() {
   return (
     <>
       <form.Field name="text">{(field) => <input aria-label="text" {...inputProps(field)} />}</form.Field>
-      <form.State select={(snapshot) => undoHistory.formMeta(snapshot).canUndo}>
+      <form.State select={(snapshot) => history.formMeta(snapshot).canUndo}>
         {(canUndo) => (
           <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
             Undo

@@ -15,7 +15,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
 }
 
 const required = (value: string) => (value ? undefined : { message: "Required" });
-const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: (): number => 0 } }) });
+const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: (): number => 0 } }) })();
 
 describe("with no plugins", () => {
   const forms = createForms({ fields: { TextField } });
@@ -99,7 +99,7 @@ describe("a definition's own schema plugin and dirty()", () => {
 
 describe("useFormContext(forms)", () => {
   const forms = createForms({ plugins: [counter], fields: { TextField } });
-  const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) });
+  const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) })();
   forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
 
   interface SharedProps {
