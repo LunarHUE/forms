@@ -151,8 +151,8 @@ export function parseFormsTable(markdown: string): FormSizes {
     const [name = "", ...values] = cells(line);
     const sizes: Record<string, number> = {};
     for (const [index, column] of columns.entries()) {
-      const size = Number((values[index] ?? "").replace(/[^\d]/g, ""));
-      if (Number.isFinite(size)) sizes[column] = size;
+      const digits = (values[index] ?? "").replace(/[^\d]/g, "");
+      if (digits.length > 0) sizes[column] = Number(digits);
     }
     return { name, sizes };
   });
@@ -343,7 +343,7 @@ function formsTable(changes: readonly Change[], compared: boolean): string {
     group,
     ...columns.map((column) => {
       const item = forms.find((candidate) => candidate.group === group && candidate.entry === column);
-      if (item === undefined) return "";
+      if (item === undefined) return "n/a";
       if (item.head === undefined) return "removed";
       if (!compared || item.base === undefined || item.base === item.head) return bytes(item.head);
       return `${bytes(item.head)} (${signedBytes(item.head - item.base)})`;
