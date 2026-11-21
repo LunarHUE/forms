@@ -7,7 +7,7 @@ order: 1
 
 The core holds values, arrays, errors and submit state, and knows nothing about either framework. The adapter, `@lunarhue/forms-react` or `@lunarhue/forms-solid`, connects it to your components. A Vue adapter is planned.
 
-Validation is built in. Undo, input masks, schema libraries and the rest are plugins, all imported from one `plugins` entry. Your bundle carries only the ones you import.
+Validation is built in. Undo, schema libraries and the rest are plugins, all imported from one `plugins` entry. Input masks are parts from the `text` entry, put on one field type, with no plugin. Your bundle carries only what you import.
 
 Field names are typed. The form's value type comes from its starting values,
 and every `name` you write is checked against it:

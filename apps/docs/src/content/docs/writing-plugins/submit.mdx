@@ -8,7 +8,8 @@ navTitle: Submit and starting values
 
 ## Refusing a submit
 
-A throw or a rejected promise in `onSubmit` is a bug. It goes to
+A plugin's `beforeSubmit` hook runs when a submit starts. A promise it
+returns runs alongside validation. A throw or a rejected promise in it is a bug. It goes to
 `onPluginError` and the submit carries on. To stop a submit on purpose, return
 `refuse`, directly or from the promise. The definition's `onSubmit` isn't
 called, the submission ends `"invalid"` as it does when validation fails, and
@@ -17,10 +18,10 @@ called, the submission ends `"invalid"` as it does when validation fails, and
 ```ts
 import { definePlugin, refuse } from "@lunarhue/forms-core/plugins";
 
-const captcha = definePlugin({
+export const captcha = definePlugin({
   name: "captcha",
   setup: (ctx) => ({
-    async onSubmit() {
+    async beforeSubmit() {
       try {
         const token = await fetchToken();
         ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
@@ -35,8 +36,8 @@ const captcha = definePlugin({
 ```
 
 `refuse` returned directly stops the plugins after this one from running their
-`onSubmit`. Returned from a promise it can't, since every `onSubmit` started
-when the submit did. A plugin doesn't know the form's error type, so the error
+`beforeSubmit`. Returned from a promise it can't, since every `beforeSubmit`
+started when the submit did. A plugin doesn't know the form's error type, so the error
 it sets must fit the form's `mapError`, if it has one.
 
 ## After a submit
@@ -55,29 +56,35 @@ passes the keys each array had when the value was sent.
 
 ## Starting values
 
-A plugin can give the form its starting value with `initial`. It runs before
-the store is made, gets the value the store would start from, and returns the
-value to start from instead, or undefined to keep it:
+A plugin can give the form its starting value with `initialValue`. It runs
+before the store is made, gets the value the store would start from and the
+factory's options, and returns the value to start from instead, or undefined
+to keep it:
 
 ```ts
 // Starts the form from a value the server and the client both have.
-const startFrom = (value: Profile) => definePlugin({ name: "start", initial: () => value, setup: () => ({}) });
+export const startFrom = definePlugin({
+  name: "start",
+  initialValue: (_value, start: Profile) => start,
+});
+
+const form = useForm(profile, { plugins: [startFrom(saved)] });
 ```
 
 The store, its baseline and its server snapshot all start from that value.
 Nothing is written, so the form isn't dirty and no plugin sees a record. When
-several plugins have `initial`, each gets the value the one before returned,
+several plugins have `initialValue`, each gets the value the one before returned,
 so the last one in the list wins.
 
 The value replaces the store's starting value whole. It isn't merged with a
-schema plugin's defaults the way `defaultValues` is, though `initial` gets
+schema plugin's defaults the way `defaultValues` is, though `initialValue` gets
 those merged defaults and can merge into them itself. A value that differs
 between server and client, such as one read from browser storage, makes
 hydration fail. Read those in `onActive` and write them with `ctx.write`, as
 `persist` does.
 
-`attach` can return an `initial` hook too. It gets the value at the part's
-path when the part attaches and returns the value to keep there, which is how
-`mask` cleans a field's starting value. The store keeps it with no write
-record, and the baseline moves with it while the field isn't dirty, so the
-form doesn't start dirty.
+A part has no starting-value hook. Its `beforeWrite` gets the value at its
+path once when it attaches, with `cause: "attach"`, and what it returns is
+kept there. That is how `masked` cleans a field's starting value. The store
+keeps it with no write record, and the baseline moves with it while the field
+isn't dirty, so the form doesn't start dirty.

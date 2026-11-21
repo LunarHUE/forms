@@ -38,11 +38,12 @@ Code that needs a plugin the form lacks fails to compile, and the error names
 the plugin to add:
 
 ```text
-Add mask() to this form's plugins: PhoneField uses it
+Add limit() to this form's plugins: ShortNote uses it
 ```
 
-That covers a field type with a mask part, `push` on an array without
-`arrays()`, and `equals` without `dirty()`. In development, code without types
+That covers a field type that carries a plugin's
+[part](../writing-plugins/parts), `push` on an array without `arrays()`, and
+`equals` without `dirty()`. In development, code without types
 that calls a missing plugin throws an error with a code such as
 [`dirty:missing`](/errors#core:dirty:missing).
 
@@ -56,6 +57,7 @@ that calls a missing plugin throws an error with a code such as
 
 First-class plugins live in `@lunarhue/forms-core/plugins`, and each adapter
 re-exports them from its own `plugins` entry: `dirty`, `rebase`, `persist`,
-`history`, `arrays`, `mask` and `rules`. Each has a page in this section, as
-do the [schema plugins](./schemas). To make your own, see
+`history`, `arrays` and `rules`. Each has a page in this section, as do the
+[schema plugins](./schemas). [Masks](./masks) are parts from the `text`
+entry and need no plugin. To make your own, see
 [Writing plugins](../writing-plugins/first-plugin).
