@@ -377,6 +377,105 @@ describe.each(entries)("%s", (_name, entry, options) => {
   });
 });
 
+interface TextFieldProps {
+  readonly field: mini.FieldApi<string>;
+  readonly label: string;
+  readonly hint?: string;
+}
+
+/** A registered field component, bound by hand so it needs neither entry's `inputProps`. */
+function TextField(props: TextFieldProps) {
+  const { field, label, hint } = props;
+  received.push(props);
+  return (
+    <>
+      <input aria-label={label} id={field.id} value={field.text} onChange={(event) => field.setText(event.target.value, event)} onBlur={field.handleBlur} />
+      <span role="status" aria-label={`${label} errors`}>
+        {field.shownErrors.map((error) => error.message).join(",")}
+      </span>
+      {hint === undefined ? null : <small>{hint}</small>}
+    </>
+  );
+}
+
+/** The props each `TextField` render got, in order. */
+const received: TextFieldProps[] = [];
+
+describe.each(entries)("%s: registered field components", (_name, entry, options) => {
+  const forms = entry.createForms({ ...options, fields: { TextField } });
+  const definition = forms.define({
+    defaultValues: { q: "", page: "1" },
+    validate: { fields: entry.fieldValidators<Search>({ q: required }) },
+  });
+  type Registered = mini.FormOf<typeof definition>;
+  const seen: { form?: Registered } = {};
+
+  function RegisteredForm() {
+    const form = entry.useForm(definition);
+    useEffect(() => {
+      seen.form = form;
+    });
+    return (
+      <form {...form.formProps}>
+        <form.TextField name="q" label="Query" hint="Brand or model" />
+        <form.TextField name="page" label="Page" />
+      </form>
+    );
+  }
+
+  it("renders the component with its own props and the named field", () => {
+    received.length = 0;
+    render(<RegisteredForm />);
+    expect(input("Query").value).toBe("");
+    expect(input("Page").value).toBe("1");
+    expect(screen.getByText("Brand or model")).toBeDefined();
+    expect(received[0]?.label).toBe("Query");
+    expect(received[0]?.field.name).toBe("q");
+    // `name` is the bound component's own and never reaches the registered one.
+    expect(received.every((props) => !("name" in props))).toBe(true);
+    fireEvent.change(input("Page"), { target: { value: "2" } });
+    const store = seen.form?.store;
+    expect(store?.fieldAt(store.pathOf("page") ?? [])?.peek().value).toBe("2");
+    expect(input("Page").value).toBe("2");
+  });
+
+  it("shows the field's errors after blur", () => {
+    render(<RegisteredForm />);
+    fireEvent.blur(input("Query"));
+    expect(errorsOf("Query")).toBe("Type something.");
+    fireEvent.change(input("Query"), { target: { value: "shoes" } });
+    expect(errorsOf("Query")).toBe("");
+  });
+
+  it("keeps each bound component's identity for the life of the form", () => {
+    render(<RegisteredForm />);
+    const first = seen.form?.TextField;
+    fireEvent.change(input("Query"), { target: { value: "shoes" } });
+    expect(seen.form?.TextField).toBe(first);
+  });
+
+  it("keeps the form's own members over a registered component of the same name", async () => {
+    const clashing = entry
+      .createForms({
+        ...options,
+        // @ts-expect-error: submit is the form's own
+        fields: { submit: TextField },
+      })
+      .define({ defaultValues: { q: "", page: "1" } });
+    function Clashing() {
+      const form = entry.useForm(clashing);
+      useEffect(() => {
+        holder.form = form;
+      });
+      return null;
+    }
+    render(<Clashing />);
+    // A bound component would call hooks outside a render and throw.
+    await act(() => current().submit());
+    expect(current().store.getFormSnapshot().submitCount).toBe(1);
+  });
+});
+
 describe("perField()", () => {
   // The full entry always wakes per field. Mini wakes every listener on each change unless the form opts in.
   it.each([

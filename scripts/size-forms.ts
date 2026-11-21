@@ -29,6 +29,7 @@ const forms: readonly (readonly [form: string, label: string, only?: string])[] 
   ["schema", "+ a Valibot schema"],
   ["plugins", "+ mask and rules"],
   ["registered", "Registered field component"],
+  ["registered-mini", "Registered field component on /mini", "react"],
   ["arrays", "+ an array: items, add, remove, move"],
   ["everything", "Everything on"],
   ["devtools", "Bare form + devtools()"],

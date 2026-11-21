@@ -1,7 +1,20 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type * as full from "./index.js";
-import { createForms, type FieldApi, type FormOf, type FormStore, type NamedAnyFieldHandle, type Parts, perField, transform, useForm } from "./mini.js";
-import { definePlugin, history, part, transform as fullTransform } from "./plugins.js";
+import { createForms as fullCreateForms, defineField } from "./index.js";
+import {
+  createForms,
+  type FieldApi,
+  type FormError,
+  type FormOf,
+  type FormsOptions,
+  type FormStore,
+  type NamedAnyFieldHandle,
+  type Parts,
+  perField,
+  transform,
+  useForm,
+} from "./mini.js";
+import { definePlugin, dirty, history, part, transform as fullTransform } from "./plugins.js";
 
 const forms = createForms();
 const search = forms.define({ defaultValues: { q: "", page: 1, filters: { brand: "" } } });
@@ -59,5 +72,93 @@ describe("define", () => {
     forms.define({ defaultValues: { q: "" } }, part(limit, 10));
     // @ts-expect-error: full's parts run on full's store only
     forms.define({ defaultValues: { q: "" } }, fullTransform<{ q: string }>((value) => value));
+  });
+});
+
+interface TextFieldProps {
+  readonly field: FieldApi<string>;
+  readonly label: string;
+}
+
+function TextField({ field, label }: TextFieldProps) {
+  return (
+    <label>
+      {label} {field.text}
+    </label>
+  );
+}
+
+function NumberField(_props: { readonly field: FieldApi<number> }) {
+  return null;
+}
+
+function WithDirty(_props: { readonly field: FieldApi<string, typeof dirty> }) {
+  return null;
+}
+
+const fields = { TextField, NumberField };
+const signIn = createForms({ fields }).define({ defaultValues: { email: "", age: 0, address: { city: "" } } });
+declare const signInForm: FormOf<typeof signIn>;
+const fullSignIn = fullCreateForms({ fields }).define({ defaultValues: { email: "", age: 0, address: { city: "" } } });
+declare const fullSignInForm: full.FormOf<typeof fullSignIn>;
+
+describe("registered field components", () => {
+  it("take the names of fields whose value fits", () => {
+    expectTypeOf<Parameters<typeof signInForm.TextField>[0]["name"]>().toEqualTypeOf<"email" | "address.city">();
+    <signInForm.TextField name="email" label="Email" />;
+    <signInForm.TextField name="address.city" label="City" />;
+    <signInForm.NumberField name="age" />;
+    // @ts-expect-error: no field is named phone
+    <signInForm.TextField name="phone" label="Phone" />;
+    // @ts-expect-error: age holds a number
+    <signInForm.TextField name="age" label="Age" />;
+    // @ts-expect-error: email holds a string
+    <signInForm.NumberField name="email" />;
+    // @ts-expect-error: address is an object
+    <signInForm.TextField name="address" label="Address" />;
+  });
+
+  it("take the component's own props, and fill in field", () => {
+    expectTypeOf<Parameters<typeof signInForm.TextField>[0]>().toEqualTypeOf<{ readonly label: string } & { readonly name: "email" | "address.city" }>();
+    // @ts-expect-error: label is required
+    <signInForm.TextField name="email" />;
+    // @ts-expect-error: label is a string
+    <signInForm.TextField name="email" label={1} />;
+    // @ts-expect-error: the bound component fills in field
+    <signInForm.TextField name="email" label="Email" field={undefined} />;
+  });
+
+  it("aren't on a form whose createForms registers none", () => {
+    expectTypeOf<keyof Search>().toEqualTypeOf<"store" | "id" | "formProps" | "submit" | "handleSubmit" | "Form" | "Field" | "State">();
+  });
+
+  it("refuse reserved names, components with no field prop, and full-only entries", () => {
+    expectTypeOf<FormsOptions<{ submit: typeof TextField }>["fields"]>().toEqualTypeOf<({ submit: typeof TextField } & { readonly submit: never }) | undefined>();
+    // @ts-expect-error: Field is the form's own
+    createForms({ fields: { Field: TextField } });
+    // @ts-expect-error: handleSubmit is the form's own
+    createForms({ fields: { handleSubmit: TextField } });
+    // @ts-expect-error: root is the full form's own, so the move to full keeps working
+    createForms({ fields: { root: TextField } });
+    // @ts-expect-error: a component with no field prop
+    createForms({ fields: { Label: (_props: { readonly label: string }) => null } });
+    // @ts-expect-error: validate is full's bound component's own
+    createForms({ fields: { Checked: (_props: { readonly field: FieldApi<string>; readonly validate: string }) => null } });
+    // @ts-expect-error: defineField needs the full entry
+    createForms({ fields: { Phone: defineField(TextField) } });
+    // @ts-expect-error: full's field object has members mini's lacks
+    createForms({ fields: { Full: (_props: { readonly field: full.FieldApi<string> }) => null } });
+  });
+
+  it("refuse a component whose field names a plugin", () => {
+    const withDirty = createForms({ fields: { WithDirty } }).define({ defaultValues: { email: "" } });
+    expectTypeOf<FormOf<typeof withDirty>["WithDirty"]>().toBeNever();
+  });
+
+  it("move to the full entry with the same fields and uses", () => {
+    expectTypeOf<FormsOptions<typeof fields>>().toExtend<full.FormsOptions<[], FormError, typeof fields>>();
+    <fullSignInForm.TextField name="email" label="Email" />;
+    <fullSignInForm.TextField name="address.city" label="City" />;
+    <fullSignInForm.NumberField name="age" />;
   });
 });

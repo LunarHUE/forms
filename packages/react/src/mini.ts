@@ -2,7 +2,7 @@
 // form. Every member here is in the main entry with the same name, and a
 // form moves to it by changing the import. It never imports core's main
 // entry or the adapter's own modules, only their types.
-import type { Draft, NamedLeafHandle, Nested, TextControl } from "@lunarhue/forms-core";
+import type { Draft, ErrorOf, NamedLeafHandle, Nested, PluginsOf, TextControl } from "@lunarhue/forms-core";
 import {
   createFormsCore,
   type DefinedValue,
@@ -18,20 +18,33 @@ import {
   type Parts,
   type StandardSchemaV1,
 } from "@lunarhue/forms-core/mini";
-import type { ChangeEvent, ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import type { ChangeEvent, ComponentType, JSXElementConstructor, ReactElement, ReactNode } from "react";
+import { createElement, useState } from "react";
 import { generatedIdUsed, useId, useSyncExternalStore } from "#lunarhue/react";
 import type { IsEqual } from "./field.js";
-import type { FormElementProps as FullFormElementProps, FormsOptions as FullFormsOptions, UseFormOptions as FullUseFormOptions } from "./forms.js";
+import type {
+  CheckedFields,
+  FormElementProps as FullFormElementProps,
+  FormsOptions as FullFormsOptions,
+  UseFormOptions as FullUseFormOptions,
+} from "./forms.js";
 import type { TextInputOptions, TextInputProps as FullTextInputProps } from "./input.js";
 import type { ValueAt } from "./path.js";
-import type { ExactFieldApi as FullExactFieldApi, FieldApi as FullFieldApi } from "./scope.js";
+import type {
+  AcceptedValues,
+  ExactFieldApi as FullExactFieldApi,
+  FieldApi as FullFieldApi,
+  FieldPropOf,
+  NameFitting,
+  NoFields,
+  OwnPropsOf,
+} from "./scope.js";
 
 export * from "@lunarhue/forms-core/mini";
-export type { IsEqual, TextInputOptions, ValueAt };
+export type { IsEqual, NoFields, OwnPropsOf, TextInputOptions, ValueAt };
 
 /** The members of a mini field object besides its commands. Full's field object has each of them. */
-type FieldMembers = "value" | "name" | "errors" | "shownErrors" | "invalid" | "touched" | "id" | "errorId" | "text" | "setText";
+type FieldMembers = "value" | "name" | "errors" | "shownErrors" | "invalid" | "touched" | "id" | "errorId" | "text" | "setText" | "~types";
 
 /** The commands of a mini field object. Mini binds leaves only, so they are a leaf handle's. */
 type CommandMembers = "setValue" | "handleBlur" | "setErrors";
@@ -54,8 +67,30 @@ export type FieldApi<T, P = never, E = FormError> = Pick<FullFieldApi<T, P, E>, 
 /** Props for the `<form>` element: the members of full's that mini keeps. */
 export type FormElementProps = Pick<FullFormElementProps, "id" | "noValidate" | "onSubmit">;
 
+/**
+ * The app's field components by the name they get on every form. Mini takes
+ * plain components only. A `defineField(...)` entry needs the full entry.
+ */
+export type FieldComponentMap = Readonly<Record<string, JSXElementConstructor<never>>>;
+
+/**
+ * Full's checks on `fields`, plus one of mini's own: a component whose
+ * `field` prop asks for a member mini's field object lacks, as full's
+ * `FieldApi` does, becomes `never`.
+ */
+type MiniCheckedFields<F extends FieldComponentMap> = {
+  readonly [K in keyof F]: [Exclude<keyof FieldPropOf<F[K]>, keyof FieldApi<unknown>>] extends [never] ? CheckedFields<F>[K] : never;
+};
+
 /** Settings for `createForms`: the members of full's that mini keeps. */
-export type FormsOptions = Pick<FullFormsOptions, "subscribe">;
+export interface FormsOptions<F extends FieldComponentMap = NoFields> extends Pick<FullFormsOptions, "subscribe"> {
+  /**
+   * The app's field components. Each is an ordinary component with a
+   * `field: FieldApi<T>` prop and any props of its own, and shows up bound,
+   * under the same name, on every form: `<form.TextField name="email" label="Email" />`.
+   */
+  readonly fields?: F & MiniCheckedFields<F>;
+}
 
 /** Per-form settings for `useForm`: the members of full's that mini keeps. */
 export type UseFormOptions = Pick<FullUseFormOptions, "id">;
@@ -103,8 +138,28 @@ export interface FormStateProps<I, R, S, T> {
 /** `form.State`: reads the form snapshot inline. */
 export type FormStateComponent<I, R, T> = <S>(props: FormStateProps<I, R, S, T>) => ReactElement;
 
-/** A form mounted in a component. Made once, so every member keeps its identity. */
-export interface FormInstance<V, E = FormError, I = undefined, R = unknown> {
+/**
+ * A registered component bound to a form. It takes the component's own props
+ * and the `name` of a field that fits it and isn't an object, then renders
+ * the component with `field` filled in. `name` never reaches the component.
+ */
+export type BoundFieldComponent<V, E, A, O> = (props: O & { readonly name: LeafPath<V> & NameFitting<V, E, A> }) => ReactElement;
+
+/**
+ * The registered components as bound on a form. A component whose field
+ * error type doesn't accept the form's, or whose field names plugins, is
+ * `never` there.
+ */
+type BoundFieldComponents<V, E, F extends FieldComponentMap> = {
+  readonly [K in keyof F]: [E] extends [ErrorOf<FieldPropOf<F[K]>>]
+    ? [PluginsOf<FieldPropOf<F[K]>>] extends [never]
+      ? BoundFieldComponent<V, E, AcceptedValues<FieldPropOf<F[K]>>, OwnPropsOf<F[K]>>
+      : never
+    : never;
+};
+
+/** The form's own members, besides the registered components. */
+export interface FormMembers<V, E, I, R, F extends FieldComponentMap = NoFields> {
   /** The core store. */
   readonly store: FormStore<V, E, I, R>;
   /** The store id. */
@@ -115,16 +170,29 @@ export interface FormInstance<V, E = FormError, I = undefined, R = unknown> {
   readonly submit: FormStore<V, E, I, R>["submit"];
   /** Calls `event.preventDefault()`, then submits. Bound. */
   readonly handleSubmit: (event?: { preventDefault(): void }) => Promise<void>;
-  readonly Form: FormComponent<FormInstance<V, E, I, R>>;
+  readonly Form: FormComponent<FormInstance<V, E, I, R, F>>;
   readonly Field: FieldComponent<V, E>;
-  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R>>;
+  readonly State: FormStateComponent<I, R, FormInstance<V, E, I, R, F>>;
 }
 
-/** A form definition for React: what `useForm` takes. */
-export type ReactFormDefinition<V, E = FormError, I = undefined, R = unknown> = FormDefinition<V, E, I, R>;
+/** A form mounted in a component. Made once, so every member keeps its identity. */
+export type FormInstance<V, E = FormError, I = undefined, R = unknown, F extends FieldComponentMap = NoFields> = FormMembers<V, E, I, R, F> &
+  BoundFieldComponents<V, E, F>;
+
+/**
+ * A form definition for React: what `useForm` takes. Mini's definitions take
+ * no options, so `O` is unused. It keeps full's parameter order, so an
+ * annotation keeps working after the move to the full entry.
+ */
+// oxlint-disable-next-line typescript/no-unused-vars
+export interface ReactFormDefinition<V, E = FormError, I = undefined, R = unknown, O = void, F extends FieldComponentMap = NoFields>
+  extends FormDefinition<V, E, I, R> {
+  /** Type information only: the form `useForm` makes from this definition. */
+  readonly "~form"?: FormInstance<V, E, I, R, F>;
+}
 
 /** The form a definition makes: `FormOf<typeof search>`. */
-export type FormOf<D> = D extends FormDefinition<infer V, infer E, infer I, infer R> ? FormInstance<V, E, I, R> : never;
+export type FormOf<D> = D extends { readonly "~form"?: infer T } ? T : never;
 
 /** Parts to pin at a name, as full's fieldsets give them. Mini keeps only `at`. */
 export interface Fieldset<V> {
@@ -133,7 +201,7 @@ export interface Fieldset<V> {
 }
 
 /** What `createForms` returns. */
-export interface Forms<E = FormError> {
+export interface Forms<E = FormError, F extends FieldComponentMap = NoFields> {
   /**
    * Defines a form. Without a schema `defaultValues` sets the value type.
    * With one, any Standard Schema, `defaultValues` is required. Parts after
@@ -142,20 +210,21 @@ export interface Forms<E = FormError> {
   define<V = never, S extends StandardSchemaV1 = never, R = unknown>(
     config: Definition<V, S, E, R>,
     ...parts: readonly Parts<NoInfer<DefinedValue<V, S>>>[]
-  ): ReactFormDefinition<DefinedValue<V, S>, E, undefined, R>;
+  ): ReactFormDefinition<DefinedValue<V, S>, E, undefined, R, void, F>;
   /** Groups parts for a shape `V`, to pin at a field with `at`: `forms.fieldset<string>(trimmed)`. */
   fieldset<V>(...parts: readonly Parts<V>[]): Fieldset<V>;
 }
 
-/** Mini's entry point. Call it once at module scope. */
-export function createForms(options?: FormsOptions): Forms {
+/** Mini's entry point. Call it once at module scope. `F` is inferred from `fields`. */
+export function createForms<F extends FieldComponentMap = NoFields>(options?: FormsOptions<F>): Forms<FormError, F> {
   // Core's `define` is an arrow function.
   // oxlint-disable-next-line typescript/unbound-method
   const { define } = createFormsCore(options);
   // The runtime is untyped inside. The type tests check the types.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return {
-    define,
+    // `useForm` reads the components from the definition.
+    define: (...args: Parameters<typeof define>) => ({ ...define(...args), "~fields": options?.fields }),
     fieldset: (...parts: readonly Parts<unknown>[]) => ({
       at: (name: string) => parts.flat().map((part) => ({ ...part, path: part.path === undefined ? name : `${name}.${part.path}` })),
     }),
@@ -210,7 +279,7 @@ function fieldApiOf(handle: Handle, snapshot: FieldSnapshot<unknown, unknown>): 
 /** Builds the form object around a new store. */
 // The store's members are arrow functions, so they need no `this`.
 // oxlint-disable typescript/unbound-method
-function makeForm(store: FormStore<unknown, unknown>): AnyForm {
+function makeForm(store: FormStore<unknown, unknown>, fields: FieldComponentMap | undefined): AnyForm {
   const { handleSubmit } = store;
   const formProps: FormElementProps = {
     id: store.id,
@@ -225,13 +294,29 @@ function makeForm(store: FormStore<unknown, unknown>): AnyForm {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return (typeof children === "function" ? children(formProps, form) : children) as ReactElement;
   }
-  function Field({ name, children }: FieldProps<unknown, unknown, string>): ReactElement {
+  /** The field object of the field at a dotted name, re-read on each new snapshot. */
+  function useFieldApi(name: string): never {
     // The store makes a handle for any path.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const handle = store.fieldAt(store.pathOf(name) ?? []) as Handle;
     const snapshot = useSyncExternalStore(handle["~subscribe"], handle.peek, handle.peek);
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return children(fieldApiOf(handle, snapshot) as never) as ReactElement;
+    return fieldApiOf(handle, snapshot) as never;
+  }
+  function Field({ name, children }: FieldProps<unknown, unknown, string>): ReactElement {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return children(useFieldApi(name)) as ReactElement;
+  }
+  const registered: Record<string, unknown> = {};
+  for (const key in fields) {
+    // The props pass through as they came, and the types of `fields` checked them.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const component = fields[key] as ComponentType<Record<string, unknown>>;
+    /** Renders the registered component with its `field` filled in. */
+    function Bound({ name, ...own }: { readonly name: string }): ReactElement {
+      return createElement(component, { ...own, field: useFieldApi(name) });
+    }
+    registered[key] = Bound;
   }
   function State({ select, children }: FormStateProps<undefined, unknown, unknown, AnyForm>): ReactElement {
     const snapshot = useSyncExternalStore(store.subscribeForm, store.getFormSnapshot, store.getServerFormSnapshot);
@@ -240,7 +325,7 @@ function makeForm(store: FormStore<unknown, unknown>): AnyForm {
   }
   // The generic component types are the public ones. The runtime takes any name and selector.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const form: AnyForm = { store, id: store.id, formProps, submit: store.submit, handleSubmit, Form, Field: Field as never, State: State as never };
+  const form: AnyForm = { ...registered, store, id: store.id, formProps, submit: store.submit, handleSubmit, Form, Field: Field as never, State: State as never };
   return form;
 }
 // oxlint-enable typescript/unbound-method
@@ -250,17 +335,25 @@ function makeForm(store: FormStore<unknown, unknown>): AnyForm {
  * render after. The id defaults to one from `useId`, which matches between
  * server and client on React 18 and later.
  */
-export function useForm<V, E, I, R>(definition: ReactFormDefinition<V, E, I, R>, instance?: UseFormOptions): FormInstance<V, E, I, R> {
+export function useForm<V, E, I, R, O, F extends FieldComponentMap>(
+  definition: ReactFormDefinition<V, E, I, R, O, F>,
+  instance?: UseFormOptions,
+): FormInstance<V, E, I, R, F> {
   const generatedId = useId();
   const [form] = useState(() => {
     const id = instance?.id;
     if (id === undefined) generatedIdUsed();
-    // The store's types follow the definition's.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return makeForm(definition.createStore(undefined, { id: id ?? generatedId }) as FormStore<unknown, unknown>);
+    return makeForm(
+      // The store's types follow the definition's.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      definition.createStore(undefined, { id: id ?? generatedId }) as FormStore<unknown, unknown>,
+      // `createForms` puts its components on each definition.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      (definition as { readonly "~fields"?: FieldComponentMap })["~fields"],
+    );
   });
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return form as unknown as FormInstance<V, E, I, R>;
+  return form as unknown as FormInstance<V, E, I, R, F>;
 }
 
 /**
