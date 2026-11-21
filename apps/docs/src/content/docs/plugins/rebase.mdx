@@ -68,6 +68,28 @@ A leaf is one value. A custom input on an object field, such as a date range
 over `{ start, end }`, registers on the object, so check the leaf's parent:
 `form.store.fieldAt(leaf.path.slice(0, -1))`.
 
+## Rebase or reset
+
+Rebase is for keeping edits. When the user's edits should go, as after a save
+or when they pick a different record, reset the form to the new copy instead.
+It needs no plugin:
+
+```ts
+const fresh = await fetchProfile();
+form.store.reset({ values: fresh });
+```
+
+`reset({ values })` writes the values and makes them the baseline in one
+step. It clears touched, edited and error state, and aborts a running submit,
+as `reset()` does. With [`dirty()`](./dirty) the form is clean afterwards,
+and a later `reset()` comes back to these values. `reset({ to: "initial" })`
+still goes back to the values the form started with. `history` forgets its
+steps, as on any reset.
+
+Writing the values with `setValue` doesn't do this. It leaves the baseline
+where it was, so the form stays dirty and `reset()` brings the old values
+back.
+
 ## What it returns
 
 `rebase` returns `{ taken }`, the paths it wrote with `"take"` or `{ value }`.

@@ -91,8 +91,8 @@ counts as invalid when `onSubmit` puts its errors on the form with
   reset goes back to the saved value.
 
 You don't need it for a create form that navigates away after saving, for a
-search form, or for an app that refetches after saving and calls `rebase`
-with the fresh copy.
+search form, or for an app that refetches after saving and passes the fresh
+copy to `form.store.reset({ values })` or `rebase`.
 
 The plugin trusts the value that was sent. When the server stores something
 else, such as a trimmed name or a new `updatedAt`, bring its copy in with
