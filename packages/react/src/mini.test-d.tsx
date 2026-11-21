@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type * as full from "./index.js";
-import { createForms as fullCreateForms, defineField } from "./index.js";
+import { createForms as fullCreateForms, defineField, useForm as fullUseForm } from "./index.js";
 import {
   createForms,
   type FieldApi,
@@ -72,6 +72,51 @@ describe("define", () => {
     forms.define({ defaultValues: { q: "" } }, part(limit, 10));
     // @ts-expect-error: full's parts run on full's store only
     forms.define({ defaultValues: { q: "" } }, fullTransform<{ q: string }>((value) => value));
+  });
+});
+
+describe("define((options) => config)", () => {
+  interface SearchOptions {
+    readonly q: string;
+  }
+  const withOptions = forms.define((options: SearchOptions) => ({ defaultValues: { q: options.q, page: 1 } }));
+  const plain = forms.define({ defaultValues: { q: "", page: 1 } });
+
+  it("infers the value type from what the function returns", () => {
+    expectTypeOf<FormOf<typeof withOptions>>().toEqualTypeOf<FormOf<typeof plain>>();
+    forms.define((options: SearchOptions) => ({
+      defaultValues: { q: options.q },
+      onSubmit: (value) => expectTypeOf(value).toEqualTypeOf<{ q: string }>(),
+    }));
+  });
+
+  it("makes useForm and createStore take the options first", () => {
+    expectTypeOf(useForm(withOptions, { q: "" })).toEqualTypeOf<FormOf<typeof withOptions>>();
+    useForm(withOptions, { q: "" }, { id: "search" });
+    withOptions.createStore({ q: "" }, { id: "search" });
+    // @ts-expect-error: the options are required
+    useForm(withOptions);
+    // @ts-expect-error: the options come before the settings
+    useForm(withOptions, { id: "search" });
+    // @ts-expect-error: q is a string
+    useForm(withOptions, { q: 1 });
+    // @ts-expect-error: the options are required
+    withOptions.createStore();
+  });
+
+  it("takes no options for a plain config", () => {
+    expectTypeOf(useForm(search, { id: "search" })).toEqualTypeOf<Search>();
+    useForm(search);
+    search.createStore();
+    // @ts-expect-error: a plain config takes no options
+    useForm(search, { q: "" }, { id: "search" });
+  });
+
+  it("moves to the full entry with the same define and useForm calls", () => {
+    const fullWithOptions = fullCreateForms().define((options: SearchOptions) => ({ defaultValues: { q: options.q, page: 1 } }));
+    expectTypeOf(fullUseForm(fullWithOptions, { q: "" }, { id: "search" })).toEqualTypeOf<full.FormOf<typeof fullWithOptions>>();
+    // @ts-expect-error: full requires the options too
+    fullUseForm(fullWithOptions);
   });
 });
 

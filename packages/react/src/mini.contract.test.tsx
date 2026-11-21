@@ -377,6 +377,88 @@ describe.each(entries)("%s", (_name, entry, options) => {
   });
 });
 
+interface SearchOptions {
+  readonly q: string;
+  readonly onSaved: (value: Search) => void;
+}
+
+type OptionsDefinition = mini.ReactFormDefinition<Search, mini.FormError, undefined, unknown, SearchOptions>;
+
+interface OptionsFormProps {
+  readonly definition: OptionsDefinition;
+  readonly options: SearchOptions;
+  readonly id?: string;
+}
+
+/** A form whose definition takes options, with one text field, on one entry. */
+function optionsFormOn(entry: Entry) {
+  const { useForm } = entry;
+  return function OptionsForm({ definition, options, id }: OptionsFormProps) {
+    const form = useForm(definition, options, id === undefined ? undefined : { id });
+    useEffect(() => {
+      holder.form = form;
+    });
+    return <form.Field name="q">{(field) => <TextInput entry={entry} field={field} label="Query" />}</form.Field>;
+  };
+}
+
+describe.each(entries)("%s: define((options) => config)", (_name, entry, options) => {
+  const forms = entry.createForms(options);
+  const OptionsForm = optionsFormOn(entry);
+  /** A definition from options, and a mock that records each call of its function. */
+  const defined = () => {
+    const made = vi.fn<(given: SearchOptions) => void>();
+    const definition = forms.define((given: SearchOptions) => {
+      made(given);
+      return { defaultValues: { q: given.q, page: "1" }, onSubmit: (value: Search) => given.onSaved(value) };
+    });
+    return { definition, made };
+  };
+
+  it("starts from the options and submits through them", async () => {
+    const onSaved = vi.fn<(value: Search) => void>();
+    render(<OptionsForm definition={defined().definition} options={{ q: "hats", onSaved }} />);
+    expect(input("Query").value).toBe("hats");
+    await act(() => current().submit());
+    expect(onSaved).toHaveBeenCalledWith({ q: "hats", page: "1" });
+  });
+
+  it("reads the options on the first render only", async () => {
+    const { definition, made } = defined();
+    const first = vi.fn<(value: Search) => void>();
+    const second = vi.fn<(value: Search) => void>();
+    const { rerender } = render(<OptionsForm definition={definition} options={{ q: "hats", onSaved: first }} />);
+    const form = current();
+    // StrictMode may run the initialiser twice, so the count is read after the first render.
+    const calls = made.mock.calls.length;
+    rerender(<OptionsForm definition={definition} options={{ q: "caps", onSaved: second }} />);
+    expect(current()).toBe(form);
+    expect(made).toHaveBeenCalledTimes(calls);
+    expect(input("Query").value).toBe("hats");
+    await act(() => current().submit());
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  it("takes per-form settings after the options", () => {
+    render(<OptionsForm definition={defined().definition} options={{ q: "hats", onSaved: () => {} }} id="search" />);
+    expect(current().id).toBe("search");
+    expect(input("Query").id).toBe("search--q");
+    expect(input("Query").value).toBe("hats");
+  });
+
+  it("runs the function once per createStore, with that store's options", () => {
+    const { definition, made } = defined();
+    const one = definition.createStore({ q: "a", onSaved: () => {} }, { id: "one" });
+    const two = definition.createStore({ q: "b", onSaved: () => {} });
+    expect(made).toHaveBeenCalledTimes(2);
+    expect(one.id).toBe("one");
+    expect(two.id).toBe("form");
+    expect(one.fieldAt(["q"])?.peek().value).toBe("a");
+    expect(two.fieldAt(["q"])?.peek().value).toBe("b");
+  });
+});
+
 describe.each(entries)("%s: a refused submit", (_name, entry, options) => {
   const forms = entry.createForms(options);
   const define = (onSubmit: (value: Search, ctx: mini.SubmitContext<Search>) => unknown) =>
