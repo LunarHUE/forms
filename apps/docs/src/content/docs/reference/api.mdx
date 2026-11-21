@@ -49,7 +49,7 @@ createForms(options?: {
 ```
 
 A plugin list can hold `false`, `null` or `undefined` in place of a plugin,
-so `plugins: [mask(), dev && devtools()]` works and a bundler can drop the
+so `plugins: [dirty(), dev && devtools()]` works and a bundler can drop the
 plugin it never uses. The types count a plugin that may be missing as not
 installed: with `dev && dirty()` in the list, `equals` is still a type error.
 
@@ -58,7 +58,7 @@ installed: with `dev && dirty()` in the list, `equals` is still a type error.
 | `forms.define(config, ...parts)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. `parts` attach at the root when the store is made. |
 | `forms.scope(handle)` | The scope at an object handle: `root`, `Field` and the field components. Cached per handle. |
 | `forms.fieldset(schema, ...parts)` | A reusable shape for a group of fields, typed from a schema that never runs. `parts` attach at each field the fieldset is used on. |
-| `forms.fieldset<V>(...parts)` | The same shape from a type. |
+| `forms.fieldset<V, P>(...parts)` | The same shape from a type. `P` is the factories of the plugins the parts need, as `typeof rules`. Leave both out to take them from a part with its value type given, as `ruled<Billing>(...)`. |
 | `fieldset.at(name)` | The fieldset's parts pinned at `name`, for `define`. |
 
 ### defineField
@@ -368,11 +368,11 @@ tests.
 
 | | |
 | --- | --- |
-| `FieldApi<T, E, N>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `FieldApi<string \| undefined>` takes required and optional string fields. `N` names plugins the form must have, as `"dirty"` for a component that reads `dirty`. |
+| `FieldApi<T, P, E>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `FieldApi<string \| undefined>` takes required and optional string fields. `P` is the factories of the plugins the form must have, as `typeof dirty` for a component that reads `dirty`. `E` is the error type, `FormError` by default. |
 | `ExactFieldApi<V>` | The field object with the exact value type. |
 | `HandleOf<typeof fieldset, A>` | The handle prop a fieldset component takes. It takes only the fieldset's exact value. For values with more keys, make the component generic, `<A extends Address>`, and pass `A`. |
 | `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
-| `Part<P, V>` | A plugin's config for one place. `P` is the plugin's factory, as `typeof limit`, or `never` for a part that needs none, and `V` the values it fits. |
+| `Part<P, V>` | Hooks for one place, on their own or as a plugin's config. `P` is the plugin's factory, as `typeof limit`, or `never` for a part that needs none, and `V` the values it fits. `Part` alone is any part. |
 | `FormOf<typeof definition>` | The form a definition makes. |
 | `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. Handles are strict in `V`: a `FieldHandle<Address>` takes no handle of an object with more keys. For a generic `V`, the children its constraint names read as the constraint's types. |
 | `FieldPath<V>`, `ValueAt<V, P>` | The dotted names of `V`, and the type at one. |
@@ -425,8 +425,13 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 | | |
 | --- | --- |
-| `definePlugin(definition)` | Makes a plugin from a `setup`, an `attach` for its parts, or a schema plugin from a `schema` adapter. See [Writing a plugin](../writing-plugins/first-plugin) and [Schema adapters](../writing-plugins/schema-adapters). |
-| `refuse` | Returned from `beforeWrite` to stop a write, or from `onSubmit` to stop the submit. |
+| `definePlugin(definition)` | Returns a plugin factory. The definition has a `setup`, whose second parameter is the factory's options, a `part` hook for its parts, `requires`, `initialValue`, or a `schema` adapter for a schema plugin. A plugin with meta has `meta` and `formMeta` readers on the factory. See [Writing a plugin](../writing-plugins/first-plugin) and [Schema adapters](../writing-plugins/schema-adapters). |
+| `part(plugin, config)` | A part of a plugin, with `config` typed from the plugin's `part` hook. See [Parts](../writing-plugins/parts). |
+| `part<V>(hooks)` | A part with hooks of its own, which needs no plugin. `hooks` can be a function of the part's context. |
+| `transform<V>(fn)` | A part that changes each value written at its path: `fn(value, write)` returns the value to keep, or `refuse`. |
+| `text<V>(display, afterInput?)` | A part that sets the text a text input shows for the value. |
+| `observe<V>(fn)` | A part that calls `fn(value, ctx)` when it attaches and after each batch that wrote at its path. |
+| `refuse` | Returned from `beforeWrite` to stop a write, or from `beforeSubmit` to stop the submit. |
 | `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
 
 ### arrays
@@ -441,17 +446,22 @@ Import from `@lunarhue/forms-solid/plugins`.
 | --- | --- |
 | `history(limit = 100)` | Undo and redo. API `form.plugins.history.undo()` and `.redo()`. |
 
-`canUndo` and `canRedo` are form meta: `plugin.formMeta(snapshot).canUndo`.
+`canUndo` and `canRedo` are form meta: `history.formMeta(snapshot).canUndo`.
 See [History](../plugins/history).
 
-### mask
+### text
+
+Import from `@lunarhue/forms-react/text` or `@lunarhue/forms-solid/text`,
+which re-export `@lunarhue/forms-core/text`. These are parts and need no
+plugin.
 
 | | |
 | --- | --- |
-| `mask()` | The mask plugin, for the form's plugins. |
-| `masked({ clean, display? })` | A part that cleans a string field's value before the store takes it. |
+| `masked({ clean, display? })` | A part that cleans a string field's value before the store takes it, and with `display` sets the text its inputs show. |
+| `cleaned(clean)` | Only the cleaning half of `masked`. |
+| `displayed(display, clean?)` | Only the display half of `masked`. |
 | `digits`, `upper` | Cleaners: keep the digits, upper-case. |
-| `replaceText(input, text, clean, event)` | Writes masked text into an input and keeps the caret. |
+| `replaceText(input, text, clean, event)` | Writes display text into an input and keeps the caret. |
 
 Put `masked(...)` on a field type. See [Masks](../plugins/masks).
 
@@ -470,7 +480,7 @@ after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
 
 | | |
 | --- | --- |
-| `persist(key, storage?)` | Saves the value as JSON once the page is idle, and restores it on mount. `localStorage` by default. |
+| `persist(key)`, `persist({ key, storage })` | Saves the value as JSON once the page is idle, and restores it on mount. `localStorage` by default. |
 
 ### rebase
 
@@ -500,7 +510,7 @@ after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
 
 | | |
 | --- | --- |
-| `testStore(config)` | A store for testing a plugin with no framework. Returns `store`, `records`, `errors`, `flush`, `listen` and `server`. |
+| `testStore(config, ...parts)` | A store for testing a plugin with no framework. Returns `store`, `records`, `errors`, `flush`, `listen` and `server`. |
 
 ## Schema
 
