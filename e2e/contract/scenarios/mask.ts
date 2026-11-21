@@ -1,4 +1,4 @@
-import { digits, mask, masked } from "@lunarhue/forms-core/plugins";
+import { digits, masked } from "@lunarhue/forms-core/text";
 import { scenario } from "../scenario.js";
 
 /** Shows "5551234567" as "(555) 123-4567". */
@@ -27,7 +27,7 @@ export const maskScenario = {
   submit: { idle: "Save", busy: "Saving..." },
   definition: {
     defaultValues: { phone: "555 000 1111" },
-    plugins: [mask()] as const,
+    plugins: [] as const,
     onSubmit: (value: { phone: string }) => `Saved ${value.phone}.`,
   },
 };

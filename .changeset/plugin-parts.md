@@ -4,21 +4,22 @@
 "@lunarhue/forms-solid": minor
 ---
 
-Plugins that work per field now take parts. A part is a plugin's config for one place: a field type, a fieldset or a form. The plugin goes in the form's plugins once, with no config, and its parts go where they apply. Using a field type or fieldset whose parts need a plugin the form lacks is a type error, such as `Add mask() to this form's plugins: PhoneField uses it`. Without types the store throws `plugins:missing` in development.
+Plugins that work per field now take parts. A part is a plugin's config for one place: a field type, a fieldset or a form. The plugin goes in the form's plugins once, with no config, and its parts go where they apply. Using a field type or fieldset whose parts need a plugin the form lacks is a type error, such as `Add rules() to this form's plugins: AddressField uses it`. Without types the store throws `plugins:missing` in development.
 
 `defineField(component, ...parts)` from the adapters makes a field type. Register it in `fields` like a component. Its parts attach at each field it renders, the first time it renders it. `forms.fieldset(schema, ...parts)` and `forms.fieldset<V>(...parts)` take parts for each field the fieldset is used on, and `forms.define(config, ...parts)` takes parts for the whole form. `PhoneField.at(name)` and `Billing.at(name)` pin a field type's or fieldset's parts at one field, for `define`, so they attach when the store is made.
 
 Fieldset scopes now carry the plugin names their parts need, so the field components a fieldset renders are checked against them.
 
-To migrate a mask, install `mask()` and put `masked(...)` on the field type that renders the field:
+To migrate a mask, put `masked(...)` from `/text` on the field type that renders the field. It needs no plugin:
 
 ```ts
 // Before
 const contact = forms.define({ defaultValues, plugins: [mask({ phone: { clean: digits, display: formatPhone } })] });
 
 // After
+import { digits, masked } from "@lunarhue/forms-react/text";
 const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
-const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
+const forms = createForms({ fields: { PhoneField } });
 const contact = forms.define({ defaultValues });
 ```
 
@@ -39,15 +40,14 @@ rules.meta(field).hidden;
 
 Rules on a fieldset get the fieldset's value: `forms.fieldset(Billing, ruled({ ... }))`. To write rules apart from a definition, name the type, as `ruled<Order>({ ... })`.
 
-A plugin list can hold `false`, `null` or `undefined`, as in `plugins: [mask(), dev && devtools()]`. The form skips them, and the types count a plugin that may be missing as not installed.
+A plugin list can hold `false`, `null` or `undefined`, as in `plugins: [rules(), dev && devtools()]`. The form skips them, and the types count a plugin that may be missing as not installed.
 
 For plugin authors:
 
-- `definePlugin` takes `attach(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. Write a typed constructor for the parts, as `(config): Part<"mask", string> => ({ plugin: "mask", config })`.
+- `definePlugin` takes `part(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. `part(limit, config)` makes the parts, with `config` typed from that parameter: `part(limit, { max: 20 })`.
 - `requires: () => [dirty]` names plugins a plugin needs. The form must install them, or it is a type error. The plugin's hooks run after theirs, and `ctx.plugins` holds their APIs.
-- `ctx.installed` lists the store's plugins in hook order, and `ctx.attachments(path)` the parts attached at a path and above.
-- `attach` can return an `initial` hook, which gets the value at the part's path when the part attaches and returns the value to keep there.
-- `FieldDisplay` meta is gone. Return `display` and `edit` hooks from `attach` instead.
-- What `attach` writes makes no write records. A value `initial` cleans moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
+- `ctx.installed` lists the store's plugins in hook order, and `ctx.parts(path)` the parts attached at a path and above.
+- A part's `beforeWrite` runs once on the value at its path when it attaches, with `cause: "attach"`. That write makes no record. A value it changes moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
+- `FieldDisplay` meta is gone. Return `display` and `afterInput` hooks from `part` instead.
 
 New exports: `Part` and `Parts` from core, and `defineField` and `FieldType` from the adapters. Core also exports `attach` for the adapters, and `MetaHolder`, `PluginMembers`, `Nested` and `DefineParts` because declarations name them. Those are internal.

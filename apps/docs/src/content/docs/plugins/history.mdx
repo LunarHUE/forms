@@ -18,14 +18,13 @@ latest 100 steps. Pass another limit as `history(50)`.
 ## Undo buttons
 
 Whether there is a step to undo or redo is form meta. Read it with the
-plugin's own `formMeta` reader, so keep the object `history()` returns:
+`formMeta` reader on `history`, the factory you import:
 
 ```tsx framework=react
-const undoHistory = history();
-const forms = createForms({ plugins: [undoHistory] });
+const forms = createForms({ plugins: [history()] });
 
 // In a component with a form of those forms.
-<form.State select={(state) => undoHistory.formMeta(state).canUndo}>
+<form.State select={(state) => history.formMeta(state).canUndo}>
   {(canUndo) => (
     <button
       type="button"
@@ -39,13 +38,12 @@ const forms = createForms({ plugins: [undoHistory] });
 ```
 
 ```tsx framework=solid
-const undoHistory = history();
-const forms = createForms({ plugins: [undoHistory] });
+const forms = createForms({ plugins: [history()] });
 
 // In a component with a form of those forms.
 <button
   type="button"
-  disabled={!undoHistory.formMeta(form.state).canUndo}
+  disabled={!history.formMeta(form.state).canUndo}
   onClick={() => form.plugins.history.undo()}
 >
   Undo

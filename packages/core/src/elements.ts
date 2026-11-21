@@ -1,4 +1,4 @@
-import type { AnyFieldHandle } from "./handle.js";
+import type { NamedAnyFieldHandle } from "./handle.js";
 import { tracking } from "./store/elements.js";
 
 /**
@@ -11,7 +11,7 @@ import { tracking } from "./store/elements.js";
 export type ElementListener = (element: object, key: object, added: boolean, adapter: string) => void;
 
 /** The field handle of each tracked element. */
-const fields = new WeakMap<object, AnyFieldHandle<unknown>>();
+const fields = new WeakMap<object, NamedAnyFieldHandle<unknown>>();
 
 const listeners = new Set<ElementListener>();
 
@@ -25,7 +25,7 @@ export function trackElements(listener?: ElementListener): void {
   if (!tracking.record) tracking.record = (element, key, added, adapter) => {
     if ("path" in key) {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      if (added) fields.set(element, key as AnyFieldHandle<unknown>);
+      if (added) fields.set(element, key as NamedAnyFieldHandle<unknown>);
       else if (fields.get(element) === key) fields.delete(element);
     }
     for (const each of listeners) each(element, key, added, adapter);
@@ -37,4 +37,4 @@ export function trackElements(listener?: ElementListener): void {
  * The field handle recorded for `element` since `trackElements` ran, or
  * `undefined`. The adapters' `fieldOf` reads it in production.
  */
-export const trackedField = (element: object): AnyFieldHandle<unknown> | undefined => fields.get(element);
+export const trackedField = (element: object): NamedAnyFieldHandle<unknown> | undefined => fields.get(element);

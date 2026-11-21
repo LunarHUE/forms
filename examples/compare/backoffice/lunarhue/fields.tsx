@@ -1,10 +1,11 @@
 import { checkboxProps, type Choice, type FieldApi, type FormError, inputProps, selectProps, textareaProps } from "@lunarhue/forms-react";
+import type { dirty } from "@lunarhue/forms-react/plugins";
 import { rules } from "@lunarhue/forms-react/plugins";
 import type { HTMLAttributes } from "react";
 import { CheckShell, FieldShell } from "../../shared/ui.tsx";
 
 // Each component reads `field.dirty`, so it fits only forms with dirty().
-type DirtyField<V> = FieldApi<V, FormError, "dirty">;
+type DirtyField<V> = FieldApi<V, typeof dirty>;
 
 const messages = (field: { readonly shownErrors: readonly FormError[] }) => field.shownErrors.map((error) => error.message);
 

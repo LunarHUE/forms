@@ -10,10 +10,10 @@ import type {
   FormDefinition,
   FormError,
   FormStore,
-  ItemHandle,
-  LeafHandle,
+  NamedItemHandle,
+  NamedLeafHandle,
   NoSchemaPlugin,
-  ObjectHandle,
+  NamedObjectHandle,
   Path,
   PlainDefinition,
   SchemaDefinition,
@@ -74,23 +74,23 @@ describe("defaults case 1: schema with a schema plugin", () => {
     const form = core.define({ schema: userSchema });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<DraftUser>>();
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<Draft<User>>>();
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser, FormError, "fake">>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<NamedObjectHandle<DraftUser, FormError, "fake">>();
     expectTypeOf<DefinedValue<never, FakeSchema<User>, Installed>>().toEqualTypeOf<Draft<User>>();
   });
 
   it("takes a deep partial of the input, not of the draft", () => {
     const form = core.define({ schema: userSchema, defaultValues: { address: { city: "Paris" } } });
-    expectTypeOf(form.createStore().root).toEqualTypeOf<ObjectHandle<DraftUser, FormError, "fake">>();
+    expectTypeOf(form.createStore().root).toEqualTypeOf<NamedObjectHandle<DraftUser, FormError, "fake">>();
     expectTypeOf<DefaultsOf<FakeSchema<User>>>().toEqualTypeOf<DeepPartial<User> | undefined>();
   });
 
   it("gives a draft leaf a handle that takes undefined", () => {
     const store = core.define({ schema: userSchema }).createStore();
     const age = store.root.at("age");
-    expectTypeOf(age).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake">>();
+    expectTypeOf(age).toEqualTypeOf<NamedLeafHandle<number | undefined, FormError, "fake">>();
     age.setValue(undefined);
     age.setValue((previous) => (previous ?? 0) + 1);
-    expectTypeOf(store.root.at("name")).toEqualTypeOf<LeafHandle<string, FormError, "fake">>();
+    expectTypeOf(store.root.at("name")).toEqualTypeOf<NamedLeafHandle<string, FormError, "fake">>();
     expectTypeOf(age.peek().value).toEqualTypeOf<number | undefined>();
   });
 
@@ -99,8 +99,8 @@ describe("defaults case 1: schema with a schema plugin", () => {
     const rows = store.root.at("rows");
     rows.push();
     rows.push({ title: "", qty: undefined });
-    expectTypeOf(rows.item("k")).toEqualTypeOf<ItemHandle<{ title: string; qty: number | undefined }, FormError, "fake" | "arrays">>();
-    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<LeafHandle<number | undefined, FormError, "fake" | "arrays">>();
+    expectTypeOf(rows.item("k")).toEqualTypeOf<NamedItemHandle<{ title: string; qty: number | undefined }, FormError, "fake" | "arrays">>();
+    expectTypeOf(rows.item("k").at("qty")).toEqualTypeOf<NamedLeafHandle<number | undefined, FormError, "fake" | "arrays">>();
   });
 
   it("types validators, flags and ctx.input with the draft, and onSubmit's value with the output", () => {
@@ -392,7 +392,7 @@ describe("defaults case 3: literals in defaultValues widen", () => {
   it("widens what satisfies keeps", () => {
     const form = core.define({ defaultValues: { pickup: false, note: "", qty: 1 } satisfies Order });
     expectTypeOf<StoreOf<typeof form>>().toEqualTypeOf<FormStore<{ pickup: boolean; note: string; qty: number }>>();
-    expectTypeOf(form.createStore().root.at("pickup")).toEqualTypeOf<LeafHandle<boolean, FormError, "fake">>();
+    expectTypeOf(form.createStore().root.at("pickup")).toEqualTypeOf<NamedLeafHandle<boolean, FormError, "fake">>();
   });
 
   it("widens as const, at any depth, and turns tuples into arrays", () => {
@@ -613,7 +613,7 @@ describe("other definition settings", () => {
     core.define({
       defaultValues: { name: "" },
       onSubmit: (value, ctx) => {
-        expectTypeOf(ctx.store.root).toEqualTypeOf<ObjectHandle<{ name: string }>>();
+        expectTypeOf(ctx.store.root).toEqualTypeOf<NamedObjectHandle<{ name: string }>>();
         expectTypeOf(ctx.input).toEqualTypeOf<{ readonly name: string }>();
         expectTypeOf(ctx.signal.aborted).toEqualTypeOf<boolean>();
         return value;

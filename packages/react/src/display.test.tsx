@@ -5,7 +5,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { createForms, type FieldApi, defineField, type FormOf, useForm, inputProps, textareaProps, selectProps, useField } from "./index.js";
-import { digits, mask, type MaskConfig, masked, upper } from "./plugins.js";
+import { digits, type MaskConfig, masked, upper } from "./text.js";
 
 /** Shows "5551234" as "(555) 123-4". */
 function formatPhone(value: string): string {
@@ -25,7 +25,7 @@ const Text = (_props: { readonly field: FieldApi<string> }) => null;
 /** A mask pinned at `name`, as a field type that may not render pins it on the definition. */
 const masking = <K extends string>(name: K, config: MaskConfig) => defineField(Text, masked(config)).at(name);
 
-const forms = createForms({ plugins: [mask()] });
+const forms = createForms({ plugins: [] });
 const contact = forms.define(
   { defaultValues: { phone: "5551234", zip: "ab1", notes: "12", code: "1" } satisfies Contact },
   masking("phone", { clean: digits, display: formatPhone }),

@@ -89,6 +89,7 @@ export const createFormsCore: CreateFormsCore = <const P extends Plugins = [], E
       plugins,
       onPluginError: config.onPluginError,
       parts,
+      known: config["~parts"],
     };
   };
 

@@ -1,11 +1,12 @@
 // The bare form with a phone mask and a rule that hides a field.
 import { createForms, defineField, useForm } from "@lunarhue/forms-react";
-import { digits, mask, masked, ruled, rules } from "@lunarhue/forms-react/plugins";
+import { ruled, rules } from "@lunarhue/forms-react/plugins";
+import { digits, masked } from "@lunarhue/forms-react/text";
 import { TextInput } from "./input.js";
 
 const PhoneField = defineField(TextInput, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
-const forms = createForms({ plugins: [mask(), rules()], fields: { PhoneField } });
+const forms = createForms({ plugins: [rules()], fields: { PhoneField } });
 const contact = forms.define(
   { defaultValues: { phone: "", note: "" }, onSubmit: (value) => value.phone },
   ruled({ note: (value) => ({ hidden: value.phone === "" }) }),

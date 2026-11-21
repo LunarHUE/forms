@@ -31,7 +31,7 @@ function spy() {
         }
       },
     }),
-  });
+  })();
   return { seen, plugin };
 }
 

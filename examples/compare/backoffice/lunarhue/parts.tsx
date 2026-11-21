@@ -1,15 +1,15 @@
 // The pieces every back office form shares. Each finds its form with
 // `useFormContext(forms)`, so they need no props to reach it.
 import { type HandleOf, useField, useFormContext, useFormState, useInvalidFields } from "@lunarhue/forms-react";
-import { rules } from "@lunarhue/forms-react/plugins";
+import { history, rules } from "@lunarhue/forms-react/plugins";
 import { countries } from "../schemas.ts";
 import { ErrorSummaryView, SaveBarView } from "../ui.tsx";
-import { AddressFieldset, forms, undoHistory } from "./forms.ts";
+import { AddressFieldset, forms } from "./forms.ts";
 
 /** The change count, undo, refresh, discard and save. `load` fetches the server's copy for Refresh. */
 export function SaveBar({ load }: { readonly load: () => Promise<unknown> }) {
   const form = useFormContext(forms);
-  const canUndo = useFormState(form, (state) => undoHistory.formMeta(state).canUndo);
+  const canUndo = useFormState(form, (state) => history.formMeta(state).canUndo);
   const submitting = useFormState(form, (state) => state.submitting);
   // `changes()` is a read, not a subscription, so it runs whenever the root
   // field changes.

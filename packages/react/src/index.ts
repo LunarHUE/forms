@@ -32,6 +32,7 @@ export type {
   FieldType,
   ExactFieldApi,
   Fieldset,
+  NamedFieldset,
   HandleOf,
   NoFields,
   // Stays public: declarations inferred from a bound field component, as

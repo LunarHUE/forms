@@ -1,7 +1,8 @@
-import { type FieldApi, type FormError, inputProps } from "@lunarhue/forms-react";
+import { type FieldApi, inputProps } from "@lunarhue/forms-react";
+import type { dirty } from "@lunarhue/forms-react/plugins";
 
 interface TextFieldProps {
-  readonly field: FieldApi<string, FormError, "dirty">;
+  readonly field: FieldApi<string, typeof dirty>;
   readonly label: string;
 }
 

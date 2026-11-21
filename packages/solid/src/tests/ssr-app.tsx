@@ -1,7 +1,8 @@
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { Items, createForm, createForms, defineField, type HandleOf, inputProps, useFormContext, type FieldApi } from "../index.js";
-import { arrays, digits, mask, masked, ruled, rules } from "../plugins.js";
+import { arrays, ruled, rules } from "../plugins.js";
+import { digits, masked } from "../text.js";
 import { version } from "./solid.js";
 
 /** The markup of the Solid version the tests run on. Hydration keys, and the ids `createUniqueId` gives, differ by version. */
@@ -191,9 +192,9 @@ function StreetInput(props: { readonly field: FieldApi<string> }) {
   return <>{rules.meta(props.field).hidden ? null : <input aria-label="street" {...inputProps(props.field)} />}</>;
 }
 
-const contactForms = createForms({ plugins: [mask(), rules()], fields: { PhoneField, StreetInput } });
+const contactForms = createForms({ plugins: [rules()], fields: { PhoneField, StreetInput } });
 
-const AddressShape = contactForms.fieldset<{ same: boolean; street: string }, "rules">(
+const AddressShape = contactForms.fieldset<{ same: boolean; street: string }, typeof rules>(
   ruled({ street: (address) => ({ hidden: address.same }) }),
 );
 

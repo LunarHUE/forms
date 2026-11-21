@@ -35,7 +35,7 @@ const adapter: SchemaAdapter<StandardSchemaV1<Value>> = {
   defaultValue: () => ({ name: "" }),
   itemValue: () => undefined,
 };
-const testSchemas = definePlugin({ name: "test", schema: adapter });
+const testSchemas = definePlugin({ name: "test", schema: adapter })();
 
 /** The module body: its own field component, `createForms` and `define`. */
 function load(version: string, min: number, onSubmit: (value: Value) => void) {

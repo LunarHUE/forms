@@ -1,6 +1,6 @@
 import type { FormError, MapError, Show } from "./errors.js";
 import type { Path } from "./path.js";
-import type { HasSchemaPlugin, Needs, Parts, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
+import type { HasSchemaPlugin, Needs, NamedParts, Part, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
 import type { FieldValidatorSet, FormValidatorSet, ValidateTiming } from "./validator.js";
@@ -51,7 +51,7 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * The list's type decides what `define` accepts: a schema a schema plugin
    * accepts makes `defaultValues` optional, `equals` needs `dirty()`, and
    * each hook plugin's API shows up on the store's `plugins`. Hook plugins run in this
-   * order, except where a plugin's `after` says otherwise, and before a
+   * order, except that a plugin runs after the ones it `requires`, and before a
    * definition's own plugins. A plugin that another one `requires` must be
    * in this list too.
    */
@@ -77,6 +77,11 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * task, where the page's error handler sees it.
    */
   readonly onPluginError?: PluginErrorHandler;
+  /**
+   * The parts of the adapter's field types and fieldsets, which may attach
+   * to any store this makes. A fieldset made later adds its own. Internal.
+   */
+  readonly "~parts"?: readonly Part[];
 }
 
 /** The context `onSubmit` gets. Each submit gets a new one. */
@@ -300,7 +305,7 @@ export interface FormsCore<P extends Plugins = [], E = FormError> {
  * read `D`, and a schema plugin among `D` would make it the schema's input
  * rather than its `Draft`. Internal.
  */
-export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = Parts<
+export type DefineParts<V, S extends StandardSchemaV1, P extends Plugins, D extends Plugins> = NamedParts<
   PluginNames<Combined<P, D>>,
   NoInfer<DefinedValue<V, S, P>>
 >;

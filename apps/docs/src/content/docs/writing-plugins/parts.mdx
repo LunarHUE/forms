@@ -1,57 +1,117 @@
 ---
 title: Parts
-description: Plugin config for one field type, fieldset or definition, and the attach hooks that use it.
+description: Hooks for one field type, fieldset or definition, on their own or as a plugin's config.
 section: writing-plugins
 order: 2
 ---
 
 A plugin that applies everywhere is too blunt for most jobs. A length limit
-belongs on a note field, not on every string in the form. Parts carry a
-plugin's config to one place. Type past 20 characters below.
+belongs on a note field, not on every string in the form. A part carries hooks
+to one place: a field type, a fieldset or a definition. Type past 20
+characters below.
 
 <Demo name="parts/note" />
 
-A part is a plugin's config for one place. A field type, a fieldset or a
-definition carries it, and the plugin's `attach` gets it with the path it
-landed on. Write a typed constructor for your parts, so each one names the
-plugin and the values it fits:
+## Parts with no plugin
+
+Most per-field behaviour keeps no state and needs nothing from the rest of the
+form. Make it a part with hooks of its own. `@lunarhue/forms-core/plugins`
+has three, and the form installs nothing for them:
+
+- `transform<V>((value, write) => V | refuse)` changes each value written at
+  its path, and the value there when it attaches.
+- `text<V>(display, afterInput?)` sets the text a text input shows for the
+  value. See [Display text](./meta#display-text).
+- `observe<V>((value, ctx) => void)` runs when it attaches and after each batch
+  that wrote at its path. Write through `ctx.write`.
 
 ```ts
-import type { Part, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
+import { observe, transform } from "@lunarhue/forms-core/plugins";
+
+// Fits string fields only.
+export const capped = (max: number) => transform<string>((value) => value.slice(0, max));
+
+// Fills in the slug from the title.
+export const slugged = observe<Post>((post, ctx) => ctx.write(() => ctx.at("slug").setValue(slugify(post.title))));
+```
+
+`V` is the value the part fits, so `defineField(NumberInput, capped(20))` is
+a type error. For other hooks, `part<V>(hooks)` takes the same hooks a
+plugin's part gets, or a function of the part's context that returns them.
+The context has `value()`, the value at the part's path now, and `at(name)`,
+the handle of a field below it:
+
+```ts
+import { part } from "@lunarhue/forms-core/plugins";
+
+const logged = part<string>((ctx) => ({
+  onWrite: () => console.log(ctx.path, ctx.value()),
+}));
+```
+
+These parts run after every plugin's hooks, and `ctx.parts` lists them under
+the name `part`.
+
+## Parts of a plugin
+
+A part that keeps meta, gives the form an API or needs another plugin
+belongs to a plugin. The plugin's `part` hook runs once for each place a part
+lands on, with the part's config and a context for that path, and returns
+the hooks there. `part(plugin, config)` makes the part, with `config` typed
+from the hook's second parameter. The demo's limit is small enough to be a
+`transform`, but it shows the shape:
+
+```ts
+import type { Part } from "@lunarhue/forms-core";
+import { definePlugin, part } from "@lunarhue/forms-core/plugins";
 
 interface Limit {
   readonly max: number;
 }
 
-export const limit = () =>
-  definePlugin({
-    name: "limit",
-    attach: (_ctx: PluginContext, { max }: Limit) => ({
-      beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
-    }),
-  });
+export const limit = definePlugin({
+  name: "limit",
+  part: (_ctx, { max }: Limit) => ({
+    beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
+  }),
+});
 
 // Fits string fields only.
-export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit", config: { max } });
+export const limited = (max: number): Part<typeof limit, string> => part(limit, { max });
 ```
 
 An app puts `limit()` in the form's plugins and `limited(...)` where it
-applies: `defineField(NoteInput, limited(140))` for every field a component
-renders, `forms.fieldset(Address, part)` for a fieldset, or
-`forms.define(config, part)` for the form. `Part<"limit", string>` makes two
-things type errors: a part on a field type whose value isn't a string, and a
-form that uses the field type without `limit()` in its plugins.
+applies. `Part<typeof limit, string>` makes two things type errors: a part on
+a field type whose value isn't a string, and a form that uses the field type
+without `limit()` in its plugins. The return type is where `V` comes from.
+To give it in the call instead, give the plugin's type too:
+`part<typeof limit, string>(limit, { max })`.
 
-`ctx.path` is the stable path the part attached at. The hooks `attach`
-returns get only the writes that reach that path. A write above it arrives
-walked down to the path, and a refuse there refuses the whole write. A write
-below it arrives as it is. When the field goes away, as when its array item
-is removed, its hooks go too.
+## Where parts go
+
+Every kind of part goes in the same places: `defineField(NoteInput,
+limited(140))` for every field a component renders, `forms.fieldset(Address,
+part)` for a fieldset, or `forms.define(config, part)` for the form.
+
+`ctx.path` is the stable path the part attached at. A part's hooks get only
+the writes that reach that path. A write above it arrives walked down to the
+path, and a refuse there refuses the whole write. A write below it arrives as
+it is. When the field goes away, as when its array item is removed, its hooks
+go too.
+
+A part's `beforeWrite` also gets the value already at its path once, when it
+attaches, with `cause: "attach"`. A value it changes is kept with no write
+record, and the baseline moves with it while the field isn't dirty, so a
+cleaned starting value doesn't make the form dirty.
 
 A field type's parts attach the first time it renders a field. A fieldset's
-attach the first time its scope is read, and a definition's when the store
-is made. Before the store has listeners, `attach` runs at once and what it
-writes is part of the starting state, as in setup. After that it runs on a
-microtask, so its writes don't land while a framework is rendering. Either
-way its writes make no records.
+attach the first time its scope is read, and a definition's when the store is
+made. Before the store has listeners, a part's hooks are made at once and
+what they write is part of the starting state, as in setup. After that they
+are made on a microtask, so their writes don't land while a framework is
+rendering. Either way their writes make no records.
+
+A fieldset with parts that need no plugin must exist before the store does,
+unless a plugin with hooks is installed. Make it at module scope, next to
+`createForms`. In development, a fieldset made too late throws
+[`parts:late`](/errors#core:parts:late).

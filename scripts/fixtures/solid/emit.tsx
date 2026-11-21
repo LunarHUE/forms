@@ -17,7 +17,8 @@ import {
   numberPieces,
   numberProps,
 } from "@lunarhue/forms-solid";
-import { arrays, digits, history, mask, masked, ruled, rules } from "@lunarhue/forms-solid/plugins";
+import { arrays, history, ruled, rules } from "@lunarhue/forms-solid/plugins";
+import { digits, masked } from "@lunarhue/forms-solid/text";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { TextField } from "./input.js";
@@ -55,13 +56,13 @@ export function NoteField(props: { readonly field: ExactFieldApi<string> }) {
 export const PhoneField = defineField(TextField, masked({ clean: digits }));
 
 export const forms = createForms({
-  plugins: [valibot(), arrays(), history(), mask(), rules()],
+  plugins: [valibot(), arrays(), history(), rules()],
   fields: { TextField, NumberField, SelectField, NoteField, PhoneField },
 });
 
 export const AddressSchema = v.object({ street: v.string(), city: v.pipe(v.string(), v.minLength(1)) });
 export const Address = forms.fieldset(AddressSchema);
-export const Contact = forms.fieldset<{ email: string; phone: string }, "rules">(
+export const Contact = forms.fieldset<{ email: string; phone: string }, typeof rules>(
   ruled({ email: (value) => ({ hidden: value.phone !== "" }) }),
 );
 

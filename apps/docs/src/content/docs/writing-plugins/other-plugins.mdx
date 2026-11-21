@@ -1,6 +1,6 @@
 ---
 title: Working with other plugins
-description: Require another plugin, run after one, and stay out of each other's way.
+description: Require another plugin and stay out of each other's way.
 section: writing-plugins
 order: 4
 navTitle: Other plugins
@@ -8,19 +8,23 @@ navTitle: Other plugins
 
 ## Plugins a plugin requires
 
-A plugin that calls another one's API names it in `requires`, as a factory
-or a plugin:
+A plugin that calls another one's API or reads what it adds names it in
+`requires`, as a function that returns factories:
 
 ```ts
-const autosave = () =>
-  definePlugin({
-    name: "autosave",
-    requires: () => [dirty],
-    setup(ctx) {
-      // ctx.plugins.dirty is typed.
-      return {};
+import { definePlugin, dirty } from "@lunarhue/forms-core/plugins";
+
+const autosave = definePlugin({
+  name: "autosave",
+  requires: () => [dirty],
+  setup: (ctx, wait: number) => ({
+    when: "deferred",
+    onWrite() {
+      // ctx.store has changes() because autosave requires dirty.
+      if (ctx.store.changes().length > 0) schedule(wait);
     },
-  });
+  }),
+});
 ```
 
 `requires` doesn't install anything. A form whose plugins list lacks one is a
@@ -28,16 +32,18 @@ type error, `Add dirty() to the plugins: autosave requires it`, and without
 types the store throws [`plugins:missing`](/errors#core:plugins:missing) in
 development. The
 plugin's hooks run after the ones it requires, and `ctx.plugins` holds their
-APIs. To run after a plugin without needing it, name it in `after`.
+APIs. `requires` is also how hooks are ordered: there is no other way to run
+after a plugin. Requirements that loop throw
+[`plugins:cycle`](/errors#core:plugins:cycle).
 
-`ctx.store` is typed with the names in `requires` too. A plugin that adds
-rows with `push` requires `arrays`, and one that reads `dirty` requires
+`ctx.store` is typed from `requires` too. A plugin that adds rows with `push`
+requires `arrays`, and one that reads `changes()` or the dirty flags requires
 `dirty`.
 
 ## Other plugins
 
 `ctx.installed` lists the store's plugins in the order their hooks run.
-`ctx.attachments(path)` lists the parts attached at a path and above it, in
-hook order, each as `{ name, path }`. A plugin can read them to stay out of
-another's way, such as a formatter that does nothing where a mask is
-attached.
+`ctx.parts(path)` lists the parts attached at a path and above it, in
+hook order, each as `{ name, path }`. A part with no plugin is listed under
+the name `part`. A plugin can read them to stay out of another's way, such as
+a formatter that does nothing where another plugin's part is attached.

@@ -64,7 +64,7 @@ for (const framework of frameworks) {
     const demo = await openMasks(page, framework);
     await demo.getByRole("tab", { name: "contact.tsx" }).click();
     const code = demo.getByRole("tabpanel");
-    await expect(code).toContainText("createForms({ plugins: [mask()], fields: { PhoneField } })");
+    await expect(code).toContainText("createForms({ fields: { PhoneField } })");
     await expect(code).toContainText('id: "contact"');
     await expect(code).not.toContainText("docsDevtools");
   });

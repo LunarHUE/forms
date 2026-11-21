@@ -28,7 +28,7 @@ const adapter: SchemaAdapter<ArkSchema> = {
   itemValue: (schema, path) => itemDefaultOf(schema, path),
 };
 
-export const ark = () => definePlugin({ name: "ark", schema: adapter });
+export const ark = definePlugin({ name: "ark", schema: adapter });
 ```
 
 With `ark()` in a form's plugins, `defaultValues` becomes optional for an

@@ -3,14 +3,16 @@ import type {
   ChoiceValue,
   Draft,
   ErrorOf,
-  FieldHandle,
+  NamedFieldHandle,
   HandleBase,
   FieldSnapshot,
   FormError,
+  NamesOf,
   HandleTypes,
   HasChoice,
   Nested,
   Needs,
+  NamedPart,
   Part,
   Path,
   PluginsOf,
@@ -26,7 +28,7 @@ import type { FieldPath, ValueAt } from "./path.js";
 
 /** The handle members a field object carries as commands. The rest are on `handle`. */
 type CommandsOf<V, E, Installed extends string> = Omit<
-  FieldHandle<V, E, Installed>,
+  NamedFieldHandle<V, E, Installed>,
   "id" | "path" | "store" | "~types" | "~children" | "peek" | "registerValidator"
 >;
 
@@ -49,7 +51,7 @@ type CommandsOf<V, E, Installed extends string> = Omit<
 export type ExactFieldApi<V, E = FormError, Installed extends string = never> = FieldSnapshot<V, E, Installed> &
   CommandsOf<V, E, Installed> & {
     /** The handle, for passing on and for `at` and `item` when the field has children. */
-    readonly handle: FieldHandle<V, E, Installed>;
+    readonly handle: NamedFieldHandle<V, E, Installed>;
     /** The handle's id. */
     readonly id: string;
     /** The handle's stable path. */
@@ -93,11 +95,12 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * props. The component then fits any field of string options, and each use
  * checks the options against the named field. See `Choice`.
  *
- * A component that reads a plugin's members names the plugin in
- * `Installed`: `FieldApi<string, FormError, "dirty">` has `dirty`, and fits
- * only fields of forms with `dirty()`.
+ * A component that reads a plugin's members names the plugin's factory in
+ * `P`: `FieldApi<string, typeof dirty>` has `dirty`, and fits only fields
+ * of forms with `dirty()`. Name several as a union,
+ * `typeof dirty | typeof history`.
  */
-export type FieldApi<T, E = FormError, Installed extends string = never> = ExactFieldApi<Draft<T>, E, Installed> & {
+export type FieldApi<T, P = never, E = FormError> = ExactFieldApi<Draft<T>, E, NamesOf<P>> & {
   /** Type information only: the `T` the component was written for. */
   readonly "~fits"?: { readonly value: T };
 };
@@ -152,7 +155,7 @@ export interface FieldByName<V, E, N extends string, T, Installed extends string
   readonly isEqual?: IsEqual<T>;
   /** A validator added while this `Field` is mounted. See `ValidateProp` for the mounted-only rule. */
   readonly validate?: ValidateProp<ValueAt<V, N>, E>;
-  readonly children: (field: T, handle: FieldHandle<ValueAt<V, N>, E, Installed>) => ReactNode;
+  readonly children: (field: T, handle: NamedFieldHandle<ValueAt<V, N>, E, Installed>) => ReactNode;
 }
 
 /** Props of a bound `Field` given a handle. The rest, `select` included, as `FieldByName`. */
@@ -205,7 +208,7 @@ export interface FieldType<C extends FieldComponentType = FieldComponentType, N 
    * the store is made: `forms.define(config, PhoneField.at("phone"))`. Use
    * it for a field that may not render before its value matters.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, FieldValueOf<C>>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, FieldValueOf<C>>>[];
 }
 
 /** The app's field components by the name they get on every scope: plain components or `defineField(...)` results. */
@@ -251,7 +254,7 @@ type DraftOrExact<T> = [T] extends [never] ? never : { readonly value: Draft<T> 
  * from forms with the plugins named in `Installed`.
  */
 export type AcceptedHandle<A, E, Installed extends string = never> = A extends { readonly value: infer T }
-  ? FieldHandle<T, E, Installed>
+  ? NamedFieldHandle<T, E, Installed>
   : never;
 
 /**
@@ -263,7 +266,7 @@ export type AcceptedHandle<A, E, Installed extends string = never> = A extends {
 export type NameFitting<V, E, A, Installed extends string = never, Needed extends string = never> =
   FieldPath<V> extends infer P
     ? P extends string
-      ? [FieldHandle<ValueAt<V, P>, E, Installed>] extends [AcceptedHandle<A, E, Needed>]
+      ? [NamedFieldHandle<ValueAt<V, P>, E, Installed>] extends [AcceptedHandle<A, E, Needed>]
         ? P
         : never
       : never
@@ -316,7 +319,7 @@ export type ChoiceFieldOf<A> = "~fits" extends keyof A
 export type NameFittingChoice<V, E, T, Installed extends string = never, Needed extends string = never> =
   FieldPath<V> extends infer P
     ? P extends string
-      ? [FieldHandle<ValueAt<V, P>, E, Installed>] extends [ChoiceHandle<T, ValueAt<V, P>, E, Needed>]
+      ? [NamedFieldHandle<ValueAt<V, P>, E, Installed>] extends [ChoiceHandle<T, ValueAt<V, P>, E, Needed>]
         ? P
         : never
       : never
@@ -384,7 +387,7 @@ export type BoundFieldComponents<V, E, F extends FieldComponentMap, Installed ex
  */
 export interface ScopeMembers<V, E, Installed extends string = never, R = V> {
   /** The scope's object handle. `name` paths start here. */
-  readonly root: FieldHandle<R, E, Installed>;
+  readonly root: NamedFieldHandle<R, E, Installed>;
   /** Renders one field of this scope. */
   readonly Field: BoundField<V, E, Installed>;
 }
@@ -404,6 +407,13 @@ export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Inst
   BoundFieldComponents<V, E, F, Installed>;
 
 /**
+ * A fieldset's type written by hand: `P` the plugins its parts need and `I`
+ * the shared plugins of the `createForms` call, each a union of factories.
+ * Inferred fieldsets have the name-keyed `NamedFieldset`.
+ */
+export type Fieldset<V, P = never, E = FormError, F extends FieldComponentMap = NoFields, I = never> = NamedFieldset<V, E, F, NamesOf<I>, NamesOf<P>>;
+
+/**
  * A reusable shape for a part of a form, made by `forms.fieldset(schema)` or
  * `forms.fieldset<V>()`, with the parts that travel with it, such as
  * `ruled(...)`. It registers no validator, since the form's own schema
@@ -414,7 +424,7 @@ export type Scope<V, E = FormError, F extends FieldComponentMap = NoFields, Inst
  * `Installed` is the shared plugins of the `createForms` call, and `N` the
  * plugins the parts need. A handle fits only when its form has `N`.
  */
-export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never, N extends string = never> {
+export interface NamedFieldset<V, E = FormError, F extends FieldComponentMap = NoFields, Installed extends string = never, N extends string = never> {
   /** Type information only. Read it with `HandleOf`. */
   readonly "~types"?: HandleTypes<V, E, N>;
   /**
@@ -436,7 +446,7 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
    * the store is made: `forms.define(config, Billing.at("billing"))`. Use it
    * for a fieldset that may not render before its rules matter.
    */
-  at<K extends string>(name: K): readonly Part<N, Nested<K, V>>[];
+  at<K extends string>(name: K): readonly NamedPart<N, Nested<K, V>>[];
 }
 
 /**
@@ -450,4 +460,4 @@ export interface Fieldset<V, E = FormError, F extends FieldComponentMap = NoFiel
  * the value type as `V`:
  * `function AddressFields<A extends Address>(props: { field: HandleOf<typeof Shape, A> })`.
  */
-export type HandleOf<T, V extends ValueOf<T> = ValueOf<T>> = FieldHandle<V, ErrorOf<T>, PluginsOf<T>>;
+export type HandleOf<T, V extends ValueOf<T> = ValueOf<T>> = NamedFieldHandle<V, ErrorOf<T>, PluginsOf<T>>;

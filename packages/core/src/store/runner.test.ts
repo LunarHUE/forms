@@ -130,7 +130,7 @@ describe("plugins on the definition", () => {
       defaultValue: () => ({ city: "Paris" }),
       itemValue: () => undefined,
     };
-    const vendor = definePlugin({ name: "city", schema: adapter });
+    const vendor = definePlugin({ name: "city", schema: adapter })();
     const schema: StandardSchemaV1<{ city: string }> = {
       // The store passes the form value, which has this shape.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -194,7 +194,7 @@ describe("a form with a schema plugin", () => {
       },
     };
     const adapter: SchemaAdapter<typeof schema> = { vendor: "digits", defaultValue: () => ({ age: "" }), itemValue: () => undefined };
-    const digits = definePlugin({ name: "digits", schema: adapter });
+    const digits = definePlugin({ name: "digits", schema: adapter })();
     const onSubmit = vi.fn<(value: { age: number }) => void>();
     const store = createFormsCore({ plugins: [digits] })
       .define({ schema, validate: { fields: fieldValidators({ age: (value) => (value === "0" ? err("Not zero") : undefined) }) }, onSubmit })

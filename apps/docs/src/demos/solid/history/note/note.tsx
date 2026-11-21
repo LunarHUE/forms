@@ -3,11 +3,7 @@ import { history } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 import { docsDevtools } from "@/devtools/enabled";
 
-// Keep the object `history()` returns. Its `formMeta` reader says
-// whether there is a step to undo or redo.
-const undoHistory = history();
-
-const forms = createForms({ plugins: [undoHistory, docsDevtools], fields: { TextField } });
+const forms = createForms({ plugins: [history(), docsDevtools], fields: { TextField } });
 
 const note = forms.define({
   defaultValues: { title: "", body: "" },
@@ -16,7 +12,7 @@ const note = forms.define({
 
 export default function NoteForm() {
   const form = createForm(note, { id: "note" });
-  const meta = () => undoHistory.formMeta(form.state);
+  const meta = () => history.formMeta(form.state);
   return (
     <form.Form>
       {(formProps) => (

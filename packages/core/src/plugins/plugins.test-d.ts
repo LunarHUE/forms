@@ -1,5 +1,5 @@
 import type { FieldSnapshot, Part, Path, Plugin, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin, dirty, history, type HistoryMeta } from "@lunarhue/forms-core/plugins";
+import { definePlugin, dirty, history, type HistoryMeta, part } from "@lunarhue/forms-core/plugins";
 import { describe, expectTypeOf, it } from "vitest";
 import { createFormsCore, fieldValidators } from "../index.js";
 
@@ -10,7 +10,7 @@ interface UploadFormMeta {
   readonly pending: number;
 }
 
-const upload = definePlugin({
+const uploads = definePlugin({
   name: "upload",
   initialMeta: { progress: 0 },
   initialFormMeta: { pending: 0 },
@@ -24,19 +24,22 @@ const upload = definePlugin({
     return {};
   },
 });
+const upload = uploads();
 
 const required = (value: string) => (value ? undefined : { message: "Required" });
 
-const tagged = (prefix: string): Part<"tag", string> => ({ plugin: "tag", config: { prefix } });
-const counting = () => definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
+/** A plugin whose parts take a prefix. */
+const prefixes = definePlugin({ name: "tag", part: (_ctx, _config: { readonly prefix: string }) => ({}) });
+const tagged = (prefix: string): Part<typeof prefixes, string> => part(prefixes, { prefix });
+const counting = () => definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) })();
 
 describe("plugin types", () => {
-  it("types the meta readers from the context and the starting values", () => {
+  it("types the meta readers on the factory from the context and the starting values", () => {
     expectTypeOf(upload).toEqualTypeOf<Plugin<undefined, "upload", UploadMeta, UploadFormMeta>>();
     const store = createFormsCore().define({ defaultValues: { file: "" }, plugins: [upload] }).createStore();
-    expectTypeOf(upload.meta(store.getSnapshot(["file"]))).toEqualTypeOf<UploadMeta>();
-    expectTypeOf(upload.formMeta(store.getFormSnapshot())).toEqualTypeOf<UploadFormMeta>();
-    expectTypeOf(history().formMeta({})).toEqualTypeOf<HistoryMeta>();
+    expectTypeOf(uploads.meta(store.getSnapshot(["file"]))).toEqualTypeOf<UploadMeta>();
+    expectTypeOf(uploads.formMeta(store.getFormSnapshot())).toEqualTypeOf<UploadFormMeta>();
+    expectTypeOf(history.formMeta({})).toEqualTypeOf<HistoryMeta>();
     // The snapshots keep meta untyped, so no plugin needs a global declaration.
     expectTypeOf<FieldSnapshot<string>["meta"]>().toEqualTypeOf<Readonly<Record<string, unknown>> | undefined>();
   });
@@ -64,7 +67,7 @@ describe("plugin types", () => {
     expectTypeOf(counter.meta({})).toEqualTypeOf<number>();
   });
 
-  it("gives a plugin with no starting value no meta", () => {
+  it("gives a plugin with no starting value no meta readers", () => {
     const free = definePlugin({
       name: "free",
       setup(ctx) {
@@ -91,21 +94,22 @@ describe("plugin types", () => {
         ctx.write(() => {}, { plugin: "writer" });
         return {};
       },
-    });
+    })();
     expectTypeOf(writer.name).toEqualTypeOf<"writer">();
   });
 
-  it("types ctx.plugins from requires, and checks the list has them", () => {
+  it("types ctx.plugins and ctx.store from requires, and checks the list has them", () => {
     const autosave = definePlugin({
       name: "autosave",
       requires: () => [counting, dirty],
       setup(ctx) {
         expectTypeOf(ctx.plugins.counter.count).toEqualTypeOf<number>();
+        expectTypeOf(ctx.store.changes).toBeFunction();
         // @ts-expect-error history isn't required
         void ctx.plugins.history;
         return {};
       },
-    });
+    })();
     createFormsCore({ plugins: [counting(), dirty(), autosave] });
     // @ts-expect-error counting() is missing
     createFormsCore({ plugins: [dirty(), autosave] });
@@ -116,25 +120,35 @@ describe("plugin types", () => {
     expectTypeOf(autosave.name).toEqualTypeOf<"autosave">();
   });
 
-  it("takes initial on a plugin definition, and display and edit hooks", () => {
+  it("passes the factory's options to setup and initialValue", () => {
     const start = definePlugin({
       name: "start",
-      initial: () => ({ name: "a" }),
-      setup: () => ({ display: (value) => String(value), edit: (input) => input.setSelectionRange(0, 0) }),
+      initialValue: (_value, name: string) => ({ name }),
+      setup: (_ctx, name: string) => ({ api: { name } }),
     });
-    expectTypeOf<(typeof start)["initial"]>().toEqualTypeOf<((value: unknown) => unknown) | undefined>();
+    expectTypeOf(start("a").name).toEqualTypeOf<"start">();
+    // @ts-expect-error The options are required when setup takes them.
+    start();
+    const plain = definePlugin({ name: "plain", setup: () => ({}) });
+    plain();
+    // @ts-expect-error setup takes no options.
+    plain(1);
   });
 
-  it("types attach's config from its parameter, and parts need their plugin", () => {
-    const tag = definePlugin({
+  it("types part's config from its parameter, and parts need their plugin", () => {
+    const tags = definePlugin({
       name: "tag",
-      attach(ctx, config: { readonly prefix: string }) {
+      part(ctx, config: { readonly prefix: string }) {
         expectTypeOf(ctx.path).toEqualTypeOf<Path>();
-        return { display: (value) => `${config.prefix}${String(value)}` };
+        expectTypeOf(ctx.value()).toEqualTypeOf<unknown>();
+        return { display: (value) => `${config.prefix}${String(value)}`, afterInput: (input) => input.setSelectionRange(0, 0) };
       },
     });
+    const tag = tags();
     expectTypeOf(tag.name).toEqualTypeOf<"tag">();
-    const pinned: Part<"tag", { readonly a: string }> = { plugin: "tag", config: { prefix: "#" }, path: "a" };
+    // @ts-expect-error The config needs a prefix.
+    part(tags, {});
+    const pinned: Part<typeof tags, { readonly a: string }> = { ...part<typeof tags, { readonly a: string }>(tags, { prefix: "#" }), path: "a" };
     createFormsCore({ plugins: [tag] }).define({ defaultValues: { a: "" } }, pinned);
     // @ts-expect-error the form has no tag()
     createFormsCore().define({ defaultValues: { a: "" } }, pinned);
@@ -143,7 +157,7 @@ describe("plugin types", () => {
   });
 
   it("puts each API on store.plugins, typed and not optional", () => {
-    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
+    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) })();
     const shared = createFormsCore({ plugins: [counter] });
     const store = shared.define({ defaultValues: { name: "" }, plugins: [upload] }).createStore();
     expectTypeOf(store.plugins).toEqualTypeOf<{ readonly counter: { count: number } }>();
@@ -153,8 +167,8 @@ describe("plugin types", () => {
   });
 
   it("adds the definition's own plugin APIs to the shared ones", () => {
-    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) });
-    const clock = definePlugin({ name: "clock", setup: () => ({ api: { now: (): number => 0 } }) });
+    const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: 1 } }) })();
+    const clock = definePlugin({ name: "clock", setup: () => ({ api: { now: (): number => 0 } }) })();
     const store = createFormsCore({ plugins: [counter] })
       .define({ defaultValues: { name: "" }, plugins: [clock] })
       .createStore();

@@ -1,5 +1,5 @@
 import { defineField } from "@lunarhue/forms-solid";
-import { digits, masked, upper } from "@lunarhue/forms-solid/plugins";
+import { digits, masked, upper } from "@lunarhue/forms-solid/text";
 import { TextInput } from "./TextInput";
 
 // "5551234567" shows as "(555) 123-4567".

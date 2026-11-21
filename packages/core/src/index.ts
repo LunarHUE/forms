@@ -4,6 +4,8 @@ export { branch } from "./store/branch.js";
 export { debounced, recheckOnSubmit, validateOn } from "./validate-timing.js";
 export { errorsByKind } from "./error-kinds.js";
 export { trackElements, trackedField, type ElementListener } from "./elements.js";
+/** Internal: a field's display, for the adapters' text pieces. */
+export { displayOf } from "./store/display.js";
 /** Internal: the slot the adapters report elements to. Use `trackElements`. */
 export { tracking } from "./store/elements.js";
 export { fieldValidators } from "./store/validate/fields.js";
@@ -13,14 +15,25 @@ export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
 
 export type {
+  AttachedPart,
   BaselineAt,
+  FieldDisplay,
+  FormMetaReader,
   MetaHolder,
+  MetaReader,
+  NamedPart,
+  NamedParts,
+  NamesOf,
   Needs,
   Nested,
+  OptionArgs,
   Part,
+  PartContext,
+  PartHooks,
   Parts,
   Plugin,
   PluginApis,
+  PluginFactory,
   PluginMembers,
   PluginBaseline,
   PluginContext,
@@ -102,6 +115,12 @@ export type {
   ItemHandle,
   LeafHandle,
   MergeOptions,
+  NamedAnyFieldHandle,
+  NamedArrayHandle,
+  NamedFieldHandle,
+  NamedItemHandle,
+  NamedLeafHandle,
+  NamedObjectHandle,
   Narrow,
   ObjectHandle,
   Patch,

@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 import {
-  type ArrayHandle,
+  type NamedArrayHandle,
   type CheckboxGroupInputProps,
   checkboxGroupProps,
   type CheckboxInputProps,
@@ -11,7 +11,7 @@ import {
   type FieldApi,
   type FieldApiOf,
   inputProps,
-  type LeafHandle,
+  type NamedLeafHandle,
   type NumberInputProps,
   type NumberPieces,
   numberPieces,
@@ -29,9 +29,9 @@ import {
   useFieldRef,
 } from "./index.js";
 
-function Text({ name, bio }: { readonly name: LeafHandle<string>; readonly bio: LeafHandle<string | undefined> }) {
+function Text({ name, bio }: { readonly name: NamedLeafHandle<string>; readonly bio: NamedLeafHandle<string | undefined> }) {
   const field = useField(name);
-  expectTypeOf(field).toEqualTypeOf<FieldApiOf<LeafHandle<string>>>();
+  expectTypeOf(field).toEqualTypeOf<FieldApiOf<NamedLeafHandle<string>>>();
   const props = inputProps(field);
   expectTypeOf(props).toEqualTypeOf<TextInputProps>();
   const bioProps = textareaProps(useField(bio));
@@ -47,7 +47,7 @@ function Text({ name, bio }: { readonly name: LeafHandle<string>; readonly bio: 
   );
 }
 
-function Numbers({ draft, plain }: { readonly draft: LeafHandle<number | undefined>; readonly plain: LeafHandle<number> }) {
+function Numbers({ draft, plain }: { readonly draft: NamedLeafHandle<number | undefined>; readonly plain: NamedLeafHandle<number> }) {
   const draftField = useField(draft);
   const plainField = useField(plain);
   const draftProps = numberProps(draftField);
@@ -70,7 +70,7 @@ function Numbers({ draft, plain }: { readonly draft: LeafHandle<number | undefin
   );
 }
 
-function Checkboxes({ newsletter, tags }: { readonly newsletter: LeafHandle<boolean>; readonly tags: ArrayHandle<string[]> }) {
+function Checkboxes({ newsletter, tags }: { readonly newsletter: NamedLeafHandle<boolean>; readonly tags: NamedArrayHandle<string[]> }) {
   const props = checkboxProps(useField(newsletter));
   expectTypeOf(props).toEqualTypeOf<CheckboxInputProps>();
   const tagsField = useField(tags);
@@ -88,7 +88,7 @@ function Checkboxes({ newsletter, tags }: { readonly newsletter: LeafHandle<bool
   );
 }
 
-function Radios({ plan }: { readonly plan: LeafHandle<"free" | "pro"> }) {
+function Radios({ plan }: { readonly plan: NamedLeafHandle<"free" | "pro"> }) {
   const field = useField(plan);
   const free = radioProps(field, "free");
   expectTypeOf(free).toEqualTypeOf<RadioInputProps>();
@@ -97,7 +97,7 @@ function Radios({ plan }: { readonly plan: LeafHandle<"free" | "pro"> }) {
   return <input {...free} />;
 }
 
-function Selects({ country, plan }: { readonly country: LeafHandle<string>; readonly plan: LeafHandle<"free" | "pro" | undefined> }) {
+function Selects({ country, plan }: { readonly country: NamedLeafHandle<string>; readonly plan: NamedLeafHandle<"free" | "pro" | undefined> }) {
   const countryField = useField(country);
   const props = selectProps(countryField, { empty: "" });
   expectTypeOf(props).toEqualTypeOf<SelectProps>();
@@ -162,7 +162,7 @@ function FromField({ text, count }: { readonly text: FieldApi<string>; readonly 
 }
 
 // A custom input records its element for focus and points at its error element itself.
-function DatePicker({ born }: { readonly born: LeafHandle<Date | undefined> }) {
+function DatePicker({ born }: { readonly born: NamedLeafHandle<Date | undefined> }) {
   const ref = useFieldRef(born);
   const field = useField(born);
   return (
@@ -173,7 +173,7 @@ function DatePicker({ born }: { readonly born: LeafHandle<Date | undefined> }) {
 }
 
 // `useField` with a selector returns what it picks from the snapshot.
-function Selected({ name }: { readonly name: LeafHandle<string> }) {
+function Selected({ name }: { readonly name: NamedLeafHandle<string> }) {
   const length = useField(name, (snapshot) => snapshot.value.length);
   expectTypeOf(length).toEqualTypeOf<number>();
   return <span>{length}</span>;

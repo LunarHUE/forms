@@ -31,12 +31,12 @@ describe("persist", () => {
   it("saves on idle and restores at the first listener without marking anything edited", () => {
     const storage = memory();
     const { saved } = storage;
-    const first = testStore({ defaultValues: contact(), plugins: [persist("contact", storage)] });
+    const first = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage })] });
     first.store.root.at("phone").setValue("123");
     expect(saved.size).toBe(0);
     first.flush();
     expect(saved.get("contact")).toBe('{"phone":"123","code":""}');
-    const second = testStore({ defaultValues: contact(), plugins: [persist("contact", storage)] });
+    const second = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage })] });
     // Defaults until something listens, as on the server and in the render that hydrates.
     expect(second.store.root.peek().value).toEqual(contact());
     second.listen();
@@ -47,7 +47,7 @@ describe("persist", () => {
 
   it("restores once per store, not each time it gets listeners again", () => {
     const storage = memory(new Map([["contact", '{"phone":"1","code":""}']]));
-    const { store, listen, errors } = testStore({ defaultValues: contact(), plugins: [persist("contact", storage)] });
+    const { store, listen, errors } = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage })] });
     const stop = listen();
     stop();
     store.root.at("phone").setValue("2");
@@ -58,7 +58,7 @@ describe("persist", () => {
 
   it("starts from the defaults and removes a saved value that doesn't parse", () => {
     const storage = memory(new Map([["contact", "{not json"]]));
-    const { store, listen, errors } = testStore({ defaultValues: contact(), plugins: [persist("contact", storage)] });
+    const { store, listen, errors } = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage })] });
     listen();
     expect(store.getSnapshot([]).value).toEqual(contact());
     expect(storage.saved.has("contact")).toBe(false);
@@ -66,11 +66,11 @@ describe("persist", () => {
   });
 
   it("carries on when storage throws", () => {
-    const reads = testStore({ defaultValues: contact(), plugins: [persist("contact", { ...memory(), getItem: blocked, removeItem: blocked })] });
+    const reads = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage: { ...memory(), getItem: blocked, removeItem: blocked } })] });
     reads.listen();
     expect(reads.store.getSnapshot([]).value).toEqual(contact());
     // A full storage: the write lands and the save is dropped.
-    const writes = testStore({ defaultValues: contact(), plugins: [persist("contact", { ...memory(), setItem: blocked })] });
+    const writes = testStore({ defaultValues: contact(), plugins: [persist({ key: "contact", storage: { ...memory(), setItem: blocked } })] });
     writes.store.root.at("phone").setValue("1");
     writes.flush();
     expect(writes.store.getSnapshot(["phone"]).value).toBe("1");

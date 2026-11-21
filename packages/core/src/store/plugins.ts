@@ -4,6 +4,7 @@ import type {
   PluginBaseline,
   PluginContext,
   PluginErrorHandler,
+  PartHooks,
   PluginHooks,
   When,
   WriteCause,
@@ -14,11 +15,15 @@ import type { Submission } from "../snapshot.js";
 import type { AnyFormStore } from "../store.js";
 import type { Baseline } from "./baseline.js";
 import type { StoreCore } from "./core.js";
-import type { PartsKit } from "./parts.js";
+import type { ArrayCommands, ArrayHost } from "./array-records.js";
+import type { PartsHost, PartsKit } from "./parts.js";
 import type { Validation } from "./runner.js";
 import { problem } from "../problem.js";
 import { freeze } from "./freeze.js";
 import { type HostLink, hosts } from "./hosts.js";
+import { refuse } from "./refuse.js";
+
+export { refuse } from "./refuse.js";
 
 // Core has no DOM or node types, so this declares the globals the host uses.
 declare const setTimeout: (fn: () => void) => unknown;
@@ -26,9 +31,6 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
 /** How many rounds of plugin writes one batch may set off before the host stops them. */
 const maxRounds = 10;
-
-/** Returned from `beforeWrite` to stop the write. */
-export const refuse: unique symbol = Symbol("refuse");
 
 // The default report: throw on a later task, so the error reaches the page's
 // error handler without breaking the write that is running.
@@ -41,7 +43,7 @@ const rethrowLater: PluginErrorHandler = (error) => {
 /** Makes the store's plugin host from every plugin the store has. */
 export type CreateHost = (raw: StoreCore<unknown, unknown>, plugins: readonly AnyPlugin[], report?: PluginErrorHandler) => PluginHost;
 
-/** The plugin host of one store. Only a store with a plugin that has `setup` or `attach` has one. */
+/** The plugin host of one store. Only a store with a plugin that has `setup` or `part` has one. */
 export interface PluginHost extends HostLink {
   /** The value store with its write commands wrapped, for the rest of the form store to use. */
   readonly core: StoreCore<unknown, unknown>;
@@ -56,8 +58,8 @@ export interface PluginHost extends HostLink {
   /** Runs `run`, the reset of the field at `path`, with `cause: "reset"`, then calls `onReset` in the same batch. */
   reset(path: Path, run: () => void): void;
   /**
-   * Calls `onSubmit`, and returns a promise that settles once `settled` and
-   * every promise `onSubmit` returned have. It resolves true when a plugin
+   * Calls `beforeSubmit`, and returns a promise that settles once `settled`
+   * and every promise `beforeSubmit` returned have. It resolves true when a plugin
    * returned `refuse`, directly or from its promise.
    */
   submitting(settled: Promise<unknown>): Promise<boolean>;
@@ -66,6 +68,9 @@ export interface PluginHost extends HostLink {
   /** The `api` each plugin's setup returned, by plugin name. Filled by `start`. */
   readonly apis: Record<string, unknown>;
 }
+
+/** The hooks of a plugin's setup or of one of its parts. */
+export type AnyHooks = PluginHooks<unknown> & PartHooks;
 
 /** One installed plugin with hooks. */
 interface Entry {
@@ -82,37 +87,37 @@ interface Attached {
   readonly path: Path;
   /** The part, or undefined for setup's hooks. */
   readonly part: Part | undefined;
-  hooks: PluginHooks<unknown>;
+  hooks: AnyHooks;
   /** The cleanup its `onActive` returned. */
   off?: (() => void) | undefined;
 }
 
 /**
  * The plugins in hook order: install order, except that each one comes
- * after the names in its `after` and the plugins its `requires` names. A
- * required plugin that isn't installed throws `plugins:missing`.
+ * after the plugins its `requires` names. A required plugin that isn't
+ * installed throws `plugins:missing`.
  */
 function order(plugins: readonly AnyPlugin[]): AnyPlugin[] {
   const byName = new Map<string, AnyPlugin>();
   for (const plugin of plugins) {
     if (byName.has(plugin.name)) {
-      if (plugin.setup || plugin.attach) throw new Error(problem("plugins:name", plugin.name));
+      if (plugin.setup || plugin.part) throw new Error(problem("plugins:name", plugin.name));
     } else byName.set(plugin.name, plugin);
   }
   const ordered: AnyPlugin[] = [];
-  // False while a plugin's `after` list is being visited, true once the plugin is placed.
+  // False while a plugin's requirements are being visited, true once the plugin is placed.
   const placed = new Map<AnyPlugin, boolean>();
   const visit = (plugin: AnyPlugin) => {
     const state = placed.get(plugin);
     if (state) return;
     if (state === false) throw new Error(problem("plugins:cycle", plugin.name));
     placed.set(plugin, false);
-    const required = (plugin.requires?.() ?? []).map((need) => (typeof need === "function" ? need() : need).name);
+    const required = (plugin.requires?.() ?? []).map((need) => (need as () => AnyPlugin)().name);
     // The types catch a missing plugin, so production doesn't check again.
     if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
       for (const name of required) if (!byName.has(name)) throw new Error(problem("plugins:missing", `${name} ${plugin.name}`));
     }
-    for (const name of [...(plugin.after ?? []), ...required]) {
+    for (const name of required) {
       const before = byName.get(name);
       if (before) visit(before);
     }
@@ -125,7 +130,7 @@ function order(plugins: readonly AnyPlugin[]): AnyPlugin[] {
 
 /**
  * Makes the host for `plugins`, at least one of which has `setup` or
- * `attach`. It wraps the value store's write commands so each write goes
+ * `part`. It wraps the value store's write commands so each write goes
  * through `beforeWrite` and leaves a record for `onWrite`.
  */
 export function createPluginHost(
@@ -137,7 +142,7 @@ export function createPluginHost(
   const installed = order(plugins);
   const entries = new Map<string, Entry>();
   for (const plugin of installed) {
-    if (plugin.setup || plugin.attach) entries.set(plugin.name, { plugin, rank: entries.size, cause: freeze({ plugin: plugin.name }) });
+    if (plugin.setup || plugin.part) entries.set(plugin.name, { plugin, rank: entries.size, cause: freeze({ plugin: plugin.name }) });
   }
   // Every set of hooks, in hook order: by plugin, then by when it attached.
   const attached: Attached[] = [];
@@ -304,7 +309,11 @@ export function createPluginHost(
     };
 
   const valueOf = (path: Path) => raw.getSnapshot(path).value;
-  const keysAt = (path: Path) => raw.getSnapshot(path).keys ?? [];
+  // The opaque slot `arrays()` fills: its array code, its keys code and the records of its commands.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const recordArrays = (plugins.find((plugin) => plugin["~arrays"])?.["~arrays"] as readonly unknown[] | undefined)?.[2] as
+    | ((host: ArrayHost) => ArrayCommands)
+    | undefined;
 
   /**
    * Runs `input` through each `beforeWrite` the write at `path` reaches.
@@ -341,44 +350,8 @@ export function createPluginHost(
         push({ type: "value", path, before, after: value, cause });
         return true;
       }),
-    // The row's key exists only once it is in, so `beforeWrite` sees the row
-    // after the insert, as a write at the row's path. A refused row comes out again.
-    insert: (path, index, input) =>
-      recorded(() => {
-        const before = valueOf(path);
-        let key = raw.insert(path, index, input);
-        let item = input;
-        if (key !== undefined) {
-          const row = [...path, key];
-          item = transform(row, input, undefined);
-          if (item === refuse) {
-            raw.remove(path, keysAt(path).indexOf(key));
-            key = undefined;
-          } else if (!Object.is(item, input)) raw.set(row, item);
-        }
-        if (key !== undefined)
-          push({ type: "insert", path, before, after: valueOf(path), index: keysAt(path).indexOf(key), key, item, cause });
-        return key;
-      }),
-    remove: (path, index) =>
-      recorded(() => {
-        const before = valueOf(path);
-        const key = raw.remove(path, index);
-        if (key !== undefined) {
-          const item: unknown = Array.isArray(before) ? before[index] : undefined;
-          push({ type: "remove", path, before, after: valueOf(path), index, key, item, cause });
-        }
-        return key;
-      }),
-    move: (path, from, to) =>
-      recorded(() => {
-        const before = valueOf(path);
-        const key = keysAt(path)[from];
-        if (!raw.move(path, from, to)) return false;
-        const at = key === undefined ? to : keysAt(path).indexOf(key);
-        push({ type: "move", path, before, after: valueOf(path), from, to: at, cause });
-        return true;
-      }),
+    // `arrays()` brings the array commands' records. Without it they throw `arrays:missing`.
+    ...recordArrays?.({ raw, recorded, push, transform, cause: () => cause }),
     setTouched: flag("touched", (path, on) => raw.setTouched(path, on)),
     setDisabled: flag("disabled", (path, on) => raw.setDisabled(path, on)),
     setReadOnly: flag("readOnly", (path, on) => raw.setReadOnly(path, on)),
@@ -399,7 +372,7 @@ export function createPluginHost(
       path: at.path,
       plugins: apis,
       installed,
-      attachments: (path) => listParts?.(attached, path) ?? [],
+      parts: (path) => kit?.list(path) ?? [],
       setMeta: (path, value) => later(at, () => raw.setMeta(name, value, path)),
       setFormMeta: (value) => later(at, () => raw.setMeta(name, value)),
       // Any cause but "rebase", as from a caller the types don't check, is the plugin's own.
@@ -409,12 +382,12 @@ export function createPluginHost(
     };
   };
 
-  // Runs what new hooks do when they arrive: clean the value with `initial`,
-  // show the display, start `onActive` and join a timing.
+  // Runs what new hooks do when they arrive: a part's `beforeWrite` on the
+  // value there and its display, `onActive`, and a timing.
   const arrive = (at: Attached) => {
     const { hooks } = at;
     if (hooks.api !== undefined && !at.part) apis[at.entry.plugin.name] = hooks.api;
-    kit?.arrive(at);
+    if (at.part) kit?.arrive(at);
     if (listeners > 0) activate(at);
     if (hooks.onWrite) {
       listening = true;
@@ -424,7 +397,7 @@ export function createPluginHost(
   };
 
   // Adds hooks at their place in hook order, then runs `make` for them.
-  const add = (entry: Entry, path: Path, part: Part | undefined, make: (ctx: PluginContext) => PluginHooks<unknown>) => {
+  const add = (entry: Entry, path: Path, part: Part | undefined, make: (ctx: PluginContext) => AnyHooks) => {
     const at: Attached = { entry, path, part, hooks: {} };
     const index = attached.findIndex((other) => other.entry.rank > entry.rank);
     attached.splice(index === -1 ? attached.length : index, 0, at);
@@ -449,22 +422,18 @@ export function createPluginHost(
     }
   };
 
-  // The parts code, from the first plugin that brings it, as every plugin
-  // with `attach` does. Made in `start`, once the baseline is there.
-  const createParts = plugins.find((plugin) => plugin["~parts"])?.["~parts"];
+  // The parts code, from the first part that brings it, as every part
+  // does. Made when parts first attach, which is after `start`.
   let kit: PartsKit<Attached> | undefined;
-  // What `ctx.attachments` returns, from the first plugin that brings it.
-  const listParts = plugins.find((plugin) => plugin["~list"])?.["~list"];
+  let lent: PartsHost<Attached>;
 
   const attach = (base: Path, parts: readonly Part[], now?: boolean) => {
-    if (kit) kit.attach(base, parts, now);
-    else if (typeof process !== "undefined" && process.env.NODE_ENV !== "production" && parts[0]) {
-      throw new Error(problem("plugins:missing", parts[0].plugin));
-    }
+    kit ??= parts.find((part) => part["~parts"])?.["~parts"]?.(lent);
+    kit?.attach(base, parts, now);
   };
 
   // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
-  const each = (fn: (hooks: PluginHooks<unknown>) => void, path: Path = []) => {
+  const each = (fn: (hooks: AnyHooks) => void, path: Path = []) => {
     for (const at of attached.slice()) if (live(at, path)) call(at, () => fn(at.hooks), undefined);
   };
 
@@ -478,7 +447,7 @@ export function createPluginHost(
       validation.changed = (list) => void paths.push(...list);
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
-      kit = createParts?.({ raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call });
+      lent = { raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call };
       // Setup's writes wait until every plugin's setup has run. They are the
       // store's starting state, so the server snapshot shows them.
       quietly(() => {
@@ -505,7 +474,7 @@ export function createPluginHost(
       for (const at of attached) {
         // A refusal returned at once stops the plugins after it.
         if (refused) break;
-        const out = call(at, () => at.hooks.onSubmit?.(), undefined);
+        const out = call(at, () => at.hooks.beforeSubmit?.(), undefined);
         refused = out === refuse;
         // A rejection is reported like a throw, and the submit goes on.
         work.push(

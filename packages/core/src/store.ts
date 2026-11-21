@@ -1,5 +1,5 @@
 import type { ErrorMap, FormError } from "./errors.js";
-import type { AnyFieldHandle, FieldHandle, ResetOptions } from "./handle.js";
+import type { NamedAnyFieldHandle, NamedFieldHandle, ResetOptions } from "./handle.js";
 import type { Path } from "./path.js";
 import type { Gate } from "./plugin.js";
 import type { FieldSnapshot, FormSnapshot, Submission } from "./snapshot.js";
@@ -18,7 +18,7 @@ export interface Change {
 /** A field with errors, as `invalidFields` and `disabledInvalid` list it. */
 export interface InvalidField<E = FormError> {
   /** The field's handle. */
-  readonly field: AnyFieldHandle<E>;
+  readonly field: NamedAnyFieldHandle<E>;
   /** The field's dotted value path, as the snapshot's `name`. */
   readonly name: string;
   /** Every error on the field, as the snapshot's `errors`. The form's `show` setting doesn't filter it. */
@@ -87,7 +87,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
   /** The form instance's id. Every handle id starts with it. */
   readonly id: string;
   /** The handle for the whole value. */
-  readonly root: FieldHandle<V, E, N>;
+  readonly root: NamedFieldHandle<V, E, N>;
 
   /**
    * Calls `listener` after any write that changes the snapshot of the field
@@ -172,7 +172,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    * validates a field there. Fields under a missing object count, since the
    * value can't say which keys it would have.
    */
-  fieldAt(path: Path): AnyFieldHandle<E, N> | undefined;
+  fieldAt(path: Path): NamedAnyFieldHandle<E, N> | undefined;
   /**
    * Returns the stable path of the field with dotted name `name`, such as
    * `rows.0.title`, by the rule `fieldAt` uses. Returns `undefined` when no
@@ -187,7 +187,7 @@ export interface FormStoreBase<V, E = FormError, I = undefined, R = unknown, A =
    * ones don't: `disabledInvalid` lists those. Returns `undefined` when there
    * is none. A read for event handlers and effects, not render.
    */
-  firstInvalid(): AnyFieldHandle<E, N> | undefined;
+  firstInvalid(): NamedAnyFieldHandle<E, N> | undefined;
   /**
    * Returns the disabled fields in `invalidFields(store)`. Their validation errors still
    * block submit, but `firstInvalid` skips them, so after an invalid submit

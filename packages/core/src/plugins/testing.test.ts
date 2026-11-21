@@ -13,7 +13,7 @@ const trim = (...fields: string[]) =>
     setup: () => ({
       beforeWrite: (write) => (typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value),
     }),
-  });
+  })();
 
 describe("testStore", () => {
   it("records each timing's deliveries, and delivers the waiting ones on flush", async () => {
@@ -39,7 +39,7 @@ describe("testStore", () => {
           if (list.some((record) => record.path[0] === "phone")) ctx.write(() => ctx.store.root.at("code").setValue("copied"));
         },
       }),
-    });
+    })();
     const { store, records } = testStore({ defaultValues: contact(), plugins: [arrays(), copy] });
     store.root.at("phone").setValue("1");
     expect(records.sync.map((record) => [record.path, record.cause])).toEqual([
@@ -56,7 +56,7 @@ describe("testStore", () => {
           throw new Error("after");
         },
       }),
-    });
+    })();
     const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), broken] });
     store.root.at("phone").setValue("1");
     expect(store.root.at("phone").peek().value).toBe("1");
@@ -73,7 +73,7 @@ describe("testStore", () => {
           return () => void events.push("off");
         },
       }),
-    });
+    })();
     const { listen } = testStore({ defaultValues: contact(), plugins: [arrays(), active] });
     expect(events).toEqual([]);
     const stop = listen();
@@ -92,7 +92,7 @@ describe("testStore", () => {
         ctx.setFormMeta("filled");
         return {};
       },
-    });
+    })();
     const config = { defaultValues: { name: "", rows: [{ t: "a" }] }, plugins: [arrays(), fill] };
     const { store, server } = testStore(config);
     const before = server();
@@ -106,16 +106,16 @@ describe("testStore", () => {
     expect(testStore(config).server()).toEqual(before);
   });
 
-  it("drives onReset, onSubmit and onSubmitted through the store", async () => {
+  it("drives onReset, beforeSubmit and onSubmitted through the store", async () => {
     const events: unknown[] = [];
     const watch = definePlugin({
       name: "watch",
       setup: () => ({
         onReset: (path) => void events.push(["reset", path]),
-        onSubmit: () => void events.push("submit"),
+        beforeSubmit: () => void events.push("submit"),
         onSubmitted: (submission) => void events.push(submission.status),
       }),
-    });
+    })();
     const { store, errors } = testStore({
       defaultValues: contact(),
       plugins: [arrays(), watch],
@@ -140,7 +140,7 @@ describe("testStore", () => {
   });
 
   it("types store.plugins from the plugin list", async () => {
-    const lock = definePlugin({ name: "lock", setup: () => ({ onSubmit: () => refuse, api: { locked: true } }) });
+    const lock = definePlugin({ name: "lock", setup: () => ({ beforeSubmit: () => refuse, api: { locked: true } }) })();
     const { store } = testStore({ defaultValues: contact(), plugins: [arrays(), lock] });
     const locked: boolean = store.plugins.lock.locked;
     expect(locked).toBe(true);

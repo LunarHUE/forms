@@ -1,20 +1,23 @@
 import type { Path } from "./path.js";
 import type { SchemaAdapter } from "./schema-adapter.js";
 import type { Submission } from "./snapshot.js";
-import type { AnyFormStore } from "./store.js";
+import type { NamedAnyFieldHandle } from "./handle.js";
+import type { AnyFormStore, DirtyStoreMembers } from "./store.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { CreateDirty } from "./store/dirty.js";
 import type { CreateHost } from "./store/plugins.js";
-import type { CreateParts, ListParts } from "./store/parts.js";
+import type { CreateParts } from "./store/parts.js";
 import type { CreateTiming } from "./store/timing.js";
 
 /**
  * What made a write. `"user"` is a write from outside any plugin, `"reset"`
  * is a write reset made, `"rebase"` is a write a plugin made through
  * `ctx.write(fn, "rebase")`, as the `rebase` plugin does, and `{ plugin }`
- * is a write any plugin made through `ctx.write(fn)`.
+ * is a write any plugin made through `ctx.write(fn)`. `"attach"` is the
+ * value already there when a part attaches, which its `beforeWrite` sees
+ * once. It never reaches a record.
  */
-export type WriteCause = "user" | "reset" | "rebase" | { readonly plugin: string };
+export type WriteCause = "user" | "reset" | "rebase" | "attach" | { readonly plugin: string };
 
 /** The members every `WriteRecord` has. */
 interface RecordBase {
@@ -127,18 +130,19 @@ export interface PluginBaseline {
 }
 
 /**
- * What a plugin's `setup` and `attach` get. Each call gets its own: `setup`
- * once per store, `attach` once per path it attaches at. `M` is the
+ * What a plugin's `setup` and `part` get. Each call gets its own: `setup`
+ * once per store, `part` once per path a part attaches at. `M` is the
  * plugin's meta on a field and `F` its meta on the form, `never` when it
  * keeps none. `Q` is the plugins its `requires` names. Annotate the
  * parameter to set `M` and `F`: `setup(ctx: PluginContext<{ hidden: boolean }>)`.
  */
 export interface PluginContext<M = never, F = never, Q extends Plugins = readonly []> {
   /**
-   * The store the plugin is installed on. Its handles have the members the
-   * plugins `requires` names give, such as `push` from `arrays()`.
+   * The store the plugin is installed on. It and its handles have the
+   * members the plugins `requires` names give, such as `push` from
+   * `arrays()` and `changes` from `dirty()`.
    */
-  readonly store: AnyFormStore<unknown, PluginNames<Q>>;
+  readonly store: AnyFormStore<unknown, PluginNames<Q>> & Gate<PluginNames<Q>, "dirty", DirtyStoreMembers>;
   /** The stable path the hooks attach at. `[]` in `setup`. */
   readonly path: Path;
   /** The APIs of the plugins `requires` names, by name. Their setup has run. */
@@ -146,10 +150,10 @@ export interface PluginContext<M = never, F = never, Q extends Plugins = readonl
   /** Every plugin on the store, in the order their hooks run. */
   readonly installed: readonly AnyPlugin[];
   /**
-   * The plugins attached at `path` and above it, in the order their hooks
+   * The parts attached at `path` and above it, in the order their hooks
    * run, with the path each attached at. Setup's hooks aren't listed.
    */
-  attachments(this: void, path: Path): readonly Attachment[];
+  parts(this: void, path: Path): readonly AttachedPart[];
   /**
    * Sets this plugin's meta on the field at stable path `path`. Each plugin
    * writes only the slot under its own name. Inside a hook it lands with the
@@ -162,7 +166,7 @@ export interface PluginContext<M = never, F = never, Q extends Plugins = readonl
    * Runs `fn`, whose store writes get `cause: { plugin: name }`. Pass
    * `"rebase"` to give them `cause: "rebase"` instead, for writes that move
    * the form to a value from outside. A plugin can't claim `"user"` or
-   * `"reset"`. Inside a hook, setup and attach included, it is queued and
+   * `"reset"`. Inside a hook, `setup` and `part` included, it is queued and
    * runs once every plugin in the round has run, before listeners. Outside
    * a hook it runs now, in a batch. Writing to the store any other way from
    * inside a hook throws.
@@ -174,10 +178,26 @@ export interface PluginContext<M = never, F = never, Q extends Plugins = readonl
   readonly baseline: PluginBaseline;
 }
 
-/** One plugin attached at a path, as `ctx.attachments` lists it. */
-export interface Attachment {
+/** One part attached at a path, as `ctx.parts` lists it. */
+export interface AttachedPart {
+  /** The name of the plugin the part belongs to, or `"part"` for a part with no plugin. */
   readonly name: string;
   readonly path: Path;
+}
+
+/**
+ * What a plugin's `part` hook gets: the plugin's context at the path the
+ * part attached at, and readers for that place.
+ */
+export interface PartContext<M = never, F = never, Q extends Plugins = readonly []> extends PluginContext<M, F, Q> {
+  /** The value at the part's path now. */
+  value(this: void): unknown;
+  /**
+   * The handle of the field at dotted name `name` below the part's path, as
+   * a `name` prop names it. It is there for a key the value doesn't have
+   * yet, and a write to a path that can't hold a field does nothing.
+   */
+  at(this: void, name: string): NamedAnyFieldHandle<unknown, PluginNames<Q>>;
 }
 
 /** What `setup` returns. Every hook is optional. */
@@ -187,9 +207,13 @@ export interface PluginHooks<A = undefined> {
    * write, or `refuse` from `@lunarhue/forms-core/plugins` to stop the
    * write. Writes from reset, rebase and plugins come through too, and
    * `write.cause` tells them apart. Hooks from `setup` get every write as
-   * it is. Hooks from `attach` get only the writes that reach their path: a
+   * it is. Hooks from `part` get only the writes that reach their path: a
    * write at or above it arrives walked down to it, with `path` the
-   * attached path, and a write below it arrives as it is. A row that `push`
+   * attached path, and a write below it arrives as it is. They also get the
+   * value at their path once when the part attaches, with `cause:
+   * "attach"`, and a value they change is written with no record. The
+   * baseline moves with it while the field isn't dirty, so a cleaned
+   * starting value doesn't make the field dirty. A row that `push`
    * or `insert` adds comes through as a write at the row's path, with
    * `before` undefined. The row is already in
    * the array then, since its key is made by the insert. Return a
@@ -198,7 +222,7 @@ export interface PluginHooks<A = undefined> {
    */
   beforeWrite?(write: Write): unknown;
   /**
-   * Gets committed writes at the time `when` names. Hooks from `attach` get
+   * Gets committed writes at the time `when` names. Hooks from `part` get
    * only the records at, above or below their path.
    */
   onWrite?(records: readonly WriteRecord[]): void;
@@ -224,9 +248,9 @@ export interface PluginHooks<A = undefined> {
    * `"invalid"`, as it does when validation fails. Set a form error first,
    * as with `ctx.store.root.setErrors`, so the user sees why. A refusal
    * returned directly stops the plugins after this one from running their
-   * `onSubmit`. One returned from a promise can't, since they have run.
+   * `beforeSubmit`. One returned from a promise can't, since they have run.
    */
-  onSubmit?(): unknown;
+  beforeSubmit?(): unknown;
   /**
    * Runs once a submit has ended, with how it ended. `input` is the form
    * value the definition's `onSubmit` got as `ctx.input`, read once
@@ -243,18 +267,20 @@ export interface PluginHooks<A = undefined> {
    * such as one a render made and threw away, holds no outside listener.
    */
   onActive?(): (() => void) | undefined;
-  /**
-   * From `attach` only. Cleans the value at the part's path when it
-   * attaches, and returns the value to keep. A value it changes is written
-   * with no record, and the baseline moves with it while the field isn't
-   * dirty, so a cleaned starting value doesn't make the field dirty.
-   */
-  initial?(value: unknown): unknown;
+  /** The plugin's own API. The form has it as `form.plugins[name]`, and so does the store. */
+  readonly api?: A;
+}
+
+/**
+ * What a plugin's `part` hook returns: the hooks of `PluginHooks` but
+ * `api`, which hold for the part's path, and two for text inputs.
+ */
+export interface PartHooks extends Omit<PluginHooks<never>, "api"> {
   /**
    * The text a text input shows for the field's value, as `(555) 123-4567`
    * for `5551234567`. A pure function of the value. The adapters' text
-   * pieces and props show it in place of the value. When several plugins
-   * attached at one field give it, the first in hook order wins.
+   * pieces and props show it in place of the value. When several parts at
+   * one field give it, the first in hook order wins.
    */
   display?(value: unknown): string;
   /**
@@ -266,12 +292,13 @@ export interface PluginHooks<A = undefined> {
    * framework puts the text in and the caret lands where the browser leaves
    * it.
    */
-  edit?(input: TextControl, value: unknown, event: object): void;
-  /** The plugin's own API, from `setup` only. The form has it as `form.plugins[name]`, and so does the store. */
-  readonly api?: A;
+  afterInput?(input: TextControl, value: unknown, event: object): void;
 }
 
-/** The parts of a text input or textarea that a display's `edit` changes. Every `HTMLInputElement` and `HTMLTextAreaElement` fits. */
+/** What changes the text a text input shows: the `display` and `afterInput` hooks of the first part at the field that has `display`. */
+export type FieldDisplay = Required<Pick<PartHooks, "display">> & Pick<PartHooks, "afterInput">;
+
+/** The parts of a text input or textarea that a display's `afterInput` changes. Every `HTMLInputElement` and `HTMLTextAreaElement` fits. */
 export interface TextControl {
   value: string;
   readonly selectionStart: number | null;
@@ -284,22 +311,19 @@ export interface MetaHolder {
 }
 
 /**
- * What every plugin has. `Plugin` adds the meta readers. Every member but
- * `name` is optional, and the store runs what is there. Internal.
+ * What every plugin has. Every member but `name` is optional, and the
+ * store runs what is there. Internal.
  */
 export interface PluginMembers<A, N extends string, M, F, S extends StandardSchemaV1, Q extends Plugins = readonly []> {
-  /** Unique among a store's plugins that have hooks. It names the meta slot, the write cause, the API's key and the plugin a part attaches. */
+  /** Unique among a store's plugins that have hooks. It names the meta slot, the write cause, the API's key and the plugin a part belongs to. */
   readonly name: N;
-  /** The plugins this one runs after, by name. A name that isn't installed is ignored. */
-  readonly after?: readonly string[];
   /**
    * The plugins this one needs, as their factories, such as
-   * `() => [dirty, rebase]`, or as plugins. It is called when a store is
-   * made. Each must be in the form's plugins too: this doesn't install
-   * them. A form without one is a type error, and without types the store
-   * throws `plugins:missing`. The plugin runs after them, and its context's
-   * `plugins` holds their APIs. A factory is called with no arguments to
-   * read its name.
+   * `() => [dirty, rebase]`. It is called when a store is made. Each must be
+   * in the form's plugins too: this doesn't install them. A form without one
+   * is a type error, and without types the store throws `plugins:missing`.
+   * The plugin's hooks run after theirs, and its context's `plugins` holds
+   * their APIs. A factory is called with no arguments to read its name.
    */
   readonly requires?: () => Requirements;
   /**
@@ -310,7 +334,7 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
    * plugins have it, each gets the value the one before returned, so the
    * last one that returns a value wins.
    */
-  initial?(value: unknown): unknown;
+  initialValue?(value: unknown): unknown;
   /** Type information only: the plugins `requires` names. */
   readonly "~requires"?: Q;
   /**
@@ -325,11 +349,10 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
    * part's config, and returns the hooks for that path. `ctx.path` is the
    * path. A part attaches when a field type or fieldset that carries it
    * renders, or when the store is made for parts given to `define`. The
-   * attachment lasts as long as the path: removing an array item removes
-   * the attachments in it. A plugin's part constructor types the config and
-   * the values it fits, see `Part`.
+   * part lasts as long as the path: removing an array item removes the
+   * parts in it.
    */
-  attach?(ctx: PluginContext<M, F, Q>, config: never): PluginHooks<never>;
+  part?(this: void, ctx: PartContext<M, F, Q>, config: never): PartHooks;
   /**
    * A schema adapter, which gives the default values of its library's
    * schemas of type `S`, so their forms need no `defaultValues`. A plugin
@@ -340,10 +363,6 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
   readonly "~host"?: CreateHost;
   /** Makes the host's `deferred` and `idle` timings. Internal. */
   readonly "~timing"?: CreateTiming;
-  /** Attaches parts and runs the hooks they make. Internal. */
-  readonly "~parts"?: CreateParts;
-  /** Lists the parts for `ctx.attachments`. Internal. */
-  readonly "~list"?: ListParts;
   /** Dirty tracking, from `dirty()`. Internal. */
   readonly "~dirty"?: CreateDirty;
   /**
@@ -354,31 +373,30 @@ export interface PluginMembers<A, N extends string, M, F, S extends StandardSche
 }
 
 /** The reader of a plugin that keeps meta on fields. */
-interface MetaReader<M> {
+export interface MetaReader<M> {
   /**
    * Reads this plugin's meta from a field snapshot or a field object, as
    * `rules.meta(field).hidden`. Before the plugin sets any it returns the
    * plugin's `initialMeta`.
    */
-  meta(source: MetaHolder): M;
+  meta(this: void, source: MetaHolder): M;
 }
 
 /** The reader of a plugin that keeps meta on the form. */
-interface FormMetaReader<F> {
-  /** Reads this plugin's meta from the form snapshot. Before the plugin sets any it returns the plugin's `initialFormMeta`. */
-  formMeta(source: MetaHolder): F;
+export interface FormMetaReader<F> {
+  /** Reads this plugin's meta from the form snapshot, as `history.formMeta(form).canUndo`. Before the plugin sets any it returns the plugin's `initialFormMeta`. */
+  formMeta(this: void, source: MetaHolder): F;
 }
 
 /**
- * What goes in a `plugins` list, as `definePlugin` makes it. `A` is its
+ * What goes in a `plugins` list, as a plugin factory makes it. `A` is its
  * API, `N` its name, `M` its meta on a field, `F` its meta on the form and
- * `S` the schemas its schema adapter takes. A plugin with field meta has a
- * `meta` reader and one with form meta a `formMeta` reader. `never` means
- * it has none of that.
+ * `S` the schemas its schema adapter takes. `never` means it has none of
+ * that.
  *
  * A plugin can bring hooks for the whole store (`setup`), hooks for the
- * paths its parts attach at (`attach`), and a schema adapter (`schema`).
- * `Q` is the plugins it requires. Make one with `definePlugin`.
+ * paths its parts attach at (`part`), and a schema adapter (`schema`). `Q`
+ * is the plugins it requires. Make a factory with `definePlugin`.
  */
 export type Plugin<
   A = undefined,
@@ -387,21 +405,43 @@ export type Plugin<
   F = never,
   S extends StandardSchemaV1 = never,
   Q extends Plugins = readonly [],
-> = PluginMembers<A, N, M, F, S, Q> &
-  ([M] extends [never] ? unknown : MetaReader<M>) &
-  ([F] extends [never] ? unknown : FormMetaReader<F>) &
-  ([S] extends [never] ? unknown : { readonly schema: SchemaAdapter<S> });
+> = PluginMembers<A, N, M, F, S, Q> & ([S] extends [never] ? unknown : { readonly schema: SchemaAdapter<S> });
+
+/** The arguments a plugin factory takes for options `O`: none for `void`, an optional one when `O` takes `undefined`. */
+export type OptionArgs<O> = [O] extends [void] ? [] : undefined extends O ? [options?: O] : [options: O];
+
+/**
+ * A plugin factory, as `definePlugin` returns it. Call it for the plugin to
+ * put in a `plugins` list, with the options `setup` takes. Pass it to
+ * `part` for a part of the plugin, with the config its `part` hook takes. A
+ * plugin that keeps field meta has a `meta` reader and one with form meta a
+ * `formMeta` reader. `O` is the options and `C` the part config.
+ */
+export type PluginFactory<
+  A = undefined,
+  N extends string = string,
+  M = never,
+  F = never,
+  S extends StandardSchemaV1 = never,
+  Q extends Plugins = readonly [],
+  O = void,
+  C = void,
+> = ((...options: OptionArgs<O>) => Plugin<A, N, M, F, S, Q>) & {
+  /** Type information only: the config `part` takes for this plugin's parts. */
+  readonly "~config"?: (config: C) => void;
+} & ([M] extends [never] ? unknown : MetaReader<M>) &
+  ([F] extends [never] ? unknown : FormMetaReader<F>);
 
 /** A plugin of any kind, API, name and meta. Internal. */
 // `any` lets a plugin of every `A`, `M`, `F` and `S` fit, whatever their variance.
 // oxlint-disable-next-line typescript/no-explicit-any
 export type AnyPlugin = PluginMembers<any, string, any, any, any, any>;
 
-/** What `requires` returns: plugin factories that take no arguments, or plugins. */
-export type Requirements = readonly (AnyPlugin | (() => AnyPlugin))[];
+/** What `requires` returns: plugin factories. A factory is called with no arguments to read its name. */
+export type Requirements = readonly ((...options: never[]) => AnyPlugin)[];
 
 /** The plugins a `requires` list names: each factory's result, or the plugin. Internal. */
-export type RequiredPlugins<R extends Requirements> = { readonly [K in keyof R]: R[K] extends () => infer T ? T : R[K] };
+export type RequiredPlugins<R extends Requirements> = { readonly [K in keyof R]: R[K] extends (...options: never[]) => infer T ? T : never };
 
 /** What a plugin list may hold in place of a plugin, as in `dev && devtools()`. The store skips it. */
 type NoPlugin = false | null | undefined;
@@ -433,6 +473,17 @@ export type PluginNames<P extends Plugins> = Present<P> extends infer T
       ? never
       : N
     : never
+  : never;
+
+/**
+ * The names of the plugins in `P`, a union of plugin factories, as
+ * `typeof dirty | typeof arrays`. A component type such as `FieldApi`
+ * takes its plugins this way. A plain `string` name adds nothing.
+ */
+export type NamesOf<P> = P extends (...options: never[]) => { readonly name: infer N extends string }
+  ? string extends N
+    ? never
+    : N
   : never;
 
 /** The schema types the schema plugins in `P` accept. Internal. */
@@ -468,7 +519,7 @@ type AddPlugins<N extends string, By extends string> = {
  * form's plugins (see `PluginNames`). Otherwise a type with one key per
  * missing plugin, such as `"Add dirty() to this form's plugins"`, so a value
  * given for it is a type error that names what to install. `By` names what
- * needs it, as in `"Add mask() to this form's plugins: PhoneField uses it"`.
+ * needs it, as in `"Add dirty() to this form's plugins: TextField uses it"`.
  * A definition's `equals` is typed `Needs<Installed, "dirty", Equals>`.
  */
 export type Needs<Installed extends string, N extends string, T, By extends string = ""> = [Exclude<N, Installed>] extends [never]
@@ -501,38 +552,55 @@ export type RequiresMet<P extends Plugins, Installed extends string> = [Exclude<
     };
 
 /**
- * A plugin's config for one place: a field type's value, a fieldset, or a
- * form. `N` is the plugin it needs and `V` the value it fits. A part fits
- * a place whose value is assignable to `V`, so `Part<"mask", string>` fits
- * string fields only. A plugin makes its parts with a typed constructor:
+ * Hooks for one place: a field type's value, a fieldset, or a form. `P` is
+ * the factory of the plugin it needs, as `Part<typeof limit, string>`, or
+ * `never` for a part that needs none, and `V` the value it fits. A part fits
+ * a place whose value is assignable to `V`, so a `Part<never, string>` fits
+ * string fields only. `Part` with no arguments is any part.
+ *
+ * `part(plugin, config)` makes a part of a plugin: the plugin's `part` hook
+ * gets the config, and the plugin must be in the form's plugins. `part`,
+ * `transform`, `text` and `observe` make parts with hooks of their own,
+ * which need no plugin:
  *
  * ```ts
- * export const masked = (config: MaskConfig): Part<"mask", string> => ({ plugin: "mask", config });
+ * export const capped = (max: number) => transform<string>((value) => value.slice(0, max));
  * ```
  *
  * The parts go on a field type (`defineField(PhoneInput, masked(...))`), a
  * fieldset (`forms.fieldset(Billing, ruled(...))`), or after a definition's
- * config (`define(config, ruled(...))`). The plugin must be in the form's
- * plugins: a part doesn't install it.
+ * config (`define(config, ruled(...))`).
  */
-export interface Part<N extends string = string, V = never> {
-  /** The name of the plugin whose `attach` gets the config. */
-  readonly plugin: N;
-  /** What the plugin's `attach` gets. */
+export type Part<P = unknown, V = never> = NamedPart<unknown extends P ? string : NamesOf<P>, V>;
+
+/** A part as the types track it: by the name of the plugin it needs. See `Part`. Internal. */
+export interface NamedPart<N extends string = string, V = never> {
+  /** The name of the plugin whose `part` hook gets the config. Undefined for a part with hooks of its own. */
+  readonly plugin?: N;
+  /** What the plugin's `part` hook gets. */
   readonly config?: unknown;
+  /** Makes the hooks of a part with no plugin, once per path it attaches at. Internal. */
+  readonly hooks?: (ctx: PartContext) => PartHooks;
   /** A dotted name below where the part attaches, for parts pinned at a field, as `fieldset.at("billing")` makes. */
   readonly path?: string;
   /** Type information only: the values the part fits. */
   readonly "~fits"?: (value: V) => void;
   /** The part this one is a pinned copy of, so the two attach once at a path. Internal. */
   readonly "~of"?: Part;
+  /** Attaches parts and runs the hooks they make. Every part brings it. Internal. */
+  readonly "~parts"?: CreateParts;
+  /** Makes the store's plugin host, for a part with no plugin. Internal. */
+  readonly "~host"?: CreateHost;
 }
 
-/** One part or a list of them, as `define` takes them after the config. */
-export type Parts<N extends string = string, V = never> = Part<N, V> | readonly Part<N, V>[];
+/** One part or a list of them, as `define` takes them after the config. `P` is as on `Part`. */
+export type Parts<P = unknown, V = never> = Part<P, V> | readonly Part<P, V>[];
+
+/** One part or a list of them, by plugin name. Internal. */
+export type NamedParts<N extends string = string, V = never> = NamedPart<N, V> | readonly NamedPart<N, V>[];
 
 /** The plugin names the parts in `P` need. Internal. */
-export type PartNames<P> = P extends readonly (infer T)[] ? PartNames<T> : P extends Part<infer N> ? N : never;
+export type PartNames<P> = P extends readonly (infer T)[] ? PartNames<T> : P extends NamedPart<infer N> ? N : never;
 
 /** The value type `{ a: { b: V } }` for dotted name `"a.b"`, what a part pinned at that name fits. Internal. */
 export type Nested<K extends string, V> = K extends `${infer H}.${infer T}` ? { readonly [P in H]: Nested<T, V> } : { readonly [P in K]: V };

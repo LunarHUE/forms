@@ -12,6 +12,7 @@ export type {
   BoundFieldComponent,
   FieldComponents,
   Fieldset,
+  NamedFieldset,
   FieldType,
   FocusOnInvalid,
   FocusTarget,

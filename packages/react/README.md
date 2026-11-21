@@ -116,14 +116,15 @@ Type `name="emial"` and the build fails.
 ## Plugins
 
 The plugins that need no other library ship with this package, all from
-`@lunarhue/forms-react/plugins`: `arrays`, `history`, `mask`, `rules`,
+`@lunarhue/forms-react/plugins`: `arrays`, `history`, `rules`,
 `persist`, `rebase`, `bind` and `dirty`. Your bundler drops the ones you don't import.
 Validation is built in.
 
-`mask` and `rules` work per field. Install them in the form's plugins and
-put their parts where they apply: `defineField(PhoneInput, masked({ clean: digits }))`
-registers a field type whose every field is masked, and
-`forms.define(config, ruled({ ... }))` adds rules to one form.
+Parts work per field. Put them where they apply:
+`defineField(PhoneInput, masked({ clean: digits }))`, with `masked` from
+`@lunarhue/forms-react/text`, registers a field type whose every field is
+masked, and needs no plugin. `forms.define(config, ruled({ ... }))` adds
+rules to one form, with `rules()` in its plugins.
 
 ## More
 

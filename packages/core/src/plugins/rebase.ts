@@ -1,7 +1,7 @@
 import type { HandleBase } from "../handle.js";
 import type { Path } from "../path.js";
-import type { Plugin } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
+import type { PluginFactory } from "../plugin.js";
+import { defineWith } from "../store/define.js";
 import { problem } from "../problem.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
@@ -42,24 +42,22 @@ export type Rebase = <V, E>(handle: HandleBase<V, E>, incoming: NoInfer<V | Deep
  * everywhere else, so a leaf that was taken or already equal isn't dirty.
  * Writes are not user edits, and their records have `cause: "rebase"`.
  */
-export function rebase(): Plugin<Rebase, "rebase"> {
-  return defineHooks({
-    name: "rebase",
-    setup(ctx) {
-      const { store } = ctx;
-      const api: Rebase = (handle, incoming, resolve) => {
-        if (handle.store !== store) {
-          throw new TypeError(problem("rebase:store"));
-        }
-        let taken: Path[] = [];
-        // Called from inside another plugin's hook, this waits for the round to
-        // end, and the result lists nothing taken yet.
-        ctx.write(() => {
-          taken = rebaseTo(ctx, handle.path.map(String), incoming, resolve);
-        }, "rebase");
-        return freeze({ taken: freeze(taken) });
-      };
-      return { api };
-    },
-  });
-}
+export const rebase: PluginFactory<Rebase, "rebase"> = /* @__PURE__ */ defineWith({
+  name: "rebase",
+  setup(ctx) {
+    const { store } = ctx;
+    const api: Rebase = (handle, incoming, resolve) => {
+      if (handle.store !== store) {
+        throw new TypeError(problem("rebase:store"));
+      }
+      let taken: Path[] = [];
+      // Called from inside another plugin's hook, this waits for the round to
+      // end, and the result lists nothing taken yet.
+      ctx.write(() => {
+        taken = rebaseTo(ctx, handle.path.map(String), incoming, resolve);
+      }, "rebase");
+      return freeze({ taken: freeze(taken) });
+    };
+    return { api };
+  },
+});

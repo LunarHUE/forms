@@ -1,6 +1,7 @@
 // Every plugin, a schema, a registered field, an array and a fieldset. Valibot stays out of the count.
 import { Items, createForm, createForms, defineField, fieldValidators } from "@lunarhue/forms-solid";
-import { arrays, baselineOnSubmit, bind, digits, dirty, history, mask, masked, persist, rebase, ruled, rules } from "@lunarhue/forms-solid/plugins";
+import { arrays, baselineOnSubmit, bind, dirty, history, persist, rebase, ruled, rules } from "@lunarhue/forms-solid/plugins";
+import { digits, masked } from "@lunarhue/forms-solid/text";
 import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { Show } from "solid-js";
@@ -20,7 +21,7 @@ const listeners = new Set<() => void>();
 const PhoneField = defineField(TextField, masked({ clean: digits, display: (value) => value.replace(/(\d{3})(?=\d)/g, "$1 ") }));
 
 const forms = createForms({
-  plugins: [valibot(), arrays(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), mask(), rules()],
+  plugins: [valibot(), arrays(), dirty(), baselineOnSubmit(), history(), persist("order"), rebase(), rules()],
   fields: { TextField, PhoneField },
 });
 const Address = forms.fieldset(Order.entries.address);

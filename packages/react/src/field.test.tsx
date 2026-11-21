@@ -9,7 +9,7 @@ import {
   type FieldApi,
   type FormOf,
   inputProps,
-  type LeafHandle,
+  type NamedLeafHandle,
   type StandardSchemaV1,
   useField,
   useForm,
@@ -39,7 +39,7 @@ const order = forms.define({
   defaultValues: { customer: "", email: "", lines: [{ item: "pen" }, { item: "ink" }] },
 });
 
-function Line(props: { readonly item: LeafHandle<string>; readonly name: string }) {
+function Line(props: { readonly item: NamedLeafHandle<string>; readonly name: string }) {
   useCommits(commits, props.name);
   return <input aria-label={props.name} {...inputProps(useField(props.item))} />;
 }

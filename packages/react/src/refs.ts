@@ -1,4 +1,4 @@
-import { type AnyFieldHandle, type AnyFormStore, tracking } from "@lunarhue/forms-core";
+import { type NamedAnyFieldHandle, type AnyFormStore, tracking } from "@lunarhue/forms-core";
 import { version } from "react";
 import type { FocusOnInvalid } from "./forms.js";
 import type { FieldRef } from "./input.js";
@@ -122,7 +122,7 @@ export function focusedElement(key: object): Element | undefined {
 /** Applies `focusOnInvalid` after a submit that ended invalid. */
 export function focusInvalid<E>(store: AnyFormStore<E>, focus: FocusOnInvalid<E>): void {
   if (focus === false) return;
-  const field: AnyFieldHandle<E> | undefined = store.firstInvalid();
+  const field: NamedAnyFieldHandle<E> | undefined = store.firstInvalid();
   const element = (field === undefined ? undefined : firstElement(field)) ?? firstElement(store);
   if (focus === true) element?.focus();
   else focus({ field, disabled: store.disabledInvalid(), element });

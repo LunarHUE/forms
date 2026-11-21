@@ -19,6 +19,7 @@ export type Code =
   | "plugins:loop"
   | "plugins:copies"
   | "plugins:missing"
+  | "parts:late"
   | "schema:defaults"
   | "rebase:store"
   | "dirty:missing"
@@ -38,7 +39,7 @@ export function problem(code: Code, value = ""): string {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     const sentences: Record<Code, (value: string) => string> = {
       "plugins:name": (name) => `Two plugins are named "${name}".`,
-      "plugins:cycle": (name) => `Plugin "${name}" is part of an \`after\` cycle.`,
+      "plugins:cycle": (name) => `Plugin "${name}" is part of a \`requires\` cycle.`,
       "plugins:write": () => "A plugin wrote to the store from inside a hook. Write through `ctx.write`.",
       // 10 is `maxRounds` in store/plugins.ts.
       "plugins:loop": (names) => `Plugins kept answering each other's writes for 10 rounds: ${names}.`,
@@ -47,6 +48,7 @@ export function problem(code: Code, value = ""): string {
         const [name, by] = names.split(" ");
         return `Add ${name}() to this form's plugins: ${by ? `plugin "${by}" requires it` : "a part uses it"}.`;
       },
+      "parts:late": () => "A fieldset made after this form's store attached parts the store can't run.",
       "schema:defaults": (vendor) => `No schema plugin for vendor "${vendor}", so the definition needs defaultValues.`,
       "rebase:store": () => "rebase: the handle belongs to another store.",
 "dirty:missing": () =>

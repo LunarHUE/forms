@@ -12,8 +12,8 @@ describe("hideDevtools", () => {
   });
 
   it("keeps the other plugins and options", () => {
-    expect(hideDevtools("createForms({ plugins: [mask(), docsDevtools], fields: { PhoneField } })")).toBe(
-      "createForms({ plugins: [mask()], fields: { PhoneField } })",
+    expect(hideDevtools("createForms({ plugins: [dirty(), docsDevtools], fields: { PhoneField } })")).toBe(
+      "createForms({ plugins: [dirty()], fields: { PhoneField } })",
     );
     expect(hideDevtools("createForms({ plugins: [docsDevtools], fields: { TextField } })")).toBe(
       "createForms({ fields: { TextField } })",
@@ -26,6 +26,6 @@ describe("hideDevtools", () => {
   });
 
   it("throws on wiring it can't hide", () => {
-    expect(() => hideDevtools("createForms({ plugins: [docsDevtools, mask()] })")).toThrow(/can't hide/);
+    expect(() => hideDevtools("createForms({ plugins: [docsDevtools, dirty()] })")).toThrow(/can't hide/);
   });
 });

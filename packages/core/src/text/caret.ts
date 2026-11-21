@@ -2,7 +2,7 @@ import type { TextControl } from "../plugin.js";
 
 /**
  * Puts `text` in `input` and keeps the caret where the user was typing.
- * Call it from a `FieldDisplay`'s `edit`, while `input` still holds the
+ * Call it from a part's `afterInput`, while `input` still holds the
  * typed text and its caret, with the display text as `text`.
  *
  * `clean` cleans text as the store does and returns a string. The caret

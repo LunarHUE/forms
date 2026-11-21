@@ -1,9 +1,9 @@
 import { describe, expectTypeOf, it } from "vitest";
-import { type Change, createForms, type FieldApi, type FormError, useField, useForm, useFormState } from "./index.js";
+import { type Change, createForms, type FieldApi, useField, useForm, useFormState } from "./index.js";
 import { dirty } from "./plugins.js";
 
 // A registered component that shows whether its field changed, so it needs dirty().
-function ChangedMark(props: { readonly field: FieldApi<string, FormError, "dirty"> }) {
+function ChangedMark(props: { readonly field: FieldApi<string, typeof dirty> }) {
   return <span>{props.field.dirty ? "*" : ""}</span>;
 }
 

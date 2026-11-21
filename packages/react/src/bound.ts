@@ -1,4 +1,4 @@
-import { type AnyFieldHandle, attach, type FieldSnapshot, type ValidatorInput } from "@lunarhue/forms-core";
+import { type NamedAnyFieldHandle, attach, type FieldSnapshot, type ValidatorInput } from "@lunarhue/forms-core";
 import { type ComponentType, createElement, Fragment, type ReactElement, type ReactNode } from "react";
 import { type FieldView, fieldViewSource, pickApi } from "./field-api.js";
 import { type IsEqual, useValidator } from "./field.js";
@@ -6,7 +6,7 @@ import type { FieldComponentMap } from "./scope.js";
 import { useSelected } from "./select.js";
 
 /** A handle as the bound components use it at runtime. */
-type AnyHandle = AnyFieldHandle<unknown>;
+type AnyHandle = NamedAnyFieldHandle<unknown>;
 
 /** A scope as the runtime builds it. The contract types it as `Scope`. */
 export type AnyScope = Readonly<Record<string, unknown>> & { readonly root: AnyHandle };

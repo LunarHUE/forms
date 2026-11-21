@@ -15,11 +15,13 @@ field marks itself changed.
 ## A field component that reads a plugin
 
 A component that reads a plugin's member from its field says so in its type.
-The third type argument of `FieldApi` names the plugins it needs:
+The second type argument of `FieldApi` names the plugins it needs, by their
+factories, as `typeof dirty | typeof history`. The third is the error type,
+`FormError` by default:
 
 ```tsx framework=react
 interface TextFieldProps {
-  field: FieldApi<string, FormError, "dirty">;
+  field: FieldApi<string, typeof dirty>;
   label: string;
 }
 
@@ -35,7 +37,7 @@ function TextField({ field, label }: TextFieldProps) {
 
 ```tsx framework=solid
 interface TextFieldProps {
-  field: FieldApi<string, FormError, "dirty">;
+  field: FieldApi<string, typeof dirty>;
   label: string;
 }
 
@@ -49,7 +51,8 @@ function TextField(props: TextFieldProps) {
 }
 ```
 
-It then fits only forms with `dirty()`. Without the third argument,
+Import `dirty` as a type, from your adapter's `plugins` entry. The component
+then fits only forms with `dirty()`. Without the second argument,
 `field.dirty` is a type error.
 
 ## The form from context
@@ -60,13 +63,12 @@ form above that one of its definitions made, and skips forms from other
 `createForms` calls:
 
 ```tsx framework=react
-const undoHistory = history();
-export const forms = createForms({ plugins: [dirty(), undoHistory], fields: { TextField } });
+export const forms = createForms({ plugins: [dirty(), history()], fields: { TextField } });
 
 function SaveBar() {
   const form = useFormContext(forms);
   const changed = useFormState(form, (state) => state.dirty);
-  const canUndo = useFormState(form, (state) => undoHistory.formMeta(state).canUndo);
+  const canUndo = useFormState(form, (state) => history.formMeta(state).canUndo);
   return (
     <div>
       <button type="button" disabled={!canUndo} onClick={() => form.plugins.history.undo()}>
@@ -81,8 +83,7 @@ function SaveBar() {
 ```
 
 ```tsx framework=solid
-const undoHistory = history();
-export const forms = createForms({ plugins: [dirty(), undoHistory], fields: { TextField } });
+export const forms = createForms({ plugins: [dirty(), history()], fields: { TextField } });
 
 function SaveBar() {
   const form = useFormContext(forms);
@@ -90,7 +91,7 @@ function SaveBar() {
     <div>
       <button
         type="button"
-        disabled={!undoHistory.formMeta(form.state).canUndo}
+        disabled={!history.formMeta(form.state).canUndo}
         onClick={() => form.plugins.history.undo()}
       >
         Undo

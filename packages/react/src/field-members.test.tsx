@@ -14,7 +14,7 @@ const marked = definePlugin({
     for (const path of [["name"], ["address"], ["rows"], ...keys.map((key) => ["rows", key])]) ctx.setMeta(path, true);
     return {};
   },
-});
+})();
 
 const forms = createForms({ plugins: [marked] });
 const order = forms.define({

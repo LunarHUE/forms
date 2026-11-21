@@ -1,5 +1,5 @@
 import type { Many } from "../errors.js";
-import type { AnyFieldHandle as Loose, HandleBase, ResetOptions, ValueOf, WriteOptions } from "../handle.js";
+import type { NamedAnyFieldHandle as Loose, HandleBase, ResetOptions, ValueOf, WriteOptions } from "../handle.js";
 import type { Path, PathSegment } from "../path.js";
 import type { AnyFormStore } from "../store.js";
 import type { ValidatorInput } from "../validator.js";

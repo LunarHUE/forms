@@ -1,4 +1,4 @@
-import type { FieldHandle } from "./handle.js";
+import type { NamedFieldHandle } from "./handle.js";
 import type { Draft, ItemOf } from "./value.js";
 
 /** One member of `Choice`. `B` is the type the option values must have. */
@@ -106,5 +106,5 @@ type WithChoiceIn<T, X> = T extends AnyChoice
  * fits when its own handle is assignable to one of them.
  */
 export type ChoiceHandle<T, W, E, N extends string = never> =
-  | FieldHandle<Draft<WithChoice<T, ChoiceValue<T, W>>>, E, N>
-  | FieldHandle<WithChoice<T, ChoiceValue<T, W>>, E, N>;
+  | NamedFieldHandle<Draft<WithChoice<T, ChoiceValue<T, W>>>, E, N>
+  | NamedFieldHandle<WithChoice<T, ChoiceValue<T, W>>, E, N>;

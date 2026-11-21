@@ -1,6 +1,6 @@
 // Reusable components generic in the value they take, the pattern handles
 // strict in their value type call for. See core's handle tests.
-import type { ArrayHandle, FieldHandle, FormError } from "@lunarhue/forms-core";
+import type { NamedArrayHandle, NamedFieldHandle, FormError } from "@lunarhue/forms-core";
 import { describe, expectTypeOf, it } from "vitest";
 import { Items, createField, createForm, createForms, inputProps, type FieldApi, type HandleOf } from "./index.js";
 import { arrays } from "./plugins.js";
@@ -30,7 +30,7 @@ function TagFields<T extends Tag>(props: { field: HandleOf<typeof TagShape, T> }
 
 const Other = forms.define({ defaultValues: { note: "" } });
 
-function TagList<T extends Tag>(props: { tags: ArrayHandle<T[], FormError, "arrays">; create: (base: Tag) => T }) {
+function TagList<T extends Tag>(props: { tags: NamedArrayHandle<T[], FormError, "arrays">; create: (base: Tag) => T }) {
   const form = createForm(Other);
   return (
     <>
@@ -41,7 +41,7 @@ function TagList<T extends Tag>(props: { tags: ArrayHandle<T[], FormError, "arra
           const value: string = createField(tag.at("name")).value;
           // Functions that read the value type from the handle's own type need
           // the child typed by the constraint first.
-          const name: FieldHandle<string, FormError, "arrays"> = tag.at("name");
+          const name: NamedFieldHandle<string, FormError, "arrays"> = tag.at("name");
           return (
             <>
               <TagFields field={tag} />
@@ -72,7 +72,7 @@ function PageForm() {
   );
 }
 
-declare function NarrowList(props: { tags: ArrayHandle<Tag[], FormError, "arrays"> }): null;
+declare function NarrowList(props: { tags: NamedArrayHandle<Tag[], FormError, "arrays"> }): null;
 declare function NarrowFields(props: { field: HandleOf<typeof TagShape> }): null;
 
 function NarrowUses() {

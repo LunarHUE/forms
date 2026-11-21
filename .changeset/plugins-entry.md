@@ -12,7 +12,7 @@ Every first-class plugin now comes from one `plugins` entry, and the per-plugin 
 | `@lunarhue/forms-core/plugins/bind` | `@lunarhue/forms-core/plugins` |
 | `@lunarhue/forms-core/plugins/dirty` | `@lunarhue/forms-core/plugins` |
 | `@lunarhue/forms-core/plugins/history` | `@lunarhue/forms-core/plugins` |
-| `@lunarhue/forms-core/plugins/mask` | `@lunarhue/forms-core/plugins` |
+| `@lunarhue/forms-core/plugins/mask` | `@lunarhue/forms-core/text`, which has `masked` and no `mask()` plugin |
 | `@lunarhue/forms-core/plugins/persist` | `@lunarhue/forms-core/plugins` |
 | `@lunarhue/forms-core/plugins/rebase` | `@lunarhue/forms-core/plugins` |
 | `@lunarhue/forms-core/plugins/rules` | `@lunarhue/forms-core/plugins` |

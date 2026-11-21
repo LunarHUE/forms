@@ -3,7 +3,7 @@ import { valibot } from "@lunarhue/forms-schema/valibot";
 import * as v from "valibot";
 import { describe, expectTypeOf, it } from "vitest";
 import type { FormError } from "@lunarhue/forms-core";
-import { debounced, createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type FieldHandle, type FormOf, fieldValidators } from "./index.js";
+import { debounced, createForm, createForms, inputProps, useFormContext, type AnyForm, type FieldApi, type NamedFieldHandle, type FormOf, fieldValidators } from "./index.js";
 
 // What each plugin list lets the compiler accept. The components here are
 // only type checked, never rendered.
@@ -15,7 +15,7 @@ function TextField(props: { field: FieldApi<string>; label: string }) {
 }
 
 const required = (value: string) => (value ? undefined : { message: "Required" });
-const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: (): number => 0 } }) });
+const counter = definePlugin({ name: "counter", setup: () => ({ api: { count: (): number => 0 } }) })();
 
 describe("with no plugins", () => {
   const forms = createForms({ fields: { TextField } });
@@ -99,11 +99,11 @@ describe("a definition's own schema plugin and dirty()", () => {
 
 describe("useFormContext(forms)", () => {
   const forms = createForms({ plugins: [counter], fields: { TextField } });
-  const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) });
+  const tagger = definePlugin({ name: "tagger", setup: () => ({ api: { tag: (): string => "" } }) })();
   forms.define({ defaultValues: { name: "" }, plugins: [tagger] });
 
   interface SharedProps {
-    readonly name: FieldHandle<string>;
+    readonly name: NamedFieldHandle<string>;
   }
 
   function Shared(props: SharedProps) {

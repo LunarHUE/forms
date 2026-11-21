@@ -6,23 +6,24 @@ order: 8
 ---
 
 A phone number should be stored as digits but read as `(555) 123-4567`.
-`mask()` cleans what a field stores and chooses what its input shows. Type a
-phone number, then type in the middle of it.
+A `masked(...)` part cleans what a field stores and chooses what its input
+shows. Type a phone number, then type in the middle of it.
 
 <Demo name="masks/contact" />
 
 A mask cleans a field's value before the store takes it. Put a `masked(...)`
 part on the field type it cleans, and export the field type so every form
-uses the same one:
+uses the same one. `masked`, `digits` and `upper` come from your adapter's
+`text` entry, or from `@lunarhue/forms-core/text`:
 
 ```ts title="PhoneField.tsx"
 export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 ```
 
-A form that registers it installs `mask()` once:
+The mask needs no plugin. A form registers the field type and nothing else:
 
 ```ts title="contact.tsx"
-const forms = createForms({ plugins: [mask()], fields: { PhoneField } });
+const forms = createForms({ fields: { PhoneField } });
 ```
 
 Every field `<form.PhoneField>` renders gets the mask, and only those. Every
@@ -31,9 +32,11 @@ typed it, a reset wrote it or another plugin did. `digits` and `upper` are
 ready-made cleaners, and any function from string to string works.
 
 `masked` fits string fields only, so `defineField(NumberInput, masked(...))` is a
-type error. So is a form that renders `PhoneField` without `mask()` in its
-plugins: the error reads `Add mask() to this form's plugins: PhoneField uses
-it`.
+type error.
+
+The same entry has the halves on their own. `cleaned(clean)` only cleans,
+`displayed(display, clean?)` only sets the text the input shows, and
+`replaceText` keeps the caret for a display you write yourself.
 
 A field type's parts attach the first time it renders a field. To attach
 one earlier, pin it on the definition. See
@@ -59,8 +62,8 @@ only in `field.text`, which `inputProps(field)` uses too. An input bound to
 write with `field.setText(text, event)`. See
 [Binding an element](../basics/fields#binding-an-element).
 
-A plugin of your own can give a field display text too. See
-[Writing a plugin](../writing-plugins/meta#display-text-from-a-plugin).
+A part of your own can give a field display text too. See
+[Display text](../writing-plugins/meta#display-text).
 
 ## Caret
 

@@ -1,6 +1,7 @@
 import { flush } from "./solid.js";
 import type { PluginContext } from "@lunarhue/forms-core";
-import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
+import { baselineOnSubmit, definePlugin, dirty, history, type Rebase, rebase, refuse } from "../plugins.js";
+import { masked, upper as upperCase } from "../text.js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { Items, createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
@@ -31,8 +32,8 @@ const upper = definePlugin({
   },
 });
 
-const forms = createForms({ plugins: [arrays(), chars] });
-const Profile = forms.define({ defaultValues: { name: "" }, plugins: [upper] });
+const forms = createForms({ plugins: [arrays(), chars()] });
+const Profile = forms.define({ defaultValues: { name: "" }, plugins: [upper()] });
 
 function Name() {
   const form = createForm(Profile);
@@ -109,7 +110,7 @@ function NotePage() {
   return (
     <>
       <form.Field name="text">{(field) => <input {...inputProps(field)} />}</form.Field>
-      <button type="button" disabled={!undoHistory.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
+      <button type="button" disabled={!history.formMeta(form.state).canUndo} onClick={() => form.plugins.history.undo()}>
         Undo
       </button>
     </>
@@ -138,7 +139,7 @@ describe("the history plugin", () => {
 /** A sku input whose field type upper-cases what it holds. */
 const SkuField = defineField((props: { readonly field: FieldApi<string> }) => <input {...inputProps(props.field)} />, masked({ clean: upperCase }));
 
-const Lines = createForms({ plugins: [arrays(), dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
+const Lines = createForms({ plugins: [arrays(), dirty()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
 
 function LinesPage() {
   const form = createForm(Lines);
@@ -217,13 +218,13 @@ describe("baselineOnSubmit through the adapter", () => {
 const captcha = definePlugin({
   name: "captcha",
   setup: (ctx) => ({
-    async onSubmit() {
+    async beforeSubmit() {
       await Promise.resolve();
       ctx.store.root.setErrors({ message: "No token" });
       return refuse;
     },
   }),
-});
+})();
 
 describe("a plugin that refuses a submit through the adapter", () => {
   it("ends the submit invalid, skips onSubmit and shows the plugin's form error", async () => {

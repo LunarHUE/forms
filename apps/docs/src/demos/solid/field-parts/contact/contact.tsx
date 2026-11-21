@@ -1,11 +1,10 @@
 import { createForm, createForms } from "@lunarhue/forms-solid";
-import { mask } from "@lunarhue/forms-solid/plugins";
 import { CodeField, PhoneField } from "./fields";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
-// The field types bring their parts. The form installs mask() once.
-const forms = createForms({ plugins: [mask(), docsDevtools], fields: { TextInput, PhoneField, CodeField } });
+// The field types bring their parts. Masks need no plugin.
+const forms = createForms({ plugins: [docsDevtools], fields: { TextInput, PhoneField, CodeField } });
 
 const contact = forms.define({
   defaultValues: { name: "", phone: "", referral: "" },

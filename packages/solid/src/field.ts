@@ -1,9 +1,10 @@
 import type {
   Draft,
   ErrorOf,
-  FieldHandle,
+  NamedFieldHandle,
   FieldSnapshot,
   FormError,
+  NamesOf,
   FormSnapshot,
   FormStore,
   HandleTypes,
@@ -53,7 +54,7 @@ type HiddenHandleMembers = "peek" | "store" | "registerValidator" | "~types" | "
 
 /** The commands of the handle for a value of type `V`. */
 export type FieldCommands<V, E = FormError, Installed extends string = never> = Omit<
-  FieldHandle<V, E, Installed>,
+  NamedFieldHandle<V, E, Installed>,
   HiddenHandleMembers
 >;
 
@@ -85,7 +86,7 @@ export type FieldCommands<V, E = FormError, Installed extends string = never> = 
 export type ExactFieldApi<V, E = FormError, Installed extends string = never> = FieldSnapshot<V, E, Installed> &
   FieldCommands<V, E, Installed> & {
     /** The field's handle. */
-    readonly handle: FieldHandle<V, E, Installed>;
+    readonly handle: NamedFieldHandle<V, E, Installed>;
     /** The id for the element that renders this field's errors. See `errorId`. */
     readonly errorId: string;
     /** See `FieldPieces.text`. Reactive. */
@@ -126,13 +127,14 @@ export type ExactFieldApi<V, E = FormError, Installed extends string = never> = 
  * props. The component then fits any field of string options, and each use
  * checks the options against the named field. See `Choice`.
  *
- * A component that reads a plugin's members names the plugin in
- * `Installed`: `FieldApi<string, FormError, "dirty">` has `dirty`, and fits
- * only fields of forms with `dirty()`.
+ * A component that reads a plugin's members names the plugin's factory in
+ * `P`: `FieldApi<string, typeof dirty>` has `dirty`, and fits only fields
+ * of forms with `dirty()`. Name several as a union,
+ * `typeof dirty | typeof history`.
  */
-export type FieldApi<T, E = FormError, Installed extends string = never> = ExactFieldApi<Draft<T>, E, Installed> & {
+export type FieldApi<T, P = never, E = FormError> = ExactFieldApi<Draft<T>, E, NamesOf<P>> & {
   /** Type information only: the `T` the component was written for. */
-  readonly "~fits"?: FieldTypes<T, E, Installed>;
+  readonly "~fits"?: FieldTypes<T, E, NamesOf<P>>;
 };
 
 /**

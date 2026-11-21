@@ -3,7 +3,4 @@ import { dirty, history } from "@lunarhue/forms-solid/plugins";
 import { TextField } from "./TextField";
 import { docsDevtools } from "@/devtools/enabled";
 
-// Keep the object `history()` returns for its `formMeta` reader.
-export const undoHistory = history();
-
-export const forms = createForms({ plugins: [dirty(), undoHistory, docsDevtools], fields: { TextField } });
+export const forms = createForms({ plugins: [dirty(), history(), docsDevtools], fields: { TextField } });
