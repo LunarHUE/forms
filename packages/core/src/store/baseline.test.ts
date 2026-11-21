@@ -339,7 +339,7 @@ describe("reset", () => {
     expect(store.getSnapshot([]).value).toEqual({ name: "saved", rows: [{ title: "b" }, { title: "c" }] });
     expect(store.getSnapshot(["name"])).toMatchObject({ touched: false, edited: false, dirty: false, errors: [] });
     expect(store.getSnapshot(["rows", "k0", "title"])).toMatchObject({ value: "b", dirty: false, errors: [] });
-    expect(store.getFormSnapshot()).toMatchObject({ dirty: false, touched: false, edited: false });
+    expect(store.getFormSnapshot()).toMatchObject({ dirty: false, valid: true });
     expect(store.changes()).toEqual([]);
     expect(runs).toEqual([1]);
     // A later reset comes back to the new values, and `to: "initial"` still to the first ones.
