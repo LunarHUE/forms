@@ -6,18 +6,15 @@ order: 1
 navTitle: Field components
 ---
 
-A part is a set of hooks for one place, on its own or as a plugin's config.
-Put one on a field type and every field that type renders gets it, so the phone format lives with the phone
-input instead of on each form. One component makes all three field types
-below.
+A **part** is a small bundle of hooks attached to a single field—either standalone (like a text mask) or tied to a plugin. When you attach a part to a field type with `defineField`, every form that renders that field gets the behavior automatically. That way, phone formatting lives with `PhoneField` instead of being repeated in every form definition.
+
+All three inputs in the demo below are built from the same underlying `TextInput` component.
 
 <Demo name="field-parts/contact" />
 
-## Field types with parts
+## Attaching parts to field types
 
-`defineField` takes the component and any number of parts. Export the field
-types from one module, so every form imports the same ones. `masked`,
-`digits` and `upper` come from your adapter's `text` entry:
+Pass your component followed by any number of parts to `defineField`, then register the resulting field types on `createForms`. Keeping them in a shared `fields.ts` module makes them easy to reuse across your app. (`masked`, `digits`, and `upper` come from your adapter's `text` entry.)
 
 ```ts title="fields.ts"
 export const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
@@ -28,29 +25,21 @@ export const CodeField = defineField(TextInput, masked({ clean: upper, display: 
 const forms = createForms({ fields: { TextInput, PhoneField, CodeField } });
 ```
 
-`<form.PhoneField name="phone" />` stores digits and shows them formatted.
-`<form.TextInput name="name" />` is the same component with no mask. Masks
-need no plugin, so the form installs nothing for them.
+Now `<form.PhoneField name="phone" />` stores clean digits while displaying a formatted phone number, while `<form.TextInput name="name" />` renders the exact same component with no mask. Because masks are standalone parts, your form doesn't even need to install a plugin for them.
 
-A part's type says which values it fits and which plugin it needs, if any.
-Two mistakes fail to compile:
+TypeScript checks parts in two places so misconfigurations fail early:
 
-- A part on a component whose value it doesn't fit: `masked` takes string
-  fields, so `defineField(NumberInput, masked(...))` is a type error.
-- A form that renders the field type without the plugin its part needs, as
-  `Add limit() to this form's plugins: ShortNote uses it`. See
-  [Parts](../writing-plugins/parts).
+- **Wrong value type:** `masked` only works on string fields, so `defineField(NumberInput, masked(...))` is a compile error.
+- **Missing plugin:** if a part requires a plugin that isn't installed on the form, TypeScript tells you directly (for example, `Add limit() to this form's plugins: ShortNote uses it`). See [Parts](../writing-plugins/parts) for how plugin-backed parts work.
 
-## When parts attach
+## When parts attach (and pinning with `at()`)
 
-A field type's parts attach the first time it renders a field. Until then the
-field has no mask, so its value isn't cleaned. A value that matters before
-that, such as a field on a step the user hasn't reached, can be pinned on the
-definition:
+By default, a field type's parts attach the first time that field renders. For most fields that's all you need, since the user can't type into an unrendered input anyway.
+
+If a field's part needs to be active *before* it ever renders—say, on a later wizard step or during SSR—pin it onto the form definition with `.at()`:
 
 ```ts
 const contact = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
 ```
 
-The part then attaches when the store is made, so it is in the server HTML
-too. Rendering the field later doesn't attach it twice.
+Pinned parts attach as soon as the store is created, so they're already active in server-rendered HTML. Rendering `<form.PhoneField name="phone" />` later won't attach the part a second time.

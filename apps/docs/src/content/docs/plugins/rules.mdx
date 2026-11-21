@@ -5,17 +5,13 @@ section: plugins
 order: 9
 ---
 
-Some fields depend on others: no street when the order is picked up, no
-gift message unless it is a gift. `rules()` sets fields disabled or hidden
-from the rest of the value, in the same render as the change.
+In real forms, fields constantly depend on each other: disable the street address when "Store pickup" is checked, or hide the gift message unless "Include a gift note" is enabled. The `rules()` plugin computes `disabled` and `hidden` flags straight from the form's values—updating in the exact same render as the change.
 
 <Demo name="rules/delivery" />
 
-Put `rules()` in the form's plugins, and a `ruled(...)` part after the
-definition's config. `ruled` takes a map from a field's dotted name, the same
-name a `name` prop takes, to a rule. Each rule gets the form value and returns
-the field's `disabled` and `hidden` flags. A flag the rule leaves out stays as
-it is.
+## Defining rules on a form
+
+Install `rules()` in your form's `plugins`, then pass a `ruled(...)` part right after the config object in `forms.define()`. Map each dotted field name to a function that inspects the form value and returns `{ disabled?, hidden? }` (any flag you omit is left unchanged):
 
 ```ts
 const forms = createForms({ plugins: [rules()], fields });
@@ -29,27 +25,19 @@ const order = forms.define(
 );
 ```
 
-`ruled` takes its value type from the definition, so `value` is typed and a
-name that isn't a field, such as `"stret"`, is a type error. A form without
-`rules()` in its plugins is a type error too.
+`ruled` infers the form's value type straight from `define`, so `value` is fully typed and a typo like `"stret"` fails at compile time. Forgetting to include `rules()` in `plugins` is also caught by TypeScript.
 
-Rules run when the part attaches and after every batch that writes a value,
-before listeners, so the flags change in the same render as the value.
-Disabling an object, such as `address`, disables every field below it.
+Rules evaluate once when the part attaches and again after every batch that writes a value—before listeners fire—so there's never a flicker or extra render. Disabling a parent object (like `address`) automatically disables every field underneath it.
 
-Names go through objects only, so a rule can't name an array item. Give the
-array a rule, or the object around it.
+Because dotted names stop at arrays, rules target fields and objects rather than individual array items (you can still put a rule on the array itself or its parent object).
 
-## Rules on a fieldset
+## Attaching rules to a fieldset
 
-A fieldset can carry its own rules. See
-[Parts on fieldsets](../plugin-composition/fieldset-parts).
+Reusable fieldsets can bundle their own self-contained rules so they travel with the UI everywhere it's used—see [Parts on fieldsets](../plugin-composition/fieldset-parts).
 
-## Disabled and hidden
+## Reading `disabled` and `hidden` in components
 
-`disabled` is a field flag, and `inputProps(field)` puts it on the input. `hidden`
-is the plugin's own meta, so your component reads it and decides what hiding
-means:
+`disabled` is a built-in field flag, so `inputProps(field)` forwards it to the DOM automatically. `hidden` lives in `rules`'s plugin meta, leaving your component in full control of how hiding renders (omitting the element, collapsing a panel, etc.):
 
 ```tsx framework=react
 function TextField({ field, label }: TextFieldProps) {
@@ -68,11 +56,8 @@ function TextField(props: TextFieldProps) {
 }
 ```
 
-A field no rule hides reads `{ hidden: false }`, so the reader never returns
-undefined.
+Fields without a `hidden` rule default to `{ hidden: false }`, so `rules.meta(field)` is always safe to read without null checks.
 
 ## Server rendering
 
-What the rules set before the store has listeners is part of its starting
-state. A field a rule disables or hides renders that way on the server and
-hydrates with no second render.
+Any flags computed before the store has listeners become part of its initial state—so fields hidden or disabled by rules render that way on the server and hydrate cleanly with no layout shift.

@@ -6,14 +6,13 @@ order: 5
 navTitle: Submit and starting values
 ---
 
-## Refusing a submit
+Plugins can participate at both ends of a form's lifecycle: supplying the initial value before the store starts, gating a submit before `onSubmit` runs, and reacting once a submit finishes.
 
-A plugin's `beforeSubmit` hook runs when a submit starts. A promise it
-returns runs alongside validation. A throw or a rejected promise in it is a bug. It goes to
-`onPluginError` and the submit carries on. To stop a submit on purpose, return
-`refuse`, directly or from the promise. The definition's `onSubmit` isn't
-called, the submission ends `"invalid"` as it does when validation fails, and
-`onSubmitted` gets it. Set a form error first so the user sees why:
+## Gating or refusing a submit (`beforeSubmit`)
+
+`beforeSubmit` runs as soon as a submit starts—if it returns a promise, it runs in parallel with validation. Unexpected throws or rejected promises are treated as plugin bugs (sent to `onPluginError` while the submit continues).
+
+To intentionally block a submit, return `refuse` (either directly or resolved from a promise). The form skips `onSubmit`, ends the submission as `"invalid"`, and passes that result to `onSubmitted`. Always attach an error first so the user knows what went wrong:
 
 ```ts
 import { definePlugin, refuse } from "@lunarhue/forms-core/plugins";
@@ -35,35 +34,20 @@ export const captcha = definePlugin({
 });
 ```
 
-`refuse` returned directly stops the plugins after this one from running their
-`beforeSubmit`. Returned from a promise it can't, since every `beforeSubmit`
-started when the submit did. A plugin doesn't know the form's error type, so the error
-it sets must fit the form's `mapError`, if it has one.
+Returning `refuse` synchronously short-circuits any later plugins' `beforeSubmit` hooks; returning it asynchronously can't, since all `beforeSubmit` hooks start together. Note that if the form uses a custom `mapError`, any error your plugin sets should match the form's error shape.
 
-## After a submit
+## Reacting after a submit (`onSubmitted`)
 
-`onSubmitted(submission, input)` runs once a submit ends. `input` is the form
-value the definition's `onSubmit` got as `ctx.input`, read when validation
-finished, so it holds edits the user made while validation ran. It is there
-whenever `onSubmit` ran, including a submit that `onSubmit` ended `"invalid"`
-with `setErrors`, and undefined when validation or a plugin stopped the submit
-first. A submit that a reset stops never reaches `onSubmitted`.
+`onSubmitted(submission, input)` runs when a submit completes. `input` is the snapshot read right after validation (the same `ctx.input` passed to `onSubmit`, including any edits made while async validation ran). It's defined whenever `onSubmit` actually ran—even if `onSubmit` ended `"invalid"` via `setErrors`—and `undefined` if validation or a plugin blocked the submit first. Submits aborted by `reset()` never reach `onSubmitted`.
 
-To make a value the baseline, call `ctx.baseline.move(path, value, keep)`.
-Each array in `value` pairs its items with the current items by index. `keep`
-changes that for one array, by its stable path: return `true` to keep the old
-baseline's pairing, or a list of item keys to pair with. `baselineOnSubmit`
-passes the keys each array had when the value was sent.
+If your plugin needs to advance the baseline after a save, call `ctx.baseline.move(path, value, keep)`. By default, arrays pair with their current items by index; pass a `keep` callback to either return `true` (preserve the previous baseline pairing) or return an explicit list of item keys—which is how `baselineOnSubmit` keeps array dirty flags accurate across in-flight edits.
 
 ## Starting values
 
-A plugin can give the form its starting value with `initialValue`. It runs
-before the store is made, gets the value the store would start from and the
-factory's options, and returns the value to start from instead, or undefined
-to keep it:
+To supply a form's starting values *before* the store initializes, define an `initialValue(currentValue, options)` hook. Return a replacement value, or `undefined` to keep the current one:
 
 ```ts
-// Starts the form from a value the server and the client both have.
+// Starts the form from a value shared by both server and client.
 export const startFrom = definePlugin({
   name: "start",
   initialValue: (_value, start: Profile) => start,
@@ -72,20 +56,10 @@ export const startFrom = definePlugin({
 const form = useForm(profile, { plugins: [startFrom(saved)] });
 ```
 
-The store, its baseline and its server snapshot all start from that value.
-Nothing is written, so the form isn't dirty and no plugin sees a record. When
-several plugins have `initialValue`, each gets the value the one before returned,
-so the last one in the list wins.
+The store, its baseline, and its server snapshot all start from that value cleanly—no write records are emitted, and the form starts clean (not dirty). If multiple plugins define `initialValue`, they chain in order so the last one wins.
 
-The value replaces the store's starting value whole. It isn't merged with a
-schema plugin's defaults the way `defaultValues` is, though `initialValue` gets
-those merged defaults and can merge into them itself. A value that differs
-between server and client, such as one read from browser storage, makes
-hydration fail. Read those in `onActive` and write them with `ctx.write`, as
-`persist` does.
+Keep two things in mind:
+- **Replaces wholesale:** `initialValue` replaces the starting value rather than deep-merging with schema defaults, though it receives those merged defaults as its first argument if you want to merge yourself.
+- **Must match on server and client:** returning browser-only data (like `localStorage`) from `initialValue` will cause hydration mismatches. Read client-only storage in `onActive` with `ctx.write` instead, just like `persist`.
 
-A part has no starting-value hook. Its `beforeWrite` gets the value at its
-path once when it attaches, with `cause: "attach"`, and what it returns is
-kept there. That is how `masked` cleans a field's starting value. The store
-keeps it with no write record, and the baseline moves with it while the field
-isn't dirty, so the form doesn't start dirty.
+Parts don't have an `initialValue` hook—instead, a part's `beforeWrite` runs once on attach with `cause: "attach"`, moving the baseline along with it if the field isn't dirty (which is how `masked` cleans initial values without marking the form dirty).

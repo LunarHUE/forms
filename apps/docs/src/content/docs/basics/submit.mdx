@@ -5,13 +5,11 @@ section: basics
 order: 5
 ---
 
-`onSubmit` on the definition runs when the user submits a valid form. What
-it returns is the submission's result, and it may be async. The form's state
-tracks the submit while it runs. Try `taken@example.com` in the demo.
+When the user submits a valid form, your `onSubmit` handler runs. It can be synchronous or async, whatever it returns becomes the submission's `result`, and the form tracks every step of the lifecycle for you. Try submitting with `taken@example.com` in the demo below to see server-side validation errors in action.
 
 <Demo name="submit/account" />
 
-## onSubmit
+## Writing `onSubmit`
 
 ```ts
 const account = forms.define({
@@ -27,54 +25,41 @@ const account = forms.define({
 });
 ```
 
-`value` is a copy of the form's value, which you may change without touching
-the form. With a [schema](./schema-validation) it is the schema's output.
-The second argument has:
+The first argument, `value`, is a fresh copy of the form's values—you can mutate it freely without affecting the form. If your form uses a [schema](./schema-validation), `value` is the schema's parsed output.
 
-- `store`, the form's store, for `setErrors` and the rest.
-- `signal`, which aborts when the form is reset while the submit runs.
-- `intent`, the value passed to `form.submit(intent)`. See [Intents](#intents).
-- `input`, the form value that passed validation, before the schema
-  transformed it.
+The second argument gives you context for the submit:
+- **`store`** — the form's store, handy for calling `store.setErrors()` or reading snapshots.
+- **`signal`** — an `AbortSignal` that aborts if the form is reset while the submit is still in flight.
+- **`intent`** — the value passed to `form.submit(intent)` (see [Intents](#intents)).
+- **`input`** — the raw form value before any schema transforms ran.
 
-## What a submit does
+## The submit lifecycle
 
-Spreading `form.formProps` on the `<form>` element wires its submit event to
-`form.handleSubmit`. A submit then:
+Spreading `form.formProps` onto your `<form>` wires its `onSubmit` event to `form.handleSubmit`. Here's what happens step by step when a submit fires:
 
-1. Clears the errors the last submit set with `setErrors`, counts the
-   submit, and sets the status to `"submitting"`.
-2. Runs validation, and waits for async validators to finish.
-3. Stops with status `"invalid"` if any field has an error, and moves focus
-   to the first invalid field. `onSubmit` isn't called.
-4. Otherwise calls `onSubmit`. Its return value ends the submit as
-   `"succeeded"`, and a throw as `"failed"`. If `onSubmit` left errors on
-   the form with `setErrors`, the submit ends `"invalid"` instead, and focus
-   moves to the first field with one. See
-   [When the server says no](#when-the-server-says-no).
+1. Any previous server errors set via `setErrors` are cleared, `submitCount` increments, and the submission status moves to `"submitting"`.
+2. All validators run, and the form waits for any async checks to finish.
+3. If any field has an error, the submit stops with status `"invalid"`, `onSubmit` is skipped, and focus moves to the first invalid field.
+4. Otherwise, `onSubmit` runs. Returning a value finishes with `"succeeded"` (holding `result`); throwing finishes with `"failed"` (holding `error`). If `onSubmit` sets errors via `setErrors` before returning, the submit finishes as `"invalid"` instead and moves focus to the first errored field—see [When the server says no](#when-the-server-says-no).
 
-A submit while one is running doesn't start another. It returns the running
-one.
+Double-submits are prevented automatically: calling submit while one is already running simply returns the in-flight promise instead of starting a second request.
 
-To submit from code, call `form.submit()`. It resolves to the submission.
-Turn off the focus move with `focusOnInvalid: false` on `createForms`, or
-pass a function to handle it yourself.
+You can also trigger a submit programmatically with `form.submit()`, which resolves to the final submission object. If you don't want automatic focus management on invalid submits, set `focusOnInvalid: false` on `createForms`, or pass your own focus callback.
 
-## Submit state
+## Reading submit state
 
-The form snapshot has the state of the latest submit:
+The form snapshot exposes everything you need to drive loading spinners, disabled buttons, and banners:
 
-| Member | What it is |
+| Member | What it tells you |
 | --- | --- |
-| `submitting` | True while a submit runs. |
-| `submission` | `{ status }`: `"idle"`, `"submitting"`, `"invalid"`, `"succeeded"` with `result`, or `"failed"` with `error`. |
-| `submitCount` | How many submits have started, including invalid ones. |
-| `valid`, `validating` | No validation errors, a validator running. |
+| `submitting` | `true` while a submit is in progress. |
+| `submission` | `{ status }`: `"idle"`, `"submitting"`, `"invalid"`, `"succeeded"` (with `result`), or `"failed"` (with `error`). |
+| `submitCount` | Total submits started so far, including invalid attempts. |
+| `valid`, `validating` | Whether all validators currently pass, and whether any async validator is running. |
 
 <Only framework="react">
 
-Read it with `useFormState(form, select)`, which re-renders only when the
-selected part changes, or inline with `form.State`:
+Subscribe to just the slice you need with `useFormState(form, select)`, or inline in JSX with `form.State`:
 
 ```tsx
 const submitting = useFormState(form, (state) => state.submitting);
@@ -88,8 +73,7 @@ const submitting = useFormState(form, (state) => state.submitting);
 
 <Only framework="solid">
 
-Read it from `form.state`. Its members are reactive, so
-`form.state.submitting` in JSX updates only that spot:
+Read directly from `form.state`. Its properties are reactive getters, so `form.state.submitting` updates only that attribute:
 
 ```tsx
 <button type="submit" disabled={form.state.submitting}>
@@ -99,13 +83,9 @@ Read it from `form.state`. Its members are reactive, so
 
 </Only>
 
-## A submit button from context
+## Reading the form from context
 
-A button that reads the submit state needs the form. Pass it as a prop, or
-read it from `useFormContext(forms)`, which returns the nearest form made from
-one of `forms`' definitions. The form has to be above the button for that, so
-render the `<form>` inside `form.Form`. Its child is a function that gets the
-same `formProps`:
+If your submit button (or error banner) lives in a child component, you don't have to thread `form` down through props. Wrap your `<form>` with `form.Form`—its render function receives the same `formProps` and provides the form via context to everything inside:
 
 ```tsx
 <form.Form>
@@ -117,6 +97,8 @@ same `formProps`:
   )}
 </form.Form>
 ```
+
+Then grab the nearest form created by `forms` with `useFormContext(forms)`:
 
 <Only framework="react">
 
@@ -149,14 +131,11 @@ function SubmitButton() {
 
 </Only>
 
-A form whose components don't call `useFormContext` can skip `form.Form` and
-spread `form.formProps` on the `<form>` directly.
+If none of your child components need `useFormContext`, you can skip `form.Form` altogether and spread `form.formProps` straight onto `<form>`.
 
 ## When the server says no
 
-A server that refuses the save usually says why. Put that on the form with
-`store.setErrors` and return. The submit then ends `"invalid"`, and what
-`onSubmit` returned is dropped:
+When an API rejects a save with validation feedback, pass those errors to `store.setErrors` inside `onSubmit` and return. The form automatically treats the submit as `"invalid"` and discards whatever `onSubmit` returned:
 
 ```ts
 onSubmit: async (value, { store }) => {
@@ -172,40 +151,22 @@ onSubmit: async (value, { store }) => {
 },
 ```
 
-Nothing was saved, so nothing reads as a success: the submission has no
-result, [`baselineOnSubmit()`](../plugins/dirty) keeps the edits dirty, and
-focus moves to the first field the server refused, or to the `<form>` when
-there are `form` errors. Only errors from
-`setErrors` count. A field the user breaks while the save runs doesn't turn a
-save that went through into a refusal.
+Because nothing was saved, the form stays honest: `submission` has no `result`, [`baselineOnSubmit()`](../plugins/dirty) keeps the form dirty, and focus moves to the first field the server rejected (or to `<form>` if only `form` errors were set). Only errors set with `setErrors` trigger this—if the user edits another field while the request is in flight, a successful save won't be misclassified as a refusal.
 
-`fields` is keyed by field name. `form` errors land on the form's root
-field, so render the root's errors somewhere, or the user sees nothing. See
-[`submit:unseen`](/errors#core:submit:unseen) for how.
+Inside `setErrors`, `fields` maps dotted field names to errors, while `form` attaches errors to the root field. Make sure you render root errors somewhere on the page so users don't miss them (see [`submit:unseen`](/errors#core:submit:unseen)).
 
-A name that matches no field also lands on the root, after the `form`
-errors, and development warns with
-[`field:unknown`](/errors#core:field:unknown). That happens when the server
-renames a field before the form catches up. A name counts as a field when the
-value has that key, when a field there is rendered or validated, or when it
-sits under an object that is missing. To send such errors somewhere else,
-such as a toast, check each name with `store.pathOf` first:
+What if the server returns an error for a field name that doesn't exist in your form (for instance, after a backend rename)? It falls back to the root errors list after any `form` errors, and development logs a [`field:unknown`](/errors#core:field:unknown) warning. If you'd rather route unknown field errors to a toast, filter them first with `store.pathOf`:
 
 ```ts
-// The names to show in a toast instead.
+// Field names the form doesn't know about—show these in a toast instead.
 const unknown = Object.keys(response.fields).filter((name) => store.pathOf(name) === undefined);
 ```
 
-Errors set this way don't block the next submit. Each one clears when the
-user edits its field, and they all clear when the next submit starts.
+Server errors won't trap the user: each one clears as soon as the user edits that field, and all of them clear at the start of the next submit.
 
-## Error summary
+## Building an error summary
 
-A long form can list its errors at the top, so the user sees what the server
-refused without scrolling. Each entry has the field's `name`, its `errors`,
-and its handle as `field`, whose `id` is the input's id. The root comes first
-with name `""`, and the rest follow in form order. The list counts errors from
-validation and from `setErrors` alike.
+On long forms, it helps to list every error at the top with jump links so users don't have to hunt down the page. Each entry from the invalid-fields helper includes the field's `name`, its `errors`, and its `field` handle (including `field.id` for anchor links). Root errors come first with `name: ""`, followed by fields in form order, combining both validator errors and `setErrors` errors.
 
 <Only framework="react">
 
@@ -251,14 +212,11 @@ function Summary() {
 
 </Only>
 
-A plugin can refuse a submit too. Its `onSubmit` hook returns `refuse`, and
-the submit ends `"invalid"` without calling yours. See
-[Writing a plugin](../writing-plugins/first-plugin).
+Plugins can also veto a submit before `onSubmit` runs by returning `refuse` from their `onSubmit` hook—see [Writing a plugin](../writing-plugins/first-plugin).
 
 ## Intents
 
-A form with two submit buttons, such as Save draft and Publish, can pass an
-intent. Annotate `ctx.intent` to type it:
+Need multiple submit actions on the same form, like **Save draft** and **Publish**? Annotate `ctx.intent` in `onSubmit` to make intents type-safe:
 
 ```ts
 const post = forms.define({
@@ -267,6 +225,4 @@ const post = forms.define({
 });
 ```
 
-Then call `form.submit("draft")` or `form.submit("publish")` from each
-button's click. `submit()` with no intent is now a type error, and the
-`<form>`'s own submit event submits with an `undefined` intent.
+Then wire each button to `form.submit("draft")` or `form.submit("publish")`. Once `ctx.intent` is typed, calling `form.submit()` with no argument becomes a type error (note that pressing Enter to trigger the browser's native `<form>` submit event still submits with `undefined`).

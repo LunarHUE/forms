@@ -5,7 +5,7 @@ section: basics
 order: 4
 ---
 
-A validator that returns a promise is async. Try `ada` as the username.
+Any validator that returns a promise is automatically treated as async—no extra flags or setup needed. Try typing `ada` into the demo below to see debounced server validation in action.
 
 <Demo name="async-validation/username" />
 
@@ -28,17 +28,16 @@ const account = forms.define({
 });
 ```
 
-`debounced(check, ms)` waits for a pause in typing before it calls `check`, and
-`validateOn(check, "input")` runs it from the first keystroke instead of the
-first blur. Both return a validator, so they nest, and they work in a
-`validate` prop too. Errors show once the field is blurred by default, so
-`show: "always"` lets the answer appear while the user is still typing. See
-[Showing errors](./validation#showing-errors).
+Notice how the pieces stack cleanly:
+- **`debounced(check, 400)`** waits until the user pauses typing for 400ms before firing the request.
+- **`validateOn(..., "input")`** kicks off validation from the first keystroke instead of waiting for the first blur.
+- **`show: "always"`** surfaces the error immediately while the user is still in the field (by default, errors wait until blur—see [Showing errors](./validation#deciding-when-to-show-errors)).
 
-## Cheap checks first
+Because `debounced` and `validateOn` both return standard validators, you can nest them in either order and use them anywhere—including in a `validate` prop.
 
-A name that is too short doesn't need the server. `pipe(...checks)` runs
-checks one after another and stops at the first error:
+## Running cheap checks first
+
+There's no reason to hit your server if the username is only two characters long or contains invalid symbols. Wrap your checks in `pipe(...checks)` to run them sequentially and stop at the very first failure:
 
 ```ts
 username: pipe(
@@ -48,28 +47,17 @@ username: pipe(
 ),
 ```
 
-The two format rules answer as the user types. While one fails, the pipe
-stays sync: the debounced check never starts, so the field doesn't wait and
-`validating` stays false. Only a well-formed name waits for the pause and goes
-to the server.
+While either of the two format rules fails, the pipe stays completely synchronous—the debounced server check never even starts, and `field.validating` stays `false`. Only once the username looks valid does it wait for a pause and ask the server.
 
-A check passes when it returns `undefined`, `null`, an empty list, an
-`ErrorMap` with no errors or a schema result with no issues. The checks can be
-functions, Standard Schemas or wrapped checks, mixed in any order, and a
-schema's issues still go through `mapError`. Put `validateOn` around the whole
-pipe to set its timing. A check wrapped in `recheckOnSubmit` makes the whole
-pipe run again on submit.
+A check inside `pipe` counts as passing when it returns `undefined`, `null`, an empty list, an empty `ErrorMap`, or a schema result with no issues. You can freely mix functions, Standard Schemas, and wrapped checks (schema issues still flow through `mapError`). To control when the entire pipe runs, wrap the `pipe` itself in `validateOn`. If any step inside the pipe is wrapped in `recheckOnSubmit`, the whole pipe re-runs on submit.
 
-## Newer runs win
+## Race conditions are handled for you
 
-When the user types again, the older run's `signal` aborts and its result is
-dropped, so a slow answer never wins over a newer one. Pass the signal to
-`fetch`. It also aborts when the field is reset or the validator is removed.
+If the user keeps typing while a request is still in flight, the previous run's `AbortSignal` is aborted and its result is ignored—so a slow response can never overwrite a newer one. Pass `signal` straight to `fetch`. The signal also aborts automatically if the field is reset or the validator is removed.
 
-## While it runs
+## Showing a loading state
 
-`field.validating` is true while a validator on the field runs, and the form
-state's `validating` while any does. Show it next to the input:
+While an async check is running, `field.validating` is `true` on that field (and `state.validating` is `true` on the form as a whole), making it easy to show inline feedback right next to the input:
 
 ```tsx
 <form.Field name="username">
@@ -82,13 +70,11 @@ state's `validating` while any does. Show it next to the input:
 </form.Field>
 ```
 
-## On submit
+## What happens on submit
 
-A submit skips the debounce, in a `pipe` too, even when the pipe hasn't
-reached the debounced check yet. It waits for a check that is still running and
-goes on only if it passed. A check whose result is still current doesn't run
-again. Wrap the check in `recheckOnSubmit(check)` to run it on every submit
-anyway, as for a check that can go stale:
+When the user submits, any pending debounce is bypassed immediately—even inside a `pipe` that hasn't reached the debounced step yet. If an async validator is already in flight, submit waits for it to settle and only proceeds if it passes.
+
+Checks whose value hasn't changed since the last run aren't re-run unnecessarily. If a check can go stale on the server (like username availability), wrap it in `recheckOnSubmit` so it always runs fresh when the user hits submit:
 
 ```ts
 username: recheckOnSubmit(validateOn(debounced(checkName, 400), "input")),

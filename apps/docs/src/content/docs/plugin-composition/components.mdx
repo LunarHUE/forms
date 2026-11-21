@@ -6,18 +6,13 @@ order: 3
 navTitle: Shared components
 ---
 
-An undo button or a save bar belongs on every form, not in each definition.
-The bar below works under any form from the same `createForms`, and the text
-field marks itself changed.
+UI elements like a "changed" badge on inputs, an undo button, or a sticky save bar usually belong across *every* form in your app, not duplicated in each form component. Below, a single shared save bar works under any form from the same `createForms`, and `TextField` automatically highlights itself when edited.
 
 <Demo name="shared-components/editor" />
 
-## A field component that reads a plugin
+## Declaring plugin requirements on a field component
 
-A component that reads a plugin's member from its field says so in its type.
-The second type argument of `FieldApi` names the plugins it needs, by their
-factories, as `typeof dirty | typeof history`. The third is the error type,
-`FormError` by default:
+If a field component reads plugin state (like `field.dirty`), declare the plugins it requires in the second type argument of `FieldApi`, using `typeof` on their factory functions (e.g., `typeof dirty | typeof history`). The third type argument is the error type, which defaults to `FormError`.
 
 ```tsx framework=react
 interface TextFieldProps {
@@ -51,16 +46,11 @@ function TextField(props: TextFieldProps) {
 }
 ```
 
-Import `dirty` as a type, from your adapter's `plugins` entry. The component
-then fits only forms with `dirty()`. Without the second argument,
-`field.dirty` is a type error.
+Import `dirty` as a type (`import type { dirty } from "@lunarhue/forms-react/plugins"`). Without that second type argument, reading `field.dirty` is a compile error—and with it, TypeScript ensures `TextField` can only be used on forms that actually install `dirty()`.
 
-## The form from context
+## Reading shared plugins from context
 
-A component shared by many forms can't name one definition. Pass the object
-`createForms` returned to `useFormContext` instead. It returns the nearest
-form above that one of its definitions made, and skips forms from other
-`createForms` calls:
+A shared save bar can't hardcode a single form definition—it needs to work with *whichever* form it's rendered inside. Pass your `forms` object (from `createForms`) to `useFormContext(forms)` to grab the nearest matching form above it:
 
 ```tsx framework=react
 export const forms = createForms({ plugins: [dirty(), history()], fields: { TextField } });
@@ -104,17 +94,13 @@ function SaveBar() {
 }
 ```
 
-The form's type knows the shared plugins, the error type and the registered
-field components, so `form.plugins.history`, `dirty` and `form.TextField` all
-type-check. Its value type is unknown, and plugins added by a definition or
-by one form are not in its type. A form is above when the component renders
-inside its `form.Form`, as [Submit](../basics/submit#a-submit-button-from-context)
-shows. `useFormContext` throws when no form of
-those forms is above.
+Because `forms` knows about your shared plugins, error type, and registered components, `form.plugins.history`, `state.dirty`, and `form.TextField` all type-check automatically—even though the specific form's value type is unknown. (Plugins added only to an individual form definition aren't included on the shared context type.)
 
-## Passing the form as a prop
+Remember to wrap the `<form>` in `<form.Form>` so the context is provided—see [Reading the form from context](../basics/submit#reading-the-form-from-context). Calling `useFormContext(forms)` without a matching `<form.Form>` above it throws an error.
 
-To take the form as a prop instead, type it `FormOf<typeof forms>`:
+## Passing the form as a prop instead
+
+If you'd rather pass the form explicitly as a prop instead of using context, type the prop as `FormOf<typeof forms>`:
 
 ```tsx framework=react
 interface SaveBarProps {
@@ -136,4 +122,4 @@ function SaveBar(props: SaveBarProps) {
 }
 ```
 
-Any form from `forms` fits.
+Any form created from `forms` will match that prop type cleanly.

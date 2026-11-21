@@ -6,16 +6,13 @@ order: 2
 navTitle: Fieldsets
 ---
 
-A fieldset can carry parts too. The billing fieldset below brings its own
-rule: untick "Same as shipping" and the billing address appears.
+Just like field components, fieldsets can carry their own parts—so conditional rules or transforms travel right alongside the UI section they belong to. Try unchecking "Same as shipping" below: that show/hide rule is defined on `BillingFieldset` itself, not on the order form.
 
 <Demo name="fieldset-parts/billing" />
 
-## Rules on a fieldset
+## Attaching rules to a fieldset
 
-Pass parts after the schema, or after the type argument when there is no
-schema. With a type argument, name the plugins the parts need as the second
-one, by their factories:
+Pass parts to `forms.fieldset(...)` right after the schema. If you're using a TypeScript interface instead of a schema, list the plugins those parts require in the second type argument:
 
 ```ts
 const BillingFieldset = forms.fieldset<Billing, typeof rules>(
@@ -25,33 +22,22 @@ const BillingFieldset = forms.fieldset<Billing, typeof rules>(
 const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
 ```
 
-Or give the value type to `ruled` and leave the fieldset's type arguments
-out. The fieldset takes both from the part:
+Even simpler: pass the value type directly to `ruled<Billing>(...)` and omit the type arguments on `fieldset`—TypeScript will infer both the value type and required plugins from the part:
 
 ```ts
 const BillingFieldset = forms.fieldset(ruled<Billing>({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
 ```
 
-A fieldset's rules get the fieldset's value, not the form's, and name fields
-below it.
+Rules attached to a fieldset receive that fieldset's own value (not the entire form's) and reference child fields relative to the fieldset.
 
-Make a fieldset at module scope, next to `createForms`. A store made before a
-fieldset whose parts need no plugin, such as `transform(...)`, can't run
-those parts when its own plugins have no hooks. In development that throws
-[`parts:late`](/errors#core:parts:late).
+Always declare fieldsets at module scope next to `createForms`. Creating a fieldset with standalone parts (like `transform(...)`) *after* a store already exists can throw [`parts:late`](/errors#core:parts:late) in development if that store had no plugin hooks initialized.
 
-## Pinning with at()
+## Pinning fieldset parts with `at()`
 
-A fieldset's parts attach at each field it is used on, the first time its
-scope is read. A rule that matters before that, such as one on a step the
-user hasn't reached, can be pinned on the definition with `at`:
+Normally, a fieldset's parts attach the first time its `scope(handle)` is called. If a rule needs to run before the fieldset mounts—for example, hiding or disabling fields on an unvisited wizard step—pin it on the form definition using `.at()`:
 
 ```ts
 const order = forms.define({ defaultValues, onSubmit }, BillingFieldset.at("billing"));
 ```
 
-They then attach when the store is made. Reading the scope later doesn't
-attach them twice.
-
-`at` takes a field name, so a typo is a type error. A field type has the same
-method for its parts: see [Parts on field components](./field-parts).
+Pinned parts attach immediately when the store is created, and calling `scope()` later won't double-attach them. `.at()` is type-checked against your form's paths too, just like on [field components](./field-parts).

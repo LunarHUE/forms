@@ -6,16 +6,15 @@ order: 3
 navTitle: With a schema
 ---
 
-Any [Standard Schema](https://standardschema.dev) validates a form: Zod,
-Valibot, ArkType and the rest. Core reads it through the standard interface,
-so no plugin is needed. Try `admin` as the username.
+If you already validate data with Zod, Valibot, ArkType, or any other [Standard Schema](https://standardschema.dev) library, you can plug your schema straight into a form definition. Core speaks the Standard Schema interface natively, so you don't need an extra plugin just to validate.
+
+Try typing `admin` as the username in the demo below to see schema rules and custom field validators working side by side.
 
 <Demo name="schema-validation/sign-up" />
 
-## A schema for the form
+## Using a schema for the whole form
 
-`schema` validates the whole value and gives the form its type. Without a
-plugin for the schema's library, `defaultValues` is required and complete:
+Pass your schema to `schema` inside `forms.define()`. It both validates the form and drives its TypeScript types. Without a schema plugin installed, you'll still provide a complete `defaultValues` object:
 
 ```ts
 import { z } from "zod";
@@ -32,14 +31,11 @@ const signUp = forms.define({
 });
 ```
 
-`onSubmit` runs only when the schema passes, and gets the schema's output, so a
-transform or a coercion in the schema reaches it. `ctx.input` holds the value
-before the schema ran.
+When the user submits, `onSubmit` only runs if the schema passes—and it receives the schema's **parsed output**, so any `.transform()` or coercion you defined in the schema is already applied. If you ever need the raw form values before transformation, they're available on `ctx.input`.
 
-## A schema for one field
+## Using a schema for a single field
 
-A schema whose input fits the field's type can stand in for a validator
-function, in `fieldValidators` or in a `validate` prop:
+You don't have to adopt a schema for the entire form. Any Standard Schema whose input matches a field's type can be dropped right into `fieldValidators` or a `validate` prop:
 
 ```ts
 const signUp = forms.define({
@@ -48,13 +44,11 @@ const signUp = forms.define({
 });
 ```
 
-The form's type still comes from `defaultValues`.
+When you validate individual fields this way, the form's overall type still comes from `defaultValues`.
 
-## A schema and validators
+## Mixing a schema with custom validators
 
-A definition can have a schema and validators at once, and both run. Use the
-schema for the shape and validators for what it can't say well, or for checks
-that need a request:
+Schemas are great for structural rules, while custom validators shine for dynamic or async checks (like hitting an API). You can use both on the same form—they run together automatically:
 
 ```ts
 const signUp = forms.define({
@@ -68,11 +62,8 @@ const signUp = forms.define({
 });
 ```
 
-The schema's errors come first in `field.errors`, then the form validator's,
-then the field validators'.
+When multiple sources report errors on the same field, `field.errors` keeps them in a consistent order: schema errors first, followed by form validator errors, then field validator errors.
 
-## Starting values from the schema
+## Skipping repetitive `defaultValues`
 
-Writing `defaultValues` that match the schema is repetitive for a large form.
-The [schema plugins](../plugins/schemas) work them out from the schema, so
-`defaultValues` becomes optional.
+Writing out `defaultValues` by hand gets tedious on big forms when your schema already describes every field. When you're ready to let the schema generate starting values for you, check out the [schema plugins](../plugins/schemas)—they make `defaultValues` optional.

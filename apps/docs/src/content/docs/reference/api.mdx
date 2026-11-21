@@ -5,412 +5,347 @@ section: reference
 order: 1
 ---
 
-Each entry point and what it exports. Signatures leave out type parameters.
-Your editor shows the full types, and each export has a doc comment.
+A quick reference of every public export, grouped by entry point. Type parameters are omitted here for readability—hover any symbol in your editor for full generics and doc comments.
 
-The adapter re-exports core, and its `plugins` entry re-exports core's
-plugins, so you import everything from the adapter you installed.
+Your framework adapter re-exports everything from `@lunarhue/forms-core`, and its `/plugins` entry re-exports core's plugins, so you only need to import from the adapter you installed.
 
 ## Adapter
 
 <Only framework="react">
 
-`@lunarhue/forms-react`, for React 18 and later. React 16.8 and 17 need the
-`@lunarhue/react-legacy` resolve condition, see [Install](../install#react-168-and-17).
-The adapter reaches its React glue through the `#lunarhue/react` import, which
-the condition points at the legacy build. `@lunarhue/forms-react/legacy` is
-that build, for a bundler that aliases `#lunarhue/react` instead.
+`@lunarhue/forms-react` targets React 18 and later. For React 16.8 and 17, enable the `@lunarhue/react-legacy` resolve condition (see [Install](../install#using-react-168-or-17)), or alias `#lunarhue/react` to `@lunarhue/forms-react/legacy` if your bundler doesn't support custom export conditions.
+
+For simple forms where bundle size is the top priority, `@lunarhue/forms-react/mini` offers a ~3 kB subset that upgrades cleanly to the full entry—see [Mini entry](../basics/mini).
 
 </Only>
 
 <Only framework="solid">
 
-`@lunarhue/forms-solid`, for Solid 2. `@lunarhue/forms-solid/v1` is the
-same adapter for `solid-js` 1.8 and later, with the same exports, so moving a
-form between Solid 1 and 2 means changing the import.
+`@lunarhue/forms-solid` targets Solid 2. On Solid 1.8+, import from `@lunarhue/forms-solid/v1`—it exposes the exact same API and types, so upgrading to Solid 2 is a one-line import change.
 
 </Only>
 
-### createForms
+### `createForms`
 
-Call it once at module scope. Every form defined from it shares these settings.
+Call once at module scope. Every form defined from the returned `forms` object inherits these shared settings.
 
 ```ts
 createForms(options?: {
-  plugins?: Plugin[];        // every form gets these, in this order
+  plugins?: Plugin[];        // installed on every form, in order
   fields?: { TextField, … }; // field components or field types, bound on every form
-  mapError?: MapError;       // turns issues and thrown errors into your error type
-  validate?: ValidateTiming; // when validators first run, "blur" by default
-  show?: Show;               // when errors show, "touched-or-submitted" by default
-  equals?: Equals;           // the dirty comparison, needs dirty()
-  focusOnInvalid?: FocusOnInvalid; // what an invalid submit focuses, true by default
+  mapError?: MapError;       // transforms schema issues and thrown errors into your error type
+  validate?: ValidateTiming; // when validators first run ("blur" by default)
+  show?: Show;               // when errors become visible ("touched-or-submitted" by default)
+  equals?: Equals;           // custom dirty comparison (requires dirty())
+  focusOnInvalid?: FocusOnInvalid; // focus behavior on invalid submit (true by default)
   onPluginError?: PluginErrorHandler;
 }): Forms
 ```
 
-A plugin list can hold `false`, `null` or `undefined` in place of a plugin,
-so `plugins: [dirty(), dev && devtools()]` works and a bundler can drop the
-plugin it never uses. The types count a plugin that may be missing as not
-installed: with `dev && dirty()` in the list, `equals` is still a type error.
+Plugin arrays accept `false`, `null`, or `undefined` entries so conditional plugins like `plugins: [dirty(), dev && devtools()]` tree-shake cleanly. (TypeScript treats conditional plugins as not guaranteed to be installed.)
 
-| | |
+| Method | What it does |
 | --- | --- |
-| `forms.define(config, ...parts)` | Defines a form. Returns the definition you pass to the form hook and to `useFormContext`. `parts` attach at the root when the store is made. |
-| `forms.scope(handle)` | The scope at an object handle: `root`, `Field` and the field components. Cached per handle. |
-| `forms.fieldset(schema, ...parts)` | A reusable shape for a group of fields, typed from a schema that never runs. `parts` attach at each field the fieldset is used on. |
-| `forms.fieldset<V, P>(...parts)` | The same shape from a type. `P` is the factories of the plugins the parts need, as `typeof rules`. Leave both out to take them from a part with its value type given, as `ruled<Billing>(...)`. |
-| `fieldset.at(name)` | The fieldset's parts pinned at `name`, for `define`. |
+| `forms.define(config, ...parts)` | Defines a form (returns the definition passed to the form hook and `useFormContext`). Trailing `parts` attach at the root when the store is created. |
+| `forms.scope(handle)` | Returns a cached scope (`root`, `Field`, and registered field components) relative to an object handle. |
+| `forms.fieldset(schema, ...parts)` | Defines a reusable field-group shape typed from a schema (validation still comes from the form). `parts` attach wherever the fieldset is used. |
+| `forms.fieldset<V, P>(...parts)` | Same as above using a TypeScript type instead of a schema. `P` lists required plugin factories (e.g. `typeof rules`), or omit both when inferred from a typed part like `ruled<Billing>(...)`. |
+| `fieldset.at(name)` | Pins the fieldset's parts at `name` on a form definition. |
 
-### defineField
+### `defineField`
 
 ```ts
 defineField(component, ...parts): FieldType
 ```
 
-A field type: `component` with `parts` that attach at each field it renders.
-Register it in `fields`. Each part must fit the component's value, and the
-form must have the plugins the parts need, or using it is a type error.
-`PhoneField.at(name)` pins the parts at one field, for `define`.
+Creates a reusable field type combining `component` with `parts` that attach wherever it renders. Register it in `createForms({ fields })`. TypeScript verifies both value compatibility and required plugins. Call `PhoneField.at(name)` to pin its parts on `forms.define(...)`.
 
-### define
+### `define`
 
 ```ts
 forms.define({
-  defaultValues?,  // required unless a schema plugin accepts the schema
-  schema?,         // needs the schema plugin for its library
-  plugins?,        // this form's plugins, after the shared ones
+  defaultValues?,  // required unless a schema plugin handles `schema`
+  schema?,         // any Standard Schema; schema plugin makes defaultValues optional
+  plugins?,        // form-specific plugins (run after shared plugins)
   validate?: {
     form?: formValidator(check),
     fields?: fieldValidators({ ... }),
   },
   show?,
-  equals?,         // needs dirty()
+  equals?,         // requires dirty()
   disabled?,       // fields that start disabled
   readOnly?,       // fields that start read-only
   onSubmit?: (value, ctx) => result,
 })
 ```
 
-`define` also takes a function of per-form options that returns the config.
-The form hook then needs those options as its second argument.
+`define` also accepts a factory function `(options) => config` for per-instance options—passing those options becomes the second argument to the form hook.
 
 ### Validators
 
-| | |
+| Helper | What it does |
 | --- | --- |
-| `fieldValidators(tree)` | Field validators shaped like the value, for `validate.fields`. A one-element tuple at an array applies to every item. |
-| `formValidator(check)` | A check of the whole value, for `validate.form`. Returns errors keyed by dotted field name, and `form` for the form as a whole. |
-| `validateOn(check, timing)` | Runs `check` first on `"input"`, `"blur"` or `"submit"` instead of the shared `validate` setting. |
-| `debounced(check, ms)` | Waits for a pause of `ms` before it runs `check`. A submit skips the wait. |
-| `recheckOnSubmit(check)` | Runs `check` on every submit, even when its last result is still current. |
-| `pipe(...checks)` | Runs `checks` in order on the same value and stops at the first that returns an error. Stays sync while its checks are, so a `debounced` check after a failing one never starts. |
+| `fieldValidators(tree)` | Per-field validator map matching your value shape, for `validate.fields`. A one-element tuple at an array applies to every row. |
+| `formValidator(check)` | Whole-form validator for `validate.form`. Returns errors keyed by dotted field name plus optional `form` errors. |
+| `validateOn(check, timing)` | Overrides when `check` first runs: `"input"`, `"blur"`, or `"submit"`. |
+| `debounced(check, ms)` | Waits for a `ms` pause in typing before calling `check` (bypassed on submit). |
+| `recheckOnSubmit(check)` | Forces `check` to run on every submit even when its previous result is still current. |
+| `pipe(...checks)` | Runs `checks` sequentially and stops at the first error. Stays synchronous while checks are sync, preventing downstream `debounced` checks from starting early. |
 
-`check` is a validator function or a Standard Schema. The three wrappers
-return a check that goes anywhere a bare one does, in `fieldValidators`,
-`formValidator`, a `validate` prop or `registerValidator`, and they nest in any
-order. `pipe` takes the same checks and goes to the same places. See
-[Validation](../basics/validation#when-validators-run).
+Every wrapper accepts a validator function or Standard Schema, composes in any order, and works in `fieldValidators`, `formValidator`, `validate` props, and `registerValidator`. See [Validation](../basics/validation#controlling-when-validators-run).
 
 <Only framework="react">
 
-### useForm
+### `useForm`
 
 ```ts framework=react
 useForm(definition, instance?: { id?, focusOnInvalid?, plugins? }): FormInstance
 useForm(definition, options, instance?) // when define took a function
 ```
 
-Makes the form on the first render and returns the same object after. `id`
-prefixes every DOM id and defaults to `useId()`. `plugins` are this form's
-only, such as a [Zustand binding](../integrations/zustand).
+Creates the form on initial render and returns the same stable instance afterwards. `id` prefixes DOM IDs (defaults to `useId()`). `plugins` installs instance-only plugins like a [Zustand binding](../integrations/zustand).
 
 </Only>
 
 <Only framework="solid">
 
-### createForm
+### `createForm`
 
 ```ts framework=solid
 createForm(definition, settings?: { id?, focusOnInvalid?, plugins? }): SolidForm
 createForm(definition, options, settings?) // when define took a function
 ```
 
-Call it in a component body. The form's subscriptions end with that owner. `id` prefixes every DOM id and defaults
-to `createUniqueId()`. `plugins` are this form's only, such as a
-[signal binding](../integrations/solid-signals).
+Creates the form tied to the current reactive owner. `id` prefixes DOM IDs (defaults to `createUniqueId()`). `plugins` installs instance-only plugins like a [signal binding](../integrations/solid-signals).
 
 </Only>
 
-The form it returns:
+Members on the returned `form` object:
 
 <Only framework="react">
 
-| | |
+| Member | What it is |
 | --- | --- |
-| `form.Form` | Provides the form to the tree below. Its child is a function of the form element props. |
-| `form.State` | Renders a selection of the form snapshot: `select`, `isEqual`, and children `(selected, form)`. |
-| `form.root` | The handle for the whole value. |
-| `form.Field` | Renders one field by `name` or `handle`. Children get the field object, or `select`'s result. |
-| `form.TextField` | Each registered field component, bound by `name`. |
-| `form.submit(intent?)` | Submits and resolves to the `Submission`. Focuses per `focusOnInvalid`. |
-| `form.handleSubmit(event?)` | Calls `preventDefault`, then submits. |
-| `form.formProps` | Props for the `<form>` element. |
-| `form.store` | The core store. See [Store](#store). |
-| `form.plugins` | Each plugin's API by name, as `form.plugins.history.undo()`. |
-| `form.id` | The store id. |
+| `form.Form` | Context provider wrapper; its child function receives `formProps`. |
+| `form.State` | Subscribes to a slice of form state: `select`, `isEqual`, and children `(selected, form)`. |
+| `form.root` | Handle for the whole form value. |
+| `form.Field` | Renders one field by `name` or `handle`; children receive the field object (or `select`'s result). |
+| `form.TextField` | Bound version of each registered field component. |
+| `form.submit(intent?)` | Programmatically submits and resolves to the `Submission`, applying `focusOnInvalid`. |
+| `form.handleSubmit(event?)` | Calls `preventDefault()` and submits. |
+| `form.formProps` | Props to spread directly onto `<form>`. |
+| `form.store` | Underlying framework-agnostic store (see [Store](#store)). |
+| `form.plugins` | Installed plugin APIs keyed by plugin name (e.g. `form.plugins.history.undo()`). |
+| `form.id` | The store's DOM ID prefix. |
 
 </Only>
 
 <Only framework="solid">
 
-| | |
+| Member | What it is |
 | --- | --- |
-| `form.Form` | Provides the form to the tree below. Its child is a function of the form element props. |
-| `form.state` | The form snapshot as reactive getters: `form.state.submitting`. |
-| `form.root` | The handle for the whole value. |
-| `form.Field` | Renders one field by `name` or `handle`. Children get the field object. |
-| `form.TextField` | Each registered field component, bound by `name`. |
-| `form.submit(intent?)` | Submits and resolves to the `Submission`. Focuses per `focusOnInvalid`. |
-| `form.handleSubmit(event?)` | Calls `preventDefault`, then submits. |
-| `form.formProps` | Props for the `<form>` element. |
-| `form.store` | The core store. See [Store](#store). |
-| `form.plugins` | Each plugin's API by name, as `form.plugins.history.undo()`. |
-| `form.id` | The store id. |
+| `form.Form` | Context provider wrapper; its child function receives `formProps`. |
+| `form.state` | Form snapshot exposed as fine-grained reactive getters (e.g. `form.state.submitting`). |
+| `form.root` | Handle for the whole form value. |
+| `form.Field` | Renders one field by `name` or `handle`; children receive the field object. |
+| `form.TextField` | Bound version of each registered field component. |
+| `form.submit(intent?)` | Programmatically submits and resolves to the `Submission`, applying `focusOnInvalid`. |
+| `form.handleSubmit(event?)` | Calls `preventDefault()` and submits. |
+| `form.formProps` | Props to spread directly onto `<form>`. |
+| `form.store` | Underlying framework-agnostic store (see [Store](#store)). |
+| `form.plugins` | Installed plugin APIs keyed by plugin name (e.g. `form.plugins.history.undo()`). |
+| `form.id` | The store's DOM ID prefix. |
 
 </Only>
 
-### useFormContext
+### `useFormContext`
 
-| | |
+| Call | Returns |
 | --- | --- |
-| `useFormContext()` | The form of the nearest `form.Form`, with unknown types. Enough for a submit button. |
-| `useFormContext(definition)` | The nearest form made from `definition`, fully typed. Skips forms of other definitions. |
-| `useFormContext(forms)` | The nearest form from that `createForms` call, typed with its plugins and fields. |
+| `useFormContext()` | Nearest `form.Form` above, with unknown value types (enough for a submit button). |
+| `useFormContext(definition)` | Nearest form created from `definition`, fully typed. |
+| `useFormContext(forms)` | Nearest form from that `createForms` call, typed with its shared plugins and fields. |
 
-Each throws when no matching `form.Form` is above.
+Throws if no matching `<form.Form>` ancestor is found.
 
 ### Reading state
 
 <Only framework="react">
 
-| | |
+| Hook / Component | What it does |
 | --- | --- |
-| `useField(handle)` | The field object. Re-renders when the field changes. |
-| `useField(handle, select, isEqual?)` | A selection of the field snapshot. Re-renders when it changes by `isEqual`. |
-| `useFormState(form, select?, isEqual?)` | The form snapshot, or a selection of it. |
-| `useItems(handle)` | An array's item handles. Re-renders only when an item is added, removed or moved. Needs `arrays()`. |
-| `<Items handle>` | Renders one child per item, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
-| `useValidator(handle, validator)` | Adds a validator while the component is mounted. |
-| `useDisabledErrors(form)` | The disabled fields whose errors blocked the last submit. |
-| `useInvalidFields(form)` | Every field with errors, in form order, as `{ field, name, errors }`. Re-renders when the list changes. |
+| `useField(handle)` | Subscribes to a handle and returns its `FieldApi`. |
+| `useField(handle, select, isEqual?)` | Subscribes to a selected slice of a field snapshot. |
+| `useFormState(form, select?, isEqual?)` | Subscribes to the form snapshot or a selected slice. |
+| `useItems(handle)` | Returns ordered row handles for an array, re-rendering only when keys change. Requires `arrays()`. |
+| `<Items handle>` | Renders keyed children `(item, index)` for each array row. Requires `arrays()`. |
+| `useValidator(handle, validator)` | Registers a validator while mounted (falsy values skip registration). |
+| `useDisabledErrors(form)` | Disabled fields whose errors blocked the last submit. |
+| `useInvalidFields(form)` | All errored fields in form order as `{ field, name, errors }`. |
 
 </Only>
 
 <Only framework="solid">
 
-| | |
+| Primitive / Component | What it does |
 | --- | --- |
-| `createField(handle)` | The field object, with reactive getters. Unsubscribes with its owner. |
-| `createItems(handle)` | An accessor of the item handles. Changes only when an item is added, removed or moved. Needs `arrays()`. |
-| `<Items handle fallback?>` | Renders the items with `For`, keyed by the item's key. Children `(item, index)`. Needs `arrays()`. |
-| `createValidator(handle, validator)` | Adds a validator for the life of the owner. |
-| `createDisabledErrors(form)` | An accessor of the disabled fields whose errors blocked the last submit. |
-| `createInvalidFields(form)` | An accessor of every field with errors, in form order, as `{ field, name, errors }`. |
+| `createField(handle)` | Returns a reactive `FieldApi` tied to the current owner. |
+| `createItems(handle)` | Returns an accessor of ordered row handles, updating only when keys change. Requires `arrays()`. |
+| `<Items handle fallback?>` | Renders keyed rows via `For` with `(item, index)` children. Requires `arrays()`. |
+| `createValidator(handle, validator)` | Registers a validator for the lifetime of the current owner. |
+| `createDisabledErrors(form)` | Accessor of disabled fields whose errors blocked the last submit. |
+| `createInvalidFields(form)` | Accessor of all errored fields in form order as `{ field, name, errors }`. |
 
 </Only>
 
 ### Inputs
 
-| | |
+| Helper | What it does |
 | --- | --- |
-| `inputProps(field, { type }?)` | Props for a text-like `<input>` on a string field. |
-| `textareaProps(field)` | Props for a `<textarea>` on a string field. |
-| `selectProps(field, { empty }?)` | Props for a `<select>` on a string field. |
-| `numberProps(field, { empty }?)` | Props for `<input type="number">` on a number field. Keeps `1.` and `-` as typed. |
-| `rangeProps(field)` | Props for `<input type="range">` on a number field. |
-| `checkboxProps(field)` | Props for `<input type="checkbox">` on a boolean field. |
-| `checkboxGroupProps(field, value)` | Props for one checkbox of a group over an array of strings or numbers. |
-| `radioProps(field, value)` | Props for the radio that writes `value`. |
-| `numberPieces(field, { empty }?)` | `text`, `setText` and `handleBlur` for a number input bound by hand. |
-| `errorId(handle)` | The id of the element that shows the field's errors. |
-| `elementsOf(handle)` | The field's elements in the document, in document order. |
-| `isFocused(handle)` | True while focus is on one of the field's elements or inside one. Works in production with no `trackElements()` call. |
-| `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
-| `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
+| `inputProps(field, { type }?)` | Props for text-like `<input>` on string fields. |
+| `textareaProps(field)` | Props for `<textarea>` on string fields. |
+| `selectProps(field, { empty }?)` | Props for `<select>` on string fields. |
+| `numberProps(field, { empty }?)` | Props for `<input type="number">` on number fields; preserves in-progress `1.` and `-`. |
+| `rangeProps(field)` | Props for `<input type="range">` on number fields. |
+| `checkboxProps(field)` | Props for `<input type="checkbox">` on boolean fields. |
+| `checkboxGroupProps(field, value)` | Props for one checkbox in a string/number array group. |
+| `radioProps(field, value)` | Props for one radio button writing `value`. |
+| `numberPieces(field, { empty }?)` | `{ text, setText, handleBlur }` for custom numeric inputs. |
+| `errorId(handle)` | Returns the error element ID for `handle`. |
+| `elementsOf(handle)` | Returns connected DOM elements registered for `handle`, in document order. |
+| `isFocused(handle)` | `true` while focus is on or inside any of `handle`'s elements (works in production with no extra setup). |
+| `fieldOf(element)` | Returns the handle whose ref registered `element` (requires `trackElements()` in production). |
+| `trackElements(listener?)` | Enables `fieldOf` in production and optionally notifies on every element registration/cleanup. |
 
 <Only framework="react">
 
-| | |
+| Hook | What it does |
 | --- | --- |
-| `useFieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
+| `useFieldRef(handle)` | Returns a ref callback registering a custom input as the field's focus target. |
 
 </Only>
 
 <Only framework="solid">
 
-| | |
+| Helper | What it does |
 | --- | --- |
-| `fieldRef(handle)` | A ref callback that records a custom input as the field's focus target. |
+| `fieldRef(handle)` | Returns a ref callback registering a custom input as the field's focus target. |
 
 </Only>
 
-Each props function type-checks only on a field of the value type it writes.
-`empty` is the value an empty input writes, required when the field's type
-has no `undefined`. The props set `aria-invalid` and point
-`aria-describedby` at the error id while the field shows errors.
+Every props helper type-checks against its expected field value type, requires `empty` when `undefined` isn't allowed, and wires `aria-invalid` + `aria-describedby` automatically while errors are shown.
 
 <Only framework="solid">
 
-Every props function except `numberPieces` also takes `describedBy` in its
-options, more ids for `aria-describedby` placed before the error id. The
-options come last, as in `radioProps(field, value, { describedBy })`. The
-value, `name`, flags and aria props are getters, so each one updates on its
-own.
+Every props helper (except `numberPieces`) also accepts a `describedBy` option to prepend extra hint IDs to `aria-describedby` (passed last, e.g. `radioProps(field, value, { describedBy })`). Returned attributes are reactive getters.
 
 </Only>
 
-### Field object
+### Field object (`FieldApi`)
 
-What a registered component gets as `field`, and what `Field` passes its
-children.
+Passed to registered components as `field`, to `form.Field` children, and returned by <Only framework="react">`useField(handle)`</Only><Only framework="solid">`createField(handle)`</Only>:
 
-<Only framework="react">
-
-`useField(handle)` returns it too.
-
-</Only>
-
-<Only framework="solid">
-
-`createField(handle)` returns it too.
-
-</Only>
-
-| | |
+| Member | What it is |
 | --- | --- |
-| `value` | The field's value. |
-| `name` | The dotted name, as `"address.city"`. |
-| `errors` | Every error on the field. |
-| `shownErrors` | The errors to show now, per `show`. |
-| `userErrors` | The errors set with `setErrors`, the tail of `errors`. |
-| `invalid` | True when it has any error, from validation or `setErrors`. |
-| `touched` | True after a blur. |
-| `edited` | True after a user edit. |
-| `dirty` | True when the value differs from the baseline. Needs `dirty()`. |
-| `validating` | True while an async validator runs. |
-| `disabled` | True when it or a field above it is disabled. |
-| `readOnly` | True when it or a field above it is read-only. |
-| `meta` | Plugin state by plugin name, read with the plugin's reader. |
-| `keys` | Array fields only: the item keys, in order. |
-| `text` | The text an element shows: a plugin's display text, else the value. |
-| `setText(text, from?)` | Writes typed text. With a mask, puts the formatted text in the element `from` names and places the caret. |
-| `ref` | Records the element for focus after an invalid submit. |
-| `handle` | The field's handle. |
-| `id`, `path`, `errorId` | The handle's id, its stable path, and the error element id. |
+| `value` | Current field value. |
+| `name` | Dotted path name (e.g. `"address.city"`). |
+| `errors`, `shownErrors` | All errors, and errors currently visible per `show`. |
+| `userErrors` | Errors set via `setErrors` (also at the end of `errors`). |
+| `invalid` | `true` when the field has any validation or user error. |
+| `touched`, `edited` | Blurred once; modified by the user. |
+| `dirty` | Differs from baseline (requires `dirty()`). |
+| `validating` | `true` while an async validator is running. |
+| `disabled`, `readOnly` | Active on this field or inherited from an ancestor. |
+| `meta` | Plugin meta slots (read via each plugin's `.meta(field)`). |
+| `keys` | Array fields only: ordered stable item keys. |
+| `text`, `setText(text, from?)` | Display text and text-writing helper (preserves caret with masks). |
+| `ref` | Ref callback registering the DOM element for focus on invalid submit. |
+| `handle` | The stable field handle. |
+| `id`, `path`, `errorId` | Stable DOM ID, internal path array, and error container ID. |
 
-It also has every command of its handle, bound.
+Also includes all of the field handle's commands, pre-bound.
 
 ### Handles
 
-`form.root`, `handle.at(key)` and `handle.item(key)` return handles. Every
-handle has:
+Returned by `form.root`, `handle.at(key)`, and `handle.item(key)`:
 
-| | |
+| Member | What it does |
 | --- | --- |
-| `id`, `path`, `store` | The DOM id, the stable path, the store. |
-| `peek()` | The snapshot now, for event handlers. |
-| `setTouched(touched?)` | Marks the field touched. |
-| `handleBlur()` | Marks it touched and runs blur validation. |
-| `setErrors(errors)` | Replaces its user errors. The next user edit clears them. |
-| `validate()` | Runs its validators now. Resolves true when valid. |
-| `registerValidator(validator)` | Adds a validator. Returns the function that removes it. |
-| `reset(options?)` | Back to the baseline, or to the starting value with `{ to: "initial" }`. |
-| `setDisabled(on)`, `setReadOnly(on)` | Sets the flag for it and every field below. |
+| `id`, `path`, `store` | DOM ID, stable path, and parent store. |
+| `peek()` | Non-reactive snapshot read for event handlers. |
+| `setTouched(touched?)` | Sets the `touched` flag. |
+| `handleBlur()` | Marks touched, runs blur validation, and fires plugin `onBlur`. |
+| `setErrors(errors)` | Replaces user errors (cleared on the next user edit). |
+| `validate()` | Runs validators now; resolves `true` if valid. |
+| `registerValidator(validator)` | Attaches a validator and returns its cleanup function. |
+| `reset(options?)` | Resets to baseline (or `{ to: "initial" }` for starting values). |
+| `setDisabled(on)`, `setReadOnly(on)` | Sets the flag for this field and its subtree. |
 
-And by kind:
+Kind-specific handle methods:
 
-| | |
+| Method | Kind |
 | --- | --- |
-| `setValue(value, options?)` | Leaves: writes a value or `(previous) => next`. |
-| `setValue(patch)` | Objects: merges the keys given. |
-| `setValue(value, { replace: true })` | Objects: replaces the whole object. |
-| `at(key)` | Objects: the child handle. |
-| `push(item?)`, `insert(index, item?)` | Arrays: adds an item. Needs `arrays()`. |
-| `remove(index)`, `move(from, to)` | Arrays: removes or moves one. Items keep their keys and state. Needs `arrays()`. |
-| `item(key)` | Arrays: the handle of the item with that stable key. |
-| `key` | Item handles: the item's stable key. |
+| `setValue(value, options?)` | Leaves: writes a value or updater `(prev) => next`. |
+| `setValue(patch)` / `setValue(value, { replace: true })` | Objects: shallow-merges a patch or replaces wholesale. |
+| `at(key)` | Objects: returns child handle. |
+| `push(item?)`, `insert(index, item?)` | Arrays: appends or inserts a row (requires `arrays()`). |
+| `remove(index)`, `move(from, to)` | Arrays: removes or moves a row while keeping keys/state (requires `arrays()`). |
+| `item(key)` | Arrays: returns the handle for a row's stable key. |
+| `key` | Array items: the row's stable key. |
 
-Writes take `{ edited: false }` for a write that isn't a user edit, such as
-loading data.
+Value writes accept `{ edited: false }` for programmatic updates that shouldn't count as user edits.
 
 ### Store
 
-`form.store`, the framework-free core store. You need it mostly in plugins and
-tests.
+`form.store` is the framework-agnostic core store, useful in plugins, utilities, and tests:
 
-| | |
+| Method | What it does |
 | --- | --- |
-| `getFormSnapshot()` | The form snapshot. The same object until something in it changes. |
-| `subscribeForm(listener)` | Calls `listener` after a write that changes the form snapshot. |
-| `getSnapshot(path)` | The snapshot of the field at a stable path. |
-| `subscribe(path, listener)` | Calls `listener` after a write that changes that field. |
-| `peek()` | The form snapshot, for event handlers. |
-| `batch(fn)` | Runs `fn`, notifying listeners once at the end. |
-| `submit(intent?)` | Submits without the adapter's focus handling. |
-| `handleSubmit(event?)` | The same, for a submit event. |
-| `setErrors(errorMap)` | Replaces user errors across the form. A name no field has goes to the root. |
-| `validate()` | Runs every validator now. |
-| `reset(options?)` | Resets the whole form, to the baseline or, with `{ to: "initial" }`, the starting value. `{ values }` sets new values and makes them the baseline. |
-| `fieldAt(path)` | The handle at a stable path, or `undefined` when no field is there. |
-| `pathOf(name)` | The stable path of a dotted name such as `rows.0.title`, or `undefined` when no field has it. |
-| `changes(path?)` | Every dirty leaf below `path`. Needs `dirty()`. |
-| `firstInvalid()` | The first enabled field with an error. |
-| `disabledInvalid()` | Every disabled field with an error. |
+| `getFormSnapshot()`, `subscribeForm(listener)` | Reads and subscribes to form-level state. |
+| `getSnapshot(path)`, `subscribe(path, listener)` | Reads and subscribes to a single field by stable path. |
+| `peek()` | Current form snapshot for event handlers. |
+| `batch(fn)` | Groups multiple writes into a single notification pass. |
+| `submit(intent?)`, `handleSubmit(event?)` | Submits without adapter focus management. |
+| `setErrors(errorMap)` | Replaces user errors across the form (unknown names fall back to root). |
+| `validate()` | Runs all validators now. |
+| `reset(options?)` | Resets to baseline, `{ to: "initial" }`, or `{ values }` (writes new values and makes them the new baseline). |
+| `fieldAt(path)` | Returns the handle at a stable path, or `undefined`. |
+| `pathOf(name)` | Resolves a dotted name like `"rows.0.title"` to its stable path, or `undefined`. |
+| `changes(path?)` | Lists dirty leaves under `path` (requires `dirty()`). |
+| `firstInvalid()`, `disabledInvalid()` | Finds the first invalid enabled field, or all invalid disabled fields. |
 
 ### Types
 
-| | |
+| Type | Description |
 | --- | --- |
-| `FieldApi<T, P, E>` | The `field` prop of a registered component. `FieldApi<number>` holds `number` or `undefined`. `FieldApi<string \| undefined>` takes required and optional string fields. `P` is the factories of the plugins the form must have, as `typeof dirty` for a component that reads `dirty`. `E` is the error type, `FormError` by default. |
-| `ExactFieldApi<V>` | The field object with the exact value type. |
-| `HandleOf<typeof fieldset, A>` | The handle prop a fieldset component takes. It takes only the fieldset's exact value. For values with more keys, make the component generic, `<A extends Address>`, and pass `A`. |
-| `FieldType<C, N>` | What `defineField` returns. `N` names the plugins its parts need. |
-| `Part<P, V>` | Hooks for one place, on their own or as a plugin's config. `P` is the plugin's factory, as `typeof limit`, or `never` for a part that needs none, and `V` the values it fits. `Part` alone is any part. |
-| `FormOf<typeof definition>` | The form a definition makes. |
-| `FieldHandle<V>` | A handle for a `V`: leaf, object or array by its type. Handles are strict in `V`: a `FieldHandle<Address>` takes no handle of an object with more keys. For a generic `V`, the children its constraint names read as the constraint's types. |
-| `FieldPath<V>`, `ValueAt<V, P>` | The dotted names of `V`, and the type at one. |
-| `ValueOf<H>`, `ErrorOf<H>` | A handle's value and error types. |
-| `FieldSnapshot<V>`, `FormSnapshot` | What the field and form reads return. |
-| `Submission` | A submit's state: `idle`, `submitting`, `invalid`, `failed` or `succeeded`. |
-| `FormError` | The default error type, `{ message: string }`. |
-| `Choice` | The value type for select, radio and checkbox group components. |
-| `Draft<T>` | `T` as a schema form holds it, with leaves that may be `undefined`. |
-| `StandardSchemaV1` | The Standard Schema interface any schema library implements. |
+| `FieldApi<T, P, E>` | Field prop type for components (`P` = required plugin factories like `typeof dirty`, `E` = error type). |
+| `ExactFieldApi<V>` | Field object preserving the exact value type `V`. |
+| `HandleOf<typeof fieldset, A>` | Handle prop type for fieldset components (pass generic `A` to allow extra keys). |
+| `FieldType<C, N>` | Return type of `defineField`. |
+| `Part<P, V>` | Part type (`P` = plugin factory or `never` for standalone, `V` = accepted field value). |
+| `FormOf<typeof definition>` | Form instance type for a definition or `forms` object. |
+| `FieldHandle<V>` | Leaf, object, or array handle matching `V`. |
+| `FieldPath<V>`, `ValueAt<V, P>` | Valid dotted paths of `V` and the value type at path `P`. |
+| `ValueOf<H>`, `ErrorOf<H>` | Extracts value and error types from a handle. |
+| `FieldSnapshot<V>`, `FormSnapshot` | Snapshot types for fields and the form. |
+| `Submission`, `FormError`, `Choice`, `Draft<T>`, `StandardSchemaV1` | Supporting form, error, choice, draft, and schema types. |
 
-A function has no type of its own name. Write `typeof createForms` for its
-signature, or `ReturnType<typeof createForms>` for what it returns.
-
-Hovers in your editor also show types the adapter doesn't export, such as
-the ones that work out which names fit a field component. They can change in
-any release, so don't copy them into your own code.
+Internal helper types that show up in editor hovers aren't part of the public contract and may change between releases—stick to the exported types above.
 
 ### Core helpers
 
-| | |
+| Helper | What it does |
 | --- | --- |
-| `createFormsCore(config?)` | Core's entry point, which the adapters wrap. Returns `define`. |
-| `branch(handle, snapshot, key, value)` | Narrows a handle to one member of a discriminated union. |
-| `invalidFields(store)` | Every field with an error, in form order, as `{ field, name, errors }`. The adapter hooks above wrap it. |
-| `subscribeInvalid(store, listener)` | Calls `listener` after a write that may change `invalidFields(store)`. Returns the function that unsubscribes. |
-| `errorsByKind(handle)` | The field's validation errors as `{ schema, form, field }` (an `ErrorsByKind<E>`), by the kind of validator that set them. Errors from `setErrors` aren't included. A read, not a subscription. |
-| `splitPath(path)` | `"items.0.name"` to `["items", 0, "name"]`. |
-| `fieldId(formId, path)` | The DOM id the adapters give a field. |
-| `optionId(id, option)` | The DOM id of one radio or checkbox in a group. |
+| `createFormsCore(config?)` | Framework-agnostic core entry point wrapped by adapters. |
+| `branch(handle, snapshot, key, value)` | Narrows an object handle to one variant of a discriminated union. |
+| `invalidFields(store)`, `subscribeInvalid(store, listener)` | Imperative helpers backing `useInvalidFields` / `createInvalidFields`. |
+| `errorsByKind(handle)` | One-time read returning `{ schema, form, field }` validation errors (excludes `userErrors`). |
+| `splitPath(path)` | Splits `"items.0.name"` into `["items", 0, "name"]`. |
+| `fieldId(formId, path)`, `optionId(id, option)` | Generates the same DOM IDs used by adapters. |
 
 ## Plugins
 
-Every plugin comes from one entry. A plugin you don't import isn't in your
-bundle, since the package has no side effects and your bundler drops it.
+All built-in plugins live in one side-effect-free entry—your bundler drops anything you don't import.
 
 <Only framework="react">
 
@@ -426,113 +361,63 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 ### Writing plugins
 
-| | |
+| Export | What it does |
 | --- | --- |
-| `definePlugin(definition)` | Returns a plugin factory. The definition has a `setup`, whose second parameter is the factory's options, a `part` hook for its parts, `requires`, `initialValue`, or a `schema` adapter for a schema plugin. `setup` and `part` return hooks: `beforeWrite`, `onWrite`, `onReset`, `onBlur`, `beforeSubmit`, `onSubmitted` and `onActive`. A plugin with meta has `meta` and `formMeta` readers on the factory. See [Writing a plugin](../writing-plugins/first-plugin) and [Schema adapters](../writing-plugins/schema-adapters). |
-| `part(plugin, config)` | A part of a plugin, with `config` typed from the plugin's `part` hook. See [Parts](../writing-plugins/parts). |
-| `part<V>(hooks)` | A part with hooks of its own, which needs no plugin. `hooks` can be a function of the part's context. |
-| `transform<V>(fn)` | A part that changes each value written at its path: `fn(value, write)` returns the value to keep, or `refuse`. |
-| `text<V>(display, afterInput?)` | A part that sets the text a text input shows for the value. |
-| `observe<V>(fn)` | A part that calls `fn(value, ctx)` when it attaches and after each batch that wrote at its path. |
-| `refuse` | Returned from `beforeWrite` to stop a write, or from `beforeSubmit` to stop the submit. |
-| `flushPlugins(store)` | Delivers the waiting deferred and idle records now. For tests. |
+| `definePlugin(definition)` | Creates a plugin factory supporting `setup`, `part`, `requires`, `initialValue`, `schema`, and meta (`initialMeta` / `initialFormMeta`). Hooks: `beforeWrite`, `onWrite`, `onReset`, `onBlur`, `beforeSubmit`, `onSubmitted`, `onActive`. |
+| `part(plugin, config)` | Creates a typed part for a plugin's `part` hook. |
+| `part<V>(hooks)` | Creates a standalone part with custom hooks (no plugin needed). |
+| `transform<V>(fn)` | Standalone part that transforms or refuses writes at its path. |
+| `text<V>(display, afterInput?)` | Standalone part controlling text input display formatting. |
+| `observe<V>(fn)` | Standalone part reacting to writes at its path. |
+| `refuse` | Sentinel returned from `beforeWrite` or `beforeSubmit` to cancel the operation. |
+| `flushPlugins(store)` | Synchronously flushes pending `deferred` and `idle` plugin deliveries (for tests). |
 
-### arrays
+### Built-in plugins
 
-| | |
+| Plugin | What it adds |
 | --- | --- |
-| `arrays()` | Turns on `Items`, `useItems`, `createItems` and `push`, `insert`, `remove` and `move`, with keys that follow the items. See [Arrays](../plugins/arrays). |
+| `arrays()` | Dynamic array rows (`Items`, `useItems`/`createItems`, `push`, `insert`, `remove`, `move`) with stable keys. See [Arrays](../plugins/arrays). |
+| `dirty()` | `dirty` flags, `equals`, and `store.changes()`. Pair with `baselineOnSubmit()` to clear dirty state on save. See [Dirty](../plugins/dirty). |
+| `history(limit = 100)` | Undo/redo via `form.plugins.history.undo()` / `.redo()` and `history.formMeta(state)`. See [History](../plugins/history). |
+| `persist(key \| { key, storage })` | Idle-time JSON draft persistence and restore on mount. See [Persist](../plugins/persist). |
+| `rebase()` | `form.plugins.rebase(handle, incoming, resolve)` returning `{ taken }`. See [Rebase](../plugins/rebase). |
+| `rules()` + `ruled(fields)` | Computed `disabled` and `hidden` flags (`rules.meta(field)`). See [Rules](../plugins/rules). |
+| `bind(options)` | Generic two-way external store binding (`get`, `set`, `subscribe`, `initial`, `incoming`). |
 
-### history
+### Text & masks (`/text`)
 
-| | |
+Import from `@lunarhue/forms-react/text`, `@lunarhue/forms-solid/text`, or `@lunarhue/forms-core/text`. Standalone parts—no plugin needed.
+
+| Export | What it does |
 | --- | --- |
-| `history(limit = 100)` | Undo and redo. API `form.plugins.history.undo()` and `.redo()`. |
+| `masked({ clean, display? })` | Cleans stored string values and optionally formats displayed text with caret tracking. |
+| `cleaned(clean)`, `displayed(display, clean?)` | Cleaning-only or display-only halves of `masked`. |
+| `digits`, `upper` | Built-in string cleaners. |
+| `replaceText(input, text, clean, event)` | Caret-preserving helper for custom `afterInput` hooks. |
 
-`canUndo` and `canRedo` are form meta: `history.formMeta(snapshot).canUndo`.
-See [History](../plugins/history).
-
-### text
-
-Import from `@lunarhue/forms-react/text` or `@lunarhue/forms-solid/text`,
-which re-export `@lunarhue/forms-core/text`. These are parts and need no
-plugin.
-
-| | |
-| --- | --- |
-| `masked({ clean, display? })` | A part that cleans a string field's value before the store takes it, and with `display` sets the text its inputs show. |
-| `cleaned(clean)` | Only the cleaning half of `masked`. |
-| `displayed(display, clean?)` | Only the display half of `masked`. |
-| `digits`, `upper` | Cleaners: keep the digits, upper-case. |
-| `replaceText(input, text, clean, event)` | Writes display text into an input and keeps the caret. |
-
-Put `masked(...)` on a field type. See [Masks](../plugins/masks).
-
-### rules
-
-| | |
-| --- | --- |
-| `rules()` | The rules plugin, for the form's plugins. |
-| `ruled(fields)` | A part that works out `disabled` and `hidden` per field from the value where it attaches. |
-| `rules.meta(field)` | Reads a field's `hidden` flag. |
-
-Each rule takes the value and returns `{ disabled?, hidden? }`. Put `ruled`
-after `define`'s config or on a fieldset. See [Rules](../plugins/rules).
-
-### persist
-
-| | |
-| --- | --- |
-| `persist(key)`, `persist({ key, storage })` | Saves the value as JSON once the page is idle, and restores it on mount. `localStorage` by default. |
-
-### rebase
-
-| | |
-| --- | --- |
-| `rebase()` | API `form.plugins.rebase(handle, incoming, resolve)`, which returns `{ taken }`. |
-
-`resolve` gets each differing leaf (`path`, `value`, `baseline`, `incoming`,
-`edited`) and returns `"keep"`, `"take"` or `{ value }`.
-
-### dirty
-
-| | |
-| --- | --- |
-| `dirty()` | Turns on `dirty`, `equals` and `store.changes()`. |
-| `baselineOnSubmit()` | Moves the baseline to what a successful submit sent. |
-
-### bind
-
-| | |
-| --- | --- |
-| `bind(options)` | Copies the form value to a store you own and back. Takes `get`, `set`, `subscribe`, `incoming` and `initial`. |
+See [Masks](../plugins/masks).
 
 ### Testing
 
-`@lunarhue/forms-core/plugins/testing`, from core only.
+Import from `@lunarhue/forms-core/plugins/testing` (core-only entry):
 
-| | |
+| Export | What it does |
 | --- | --- |
-| `testStore(config, ...parts)` | A store for testing a plugin with no framework. Returns `store`, `records`, `errors`, `flush`, `listen` and `server`. |
+| `testStore(config, ...parts)` | Framework-free test harness returning `{ store, records, errors, flush, listen, server }`. |
 
-## Schema
+## Schema (`@lunarhue/forms-schema`)
 
-`@lunarhue/forms-schema`. Each plugin lets `schema` take its library's
-schemas and fills `defaultValues` from them. Validation needs no plugin.
-
-| | |
+| Export | Entry |
 | --- | --- |
-| `zod()` | From `@lunarhue/forms-schema/zod`. Zod 4, `zod` and `zod/mini`. |
-| `valibot()` | From `@lunarhue/forms-schema/valibot`. Sync and async schemas. |
+| `zod()` | `@lunarhue/forms-schema/zod` — Zod 4 (`zod` and `zod/mini`) default value inference. |
+| `valibot()` | `@lunarhue/forms-schema/valibot` — Valibot sync/async default value inference. |
 
-## Bindings
+## Bindings (`@lunarhue/forms-bind`)
 
-`@lunarhue/forms-bind`. Both take `bind`'s `incoming` and `initial`.
-
-| | |
+| Export | Entry |
 | --- | --- |
-| `zustand(store, options?)` | From `@lunarhue/forms-bind/zustand`. Binds the whole state, or a slice with `select`, `update` and an optional `isEqual`. |
-| `signal(get, set, options?)` | From `@lunarhue/forms-bind/solid`. Binds a Solid 2 signal. |
+| `zustand(store, options?)` | `@lunarhue/forms-bind/zustand` — binds a Zustand 5 store or slice (`select`, `update`, `isEqual`). |
+| `signal(get, set, options?)` | `@lunarhue/forms-bind/solid` — binds a Solid 2 signal. |
 
 <Only framework="react">
 

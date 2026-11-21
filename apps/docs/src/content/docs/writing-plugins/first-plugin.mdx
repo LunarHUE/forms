@@ -6,17 +6,13 @@ order: 1
 navTitle: First plugin
 ---
 
-When no plugin does what your forms need, write one. Say pasted text keeps
-arriving with doubled spaces. A plugin can collapse them in every string
-field, on every form that installs it. Type two spaces in a row below.
+When none of the built-in plugins quite fits what your app needs, writing your own is straightforward. Suppose pasted text keeps sneaking double spaces into your forms, and you want to collapse them automatically across every string field. Try typing two spaces in a row below.
 
 <Demo name="first-plugin/note" />
 
-## A part or a plugin
+## Do you need a plugin, or just a part?
 
-Behaviour for one field type that keeps no state of its own needs no plugin.
-`transform`, `text` and `observe` from `@lunarhue/forms-core/plugins` make
-[parts](./parts) that run themselves, so a form installs nothing:
+Before reaching for `definePlugin`, check whether a standalone [part](./parts) is enough. If the behavior only targets specific field types, holds no internal state, and doesn't need to expose a form-level API, `transform`, `text`, and `observe` from `@lunarhue/forms-core/plugins` work with zero plugin installation:
 
 ```ts
 import { transform } from "@lunarhue/forms-core/plugins";
@@ -24,14 +20,11 @@ import { transform } from "@lunarhue/forms-core/plugins";
 export const NoteField = defineField(NoteInput, transform<string>((value) => value.replace(/ {2,}/g, " ")));
 ```
 
-Write a plugin when the behaviour covers the whole form, as this one does,
-or when it keeps meta, gives the form an API or needs another plugin.
+Reach for a full plugin when the behavior applies across the whole form (like collapsing spaces everywhere), needs to store field/form meta, exposes a `form.plugins.<name>` API, or depends on another plugin.
 
-## definePlugin
+## Creating a plugin with `definePlugin`
 
-Make a plugin with `definePlugin`, from `@lunarhue/forms-core/plugins` or the
-same entry under your adapter. It returns a factory, and each call of the
-factory gives a plugin to install:
+Import `definePlugin` from `@lunarhue/forms-core/plugins` (or your adapter's `/plugins` entry). It returns a factory function that produces a plugin instance whenever you call it:
 
 ```ts
 import { definePlugin } from "@lunarhue/forms-core/plugins";
@@ -46,14 +39,9 @@ export const collapseSpaces = definePlugin({
 const forms = createForms({ plugins: [collapseSpaces()] });
 ```
 
-`setup` runs once per store and returns hooks that see the whole form. Here
-`beforeWrite` gets every value write and returns the value to store. A
-plugin can also have a `part` hook, which runs once for each field a
-[part](./parts) of it is put on and returns hooks for that field. A plugin
-can have either or both.
+`setup` runs once per store and returns form-wide hooks—here, `beforeWrite` intercepts every value write and returns the cleaned string. A plugin can also define a `part` hook (which runs once per attached [part](./parts) and returns hooks scoped to that path), or both.
 
-The factory's arguments are `setup`'s second parameter. Type it, and the
-factory takes the same options:
+Need plugin options? Add a typed second parameter to `setup`, and the generated factory automatically accepts the same argument:
 
 ```ts
 export const squeeze = definePlugin({
@@ -66,83 +54,43 @@ export const squeeze = definePlugin({
 createForms({ plugins: [squeeze(2)] });
 ```
 
-With an optional parameter the options are optional. With none, the factory
-takes nothing.
+Make the parameter optional to make options optional; omit it for a zero-argument factory.
 
-## Setup
+## How `setup` and `onActive` work (and SSR)
 
-Setup runs when the store is made, before anything reads it, on the server
-and on the client. What it writes (values, flags and meta) is part of the
-store's starting state:
+`setup` runs synchronously when the store is created—on both the server and the client—before anything subscribes. Any values, flags, or meta it sets become part of the store's initial state:
 
-- The server snapshot shows it, so the server HTML and the first client
-  render agree, and hydrating renders once. This is how [`rules`](../plugins/rules) puts
-  `disabled` and `hidden` in the server HTML.
-- It makes no write records, so no plugin's `onWrite` sees it and no
-  `deferred` or `idle` delivery is scheduled. A store that is made and never
-  written to, as on the server, starts no timer.
-- It doesn't move the baseline. A value written in setup is dirty against the
-  defaults. To start from a value without making the form dirty, use
-  [`initialValue`](./submit#starting-values).
+- **SSR-safe:** server HTML and the first client render see the exact same state, so hydration happens in one pass (this is how [`rules`](../plugins/rules) renders `disabled` and `hidden` fields on the server).
+- **Quiet startup:** setup produces no write records, triggers no `onWrite` hooks, and schedules no deferred/idle timers—so a server-side store that's never mutated never leaks timers.
+- **Baseline stays put:** values written in `setup` don't move the baseline (they'll look dirty against `defaultValues`). To override the initial value cleanly without marking the form dirty, use [`initialValue`](./submit#starting-values) instead.
 
-So setup must give the same result on the server and the client. Anything
-that reads the browser or the environment, such as storage, goes in
-`onActive`, which runs when the store gets its first listener. The server
-never listens, so it never runs there. [`persist`](../plugins/persist) restores in
-`onActive`.
+Because `setup` runs on the server, keep it deterministic. Anything that touches browser APIs like `localStorage` belongs in `onActive`, which runs only when the store gets its first subscriber—and therefore never runs during SSR. (That's how [`persist`](../plugins/persist) restores drafts.)
 
-## Writes
+## Intercepting and making writes
 
-`beforeWrite` runs before each value write, in plugin order, and returns the
-value to write or `refuse` to stop it. A write of an object comes through
-once, at the object's path. Hooks from `setup` see it there. Hooks from
-a part get it walked down to their path, so a `masked` part cleans a phone
-field when a reset writes the whole form.
+`beforeWrite` runs in plugin order before each value write, returning either the value to store or `refuse` to cancel the write altogether. Whole-object writes pass through `setup` hooks once at the object's path, while part hooks receive the write walked down to their specific path (so a `masked` part on `phone` still cleans values during a whole-form reset).
 
-A row that `push` or `insert` adds comes through as a write at the row's path,
-with `before` undefined. The row is already in the array by then, since the
-insert makes its key. Return a replacement row, or `refuse` to take the row
-out again. A form with no `beforeWrite` plugin skips all of this.
+New rows added via `push` or `insert` also run through `beforeWrite` at the new row's path (with `before: undefined`). The row already has its key assigned; return a replacement row, or return `refuse` to remove it immediately. (Forms without any `beforeWrite` plugin skip this work completely.)
 
-Writes that aren't user edits rerun the validators that already run on the
-paths they change. A plugin that writes many paths in one `ctx.write` reruns
-each validator once, after the last write. A form validator over those paths
-runs once, and an async one isn't restarted.
+When a plugin writes values itself, wrap the writes in `ctx.write(...)`. Queued plugin writes run after the current round finishes, re-running active validators once at the end (without restarting unrelated async checks), and are tagged with `cause: { plugin: name }`. If your plugin is rebasing external data onto the baseline (like [`rebase`](../plugins/rebase)), you can pass `"rebase"` as the second argument: `ctx.write(fn, "rebase")`. Those are the only two causes available to plugins (`"user"` and `"reset"` belong to the form), letting other plugins decide how to react—for example, `masked` skips rebases.
 
-A plugin's own writes go through `ctx.write`, which runs after every plugin
-in the round has run. Their records have `cause: { plugin: name }`. A plugin that moves the
-baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pass
-`"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
-plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
-write to every plugin with its cause, and each plugin decides what to do with
-it. `masked`, for one, skips rebases.
+## Writing after an `await`
 
-## Writes after an `await`
-
-Code after an `await` runs once the hook has returned, so the host can't tell
-its writes from the user's. A write made straight to the store there counts as
-a user edit: the field is marked edited and `history` makes an undo step from
-it. Write through `ctx.write`, and pass `edited: false` when the value isn't
-the user's:
+Once a hook hits an `await`, the synchronous hook round has already ended—so writing directly to `ctx.store` afterwards looks like a regular user edit (marking the field `edited` and pushing an undo step onto `history`). Always wrap post-`await` writes in `ctx.write` and pass `{ edited: false }` when the value isn't user input:
 
 ```ts
 async beforeSubmit() {
   const token = await fetchToken();
-  // Wrong: a user edit, with an undo step.
+  // Wrong: treated as a user edit and recorded in undo history.
   ctx.store.root.at("token").setValue(token);
-  // Right: a plugin write, not marked edited.
+  // Right: plugin write, not marked edited.
   ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
 }
 ```
 
-## Blur
+## Reacting to blur with `onBlur`
 
-`onBlur(path)` runs each time a field's `handleBlur` runs, with the field's
-stable path. It runs on every blur, not only the first one that sets
-`touched`, so a plugin can clean up or save a field each time the user leaves
-it. It runs inside the blur's batch, after the field is touched and its blur
-validators ran. Writes it makes through `ctx.write` land in that batch, so
-listeners run once:
+`onBlur(path)` fires on every `handleBlur` call—not just the first blur that sets `touched`—and receives the field's stable path. It runs inside the blur's batch, right after `touched` is updated and blur validators finish, so any `ctx.write(...)` you do inside it lands in the same batch and notifies listeners just once:
 
 ```ts
 const trim = definePlugin({
@@ -158,5 +106,4 @@ const trim = definePlugin({
 });
 ```
 
-`setTouched(true)` doesn't run it, and neither does a blur on a field that is
-gone. Hooks from a part get only the blurs at or below the part's path.
+Programmatic `setTouched(true)` calls and blurs on removed fields don't trigger `onBlur`. For parts, `onBlur` only fires for blurs at or underneath the part's path.

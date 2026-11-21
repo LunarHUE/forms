@@ -8,22 +8,17 @@ frameworks: [react]
 
 import Install from "@/components/mdx/Install.astro";
 
-`zustand()` binds a form to a Zustand 5 store. The form doesn't move into the
-store. It keeps its own store with the values, errors, touched flags and the
-rest. The binding copies the value both ways: a form write goes out to your
-store, and a change in your store comes into the form. Remove the binding and
-the form works the same.
+If part of your app already lives in Zustand 5 and you want a form to stay in sync with it, `zustand()` bridges the two. Your form keeps its own internal store for errors, touched state, and validation—the plugin simply syncs values both ways. Edits in the form update Zustand, and updates to Zustand flow back into the form.
 
 <Install packages="@lunarhue/forms-bind zustand" />
 
 <Demo name="zustand/settings" />
 
-Type in a field and the greeting, which reads the store, follows. Load saved
-writes to the store, and the form takes the new value.
+Type into the fields above and watch the greeting (which reads straight from Zustand) update live. Click **Load saved** to update Zustand from outside, and the form picks up the new values immediately.
 
-## Bind the whole state
+## Binding a whole store
 
-Pass the store and the store's state becomes the form value:
+If your Zustand store holds *only* the form's state (no action functions mixed in), pass the store directly:
 
 ```tsx
 import { zustand } from "@lunarhue/forms-bind/zustand";
@@ -38,13 +33,11 @@ const profile = forms.define({
 });
 ```
 
-A form write calls `setState` with the whole form value, so a store bound this
-way should hold no actions. If it has them, bind a slice.
+Because form writes call `setState` with the whole form value, use the slice form below whenever your store also holds actions or unrelated state.
 
-## Bind a slice
+## Binding a slice of a larger store
 
-`select` picks the slice that is the form value. `update` turns a form value
-back into the state to merge in:
+Pass `select` to pick the slice that belongs to the form, and `update` to map the form's value back into a partial state update:
 
 ```tsx
 zustand(useAppStore, {
@@ -53,12 +46,9 @@ zustand(useAppStore, {
 });
 ```
 
-A store change that leaves the slice as the same object doesn't reach the
-form, so other parts of the store can change freely.
+Unrelated changes elsewhere in `useAppStore` won't touch the form as long as `select` returns the same reference.
 
-`update` also gets the store's state before the write. Use it when the slice
-sits inside a bigger object, such as one entry of a map, so the write keeps
-the other keys:
+`update` also receives the store's current `state` as its second argument—super handy when your slice is nested inside a record or map and you want to preserve sibling keys:
 
 ```tsx
 zustand(useReviewStore, {
@@ -67,9 +57,7 @@ zustand(useReviewStore, {
 });
 ```
 
-When `select` builds a new object each time, every store change looks like a
-new slice. Pass `isEqual` to say when two slices match, and a change to
-`count` or any other field leaves the form alone:
+If your `select` constructs a fresh object on every call (like picking two top-level keys), pass `isEqual` so updates to unrelated fields don't look like a new slice:
 
 ```tsx
 zustand(useReviewStore, {
@@ -79,13 +67,11 @@ zustand(useReviewStore, {
 });
 ```
 
-`isEqual` defaults to `Object.is`.
+(`isEqual` defaults to `Object.is`.)
 
-## Where it goes
+## Where to install the binding
 
-Put the binding in the definition's `plugins` when the store lives at module
-scope. When a component makes the store, pass the binding to `useForm` instead.
-It runs after the shared plugins and the definition's:
+If the Zustand store lives at module scope, put `zustand(...)` in `forms.define({ plugins: [...] })`. If the store is created inside a component or passed via props, attach it in `useForm` instead (instance plugins run after shared and definition plugins):
 
 ```tsx framework=react
 const form = useForm(settingsForm, {
@@ -93,29 +79,23 @@ const form = useForm(settingsForm, {
 });
 ```
 
-The compiler checks that the form's value type is the bound type. Binding a
-`Profile` form to a store whose state is something else is a type error.
+TypeScript checks that the bound slice matches your form's value type, so mismatches fail at compile time.
 
-A form has one binding. The binding listens to the store only while the form
-has listeners, which is while its fields are mounted, and catches up with the
-store when it starts listening again.
+Each form can have one external binding. The binding only subscribes to Zustand while the form has active listeners (i.e., while mounted), and automatically catches up if the store changed while unmounted.
 
 ## Options
 
-Both forms of `zustand()` also take these:
+Both forms of `zustand()` accept two options to control sync direction and conflicts:
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `initial` | `"outside"` | Where the starting value comes from. `"outside"` starts the form from the store, server render included. `"form"` keeps the form's defaults and writes them to the store when the form is first listened to. |
-| `incoming` | `"replace"` | What a store change does to the form. `"replace"` writes the store's value over the form's. `"rebase"` moves the form's baseline to it and keeps the fields the user edited. A function picks per field, as [rebase](../plugins/rebase) does. |
+| `initial` | `"outside"` | Sets the source of truth on startup. `"outside"` initializes the form from Zustand (including during SSR). `"form"` keeps `defaultValues` and pushes them to Zustand when the form mounts. |
+| `incoming` | `"replace"` | Decides how external Zustand updates apply to the form. `"replace"` overwrites the form values. `"rebase"` advances the baseline while preserving fields the user edited. You can also pass a custom resolver function, just like [rebase](../plugins/rebase). |
 
 ```tsx
 zustand(useProfileStore, { incoming: "rebase" });
 ```
 
-With `"rebase"`, a server refresh that lands in the store updates the fields
-the user hasn't touched and leaves their edits alone.
+Using `incoming: "rebase"` is especially nice when a background fetch updates Zustand: untouched fields pick up the fresh data while anything the user is actively editing stays safe.
 
-For a store that isn't Zustand, `bind()` from
-`@lunarhue/forms-react/plugins` takes `get`, `set` and `subscribe`
-functions and the same two options.
+Need to sync with a store other than Zustand? Use the generic `bind()` plugin from `@lunarhue/forms-react/plugins`, which takes `{ get, set, subscribe }` along with the same `initial` and `incoming` options.

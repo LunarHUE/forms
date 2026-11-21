@@ -1,0 +1,70 @@
+---
+title: Mini entry
+description: A ~3 kB React subset for simple forms that upgrades to the full entry by changing one import.
+section: basics
+order: 8
+navTitle: Mini entry
+frameworks: [react]
+---
+
+For lightweight forms like a login box, newsletter signup, or search filter, you might not need plugins, arrays, or cross-field rules. `@lunarhue/forms-react/mini` gives you a ~3 kB subset of the library with the exact same API names and types—so if a form ever outgrows `/mini`, moving to `@lunarhue/forms-react` is literally changing your import path.
+
+## Starting with `/mini`
+
+Import `createForms`, `useForm`, and `inputProps` from `@lunarhue/forms-react/mini`:
+
+```tsx title="login.tsx" framework=react
+import { createForms, fieldValidators, inputProps, useForm } from "@lunarhue/forms-react/mini";
+
+const forms = createForms();
+
+const login = forms.define({
+  defaultValues: { email: "", password: "" },
+  validate: {
+    fields: fieldValidators({
+      email: (v) => (v.includes("@") ? undefined : { message: "Enter a valid email." }),
+      password: (v) => (v.length >= 8 ? undefined : { message: "Use at least 8 characters." }),
+    }),
+  },
+  onSubmit: async (value, { store }) => {
+    const res = await signIn(value);
+    if (!res.ok) {
+      store.setErrors({ fields: { email: { message: "Invalid credentials." } } });
+      return;
+    }
+    return res.user;
+  },
+});
+
+export default function LoginForm() {
+  const form = useForm(login);
+  return (
+    <form {...form.formProps}>
+      <form.Field name="email">
+        {(field) => <input {...inputProps(field, { type: "email" })} />}
+      </form.Field>
+      <form.Field name="password">
+        {(field) => <input {...inputProps(field, { type: "password" })} />}
+      </form.Field>
+      <button type="submit">Sign in</button>
+    </form>
+  );
+}
+```
+
+## What's included in `/mini`
+
+Every export in `/mini` is a strict subset of the full entry:
+
+- **Form definition & options:** `forms.define(config)` and `forms.define((options) => config)`, with `useForm(definition, options, settings?)`.
+- **Typed fields & registered components:** `form.Field`, `form.State`, `form.Form`, `form.formProps`, `inputProps`, and `createForms({ fields: { TextField } })` for plain field components typed with `/mini`'s `FieldApi<T>`.
+- **Validation:** `fieldValidators(...)`, Standard Schema `schema` validation (including cross-field schema rules like Zod `.refine()`), and `store.setErrors(...)` for server refusals (ending the submit as `"invalid"`).
+- **Standalone transforms:** `transform(...)` and `forms.fieldset<T>(...)` parts pinned via `.at(name)`.
+- **Reset:** `form.store.reset()`, `reset({ to: "initial" })`, and `reset({ values })`.
+- **Subscription mode:** pass `subscribe: perField()` to `createForms` if you want per-field subscriptions (the default in `/mini` subscribes at the form level to save bytes on tiny forms).
+
+## Upgrading to the full entry
+
+When a form needs plugins (`dirty`, `arrays`, `history`, `persist`, `rebase`, `rules`), `defineField(...)`, `formValidator`, `pipe()`, custom `show` policies, or `useFormContext`, switch the import from `@lunarhue/forms-react/mini` to `@lunarhue/forms-react`.
+
+Because `/mini`'s `FieldApi`, `FormStore`, and `FormsOptions` are narrowed versions of the full types, every component and definition you wrote for `/mini` continues to type-check and run identically without rewriting a single line.

@@ -5,16 +5,13 @@ section: plugins
 order: 7
 ---
 
-A form that lists things, such as tasks, order lines or phone numbers, needs
-rows the user can add, remove and reorder, each keeping its own input state
-as it moves. `arrays()` brings that: `Items` renders one child per row, and
-the array's handle has the commands that change the list.
+Dynamic lists—like checklists, invoice line items, or multiple phone numbers—need rows you can add, remove, and reorder without losing focus or mixing up field state as items shift around. The `arrays()` plugin handles all of that: `<Items>` renders one child per row, and array handles expose the commands to modify the list.
 
 <Demo name="arrays/checklist" />
 
-## Installing arrays()
+## Installing `arrays()`
 
-Install `arrays()` on every form that renders or changes a list:
+Add `arrays()` to `createForms` (if most forms have lists) or to a specific form's `plugins`:
 
 ```tsx framework=react
 import { arrays } from "@lunarhue/forms-react/plugins";
@@ -28,16 +25,11 @@ import { arrays } from "@lunarhue/forms-solid/plugins";
 const forms = createForms({ plugins: [arrays()] });
 ```
 
-You can also put it in one definition's `plugins`. On a form without it,
-passing an array handle to `Items`, `useItems` or `createItems`, or calling
-`push`, `insert`, `remove` or `move`, is a type error that says "Add arrays()
-to this form's plugins". A form with no lists leaves it out and ships less
-code.
+If you forget to install `arrays()`, passing an array handle to `Items`, `useItems`, or `createItems`—or calling `push`, `insert`, `remove`, or `move`—gives you a clear compile-time error telling you to add `arrays()`. Forms without dynamic lists leave it out and ship less code.
 
-## Rendering rows
+## Rendering rows with `<Items>`
 
-`Items` takes the array's handle and a function that gets each row's handle
-and its index:
+Pass your array handle to `<Items>` and provide a render function that receives each row's handle and current index:
 
 ```tsx framework=react
 import { Items } from "@lunarhue/forms-react";
@@ -57,90 +49,60 @@ import { Items } from "@lunarhue/forms-solid";
 
 <Only framework="solid">
 
-`index` is an accessor. A row renders once, and `index()` follows it when
-it moves. `fallback` is shown while the list is empty.
+In Solid, `index` is a reactive accessor (`index()`), so each row mounts once and its label updates smoothly when moved. You can also pass a `fallback` prop to render when the list is empty.
 
 </Only>
 
-Rows have no names, since a name like `tasks.0.title` would point at another
-row after a move. Reach into a row through its handle: `task.at("title")`.
+Notice that we use `task.at("title")` instead of a string name like `"tasks.0.title"`. String indexes break the moment a row moves, whereas row handles stay glued to their item. `<Items>` only re-renders when rows are added, removed, or reordered—typing inside a row never re-renders the list.
 
-`Items` updates when a row is added, removed or moved. Typing in a row
-doesn't re-render the list.
+## Modifying the list
 
-## Changing the list
-
-The array's handle has the commands. Get it with `form.root.at("tasks")`:
+Grab the array handle with `form.root.at("tasks")` and call its commands directly:
 
 | Command | What it does |
 | --- | --- |
-| `push(item?)` | Adds a row at the end. |
-| `insert(index, item?)` | Adds a row before `index`. |
+| `push(item?)` | Appends a row to the end of the list. |
+| `insert(index, item?)` | Inserts a row before `index`. |
 | `remove(index)` | Removes the row at `index`. |
-| `move(from, to)` | Moves a row. |
-| `setValue(items)` | Replaces the whole list. |
+| `move(from, to)` | Moves a row from one position to another. |
+| `setValue(items)` | Replaces the entire array. |
 
-With no `item`, `push` and `insert` add an empty row built from the schema,
-or `undefined` when the form has none.
+If you omit `item` on `push()` or `insert()`, the store builds an empty row from your schema (when a schema plugin is installed) or uses `undefined`.
 
-## Keys
+## Stable row keys
 
-Each row gets a key when it is added. The key stays with the row through
-moves and removes, and so does its handle: `task` is the same object for
-that row for the life of the form, and `task.key` is its key. `Items`
-uses the key for the list key, so an input keeps its focus and its text
-while its row moves. The current keys, in order, are the array snapshot's
-`keys`, and `tasks.item(key)` returns a row's handle.
+Every row gets a stable key when it's created, and both `task.key` and the `task` handle itself stay identical for the lifetime of that row—even as it moves around the list. `<Items>` uses `task.key` automatically so inputs keep their focus and DOM state across reorders. You can inspect the current keys via the array snapshot's `keys`, or look up a row handle with `tasks.item(key)`.
 
 <Only framework="react">
 
-For a list you lay out yourself, `useItems(handle)` returns the row handles
-in order and re-renders only when the keys change. Use `task.key` as the
-React key.
+Need custom layout control around the list? Call `useItems(handle)` to get the ordered array of row handles (re-rendering only when keys change), and use `task.key` as your React `key`.
 
 </Only>
 
 <Only framework="solid">
 
-For a list you lay out yourself, `createItems(handle)` returns an accessor
-of the row handles in order, which changes only when the keys do. Pass it to
-`<For each={items()}>`.
+Need custom layout control around the list? Call `createItems(handle)` to get an accessor of row handles (updating only when keys change), and pass it to `<For each={items()}>`.
 
 </Only>
 
-## Without arrays()
+## Arrays without the `arrays()` plugin
 
-A form without `arrays()` can still hold an array and replace it whole with
-`setValue`, as a value the user doesn't edit row by row. Rendering its rows
-isn't supported, and the types reject `Items`, `useItems` and
-`createItems` for it.
+You don't need `arrays()` just to hold an array in form state—for example, a multi-select or tag list replaced wholesale via `setValue`. You just can't render individual rows with `Items` or call row-level commands (untyped calls throw [`arrays:missing`](/errors#core:arrays:missing) in development and no-op in production).
 
-Code without types that calls a command throws
-[`arrays:missing`](/errors#core:arrays:missing) in development, and the
-commands do nothing in production.
+Under the hood, without `arrays()`, keys are strictly positional (`k0`, `k1`, ...). That means state like `touched` belongs to the slot rather than the item: replacing `["a", "b", "c"]` with `["a", "b"]` and then `["a", "b", "d"]` reuses slot `k2` along with its old `touched` state. With `arrays()`, removed items stay gone and `"d"` gets a brand-new key and fresh state.
 
-Inside the store, each row's key is then its position: `k0`, `k1`, and so
-on. The key and the row's state, such as touched, belong to the position,
-not to the item in it. Write `["a", "b"]` over `["a", "b", "c"]` and the
-third row goes away. Write `["a", "b", "d"]` after that and the third row
-comes back with `"d"` in it, under its old key, still touched if it was.
-With `arrays()` the old third row stays gone, and `"d"` gets a new key and
-fresh state.
+## Rendering list-level errors
 
-## Errors on the list
-
-A rule about the list as a whole, such as "add at least one task", puts its
-error on the array field, not on a row. Render it next to the rows:
+Validation rules that apply to the whole list (like *"Add at least one task"*) attach their errors to the array field itself rather than to any row. Subscribe to the array handle to display them next to the list:
 
 ```tsx framework=react
 const errors = useField(tasks, (snapshot) => snapshot.shownErrors);
 ```
 
 ```tsx framework=solid
-const list = createField(tasks); // list.shownErrors
+const list = createField(tasks); // read list.shownErrors
 ```
 
-## Reusable lists
+## Sharing list components
 
-A list component shared by many forms is generic in its item. See
-[Reusable lists](../plugin-composition/lists).
+If you want one reusable list component that works across different forms with different item shapes, see [Reusable lists](../plugin-composition/lists).
