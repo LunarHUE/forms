@@ -46,4 +46,29 @@ It needs two repository secrets:
 
 Create the project once as a Direct Upload project, with `main` as its production branch: `bunx wrangler pages project create lunarhue-forms-docs --production-branch=main`. Then point `forms.lunarhue.dev` at it under the project's Custom domains.
 
+Both deploy workflows run `wrangler pages deploy dist` from this folder, so Wrangler reads `wrangler.jsonc` and bundles `functions/` with the upload.
+
 `build.format: "file"` writes `errors.html`, `react/install.html` and so on. Pages serves `errors.html` at `/errors` without a redirect and redirects `/errors.html` to `/errors`, so the extensionless URLs the site links to need no `_redirects` or `_headers` file. `404.html` at the root is Pages' not-found page.
+
+## Analytics
+
+Two sources, neither with cookies:
+
+- Cloudflare Web Analytics gives page timings and a second count of visits. Its beacon loads only when the build has `CF_WEB_ANALYTICS_TOKEN`, which production and `next` get from repository secrets. Local builds, the e2e tests and previews leave it out.
+- Our own counts go to the Workers Analytics Engine dataset `lunarhue_forms_docs`, bound as `DOCS_ANALYTICS` in `wrangler.jsonc`. `src/lib/analytics.ts` posts each pageview to `/_/t` (`functions/_/t.ts`), the first one with the referrer's origin. `functions/_middleware.ts` records each successful GET of a Markdown copy or llms file, with a coarse name for the client (`claude`, `openai`, `browser-copy` for the copy button, and so on). `functions/_analytics.ts` documents the columns.
+
+Only `forms.lunarhue.dev` and `next.forms.lunarhue.dev` record anything. Requests from `localhost`, previews, the release candidate and the smoke test (user agent `forms-docs-smoke`) are skipped. No IP address or full user agent is stored. `public/_routes.json` runs Functions only for `/_/t`, the llms files and the framework pages, so `/_astro`, Pagefind and the comparison apps never invoke one. Pages allows only trailing `*` wildcards there, which is why the `.md` copies are caught by `/react/*` and `/solid/*`; a new framework needs its own line.
+
+Setup, once:
+
+1. Create the dataset by deploying: Analytics Engine makes it on the first write.
+2. In Cloudflare Web Analytics, add a site for each hostname and save the tokens as the repository secrets `CF_WEB_ANALYTICS_TOKEN` (production) and `CF_WEB_ANALYTICS_TOKEN_NEXT` (`next`). Without them the build skips the beacon.
+3. The deploy token needs no new permission. Bindings in `wrangler.jsonc` apply on each deploy and replace those set in the dashboard.
+
+For a report, make a token with Account > Account Analytics > Read and run:
+
+```sh
+CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... bun run analytics --days 30 --channel release
+```
+
+`--channel` takes `release`, `next` or `all`; `--days` takes 1 to 90 (7 by default). It prints daily pageviews and agent fetches, top pages, frameworks, referrers, countries, 404s and the agent files with their clients. Every count sums `_sample_interval`, since Analytics Engine samples busy datasets.

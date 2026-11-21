@@ -55,6 +55,7 @@ export default defineConfig({
     define: {
       "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel),
       "import.meta.env.DOCS_URL": JSON.stringify(process.env["DOCS_URL"] ?? ""),
+      "import.meta.env.CF_WEB_ANALYTICS_TOKEN": JSON.stringify(process.env["CF_WEB_ANALYTICS_TOKEN"] ?? ""),
     },
     // The devtools panel builds from source here, its stylesheet included.
     plugins: [tailwindcss(), panelCss()],

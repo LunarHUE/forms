@@ -46,3 +46,11 @@ export const DEPLOY_URL: string = import.meta.env.DOCS_URL || SITE_URL;
  * at that preview, even once pasted somewhere else.
  */
 export const deployUrl = (path: string): string => new URL(path, DEPLOY_URL).href;
+
+/**
+ * The Cloudflare Web Analytics site token, or "" to leave the beacon out.
+ * docs-production.yml and docs-deploy.yml set CF_WEB_ANALYTICS_TOKEN for
+ * production and next only, so local builds, the e2e tests and previews load
+ * no beacon.
+ */
+export const CF_WEB_ANALYTICS_TOKEN: string = import.meta.env.CF_WEB_ANALYTICS_TOKEN ?? "";
