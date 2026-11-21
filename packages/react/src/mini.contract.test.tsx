@@ -377,8 +377,7 @@ describe.each(entries)("%s", (_name, entry, options) => {
   });
 });
 
-// Mini only for now. These join the contract above once the full entry's fix for #224 lands on main.
-describe.each(entries.filter(([, entry]) => entry === miniEntry))("%s: a refused submit", (_name, entry, options) => {
+describe.each(entries)("%s: a refused submit", (_name, entry, options) => {
   const forms = entry.createForms(options);
   const define = (onSubmit: (value: Search, ctx: mini.SubmitContext<Search>) => unknown) =>
     forms.define({ defaultValues: { q: "shoes", page: "1" }, validate: { fields: entry.fieldValidators<Search>({ q: required }) }, onSubmit });
@@ -422,6 +421,8 @@ describe.each(entries.filter(([, entry]) => entry === miniEntry))("%s: a refused
     act(() => {
       submitted = current().submit();
     });
+    // The full entry awaits validation before it calls onSubmit, and an error then would block the submit.
+    await act(() => vi.waitFor(() => expect(pending).toHaveLength(1)));
     fireEvent.change(input("Query"), { target: { value: " " } });
     expect(errorsOf("Query")).toBe("Type something.");
     await act(async () => {
