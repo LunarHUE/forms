@@ -463,16 +463,77 @@ describe("user errors and submit", () => {
     expect(store.getSnapshot(["rows", keys(store)[0] ?? "", "title"]).errors).toEqual([]);
   });
 
-  it("keeps errors set inside onSubmit, as user errors, without changing the status", async () => {
+  it("ends invalid when onSubmit sets errors, and keeps them as user errors", async () => {
     const { store } = make({
       onSubmit: (_value, ctx) => {
         ctx.store.setErrors({ fields: { name: err("Taken") } });
         return "saved";
       },
     });
-    expect(await store.submit()).toEqual({ status: "succeeded", result: "saved" });
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(store.getFormSnapshot().submitting).toBe(false);
     expect(store.getSnapshot(["name"])).toMatchObject({ errors: [err("Taken")], userErrors: [err("Taken")], invalid: true });
     expect(store.getFormSnapshot().valid).toBe(true);
+    expect(store.firstInvalid()).toBe(store.root.at("name"));
+  });
+
+  it("ends invalid when onSubmit sets errors through a field handle, from a helper", async () => {
+    const refuseTitle = (target: FormStore<Value, FormError, Intent>) => {
+      const [first] = keys(target);
+      target.root.at("rows").item(first ?? "").at("title").setErrors(err("Taken"));
+    };
+    const { store } = make({
+      onSubmit: async (_value, ctx) => {
+        await Promise.resolve();
+        refuseTitle(ctx.store);
+      },
+    });
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(store.firstInvalid()).toBe(store.root.at("rows").item(keys(store)[0] ?? "").at("title"));
+  });
+
+  it("ends invalid when onSubmit sets only a form error", async () => {
+    const { store } = make({ onSubmit: (_value, ctx) => ctx.store.setErrors({ form: err("Nothing was saved.") }) });
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(store.getSnapshot([]).userErrors).toEqual([err("Nothing was saved.")]);
+  });
+
+  it("succeeds when onSubmit clears the errors it set before it returns", async () => {
+    const { store } = make({
+      onSubmit: (_value, ctx) => {
+        ctx.store.setErrors({ fields: { name: err("Taken") } });
+        ctx.store.setErrors({});
+        return "saved";
+      },
+    });
+    expect(await store.submit()).toEqual({ status: "succeeded", result: "saved" });
+  });
+
+  it("succeeds when an edit made while onSubmit ran fails validation", async () => {
+    const gate = deferred<string>();
+    const { store } = make({ timing: "input", validate: { fields: fieldValidators({ name: required }) }, onSubmit: () => gate.promise });
+    const done = store.submit();
+    await flush();
+    store.root.at("name").setValue("");
+    expect(store.getSnapshot(["name"]).errors).toEqual([err("Required")]);
+    gate.resolve("saved");
+    expect(await done).toEqual({ status: "succeeded", result: "saved" });
+  });
+
+  it("goes idle when a reset aborts an onSubmit that then sets errors", async () => {
+    const gate = deferred<void>();
+    const { store } = make({
+      onSubmit: async (_value, ctx) => {
+        await gate.promise;
+        ctx.store.setErrors({ fields: { name: err("Taken") } });
+      },
+    });
+    const done = store.submit();
+    await flush();
+    store.reset();
+    gate.resolve();
+    expect(await done).toEqual({ status: "idle" });
+    expect(store.getFormSnapshot().submission).toEqual({ status: "idle" });
   });
 
   it("keeps errors set from a failed onSubmit, beside the failure", async () => {

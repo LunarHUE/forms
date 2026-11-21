@@ -112,6 +112,42 @@ describe("baselineOnSubmit", () => {
     expect(statuses).toEqual(["invalid", "invalid", "failed", "failed"]);
   });
 
+  it("moves nothing when onSubmit refuses the save with setErrors", async () => {
+    const { store } = testStore({
+      defaultValues: profile(),
+      plugins: [arrays(), dirty(), baselineOnSubmit()],
+      onSubmit: (_value, { store: target }) => {
+        target.setErrors({ fields: { email: { message: "That email is taken." } } });
+        return null;
+      },
+    });
+    store.root.at("email").setValue("grace@example.com");
+    expect(await store.submit()).toEqual({ status: "invalid" });
+    expect(store.getSnapshot(["email"])).toMatchObject({ dirty: true, userErrors: [{ message: "That email is taken." }] });
+    store.reset();
+    expect(store.getSnapshot(["email"]).value).toBe("ada@example.com");
+  });
+
+  it("moves the baseline when an edit made while the save ran fails validation", async () => {
+    const saving = slowSave();
+    const { store } = testStore({
+      defaultValues: profile(),
+      plugins: [arrays(), dirty(), baselineOnSubmit()],
+      validate: { fields: fieldValidators({ name: (value) => (value === "" ? { message: "Required" } : undefined) }) },
+      onSubmit: saving.onSubmit,
+    });
+    store.root.at("email").setValue("grace@example.com");
+    const done = store.submit();
+    await saving.called;
+    store.root.at("name").setValue("");
+    store.root.at("name").handleBlur();
+    expect(store.getSnapshot(["name"]).errors).toEqual([{ message: "Required" }]);
+    saving.finish();
+    expect((await done).status).toBe("succeeded");
+    expect(store.getSnapshot(["email"]).dirty).toBe(false);
+    expect(store.getSnapshot(["name"]).dirty).toBe(true);
+  });
+
   it("moves nothing when a reset aborts the save", async () => {
     const saving = slowSave();
     const { store } = testStore({ defaultValues: profile(), plugins: [arrays(), dirty(), baselineOnSubmit()], onSubmit: saving.onSubmit });

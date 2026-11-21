@@ -92,8 +92,10 @@ export type FieldSnapshot<V, E = FormError, N extends string = never> = FieldSna
   (ShapeOf<V> extends "array" ? ArraySnapshotMembers : ShapeOf<V> extends "any" ? UnknownSnapshotMembers : unknown);
 
 /**
- * Where a form's submit stands. `failed` carries the value `onSubmit` threw,
- * untouched. Only `succeeded` carries a result.
+ * Where a form's submit stands. `invalid` is a submit that validation or a
+ * plugin stopped, or one whose `onSubmit` left errors from `setErrors`.
+ * `failed` carries the value `onSubmit` threw, untouched. Only `succeeded`
+ * carries a result.
  */
 export type Submission<I = undefined, R = unknown> =
   | { readonly status: "idle" }

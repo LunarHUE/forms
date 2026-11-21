@@ -131,7 +131,8 @@ export interface DefinitionOptions<V, O, E, I, R, P extends Plugins = []> {
    * the form has a schema. Otherwise it is a copy of the form value, which
    * `onSubmit` may change without touching the store. What it returns or
    * resolves to becomes `succeeded.result`. What it throws becomes
-   * `failed.error`, untouched.
+   * `failed.error`, untouched. Errors it leaves on the form with `setErrors`
+   * end the submit `invalid` instead, as a refused save.
    */
   readonly onSubmit?: (value: O, ctx: SubmitContext<V, E, I>) => R | Promise<R>;
 }
