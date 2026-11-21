@@ -14,13 +14,9 @@ const contact = forms.define({
 export default function ContactForm() {
   const form = useForm(contact, { id: "contact" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.PhoneField name="phone" label="Phone" />
-          <button type="submit">Save</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.PhoneField name="phone" label="Phone" />
+      <button type="submit">Save</button>
+    </form>
   );
 }

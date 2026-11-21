@@ -15,25 +15,21 @@ const profile = forms.define({
 export default function ProfileForm() {
   const form = createForm(profile, { id: "profile" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
-          <div>
-            <button type="submit" disabled={!form.state.dirty}>
-              Save
-            </button>
-            <button
-              type="button"
-              disabled={!form.state.dirty}
-              onClick={() => form.root.reset()}
-            >
-              Discard
-            </button>
-          </div>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="name" label="Name" />
+      <form.TextField name="email" label="Email" />
+      <div>
+        <button type="submit" disabled={!form.state.dirty}>
+          Save
+        </button>
+        <button
+          type="button"
+          disabled={!form.state.dirty}
+          onClick={() => form.root.reset()}
+        >
+          Discard
+        </button>
+      </div>
+    </form>
   );
 }

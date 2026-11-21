@@ -13,33 +13,29 @@ const note = forms.define({
 export default function NoteForm() {
   const form = useForm(note, { id: "note" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="title" label="Title" />
-          <form.TextField name="body" label="Body" />
-          <form.State select={(state) => history.formMeta(state)}>
-            {(meta) => (
-              <div>
-                <button
-                  type="button"
-                  disabled={!meta.canUndo}
-                  onClick={() => form.plugins.history.undo()}
-                >
-                  Undo
-                </button>
-                <button
-                  type="button"
-                  disabled={!meta.canRedo}
-                  onClick={() => form.plugins.history.redo()}
-                >
-                  Redo
-                </button>
-              </div>
-            )}
-          </form.State>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="title" label="Title" />
+      <form.TextField name="body" label="Body" />
+      <form.State select={(state) => history.formMeta(state)}>
+        {(meta) => (
+          <div>
+            <button
+              type="button"
+              disabled={!meta.canUndo}
+              onClick={() => form.plugins.history.undo()}
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              disabled={!meta.canRedo}
+              onClick={() => form.plugins.history.redo()}
+            >
+              Redo
+            </button>
+          </div>
+        )}
+      </form.State>
+    </form>
   );
 }

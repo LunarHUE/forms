@@ -39,18 +39,14 @@ export default function SettingsForm() {
     ],
   });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <Greeting />
-          <form.TextField name="displayName" label="Display name" />
-          <form.TextField name="timezone" label="Time zone" />
-          <button type="button" onClick={loadSaved}>
-            Load saved
-          </button>
-          <button type="submit">Save</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <Greeting />
+      <form.TextField name="displayName" label="Display name" />
+      <form.TextField name="timezone" label="Time zone" />
+      <button type="button" onClick={loadSaved}>
+        Load saved
+      </button>
+      <button type="submit">Save</button>
+    </form>
   );
 }

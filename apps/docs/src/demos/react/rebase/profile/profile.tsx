@@ -25,16 +25,12 @@ export default function ProfileForm() {
   };
 
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
-          <button type="button" onClick={() => void refresh()}>
-            Refresh
-          </button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="name" label="Name" />
+      <form.TextField name="email" label="Email" />
+      <button type="button" onClick={() => void refresh()}>
+        Refresh
+      </button>
+    </form>
   );
 }

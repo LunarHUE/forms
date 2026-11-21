@@ -23,37 +23,33 @@ const signUp = forms.define({
 export default function SignUpForm() {
   const form = useForm(signUp, { id: "sign-up" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="username">{(field) => <TextInput field={field} label="Username" />}</form.Field>
-          <form.Field name="password">
-            {(field) => <TextInput field={field} label="Password" type="password" />}
-          </form.Field>
-          <form.Field name="confirm">
-            {(field) => <TextInput field={field} label="Repeat the password" type="password" />}
-          </form.Field>
-          {/* A validator from the component, added while it is mounted. */}
-          <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
-            {(field) => (
-              <div>
-                <label>
-                  <input {...checkboxProps(field)} />I accept the terms
-                </label>
-                <ul id={field.errorId}>
-                  {field.shownErrors.map((error) => (
-                    <li key={error.message}>{error.message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </form.Field>
-          <button type="submit">Sign up</button>
-          <form.State select={(state) => state.submission}>
-            {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
-          </form.State>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="username">{(field) => <TextInput field={field} label="Username" />}</form.Field>
+      <form.Field name="password">
+        {(field) => <TextInput field={field} label="Password" type="password" />}
+      </form.Field>
+      <form.Field name="confirm">
+        {(field) => <TextInput field={field} label="Repeat the password" type="password" />}
+      </form.Field>
+      {/* A validator from the component, added while it is mounted. */}
+      <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
+        {(field) => (
+          <div>
+            <label>
+              <input {...checkboxProps(field)} />I accept the terms
+            </label>
+            <ul id={field.errorId}>
+              {field.shownErrors.map((error) => (
+                <li key={error.message}>{error.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </form.Field>
+      <button type="submit">Sign up</button>
+      <form.State select={(state) => state.submission}>
+        {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
+      </form.State>
+    </form>
   );
 }

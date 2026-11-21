@@ -40,23 +40,19 @@ const account = forms.define({
 export default function UsernameForm() {
   const form = useForm(account, { id: "username" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="username">
-            {(field) => (
-              <>
-                <TextInput field={field} label="Username" />
-                <p role="status">{field.validating ? "Checking..." : null}</p>
-              </>
-            )}
-          </form.Field>
-          <button type="submit">Claim</button>
-          <form.State select={(state) => state.submission}>
-            {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
-          </form.State>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="username">
+        {(field) => (
+          <>
+            <TextInput field={field} label="Username" />
+            <p role="status">{field.validating ? "Checking..." : null}</p>
+          </>
+        )}
+      </form.Field>
+      <button type="submit">Claim</button>
+      <form.State select={(state) => state.submission}>
+        {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
+      </form.State>
+    </form>
   );
 }

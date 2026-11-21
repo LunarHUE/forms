@@ -20,16 +20,12 @@ const order = forms.define(
 export default function DeliveryForm() {
   const form = createForm(order, { id: "delivery" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Checkbox name="pickup" label="I'll pick it up" />
-          <form.TextField name="street" label="Street" />
-          <form.Checkbox name="gift" label="It's a gift" />
-          <form.TextField name="message" label="Gift message" />
-          <button type="submit">Order</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Checkbox name="pickup" label="I'll pick it up" />
+      <form.TextField name="street" label="Street" />
+      <form.Checkbox name="gift" label="It's a gift" />
+      <form.TextField name="message" label="Gift message" />
+      <button type="submit">Order</button>
+    </form>
   );
 }

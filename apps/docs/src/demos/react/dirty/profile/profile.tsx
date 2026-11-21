@@ -15,29 +15,25 @@ const profile = forms.define({
 export default function ProfileForm() {
   const form = useForm(profile, { id: "profile" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
-          <form.State select={(state) => state.dirty}>
-            {(changed) => (
-              <div>
-                <button type="submit" disabled={!changed}>
-                  Save
-                </button>
-                <button
-                  type="button"
-                  disabled={!changed}
-                  onClick={() => form.root.reset()}
-                >
-                  Discard
-                </button>
-              </div>
-            )}
-          </form.State>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="name" label="Name" />
+      <form.TextField name="email" label="Email" />
+      <form.State select={(state) => state.dirty}>
+        {(changed) => (
+          <div>
+            <button type="submit" disabled={!changed}>
+              Save
+            </button>
+            <button
+              type="button"
+              disabled={!changed}
+              onClick={() => form.root.reset()}
+            >
+              Discard
+            </button>
+          </div>
+        )}
+      </form.State>
+    </form>
   );
 }

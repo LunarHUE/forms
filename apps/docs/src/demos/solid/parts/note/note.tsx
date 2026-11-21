@@ -16,13 +16,9 @@ const note = forms.define({
 export default function NoteForm() {
   const form = createForm(note, { id: "note" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.ShortNote name="headline" label="Headline (20 at most)" />
-          <form.NoteInput name="body" label="Body" />
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.ShortNote name="headline" label="Headline (20 at most)" />
+      <form.NoteInput name="body" label="Body" />
+    </form>
   );
 }
