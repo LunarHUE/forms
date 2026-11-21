@@ -131,8 +131,14 @@ Each entry point has a limit in its package's `size-limit` list, and
 
 `bun run size:forms` measures whole forms instead: the fixtures in
 `scripts/fixtures`, built from source with Vite in production and in
-development. It prints a table and has no limits. Paste the table in a pull
-request that changes what a form ships.
+development. It prints a table and has no limits.
+
+You don't paste size tables into a pull request. The size report workflow
+measures both checks on your branch and on its merge base, then posts one
+comment with what moved and edits it on each push. A pull request from a fork
+gets the same report in the workflow's job summary instead, since its token
+can't comment. The report lists raised limits, but the reason for each still
+goes in the description.
 
 ## Code style
 
