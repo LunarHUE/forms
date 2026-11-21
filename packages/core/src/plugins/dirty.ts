@@ -1,8 +1,6 @@
 import type { Plugin } from "../plugin.js";
 import { createDirty } from "../store/dirty.js";
 
-export { baselineOnSubmit } from "./baseline-on-submit.js";
-
 const plugin: Plugin<undefined, "dirty"> = { name: "dirty", "~dirty": createDirty };
 
 /**
