@@ -35,6 +35,31 @@ first blur. Both return a validator, so they nest, and they work in a
 `show: "always"` lets the answer appear while the user is still typing. See
 [Showing errors](./validation#showing-errors).
 
+## Cheap checks first
+
+A name that is too short doesn't need the server. `pipe(...checks)` runs
+checks one after another and stops at the first error:
+
+```ts
+username: pipe(
+  (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+  (name) => (/^[a-z0-9_]+$/i.test(name) ? undefined : { message: "Use letters, digits and underscores." }),
+  debounced(async (name, { signal }) => ((await isTaken(name, signal)) ? { message: "That name is taken." } : undefined), 400),
+),
+```
+
+The two format rules answer as the user types. While one fails, the pipe
+stays sync: the debounced check never starts, so the field doesn't wait and
+`validating` stays false. Only a well-formed name waits for the pause and goes
+to the server.
+
+A check passes when it returns `undefined`, `null`, an empty list, an
+`ErrorMap` with no errors or a schema result with no issues. The checks can be
+functions, Standard Schemas or wrapped checks, mixed in any order, and a
+schema's issues still go through `mapError`. Put `validateOn` around the whole
+pipe to set its timing. A check wrapped in `recheckOnSubmit` makes the whole
+pipe run again on submit.
+
 ## Newer runs win
 
 When the user types again, the older run's `signal` aborts and its result is
@@ -59,7 +84,8 @@ state's `validating` while any does. Show it next to the input:
 
 ## On submit
 
-A submit skips the debounce. It waits for a check that is still running and
+A submit skips the debounce, in a `pipe` too, even when the pipe hasn't
+reached the debounced check yet. It waits for a check that is still running and
 goes on only if it passed. A check whose result is still current doesn't run
 again. Wrap the check in `recheckOnSubmit(check)` to run it on every submit
 anyway, as for a check that can go stale:

@@ -28,8 +28,9 @@ Email, username, password, confirmation and a terms checkbox. A field shows
 its errors after its first blur, then after every input. The confirmation is
 checked against the password, and changing the password checks it again.
 
-The username goes to the server after a 400 ms pause in typing, and a newer
-check aborts the older request. Try `ada` or `admin`. The server can also
+The username's length and format rules answer as you type. Only a
+well-formed name goes to the server, after a 400 ms pause in typing, and a
+newer check aborts the older request. Try `ada` or `admin`. The server can also
 refuse the email: `taken@example.com` is in use, and its message stays on the
 field until you edit it.
 
@@ -37,7 +38,9 @@ field until you edit it.
 
 Our side uses the core package only. The field checks sit in
 `validate.fields`, the cross-field check in `validate.form`, and the server's
-refusal goes on the fields with `setErrors`. Errors following blur, then input,
+refusal goes on the fields with `setErrors`. The username's rules are a
+`pipe`: two sync checks, then the server check in `debounced`. A failing rule
+stops the pipe, so the server check never starts. Errors following blur, then input,
 is the default, so neither form says when to validate.
 
 TanStack's side uses `createFormHook` for its field components, a validator
