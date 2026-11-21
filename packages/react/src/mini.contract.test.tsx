@@ -41,6 +41,20 @@ interface Search {
 type SearchForm = mini.FormInstance<Search>;
 
 const required = (value: string) => (value.trim() ? undefined : { message: "Type something." });
+const digits = (value: string) => (/^\d+$/.test(value) ? undefined : { message: "A number." });
+
+/** A schema with one cross-field issue: a page past the first needs a query. */
+const paged: mini.StandardSchemaV1<Search> = {
+  "~standard": {
+    version: 1,
+    vendor: "contract",
+    validate: (value) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const { q, page } = value as Search;
+      return q || page === "1" ? { value: { q, page } } : { issues: [{ message: "Pick a query first.", path: ["page"] }] };
+    },
+  },
+};
 
 /** Holds the form the last render made, for commands and reads from the test. */
 const holder: { form?: SearchForm } = {};
@@ -208,6 +222,46 @@ describe.each(entries)("%s", (_name, entry, options) => {
     expect(errorsOf("Page")).toBe("");
     await act(() => current().submit());
     expect(onSubmit).toHaveBeenCalledWith({ q: "shoes", page: "2" }, expect.anything());
+  });
+
+  it("rechecks a schema's cross-field issue on a touched field when another field changes", () => {
+    mount(entry, forms.define({ schema: paged, defaultValues: { q: "shoes", page: "1" } }));
+    const { store } = current();
+    fireEvent.blur(input("Query"));
+    fireEvent.change(input("Page"), { target: { value: "2" } });
+    fireEvent.blur(input("Page"));
+    expect(errorsOf("Page")).toBe("");
+    fireEvent.change(input("Query"), { target: { value: "" } });
+    expect(errorsOf("Page")).toBe("Pick a query first.");
+    expect(store.getFormSnapshot().valid).toBe(false);
+    fireEvent.change(input("Query"), { target: { value: "hats" } });
+    expect(errorsOf("Page")).toBe("");
+    expect(handleOf("page").peek()).toMatchObject({ errors: [], invalid: false });
+    expect(store.getFormSnapshot().valid).toBe(true);
+  });
+
+  it("keeps other fields' validator errors when the schema runs for one field", async () => {
+    mount(entry, forms.define({ schema: paged, defaultValues: { q: "", page: "1" }, validate: { fields: entry.fieldValidators<Search>({ q: required, page: digits }) } }));
+    const { store } = current();
+    fireEvent.blur(input("Query"));
+    fireEvent.blur(input("Page"));
+    expect(errorsOf("Query")).toBe("Type something.");
+    fireEvent.change(input("Page"), { target: { value: "2" } });
+    expect(errorsOf("Page")).toBe("Pick a query first.");
+    expect(errorsOf("Query")).toBe("Type something.");
+    fireEvent.change(input("Query"), { target: { value: "shoes" } });
+    expect(errorsOf("Query")).toBe("");
+    expect(errorsOf("Page")).toBe("");
+    expect(store.getFormSnapshot().valid).toBe(true);
+    act(() => store.reset());
+    await act(() => current().submit());
+    fireEvent.change(input("Page"), { target: { value: "3" } });
+    expect(errorsOf("Query")).toBe("Type something.");
+    expect(handleOf("q").peek()).toMatchObject({ errors: [{ message: "Type something." }], invalid: true });
+    expect(errorsOf("Page")).toBe("Pick a query first.");
+    // The schema's issues come before a field validator's errors.
+    fireEvent.change(input("Page"), { target: { value: "x" } });
+    expect(errorsOf("Page")).toBe("Pick a query first.,A number.");
   });
 
   it("runs one submit at a time and ends succeeded or failed", async () => {
