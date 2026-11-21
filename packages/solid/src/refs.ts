@@ -23,6 +23,17 @@ export function elementsOf(handle: object): HTMLElement[] {
 }
 
 /**
+ * True when the focused element is an element registered for `handle` or
+ * sits inside one. An element that left the document can't contain it.
+ */
+export function hasFocus(handle: object): boolean {
+  const active = typeof document === "undefined" ? null : document.activeElement;
+  if (active === null) return false;
+  for (const element of registry.get(handle) ?? []) if (element.contains(active)) return true;
+  return false;
+}
+
+/**
  * Returns a ref callback that registers each element it gets as a focus
  * target of `handle`. Every element it registered is removed when the
  * current owner is disposed. Ref callbacks run with no owner, so the cleanup

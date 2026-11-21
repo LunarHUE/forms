@@ -1,0 +1,200 @@
+---
+title: Forms that stay mounted
+description: Switch records, validate against props, and submit with the latest callbacks.
+section: basics
+order: 7
+navTitle: Long-lived forms
+---
+
+A form often outlives the props it was made with: a detail pane that
+switches between customers, or a parent that passes a new limit or a new
+save callback.
+
+<Only framework="react">
+
+`useForm` reads its arguments on the first render only. A later render with
+a different record, or a different callback in the definition's input,
+changes nothing. The sections below cover what to do for each.
+
+## Switching records
+
+Give the form's component a `key` per record. A new key mounts a new
+component, and with it a new form whose default values are the new record:
+
+```tsx
+const customerForm = forms.define((saved: Customer) => ({
+  defaultValues: saved,
+  onSubmit: (value) => customers.save(value),
+}));
+
+function CustomerPane({ customer }: { readonly customer: Customer }) {
+  return <CustomerForm key={customer.id} saved={customer} />;
+}
+
+function CustomerForm({ saved }: { readonly saved: Customer }) {
+  const form = useForm(customerForm, saved);
+  // ...
+}
+```
+
+The old record's unsaved edits go with the old form. When a fresher copy of
+the same record arrives, keep the key and [rebase](../plugins/rebase) onto
+the copy, so the user's edits survive.
+
+## Validating against props
+
+A check that reads a prop can't go in the definition, which is made once,
+outside the component. Add it from the component. Both `useValidator` and
+the `validate` prop call the latest function you gave them, so the check
+sees the prop's current value each time it runs:
+
+```tsx
+function TransferForm({ balance }: { readonly balance: number }) {
+  const form = useForm(transferForm);
+  useValidator(form.root.at("amount"), (amount) =>
+    amount > balance ? { message: "That's more than the balance." } : undefined,
+  );
+  // ...
+}
+```
+
+Which handle to pass decides how long the check lives:
+
+- The `validate` prop on `form.Field`, or `useValidator` on a field handle in
+  the field's component, adds the check while that field renders. A field
+  on a hidden step isn't checked, so a submit can pass without it.
+- `useValidator(form.root, check)` in the form's component adds it for as
+  long as the form is mounted. `check` gets the whole value, so it can
+  compare fields with each other and with props. Its errors land on the
+  root, so render the root's errors.
+
+A prop change alone doesn't run a validator. If the error has to update the
+moment the prop does, run the field's validators from an effect:
+
+```tsx
+const amount = form.root.at("amount");
+useEffect(() => {
+  void amount.validate();
+}, [amount, balance]);
+```
+
+## Callbacks from props on submit
+
+`onSubmit` sits in the definition. With the function form of `define`, it
+can read a callback from the input, but `useForm` reads that input once, so
+the callback stays the one from the first render.
+
+When the work after a save belongs to the component, await the submit there
+instead. A submit handler runs with the current props:
+
+```tsx
+async function save(event: FormEvent) {
+  event.preventDefault();
+  const submission = await form.submit();
+  if (submission.status === "succeeded") onSaved(submission.result);
+}
+
+<form {...form.formProps} onSubmit={(event) => void save(event)}>
+```
+
+When `onSubmit` itself needs the prop, such as a `save` function the parent
+passes, hand the definition a stable function that calls the latest one
+through a ref:
+
+```tsx
+const customerForm = forms.define((input: { saved: Customer; save: (value: Customer) => Promise<void> }) => ({
+  defaultValues: input.saved,
+  onSubmit: (value) => input.save(value),
+}));
+
+function CustomerForm({ saved, onSave }: CustomerFormProps) {
+  const latest = useRef(onSave);
+  useEffect(() => {
+    latest.current = onSave;
+  });
+  const form = useForm(customerForm, { saved, save: (value) => latest.current(value) });
+  // ...
+}
+```
+
+React 19.2's `useEffectEvent` reads the latest props the same way, but React
+only allows calling its function from inside effects. A submit isn't one, so
+use the ref.
+
+</Only>
+
+<Only framework="solid">
+
+`createForm` reads its arguments once, when it runs. Props in Solid are
+getters, though, so a function that reads `props.something` when it runs
+sees the current value. That covers validators and callbacks. Only
+switching records needs a new form.
+
+## Switching records
+
+Make a new form per record by creating the form's component under a keyed
+`<Show>`. It runs its children again each time `when` becomes a different
+object:
+
+```tsx
+const customerForm = forms.define((saved: Customer) => ({
+  defaultValues: saved,
+  onSubmit: (value) => customers.save(value),
+}));
+
+function CustomerPane(props: { readonly customer: Customer }) {
+  return (
+    <Show when={props.customer} keyed>
+      {(customer) => <CustomerForm saved={customer} />}
+    </Show>
+  );
+}
+```
+
+The old record's unsaved edits go with the old form. A refetch of the same
+record is a new object too, so for a fresher copy, keep the object passed to
+`when` and [rebase](../plugins/rebase) the form onto the copy instead.
+
+## Validating against props
+
+A check that reads a prop can't go in the definition, which is made once,
+outside the component. Add it from the component, where it reads the prop
+each time it runs:
+
+```tsx
+function TransferForm(props: { readonly balance: number }) {
+  const form = createForm(transferForm);
+  createValidator(form.root.at("amount"), (amount) =>
+    amount > props.balance ? { message: "That's more than the balance." } : undefined,
+  );
+  // ...
+}
+```
+
+`createValidator` on a field handle in the field's component, or the
+`validate` prop, adds the check while that field renders. On `form.root` in
+the form's component, it stays as long as the form, gets the whole value,
+and puts its errors on the root.
+
+A prop change alone doesn't run a validator. To update the error when the
+prop changes, call `form.root.at("amount").validate()` from an effect that
+reads `props.balance`.
+
+## Callbacks from props on submit
+
+Give the definition a function that reads the prop when it runs, and it
+calls the parent's current callback:
+
+```tsx
+const customerForm = forms.define((input: { saved: Customer; save: (value: Customer) => Promise<void> }) => ({
+  defaultValues: input.saved,
+  onSubmit: (value) => input.save(value),
+}));
+
+function CustomerForm(props: CustomerFormProps) {
+  const form = createForm(customerForm, { saved: props.saved, save: (value) => props.onSave(value) });
+  // ...
+}
+```
+
+</Only>

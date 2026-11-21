@@ -56,7 +56,7 @@ export { checkboxProps, inputProps, selectProps, textareaProps } from "./input-p
 export { checkboxGroupProps, radioProps } from "./choice-props.js";
 export { numberPieces, numberProps, rangeProps } from "./number-props.js";
 export type { NumberPieces } from "./number-props.js";
-export { elementsOf, fieldOf } from "./lookup.js";
+export { elementsOf, fieldOf, isFocused } from "./lookup.js";
 export type { FieldPieces, TextSource } from "./pieces.js";
 export type {
   BaseInputProps,
