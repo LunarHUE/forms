@@ -11,5 +11,8 @@ function formatPhone(value: string) {
 
 // Two field types from one component. Each part travels with its type, so
 // any form that registers them gets the masks.
-export const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
+export const PhoneField = defineField(
+  TextInput,
+  masked({ clean: (value, input) => digits(value, input).slice(0, 10), display: formatPhone }),
+);
 export const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));

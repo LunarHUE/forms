@@ -16,7 +16,10 @@ The `masked(...)` part handles both cleaning and formatting, with no plugin requ
 Import `masked`, `digits`, and `upper` from your adapter's `/text` entry (or `@lunarhue/forms-core/text`), attach `masked(...)` to a field type with `defineField`, and register it on `createForms`:
 
 ```ts title="PhoneField.tsx"
-export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
+export const PhoneField = defineField(
+  PhoneInput,
+  masked({ clean: (value, input) => digits(value, input).slice(0, 10), display: formatPhone }),
+);
 ```
 
 ```ts title="contact.tsx"

@@ -17,7 +17,10 @@ All three inputs in the demo below are built from the same `TextInput` component
 Pass your component followed by any number of parts to `defineField`, then register the resulting field types on `createForms`. Keeping them in a shared `fields.ts` module makes them easy to reuse across your app (`masked`, `digits`, and `upper` come from your adapter's `text` entry).
 
 ```ts title="fields.ts"
-export const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
+export const PhoneField = defineField(
+  TextInput,
+  masked({ clean: (value, input) => digits(value, input).slice(0, 10), display: formatPhone }),
+);
 export const CodeField = defineField(TextInput, masked({ clean: upper, display: (value) => value }));
 ```
 
