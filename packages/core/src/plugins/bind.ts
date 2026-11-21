@@ -1,5 +1,5 @@
 import type { Plugin, WriteRecord } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
+import { defineWith } from "../store/define.js";
 import { freeze } from "../store/freeze.js";
 import { rebaseTo, type Resolve } from "../store/rebase.js";
 
@@ -43,6 +43,63 @@ const edited: Resolve = (leaf) => (leaf.edited ? "keep" : "take");
 /** Before the first sync, so no value equals it. */
 const none = {};
 
+const plugin = /* @__PURE__ */ defineWith({
+  name: "bind",
+  // The store starts from the outside value, so the server renders it too.
+  initialValue: (_value, { get, initial }: BindOptions<unknown>) => (initial === "form" ? undefined : get()),
+  setup(ctx, options: BindOptions<unknown>) {
+    const { get, set, subscribe, incoming = "replace", initial = "outside" } = options;
+    const outside = initial === "outside";
+    const { store } = ctx;
+    const current = () => store.getSnapshot([]).value;
+    // The outside value and the form value as of the last sync.
+    let seen: unknown = outside ? get() : none;
+    let sent: unknown = outside ? current() : none;
+    // True while `set` runs, so the outside store's own notice is ignored.
+    let sending = false;
+
+    const take = (value: unknown) => {
+      seen = value;
+      ctx.write(() => {
+        if (incoming === "replace") store.root.setValue(() => value, { replace: true, edited: false });
+        else rebaseTo(ctx, [], value, incoming === "rebase" ? edited : incoming);
+        sent = current();
+      });
+    };
+
+    const send = (records: readonly WriteRecord[]) => {
+      const value = current();
+      if (value === sent) return;
+      sent = value;
+      sending = true;
+      try {
+        set(value, records);
+      } finally {
+        sending = false;
+      }
+      seen = get();
+    };
+
+    const listener = () => {
+      if (sending) return;
+      const value = get();
+      if (value !== seen) take(value);
+    };
+
+    return {
+      onWrite(records) {
+        const mine = records.filter((record) => typeof record.cause !== "object" || record.cause.plugin !== "bind");
+        if (mine.length > 0) send(freeze(mine));
+      },
+      onActive() {
+        if (seen === none) send(freeze([]));
+        else listener();
+        return subscribe(listener);
+      },
+    };
+  },
+});
+
 /**
  * Keeps the form value in step with a store the app owns. The form keeps its
  * own store, with errors, flags and everything else. Only the value is
@@ -55,62 +112,5 @@ const none = {};
  * catches up with it when listening starts. A form has one binding.
  */
 export function bind<T>(options: BindOptions<T>): BindPlugin<T> {
-  const { get, set, subscribe, incoming = "replace", initial = "outside" } = options;
-  const outside = initial === "outside";
-  return defineHooks({
-    name: "bind",
-    // The store starts from the outside value, so the server renders it too.
-    initial: () => (outside ? get() : undefined),
-    setup(ctx) {
-      const { store } = ctx;
-      const current = () => store.getSnapshot([]).value;
-      // The outside value and the form value as of the last sync.
-      let seen: unknown = outside ? get() : none;
-      let sent: unknown = outside ? current() : none;
-      // True while `set` runs, so the outside store's own notice is ignored.
-      let sending = false;
-
-      const take = (value: unknown) => {
-        seen = value;
-        ctx.write(() => {
-          if (incoming === "replace") store.root.setValue(() => value, { replace: true, edited: false });
-          else rebaseTo(ctx, [], value, incoming === "rebase" ? edited : incoming);
-          sent = current();
-        });
-      };
-
-      const send = (records: readonly WriteRecord[]) => {
-        const value = current();
-        if (value === sent) return;
-        sent = value;
-        sending = true;
-        try {
-          // The form's value type is the outside one: `BindPlugin` lets the adapters check it.
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          set(value as T, records);
-        } finally {
-          sending = false;
-        }
-        seen = get();
-      };
-
-      const listener = () => {
-        if (sending) return;
-        const value = get();
-        if (value !== seen) take(value);
-      };
-
-      return {
-        onWrite(records) {
-          const mine = records.filter((record) => typeof record.cause !== "object" || record.cause.plugin !== "bind");
-          if (mine.length > 0) send(freeze(mine));
-        },
-        onActive() {
-          if (seen === none) send(freeze([]));
-          else listener();
-          return subscribe(listener);
-        },
-      };
-    },
-  });
+  return plugin(options);
 }

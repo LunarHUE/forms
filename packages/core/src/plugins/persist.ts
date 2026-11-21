@@ -1,5 +1,5 @@
-import type { Plugin } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
+import type { PluginFactory } from "../plugin.js";
+import { defineWith } from "../store/define.js";
 import { createTiming } from "../store/timing.js";
 
 /** The part of `Storage` that `persist` uses. `localStorage` and `sessionStorage` fit. */
@@ -9,13 +9,23 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
+/** What `persist` takes: the storage key, or the key and the storage. */
+export interface PersistOptions {
+  /** The key the value is saved under. */
+  readonly key: string;
+  /** Where the value is saved. Defaults to `localStorage` where there is one. */
+  readonly storage?: StorageLike | undefined;
+}
+
 // Core has no DOM types, so this declares the one global it reads.
 declare const localStorage: StorageLike | undefined;
 
 /**
  * Saves the form value as JSON in `storage` under `key` once the page is
- * idle after a write, and writes a saved value back when the store first
- * gets a listener, as when a component mounts a field. The server never
+ * idle after a write, as `persist("draft")` or
+ * `persist({ key: "draft", storage: sessionStorage })`. It writes a saved
+ * value back when the store first gets a listener, as when a component
+ * mounts a field. The server never
  * listens, so its render and the render that hydrates show the defaults.
  * The restored value isn't a user edit, so its fields aren't marked edited.
  *
@@ -24,10 +34,11 @@ declare const localStorage: StorageLike | undefined;
  * blocked or full, never breaks the form, and a saved value that doesn't
  * parse is removed and the form starts from its defaults.
  */
-export function persist(key: string, storage?: StorageLike): Plugin<undefined, "persist"> {
-  return defineHooks({
+export const persist: PluginFactory<undefined, "persist", never, never, never, readonly [], string | PersistOptions> = /* @__PURE__ */ defineWith(
+  {
     name: "persist",
-    setup(ctx) {
+    setup(ctx, options: string | PersistOptions) {
+      const { key, storage } = typeof options === "string" ? { key: options, storage: undefined } : options;
       const { store } = ctx;
       let box: StorageLike | undefined;
       try {
@@ -69,5 +80,6 @@ export function persist(key: string, storage?: StorageLike): Plugin<undefined, "
         },
       };
     },
-  }, { "~timing": createTiming });
-}
+  },
+  { "~timing": createTiming },
+);

@@ -68,7 +68,7 @@ describe("bind", () => {
   it("starts with the outside value as value and baseline", () => {
     const box = outside<Profile>({ name: "Ada", email: "ada@x", tags: ["a"] });
     const seen: WriteRecord[] = [];
-    const spy = definePlugin({ name: "spy", setup: () => ({ onWrite: (records) => void seen.push(...records) }) });
+    const spy = definePlugin({ name: "spy", setup: () => ({ onWrite: (records) => void seen.push(...records) }) })();
     const store = profile.createStore(undefined, { plugins: [bind(box.options), spy] });
     expect(store.root.peek().value).toEqual({ name: "Ada", email: "ada@x", tags: ["a"] });
     expect(seen).toEqual([]);
@@ -105,7 +105,7 @@ describe("bind", () => {
   it("writes outside changes into the form and doesn't send them back", () => {
     const box = outside<Profile>({ ...defaults });
     const seen: WriteRecord[] = [];
-    const spy = definePlugin({ name: "spy", setup: () => ({ onWrite: (records) => void seen.push(...records) }) });
+    const spy = definePlugin({ name: "spy", setup: () => ({ onWrite: (records) => void seen.push(...records) }) })();
     const store = profile.createStore(undefined, { plugins: [bind(box.options), spy] });
     store.subscribeForm(() => {});
     seen.length = 0;

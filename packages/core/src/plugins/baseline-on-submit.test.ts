@@ -83,7 +83,7 @@ describe("baselineOnSubmit", () => {
   });
 
   it("moves nothing when the submit ends invalid, refused or failed", async () => {
-    const refusing = definePlugin({ name: "refusing", setup: () => ({ onSubmit: () => refuse }) });
+    const refusing = definePlugin({ name: "refusing", setup: () => ({ beforeSubmit: () => refuse }) })();
     const cases = [
       testStore({
         defaultValues: profile(),
@@ -281,7 +281,7 @@ describe("with other plugins", () => {
       defaultValues: profile(),
       plugins: [arrays(), 
         dirty(),
-        persist("profile", storage),
+        persist({ key: "profile", storage }),
         bind({
           get: () => outside,
           set: (value) => void (outside = value),

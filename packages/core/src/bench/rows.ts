@@ -41,7 +41,7 @@ const adapter: SchemaAdapter<StandardSchemaV1<Rows>> = {
   defaultValue: () => ({ rows: [] }),
   itemValue: () => undefined,
 };
-export const benchSchemas = definePlugin({ name: "bench", schema: adapter });
+export const benchSchemas = definePlugin({ name: "bench", schema: adapter })();
 
 // The old form ran its schema on every write, so this one validates on input.
 const Form = createFormsCore({ plugins: [benchSchemas], validate: "input" }).define((count: number) => ({

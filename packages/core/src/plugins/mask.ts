@@ -1,5 +1,5 @@
-import type { Part, Plugin, PluginContext } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
+import type { PluginFactory } from "../plugin.js";
+import { defineWith } from "../store/define.js";
 import { createParts } from "../store/parts.js";
 import { replaceText } from "./caret.js";
 
@@ -42,23 +42,23 @@ export interface MaskConfig {
  * With a `display`, the adapters' text inputs show the display text and
  * keep the caret in place.
  */
-export function mask(): Plugin<undefined, "mask"> {
-  return defineHooks({
+export const mask: PluginFactory<undefined, "mask", never, never, never, readonly [], void, MaskConfig> = /* @__PURE__ */ defineWith(
+  {
     name: "mask",
-    attach(_ctx: PluginContext, { clean, display }: MaskConfig) {
+    part(_ctx, { clean, display }: MaskConfig) {
       const run = (value: unknown, input: unknown) => (typeof value === "string" ? clean(value, input) : value);
       const text = (value: unknown) => (display ? display(typeof value === "string" ? value : "") : "");
       return {
-        initial: (value) => run(value, value),
         beforeWrite: (write) => (write.cause === "rebase" ? write.value : run(write.value, write.input)),
         ...(display && {
           display: text,
-          edit: (input, value, event) => replaceText(input, text(value), (typed) => run(typed, typed), event),
+          afterInput: (input, value, event) => replaceText(input, text(value), (typed) => run(typed, typed), event),
         }),
       };
     },
-  }, { "~parts": createParts });
-}
+  },
+  { "~parts": createParts },
+);
 
 /** A mask for a string field type, as `defineField(PhoneInput, masked({ clean: digits, display: formatPhone }))`. Needs `mask()`. */
-export const masked = (config: MaskConfig): Part<"mask", string> => ({ plugin: "mask", config });
+export const masked = (config: MaskConfig) => mask.part<string>(config);

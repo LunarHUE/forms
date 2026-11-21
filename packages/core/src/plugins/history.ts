@@ -1,7 +1,6 @@
 import type { AnyFieldHandle } from "../handle.js";
-import type { Plugin, PluginContext, WriteRecord } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
-import { reach } from "../store/handles.js";
+import type { PluginContext, PluginFactory, WriteRecord } from "../plugin.js";
+import { defineWith } from "../store/define.js";
 import { createTiming } from "../store/timing.js";
 
 /** The API of `history`, as `form.plugins.history`. */
@@ -14,7 +13,7 @@ export interface HistoryApi {
 
 /**
  * The meta `history` keeps on the form. Read it from the form snapshot with
- * the plugin's reader, as `undoHistory.formMeta(snapshot).canUndo`. Before
+ * the factory's reader, as `history.formMeta(snapshot).canUndo`. Before
  * the first step both flags are false.
  */
 export interface HistoryMeta {
@@ -37,19 +36,20 @@ const edits = new Set<WriteRecord["type"]>(["value", "insert", "remove", "move"]
  * form so an undo button can re-render.
  *
  * A step is one delivery of `deferred` records: everything written in one
- * task, such as one keystroke or one batch. It keeps the latest `limit`
- * steps. Its own writes, resets and rebases aren't recorded, and a reset
+ * task, such as one keystroke or one batch. `history(limit)` keeps the
+ * latest `limit` steps, 100 by default. Its own writes, resets and rebases aren't recorded, and a reset
  * clears both stacks. Array steps are replayed as array commands, so the
  * items that stay keep their keys and their per-field state.
  *
  * The meta changes in the same notification as an undo, a redo or a reset.
  * After an edit it changes a microtask later, when the step is recorded.
  */
-export function history(limit = 100): Plugin<HistoryApi, "history", never, HistoryMeta> {
-  return defineHooks({
+export const history: PluginFactory<HistoryApi, "history", never, HistoryMeta, never, readonly [], number | undefined> = /* @__PURE__ */ defineWith(
+  {
     name: "history",
     initialFormMeta: start,
-    setup(ctx: PluginContext<never, HistoryMeta>) {
+    setup(ctx: PluginContext<never, HistoryMeta>, limit?: number) {
+      const max = limit ?? 100;
       const { store } = ctx;
       const done: Step[] = [];
       const undone: Step[] = [];
@@ -78,7 +78,8 @@ export function history(limit = 100): Plugin<HistoryApi, "history", never, Histo
           for (const record of list) {
             // Array records come only from a store with arrays(), so its handles have the commands.
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            const field = reach(store, record.path) as AnyFieldHandle<unknown, "arrays">;
+            const field = store.fieldAt(record.path) as AnyFieldHandle<unknown, "arrays"> | undefined;
+            if (!field) continue;
             if (record.type === "value") field.setValue(back ? record.before : record.after, { replace: true });
             else if (record.type === "move") field.move(back ? record.to : record.from, back ? record.from : record.to);
             // Undoing an insert and redoing a remove both take the item out.
@@ -97,7 +98,7 @@ export function history(limit = 100): Plugin<HistoryApi, "history", never, Histo
           const mine = records.filter((record): record is Edit => record.cause === "user" && edits.has(record.type));
           if (mine.length === 0) return;
           done.push(mine);
-          if (done.length > limit) done.shift();
+          if (done.length > max) done.shift();
           undone.length = 0;
           show();
         },
@@ -112,5 +113,6 @@ export function history(limit = 100): Plugin<HistoryApi, "history", never, Histo
         },
       };
     },
-  }, { "~timing": createTiming });
-}
+  },
+  { "~timing": createTiming },
+);

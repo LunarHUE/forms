@@ -1,7 +1,6 @@
 import type { FieldPath, Path } from "../path.js";
-import type { Part, Plugin, PluginContext } from "../plugin.js";
-import { defineHooks } from "../store/define.js";
-import { reach } from "../store/handles.js";
+import type { MetaHolder, PartContext, PluginFactory } from "../plugin.js";
+import { defineWith } from "../store/define.js";
 import { createParts } from "../store/parts.js";
 
 /** What a rule decides for its field. A flag left out stays as it is. */
@@ -26,17 +25,12 @@ export type Rule<V> = (value: V) => RuleResult;
 /** What `ruled` takes: a rule for each field, keyed by the field's dotted name, as `name` props take it. */
 export type RuleFields<V> = { readonly [P in FieldPath<V>]?: Rule<V> };
 
-/** The `rules` factory, with the reader of its meta. */
-export interface Rules {
-  /** The rules plugin, for the form's plugins. */
-  (): Plugin<undefined, "rules", RulesMeta>;
-  /** Reads the `hidden` flag from a field snapshot or a field object, as `rules.meta(field).hidden`. */
-  readonly meta: Plugin<undefined, "rules", RulesMeta>["meta"];
-}
-
 // Only `rules` writes this slot.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const meta: Rules["meta"] = (source) => (source.meta?.["rules"] as RulesMeta | undefined) ?? shown;
+const meta = (source: MetaHolder): RulesMeta => (source.meta?.["rules"] as RulesMeta | undefined) ?? shown;
+
+/** What a `rules` part takes, with the value type erased. `ruled` types it. */
+type AnyRuleFields = { readonly [name: string]: Rule<never> | undefined };
 
 /**
  * The rules plugin. Put `rules()` in the form's plugins, and `ruled(...)`
@@ -52,32 +46,34 @@ const meta: Rules["meta"] = (source) => (source.meta?.["rules"] as RulesMeta | u
  * flags. Disabling an object, such as `"shipping"`, disables every field
  * below it.
  */
-export const rules: Rules = /* @__PURE__ */ Object.assign(
-  (): Plugin<undefined, "rules", RulesMeta> =>
-    defineHooks({
-      name: "rules",
-      initialMeta: shown,
-      attach(ctx: PluginContext<RulesMeta>, fields: Readonly<Record<string, Rule<unknown>>>) {
-        const { store, path } = ctx;
-        const list = Object.entries(fields).map(([name, rule]): [Path, Rule<unknown>] => [[...path, ...name.split(".")], rule]);
-        const apply = () => {
-          const value = store.getSnapshot(path).value;
-          for (const [at, rule] of list) {
-            const { disabled, hidden } = rule(value);
-            const snapshot = store.getSnapshot(at);
-            if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => reach(store, at).setDisabled(disabled));
-            if (hidden !== undefined && meta(snapshot).hidden !== hidden) ctx.setMeta(at, { hidden });
-          }
-        };
-        apply();
-        return {
-          onWrite(records) {
-            if (records.some((record) => record.type === "value" || record.type === "insert" || record.type === "remove")) apply();
-          },
-        };
-      },
-    }, { "~parts": createParts }),
-  { meta },
+export const rules: PluginFactory<undefined, "rules", RulesMeta, never, never, readonly [], void, AnyRuleFields> = /* @__PURE__ */ defineWith(
+  {
+    name: "rules",
+    initialMeta: shown,
+    part(ctx: PartContext<RulesMeta>, fields: AnyRuleFields) {
+      const { store, path } = ctx;
+      const list = Object.entries(fields).map(([name, rule]): [string, Path, Rule<never> | undefined] => [name, [...path, ...name.split(".")], rule]);
+      const apply = () => {
+        // A rule gets the value of the place its part fits, as `ruled` typed it.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const value = ctx.value() as never;
+        for (const [name, at, rule] of list) {
+          if (!rule) continue;
+          const { disabled, hidden } = rule(value);
+          const snapshot = store.getSnapshot(at);
+          if (disabled !== undefined && snapshot.disabled !== disabled) ctx.write(() => ctx.at(name).setDisabled(disabled));
+          if (hidden !== undefined && meta(snapshot).hidden !== hidden) ctx.setMeta(at, { hidden });
+        }
+      };
+      apply();
+      return {
+        onWrite(records) {
+          if (records.some((record) => record.type === "value" || record.type === "insert" || record.type === "remove")) apply();
+        },
+      };
+    },
+  },
+  { "~parts": createParts },
 );
 
 /**
@@ -86,4 +82,4 @@ export const rules: Rules = /* @__PURE__ */ Object.assign(
  * Each rule gets the value where the part attaches, typed from the
  * fieldset or the definition it goes on. Needs `rules()`.
  */
-export const ruled = <V>(fields: RuleFields<V>): Part<"rules", V> => ({ plugin: "rules", config: fields });
+export const ruled = <V>(fields: RuleFields<V>) => rules.part<V>(fields);

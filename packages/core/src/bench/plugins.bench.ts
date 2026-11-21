@@ -12,8 +12,8 @@ import { pluginRowsForm } from "./plugin-rows.js";
 // it is without the plugin mechanism. Run with
 // `bunx vitest bench --run packages/core/src/bench/plugins.bench.ts`.
 
-const noopBefore = (name: string) => definePlugin({ name, setup: () => ({ beforeWrite: (write) => write.value }) });
-const noopObserver = (name: string, when: When) => definePlugin({ name, setup: () => ({ when, onWrite: () => {} }) });
+const noopBefore = (name: string) => definePlugin({ name, setup: () => ({ beforeWrite: (write) => write.value }) })();
+const noopObserver = (name: string, when: When) => definePlugin({ name, setup: () => ({ when, onWrite: () => {} }) })();
 
 const memory = new Map<string, string>();
 const storage = {
@@ -35,7 +35,7 @@ const cases: readonly (readonly [label: string, plugins: Plugins, parts?: readon
   ],
   [
     "four shipped plugins",
-    [mask(), rules(), history(), persist("bench", storage)],
+    [mask(), rules(), history(), persist({ key: "bench", storage })],
     [
       { ...masked({ clean: upper }), path: `rows.${String(firstKey)}.name` },
       ruled<{ rows: { name: string }[] }>({ rows: (value) => ({ hidden: value.rows[0]?.name === "HIDE" }) }),

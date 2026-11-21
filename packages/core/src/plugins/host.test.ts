@@ -24,9 +24,9 @@ describe("the plugin host", () => {
 
   it("is made once per store with plugins", () => {
     vi.mocked(createPluginHost).mockClear();
-    const plugin = definePlugin({ name: "p", setup: () => ({}) });
+    const plugin = definePlugin({ name: "p", setup: () => ({}) })();
     const forms = createFormsCore({ plugins: [plugin] });
-    forms.define({ defaultValues: { name: "" }, plugins: [definePlugin({ name: "q", setup: () => ({}) })] }).createStore();
+    forms.define({ defaultValues: { name: "" }, plugins: [definePlugin({ name: "q", setup: () => ({}) })()] }).createStore();
     forms.define({ defaultValues: { name: "" } }).createStore();
     expect(createPluginHost).toHaveBeenCalledTimes(2);
   });
@@ -40,7 +40,7 @@ describe("the plugin host", () => {
           ctx.write(() => ctx.store.root.at("email").setValue("saved"));
         },
       }),
-    });
+    })();
     const store = createFormsCore()
       .define({ defaultValues: { name: "", email: "" }, plugins: [plugin], onSubmit: () => {} })
       .createStore();

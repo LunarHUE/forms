@@ -69,7 +69,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   const parts = given.parts ?? [];
   let initial: unknown = given.initial;
   // Each plugin can replace the starting value, so the last one that does wins.
-  for (const plugin of plugins) initial = plugin.initial?.(initial) ?? initial;
+  for (const plugin of plugins) initial = plugin.initialValue?.(initial) ?? initial;
   // A plugin's starting value is one the form's value type allows, as a write's is.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const options = { ...given, initial: initial as V };
@@ -89,7 +89,7 @@ export function createFormInternals<V, E = FormError, I = undefined, R = unknown
   });
   // Only a store with hook plugins gets a host. The plugins bring its code
   // with them, so core neither carries nor runs it for a store without.
-  const hooked = plugins.filter((plugin) => plugin.setup !== undefined || plugin.attach !== undefined);
+  const hooked = plugins.filter((plugin) => plugin.setup !== undefined || plugin.part !== undefined);
   const createHost = hooked[0]?.["~host"];
   const host = createHost?.(raw, plugins, options.onPluginError);
   // A part's plugin is missing. The types catch it, so production doesn't check again.

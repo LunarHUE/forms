@@ -1,9 +1,11 @@
-import type { AnyPlugin, Attachment, Part, PluginBaseline, PluginContext, PluginHooks, WriteCause, WriteRecord } from "../plugin.js";
+import type { AnyPlugin, AttachedPart, Part, PluginBaseline, PluginContext, WriteCause, WriteRecord } from "../plugin.js";
 import { problem } from "../problem.js";
 import type { Path } from "../path.js";
 import type { StoreCore } from "./core.js";
+import { displaySlot } from "./display.js";
 import { freeze } from "./freeze.js";
-import { refuse } from "./plugins.js";
+import { reach } from "./handles.js";
+import { type AnyHooks, refuse } from "./plugins.js";
 import { related, setAt, valueAt } from "./tree.js";
 
 // Core has no node types, so this declares the global the development check reads.
@@ -15,7 +17,7 @@ export interface Placed {
   readonly path: Path;
   /** The part, or undefined for setup's hooks. */
   readonly part: Part | undefined;
-  readonly hooks: PluginHooks<unknown>;
+  readonly hooks: AnyHooks;
 }
 
 /** What the host lends the parts code. */
@@ -29,7 +31,7 @@ export interface PartsHost<At extends Placed> {
   /** The installed plugins with hooks, by name. */
   readonly entries: ReadonlyMap<string, At["entry"]>;
   /** Adds the hooks `make` returns at `path`, at their place in hook order, and runs what they do when they arrive. */
-  add(entry: At["entry"], path: Path, part: Part, make: (ctx: PluginContext) => PluginHooks<unknown>): void;
+  add(entry: At["entry"], path: Path, part: Part, make: (ctx: PluginContext) => AnyHooks): void;
   /** Runs `fn` as a hook, then ends a batch whose writes leave no records. */
   quietly(fn: () => void): void;
   /** True while the store has listeners. */
@@ -41,7 +43,7 @@ export interface PartsHost<At extends Placed> {
 }
 
 /**
- * The parts code the host calls. Only plugins with `attach` bring it. Without
+ * The parts code the host calls. Only plugins with `part` bring it. Without
  * it every set of hooks is setup's, at the root, so the host needs none of this.
  */
 export interface PartsKit<At extends Placed> {
@@ -60,7 +62,7 @@ export interface PartsKit<At extends Placed> {
    * of the write at its path. Returns the write's new value, or `refuse`.
    */
   down(at: At, path: Path, input: unknown, value: unknown, was: unknown, cause: WriteCause): unknown;
-  /** Runs what new hooks of a part do when they arrive: `initial` and `display`. */
+  /** Runs what new hooks of a part do when they arrive: `beforeWrite` on the value there, and `display`. */
   arrive(at: At): void;
 }
 
@@ -83,15 +85,19 @@ export const createParts: CreateParts = (host) => {
   // Adds the hooks the part's plugin makes at `path`.
   const add = (path: Path, part: Part) => {
     const entry = host.entries.get(part.plugin);
-    if (!entry?.plugin.attach) {
+    if (!entry?.plugin.part) {
       // The types catch a missing plugin, so production skips the part.
       if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") throw new Error(problem("plugins:missing", part.plugin));
       return;
     }
     const { plugin } = entry;
-    // `attach` takes the config its part constructor typed.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    host.add(entry, path, part, (ctx) => plugin.attach?.(ctx, part.config as never) ?? {});
+    const value = () => raw.getSnapshot(path).value;
+    host.add(entry, path, part, (ctx) => {
+      const at = (name: string) => reach(ctx.store, [...path, ...name.split(".")]);
+      // `part` takes the config its factory's `part` typed.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      return plugin.part?.({ ...ctx, value, at }, part.config as never) ?? {};
+    });
   };
 
   /**
@@ -159,11 +165,12 @@ export const createParts: CreateParts = (host) => {
     },
     arrive(at) {
       const { hooks, path } = at;
-      if (hooks.initial) {
+      if (hooks.beforeWrite) {
         host.later(at, () => {
           const value = raw.getSnapshot(path).value;
-          const next = host.call(at, () => hooks.initial?.(value), value);
-          if (Object.is(next, value)) return;
+          const write = freeze({ path, input: value, value, before: value, cause: "attach" as const });
+          const next = host.call(at, () => hooks.beforeWrite?.(write), value);
+          if (next === refuse || Object.is(next, value)) return;
           const base = baseline.read(path);
           // The baseline moves with the value while the field isn't dirty.
           if (base && baseline.equals(path, base.value, value)) baseline.move(path, next);
@@ -173,23 +180,23 @@ export const createParts: CreateParts = (host) => {
       }
       // The first display at the path in hook order is the one shown.
       if (!hooks.display || attached.find((other) => other.hooks.display && keyOf(other.path) === keyOf(path)) !== at) return;
-      // The hooks are closures from `attach`, so they don't need `this`.
+      // The hooks are closures from `part`, so they don't need `this`.
       // oxlint-disable-next-line typescript/unbound-method
-      const shown = freeze({ display: hooks.display, edit: hooks.edit });
-      host.later(at, () => raw.setMeta("~display", shown, path));
+      const shown = freeze({ display: hooks.display, afterInput: hooks.afterInput });
+      host.later(at, () => raw.setMeta(displaySlot, shown, path));
     },
   };
 };
 
 /**
- * What `ctx.attachments(path)` returns: the parts attached at `path` and
- * above, in hook order. Only plugins that bring it, as `definePlugin`'s do,
- * put it in a bundle.
+ * What `ctx.parts(path)` returns: the parts attached at `path` and above,
+ * in hook order. Only plugins that bring it, as `definePlugin`'s do, put it
+ * in a bundle.
  */
-export const listParts = (attached: readonly Placed[], path: Path): readonly Attachment[] =>
+export const listParts = (attached: readonly Placed[], path: Path): readonly AttachedPart[] =>
   attached
     .filter((other) => other.part && related(other.path, path) && other.path.length <= path.length)
     .map((other) => ({ name: other.part!.plugin, path: other.path }));
 
-/** Makes the list `ctx.attachments` returns. */
+/** Makes the list `ctx.parts` returns. */
 export type ListParts = typeof listParts;

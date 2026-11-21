@@ -54,11 +54,11 @@ count. Install the plugin once. To run two masks side by side, give one a
 
 ### `plugins:cycle`
 
-> Plugin "&lt;name&gt;" is part of an `after` cycle.
+> Plugin "&lt;name&gt;" is part of a `requires` cycle.
 
-Thrown when the store is made. The plugins' `after` lists make a loop, such
-as `a` after `b` and `b` after `a`. Remove a name from one of the `after`
-lists.
+Thrown when the store is made. The plugins' `requires` lists make a loop,
+such as `a` requiring `b` and `b` requiring `a`. Remove one of the
+requirements.
 
 <a id="core:plugins:missing"></a>
 

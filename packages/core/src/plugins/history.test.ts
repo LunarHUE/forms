@@ -19,13 +19,13 @@ describe("history", () => {
     expect(store.root.peek().value).toEqual({ name: "A", tags: ["a", "b"] });
     expect(api.undo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "", tags: ["a", "b"] });
-    expect(undoHistory.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
+    expect(history.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
     expect(api.redo()).toBe(true);
     expect(api.redo()).toBe(true);
     expect(store.root.peek().value).toEqual({ name: "Ab", tags: ["b"] });
     // Its own writes never became steps.
     flush();
-    expect(undoHistory.formMeta(store.getFormSnapshot()).canRedo).toBe(false);
+    expect(history.formMeta(store.getFormSnapshot()).canRedo).toBe(false);
     expect(api.undo()).toBe(true);
     expect(errors).toEqual([]);
   });
@@ -63,7 +63,7 @@ describe("history", () => {
     flush();
     store.reset();
     flush();
-    expect(undoHistory.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
+    expect(history.formMeta(store.getFormSnapshot()).canUndo).toBe(false);
     expect(store.plugins.history.undo()).toBe(false);
     expect(errors).toEqual([]);
   });
@@ -71,18 +71,18 @@ describe("history", () => {
   it("has its form meta before any step, the same object on every read", () => {
     const undoHistory = history();
     const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
-    const meta = undoHistory.formMeta(store.getFormSnapshot());
+    const meta = history.formMeta(store.getFormSnapshot());
     expect(meta).toEqual({ canUndo: false, canRedo: false });
     // A selector that returns it stays stable, so React doesn't render again.
-    expect(undoHistory.formMeta(store.getFormSnapshot())).toBe(meta);
-    expect(undoHistory.formMeta(store.getServerFormSnapshot())).toBe(meta);
+    expect(history.formMeta(store.getFormSnapshot())).toBe(meta);
+    expect(history.formMeta(store.getServerFormSnapshot())).toBe(meta);
     expect(errors).toEqual([]);
   });
 
   it("keeps canUndo and canRedo in its form meta, written only when one changes", async () => {
     const undoHistory = history(2);
     const { store, errors } = testStore({ defaultValues: contact(), plugins: [arrays(), undoHistory] });
-    const flags = () => undoHistory.formMeta(store.getFormSnapshot());
+    const flags = () => history.formMeta(store.getFormSnapshot());
     const writes: unknown[] = [flags()];
     store.subscribeForm(() => {
       const meta = flags();
@@ -126,7 +126,7 @@ describe("history", () => {
     store.root.at("phone").setValue("1");
     flush();
     const seen: unknown[] = [];
-    store.subscribeForm(() => seen.push([store.root.peek().value.phone, undoHistory.formMeta(store.getFormSnapshot())]));
+    store.subscribeForm(() => seen.push([store.root.peek().value.phone, history.formMeta(store.getFormSnapshot())]));
     store.plugins.history.undo();
     expect(seen).toEqual([["", { canUndo: false, canRedo: true }]]);
     expect(errors).toEqual([]);

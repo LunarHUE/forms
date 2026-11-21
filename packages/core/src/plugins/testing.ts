@@ -76,7 +76,7 @@ export function testStore<V = never, S extends StandardSchemaV1 = never, I = und
   const errors: PluginFailure[] = [];
   const records: Record<When, WriteRecord[]> = { sync: [], deferred: [], idle: [] };
   const recorders = timings.map((when) =>
-    definePlugin({ name: `testStore:${when}`, setup: () => ({ when, onWrite: (list) => void records[when].push(...list) }) }),
+    definePlugin({ name: `testStore:${when}`, setup: () => ({ when, onWrite: (list) => void records[when].push(...list) }) })(),
   );
   const forms = createFormsCore({ onPluginError: (error, plugin) => void errors.push({ plugin, error }) });
   // The parameter's type checked the config against `D`, and the recorders add no API,

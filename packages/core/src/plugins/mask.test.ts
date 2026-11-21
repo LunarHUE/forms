@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { attach } from "../attach.js";
-import type { Part, PluginHooks } from "../plugin.js";
+import type { Part } from "../plugin.js";
+import { displayOf } from "../store/display.js";
 import { dirty } from "./dirty.js";
 import { digits, mask, type MaskConfig, masked, upper } from "./mask.js";
 import { persist } from "./persist.js";
@@ -36,10 +37,7 @@ const memory = (saved = new Map<string, string>()) => ({
 
 const phone = (value: string) => (value.length > 3 ? `(${value.slice(0, 3)}) ${value.slice(3)}` : value);
 
-type Display = Pick<PluginHooks, "display" | "edit">;
-// The host sets the slot to these hooks.
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const shown = (meta: Readonly<Record<string, unknown>> | undefined) => meta?.["~display"] as Display | undefined;
+const shown = (meta: Readonly<Record<string, unknown>> | undefined) => displayOf({ meta });
 
 describe("mask", () => {
   it("stores the value it cleans", () => {
@@ -118,7 +116,7 @@ describe("mask", () => {
 
   it("cleans plugin writes, such as a value persist restores", () => {
     const storage = memory(new Map([["account", JSON.stringify({ ...account(), phone: "(7) 7" })]]));
-    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask(), persist("account", storage)] }, masks());
+    const { store, listen, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask(), persist({ key: "account", storage })] }, masks());
     listen();
     expect(store.getSnapshot(["phone"]).value).toBe("77");
     expect(store.getSnapshot(["phone"]).edited).toBe(false);
@@ -145,8 +143,8 @@ describe("mask", () => {
     it("gives a field with a display its meta, on the server too, and leaves a mask without one out", () => {
       const { store, errors } = testStore({ defaultValues: account(), plugins: [arrays(), mask()] }, at("phone", { clean: digits, display: phone }), at("address.zip", { clean: upper }));
       const display = shown(store.getSnapshot(["phone"]).meta);
-      expect(display?.display?.("55501")).toBe("(555) 01");
-      expect(display?.edit).toBeTypeOf("function");
+      expect(display?.display("55501")).toBe("(555) 01");
+      expect(display?.afterInput).toBeTypeOf("function");
       expect(shown(store.getServerSnapshot(["phone"]).meta)).toBe(display);
       expect(store.getSnapshot(["address", "zip"]).meta).toBeUndefined();
       expect(store.getSnapshot(["phone"]).value).toBe("55501");
@@ -165,7 +163,7 @@ describe("mask", () => {
         { defaultValues: { phone: undefined as string | undefined }, plugins: [mask()] },
         at("phone", { clean: digits, display: (value) => `[${value}]` }),
       );
-      expect(shown(store.getSnapshot(["phone"]).meta)?.display?.(undefined)).toBe("[]");
+      expect(shown(store.getSnapshot(["phone"]).meta)?.display(undefined)).toBe("[]");
     });
 
     it("gives every row a part attaches to its display", () => {
@@ -174,7 +172,7 @@ describe("mask", () => {
       const lines = store.root.at("lines");
       lines.push({ sku: "b" });
       maskRows(store, parts);
-      for (const key of lines.peek().keys) expect(shown(store.getSnapshot(["lines", key, "sku"]).meta)?.display?.("B")).toBe("#B");
+      for (const key of lines.peek().keys) expect(shown(store.getSnapshot(["lines", key, "sku"]).meta)?.display("B")).toBe("#B");
       expect(lines.peek().keys).toHaveLength(2);
       expect(errors).toEqual([]);
     });
@@ -185,7 +183,7 @@ describe("mask", () => {
         at("phone", { clean: (value) => value, display: (value) => `first ${value}` }),
         at("phone", { clean: digits, display: phone }),
       );
-      expect(shown(store.getSnapshot(["phone"]).meta)?.display?.("1")).toBe("first 1");
+      expect(shown(store.getSnapshot(["phone"]).meta)?.display("1")).toBe("first 1");
       expect(errors).toEqual([]);
     });
   });

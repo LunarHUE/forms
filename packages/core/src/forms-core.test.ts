@@ -30,7 +30,7 @@ const fakeAdapter = (defaults: unknown, item?: unknown, vendor = "fake") => {
   const defaultValue = vi.fn<(schema: FakeSchema<unknown>) => unknown>(() => structuredClone(defaults));
   const itemValue = vi.fn<(schema: FakeSchema<unknown>, path: Path) => unknown>(() => structuredClone(item));
   const adapter: SchemaAdapter<FakeSchema<unknown>> = { vendor, defaultValue, itemValue };
-  return { plugin: definePlugin({ name: vendor, schema: adapter }), defaultValue, itemValue };
+  return { plugin: definePlugin({ name: vendor, schema: adapter })(), defaultValue, itemValue };
 };
 
 // Core declares no globals beyond es2020, so the tests declare the one they use.

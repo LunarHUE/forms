@@ -38,7 +38,7 @@ export function problem(code: Code, value = ""): string {
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     const sentences: Record<Code, (value: string) => string> = {
       "plugins:name": (name) => `Two plugins are named "${name}".`,
-      "plugins:cycle": (name) => `Plugin "${name}" is part of an \`after\` cycle.`,
+      "plugins:cycle": (name) => `Plugin "${name}" is part of a \`requires\` cycle.`,
       "plugins:write": () => "A plugin wrote to the store from inside a hook. Write through `ctx.write`.",
       // 10 is `maxRounds` in store/plugins.ts.
       "plugins:loop": (names) => `Plugins kept answering each other's writes for 10 rounds: ${names}.`,

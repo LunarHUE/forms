@@ -51,7 +51,7 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * The list's type decides what `define` accepts: a schema a schema plugin
    * accepts makes `defaultValues` optional, `equals` needs `dirty()`, and
    * each hook plugin's API shows up on the store's `plugins`. Hook plugins run in this
-   * order, except where a plugin's `after` says otherwise, and before a
+   * order, except that a plugin runs after the ones it `requires`, and before a
    * definition's own plugins. A plugin that another one `requires` must be
    * in this list too.
    */
