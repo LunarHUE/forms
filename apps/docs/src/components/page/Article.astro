@@ -27,7 +27,6 @@
  */
 import type { NavItem } from "@/lib/nav";
 
-import { absoluteUrl } from "@/lib/site";
 
 import Breadcrumb, { type Crumb } from "./Breadcrumb.astro";
 import { CopyPage } from "./CopyPage";
@@ -93,7 +92,7 @@ const gutter = "px-4 sm:px-6 lg:px-8";
           {
             markdown && (
               <div class="pt-1.5 sm:pt-2.5">
-                <CopyPage client:idle markdownHref={markdown} markdownUrl={absoluteUrl(markdown)} />
+                <CopyPage client:idle markdownHref={markdown} />
               </div>
             )
           }

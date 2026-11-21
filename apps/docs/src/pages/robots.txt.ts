@@ -11,8 +11,8 @@ const release = [
   `Sitemap: ${absoluteUrl("/sitemap.xml")}`,
   "",
   "# For language models and agents:",
-  `# ${absoluteUrl(LLMS_HREF)} indexes the docs (also at ${absoluteUrl("/agents.txt")}).`,
-  `# ${absoluteUrl(LLMS_FULL_HREF)} has every page as Markdown.`,
+  `# ${LLMS_HREF} indexes the docs (also at /agents.txt).`,
+  `# ${LLMS_FULL_HREF} has every page as Markdown.`,
   "# Any docs page's URL plus .md is that page as Markdown.",
 ];
 

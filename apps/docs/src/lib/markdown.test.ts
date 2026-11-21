@@ -8,7 +8,7 @@ const page = (body: string, extra: Partial<MarkdownPage> = {}): string =>
     description: "Format input as it is typed.",
     body,
     framework: "react",
-    url: "https://forms.lunarhue.dev/react/plugins/masks",
+    url: "/react/plugins/masks",
     ...extra,
   });
 
@@ -29,7 +29,7 @@ const compare = (app: string): string => `sizes and files of ${app}`;
 describe("toMarkdown", () => {
   it("starts with the title, description and source", () => {
     expect(page("Body.")).toBe(
-      "# Masks\n\n> Format input as it is typed.\n\nSource: https://forms.lunarhue.dev/react/plugins/masks\n\nBody.\n",
+      "# Masks\n\n> Format input as it is typed.\n\nSource: /react/plugins/masks\n\nBody.\n",
     );
   });
 
@@ -99,12 +99,10 @@ describe("toMarkdown", () => {
     expect(content(page(body))).toBe("> **Careful**\n>\n> Line one.\n");
   });
 
-  it("makes links absolute and points docs links at their Markdown", () => {
+  it("makes links root-relative and points docs links at their Markdown", () => {
     const body = "[a](../plugins/rebase) [b](./rules#store) [c](/errors#core:x) [d](#here) [e](https://example.com)";
     expect(content(page(body))).toBe(
-      "[a](https://forms.lunarhue.dev/react/plugins/rebase.md) " +
-        "[b](https://forms.lunarhue.dev/react/plugins/rules.md#store) " +
-        "[c](https://forms.lunarhue.dev/errors.md#core:x) [d](#here) [e](https://example.com)\n",
+      "[a](/react/plugins/rebase.md) [b](/react/plugins/rules.md#store) [c](/errors.md#core:x) [d](#here) [e](https://example.com)\n",
     );
   });
 });

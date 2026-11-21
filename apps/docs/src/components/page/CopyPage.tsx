@@ -26,10 +26,8 @@ import { Hint, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/t
 import { assistantLinks, type Assistant } from "./assistants";
 
 export interface CopyPageProps {
-  /** Path of the page's Markdown copy, as in `/react/plugins/masks.md`. Copy and View fetch this. */
+  /** Path of the page's Markdown copy, as in `/react/plugins/masks.md`. Copy, View and the assistants use it. */
   markdownHref: string;
-  /** The copy's production URL, which the assistants are asked to read. */
-  markdownUrl: string;
 }
 
 /** How long the check mark and "Copied" stay up. */
@@ -64,7 +62,7 @@ async function copyMarkdown(href: string): Promise<void> {
  * "Copy page" with a menu beside it: view the page's Markdown, or open it in
  * an assistant with a prompt that points at the Markdown URL.
  */
-export function CopyPage({ markdownHref, markdownUrl }: CopyPageProps) {
+export function CopyPage({ markdownHref }: CopyPageProps) {
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -117,7 +115,7 @@ export function CopyPage({ markdownHref, markdownUrl }: CopyPageProps) {
             <ChevronDownIcon />
           </DropdownMenuTrigger>
         </Hint>
-        <CopyPageMenu markdownHref={markdownHref} markdownUrl={markdownUrl} />
+        <CopyPageMenu markdownHref={markdownHref} />
       </DropdownMenu>
     </div>
   );
@@ -125,10 +123,12 @@ export function CopyPage({ markdownHref, markdownUrl }: CopyPageProps) {
 
 interface CopyPageMenuProps {
   markdownHref: string;
-  markdownUrl: string;
 }
 
-function CopyPageMenu({ markdownHref, markdownUrl }: CopyPageMenuProps) {
+function CopyPageMenu({ markdownHref }: CopyPageMenuProps) {
+  // The menu renders only once opened, in the browser, so the assistants get
+  // the copy on the deployment the reader is on.
+  const markdownUrl = typeof location === "undefined" ? markdownHref : new URL(markdownHref, location.href).href;
   return (
     <DropdownMenuContent align="end" className="w-56">
       <MenuLink href={markdownHref} Icon={FileTextIcon} label="View as Markdown" />

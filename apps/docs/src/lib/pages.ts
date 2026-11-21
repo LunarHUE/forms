@@ -6,7 +6,6 @@ import { lastCommitDate } from "./git";
 import { toMarkdown } from "./markdown";
 import { sidebar } from "./nav";
 import { ERRORS_HREF } from "./routes";
-import { absoluteUrl } from "./site";
 
 /** A page of the latest docs, as the sitemap and the files for language models see it. */
 export interface SitePage {
@@ -55,7 +54,7 @@ export async function sitePages(): Promise<SitePage[]> {
                 description,
                 body: entry.body ?? "",
                 framework,
-                url: absoluteUrl(item.href),
+                url: item.href,
                 demo: (name) => demoSources(framework, name),
                 compare: compareMarkdownFor,
               }),
@@ -74,7 +73,7 @@ export async function sitePages(): Promise<SitePage[]> {
       title,
       description,
       lastUpdated: errors.filePath ? lastCommitDate(errors.filePath) : undefined,
-      markdown: () => toMarkdown({ title, description, body: errors.body ?? "", url: absoluteUrl(ERRORS_HREF) }),
+      markdown: () => toMarkdown({ title, description, body: errors.body ?? "", url: ERRORS_HREF }),
     },
   ];
 }
