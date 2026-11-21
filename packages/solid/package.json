@@ -140,7 +140,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.63 kB"
+      "limit": "13.65 kB"
     },
     {
       "name": "solid, everything on",

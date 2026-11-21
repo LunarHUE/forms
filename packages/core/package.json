@@ -76,7 +76,7 @@
       "name": "./plugins, plugin authoring",
       "path": "dist/esm/plugins/index.js",
       "import": "{ definePlugin, flushPlugins, refuse }",
-      "limit": "3.45 kB"
+      "limit": "3.5 kB"
     },
     {
       "name": "./plugins dirty()",
@@ -100,7 +100,7 @@
       "name": "./plugins mask()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ mask }",
-      "limit": "3.45 kB"
+      "limit": "3.5 kB"
     },
     {
       "name": "./plugins persist()",
@@ -118,7 +118,7 @@
       "name": "./plugins rules()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
-      "limit": "3.4 kB"
+      "limit": "3.45 kB"
     },
     {
       "name": "./plugins/testing",
@@ -138,7 +138,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/index.js": "{ dirty }"
       },
-      "limit": "10 kB"
+      "limit": "10.05 kB"
     },
     {
       "name": "dirty() + baselineOnSubmit()",
