@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFormsCore } from "../forms-core.js";
+import type { Path } from "../path.js";
 import type { AttachedPart, NamedPart, Part } from "../plugin.js";
 import { definePlugin, refuse } from "../plugins.js";
 import { displayOf } from "../store/display.js";
@@ -89,6 +90,21 @@ describe("observe", () => {
 });
 
 describe("part", () => {
+  it("gets the blurs at or below its path", () => {
+    const seen: { at: Path; path: Path }[] = [];
+    const blurs = part<unknown>((ctx) => ({ onBlur: (path) => void seen.push({ at: ctx.path, path }) }));
+    const { store, errors } = testStore({ defaultValues: { a: { b: "" }, c: "" } }, at(blurs, "a"), at(blurs, "a.b"));
+    store.root.at("a").handleBlur();
+    store.root.at("a").at("b").handleBlur();
+    store.root.at("c").handleBlur();
+    expect(seen).toEqual([
+      { at: ["a"], path: ["a"] },
+      { at: ["a"], path: ["a", "b"] },
+      { at: ["a", "b"], path: ["a", "b"] },
+    ]);
+    expect(errors).toEqual([]);
+  });
+
   it("takes a function of the part's context, which runs at each path it attaches at", () => {
     const paths: unknown[] = [];
     const seen = part<string>((ctx) => {

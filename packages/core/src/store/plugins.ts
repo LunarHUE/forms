@@ -51,10 +51,16 @@ export interface PluginHost extends HostLink {
    * Runs each plugin's setup, then attaches `parts` at the root. The form
    * store calls it once the store, its baseline and its validation exist.
    * It makes `validation.changed` wait for the end of the batch, so
-   * validators rerun once for all its writes. The writes setup and the
+   * validators rerun once for all its writes, and makes
+   * `validation.blurred` call `onBlur` after it. The writes setup and the
    * parts make leave no records and become the starting state.
    */
-  start(store: AnyFormStore<unknown>, baseline: Baseline, validation: Pick<Validation<unknown>, "changed">, parts: readonly Part[]): void;
+  start(
+    store: AnyFormStore<unknown>,
+    baseline: Baseline,
+    validation: Pick<Validation<unknown>, "changed" | "blurred">,
+    parts: readonly Part[],
+  ): void;
   /** Runs `run`, the reset of the field at `path`, with `cause: "reset"`, then calls `onReset` in the same batch. */
   reset(path: Path, run: () => void): void;
   /**
@@ -432,9 +438,10 @@ export function createPluginHost(
     kit?.attach(base, parts, now);
   };
 
-  // Calls `fn` with the hooks the reset at `path` reaches, each call isolated.
-  const each = (fn: (hooks: AnyHooks) => void, path: Path = []) => {
-    for (const at of attached.slice()) if (live(at, path)) call(at, () => fn(at.hooks), undefined);
+  // Calls `fn` with the hooks the reset at `path` reaches, each call
+  // isolated. With `above`, only the hooks at or above `path`.
+  const each = (fn: (hooks: AnyHooks) => void, path: Path = [], above?: boolean) => {
+    for (const at of attached.slice()) if ((!above || at.path.length <= path.length) && live(at, path)) call(at, () => fn(at.hooks), undefined);
   };
 
   const host: PluginHost = {
@@ -445,6 +452,12 @@ export function createPluginHost(
       // Every write runs in a batch of the host's, so the paths wait for it to end.
       changed = validation.changed;
       validation.changed = (list) => void paths.push(...list);
+      // A handle's `handleBlur` calls it inside its batch, once the field is touched.
+      const { blurred } = validation;
+      validation.blurred = (path) => {
+        blurred(path);
+        each((hooks) => hooks.onBlur?.(path), path, true);
+      };
       // Only the plugin's part of the baseline.
       baseline = { read, equals, move };
       lent = { raw, attached, baseline, paths, entries, add, quietly, listened: () => listeners > 0, later, call };
