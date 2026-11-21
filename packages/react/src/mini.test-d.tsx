@@ -34,6 +34,7 @@ describe("mini's types are full's, narrowed", () => {
   });
 
   it("takes new values on reset, as full's store does", () => {
+    expectTypeOf<typeof form.store.reset>().toBeFunction();
     form.store.reset({ values: { q: "", page: 2, filters: { brand: "acme" } } });
     form.store.reset({ to: "initial" });
     // @ts-expect-error: values must be a whole Search value

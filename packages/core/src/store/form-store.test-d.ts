@@ -34,6 +34,7 @@ describe("createFormStore", () => {
 
   it("takes new values on reset, typed by V, or a target, not both", () => {
     const store = createFormStore<Profile>({ id: "f", initial });
+    expectTypeOf<typeof store.reset>().toBeFunction();
     store.reset();
     store.reset({ to: "initial" });
     store.reset({ values: initial });
