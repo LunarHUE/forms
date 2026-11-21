@@ -43,11 +43,10 @@ A plugin list can hold `false`, `null` or `undefined`, as in `plugins: [mask(), 
 
 For plugin authors:
 
-- `definePlugin` takes `attach(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. Write a typed constructor for the parts, as `(config): Part<"mask", string> => ({ plugin: "mask", config })`.
+- `definePlugin` takes `part(ctx, config)`, which runs once per path a part attaches at and returns hooks for that path. Its hooks get writes at or above the path walked down to it, and a refuse there refuses the whole write. The factory's `part<V>(config)` makes the parts, with `config` typed from that parameter: `limit.part<string>({ max: 20 })`.
 - `requires: () => [dirty]` names plugins a plugin needs. The form must install them, or it is a type error. The plugin's hooks run after theirs, and `ctx.plugins` holds their APIs.
-- `ctx.installed` lists the store's plugins in hook order, and `ctx.attachments(path)` the parts attached at a path and above.
-- `attach` can return an `initial` hook, which gets the value at the part's path when the part attaches and returns the value to keep there.
-- `FieldDisplay` meta is gone. Return `display` and `edit` hooks from `attach` instead.
-- What `attach` writes makes no write records. A value `initial` cleans moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
+- `ctx.installed` lists the store's plugins in hook order, and `ctx.parts(path)` the parts attached at a path and above.
+- A part's `beforeWrite` runs once on the value at its path when it attaches, with `cause: "attach"`. That write makes no record. A value it changes moves the baseline with it while the field isn't dirty, and a reset to the initial values keeps it clean.
+- `FieldDisplay` meta is gone. Return `display` and `afterInput` hooks from `part` instead.
 
 New exports: `Part` and `Parts` from core, and `defineField` and `FieldType` from the adapters. Core also exports `attach` for the adapters, and `MetaHolder`, `PluginMembers`, `Nested` and `DefineParts` because declarations name them. Those are internal.
