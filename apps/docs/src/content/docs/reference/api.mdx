@@ -234,6 +234,7 @@ Each throws when no matching `form.Form` is above.
 | `numberPieces(field, { empty }?)` | `text`, `setText` and `handleBlur` for a number input bound by hand. |
 | `errorId(handle)` | The id of the element that shows the field's errors. |
 | `elementsOf(handle)` | The field's elements in the document, in document order. |
+| `isFocused(handle)` | True while focus is on one of the field's elements or inside one. Works in production with no `trackElements()` call. |
 | `fieldOf(element)` | The handle of the field whose ref got `element`. In production it returns `undefined` unless `trackElements()` ran before the form rendered. |
 | `trackElements(listener?)` | Records each field element for `fieldOf` in production. `listener` gets every element a ref records or forgets, `<form>` elements included. |
 

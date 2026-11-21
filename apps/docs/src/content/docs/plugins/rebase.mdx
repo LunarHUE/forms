@@ -32,6 +32,42 @@ form.plugins.rebase(form.root, fresh, (leaf) => (leaf.edited ? "keep" : "take"))
 Each leaf comes with its `path`, the current `value`, the old `baseline`, the
 `incoming` value and `edited`, true when the user has edited it.
 
+## Keeping the focused field
+
+A user who clicked into a field but hasn't typed yet has `edited` false, so
+the resolve above writes the server's value under their cursor. Keep the
+focused field too. `isFocused(handle)` is true while focus is on one of the
+field's elements or inside one:
+
+```ts framework=react
+import { isFocused } from "@lunarhue/forms-react";
+
+form.plugins.rebase(form.root, fresh, (leaf) => {
+  const field = form.store.fieldAt(leaf.path);
+  return leaf.edited || (field !== undefined && isFocused(field)) ? "keep" : "take";
+});
+```
+
+```ts framework=solid
+import { isFocused } from "@lunarhue/forms-solid";
+
+form.plugins.rebase(form.root, fresh, (leaf) => {
+  const field = form.store.fieldAt(leaf.path);
+  return leaf.edited || (field !== undefined && isFocused(field)) ? "keep" : "take";
+});
+```
+
+`isFocused` reads the elements the field's ref got, the ones `elementsOf`
+lists, so it needs no setup in production. Checking
+`fieldOf(document.activeElement)` instead works in development and then
+finds nothing in production, unless the app called `trackElements()` before
+the form rendered. It also misses an input inside a custom component, since
+`fieldOf` doesn't look at ancestors.
+
+A leaf is one value. A custom input on an object field, such as a date range
+over `{ start, end }`, registers on the object, so check the leaf's parent:
+`form.store.fieldAt(leaf.path.slice(0, -1))`.
+
 ## What it returns
 
 `rebase` returns `{ taken }`, the paths it wrote with `"take"` or `{ value }`.
