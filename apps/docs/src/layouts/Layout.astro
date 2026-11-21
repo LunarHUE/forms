@@ -37,6 +37,9 @@
  * lib/edge-fade.ts fades the edges of scroll areas marked `data-edge-fade`.
  * lib/analytics.ts reports pageviews on the public sites. Cloudflare Web
  * Analytics' beacon loads only when the build has CF_WEB_ANALYTICS_TOKEN.
+ * The build copies it to /_/b.js (integrations/cf-beacon.ts) and it posts
+ * to /_/r (functions/_/r.ts), so blocklists that match Cloudflare's hosts
+ * don't stop it.
  */
 import { ClientRouter } from "astro:transitions";
 import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
@@ -121,8 +124,8 @@ const canonical = absolute(meta.canonical ?? pathname);
         <script
           is:inline
           defer
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN, spa: true })}
+          src="/_/b.js"
+          data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN, spa: true, send: { to: "/_/r" } })}
         />
       )
     }

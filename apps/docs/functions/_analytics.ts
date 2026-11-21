@@ -1,7 +1,8 @@
 /*
  * What the Pages Functions record in Workers Analytics Engine, and the
  * helpers that build it. `_/t.ts` records pageviews the browser reports;
- * `_middleware.ts` records fetches of the Markdown and llms files. The
+ * `_middleware.ts` records fetches of the Markdown and llms files; `_/r.ts`
+ * forwards Cloudflare Web Analytics' beacon under the same rules. The
  * pageview tracker (src/lib/analytics.ts) shares the host list.
  *
  * Every data point has the same shape, so one SQL query reads both events
@@ -100,6 +101,12 @@ export function isSmokeTest(userAgent: string | null): boolean {
 export function recordingChannel(request: Request): Channel | undefined {
   if (isSmokeTest(request.headers.get("user-agent"))) return undefined;
   return channelFor(new URL(request.url).hostname);
+}
+
+/** Whether a browser sent this from another site, which no script of ours does. */
+export function crossSite(request: Request, url: URL): boolean {
+  const origin = request.headers.get("origin");
+  return origin !== null && origin !== url.origin;
 }
 
 /**

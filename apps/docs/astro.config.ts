@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
 
+import { cfBeacon } from "./integrations/cf-beacon";
 import { pagefindIndex } from "./integrations/pagefind";
 // Swap for `@astrojs/solid-js` once 8.x (Solid 2) is on npm.
 import solid from "./integrations/solid";
@@ -21,6 +22,9 @@ const sourceCondition = "@lunarhue/source";
 
 // src/lib/site.ts explains the channels.
 const channel: Channel = process.env["DOCS_CHANNEL"] === "next" ? "next" : "release";
+
+// Cloudflare Web Analytics, on the public sites only (src/lib/site.ts).
+const cfWebAnalyticsToken = process.env["CF_WEB_ANALYTICS_TOKEN"] ?? "";
 
 export default defineConfig({
   site: CHANNEL_URLS[channel],
@@ -49,13 +53,15 @@ export default defineConfig({
     solid({ include: ["**/src/demos/solid/**/*.{jsx,tsx}"] }),
     // Search index, written to dist/pagefind after the build.
     pagefindIndex(),
+    // Cloudflare's beacon, copied to dist/_/b.js when there is a token.
+    cfBeacon(cfWebAnalyticsToken),
   ],
   vite: {
     // Vite only exposes PUBLIC_ variables, and this one reaches client code too.
     define: {
       "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel),
       "import.meta.env.DOCS_URL": JSON.stringify(process.env["DOCS_URL"] ?? ""),
-      "import.meta.env.CF_WEB_ANALYTICS_TOKEN": JSON.stringify(process.env["CF_WEB_ANALYTICS_TOKEN"] ?? ""),
+      "import.meta.env.CF_WEB_ANALYTICS_TOKEN": JSON.stringify(cfWebAnalyticsToken),
     },
     // The devtools panel builds from source here, its stylesheet included.
     plugins: [tailwindcss(), panelCss()],
