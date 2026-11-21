@@ -26,9 +26,17 @@ export interface Tags {
   readonly "~on"?: ValidateTiming;
   /** Set by `recheckOnSubmit`. */
   readonly "~recheck"?: boolean;
-  /** True when the function runs a Standard Schema and returns its result. */
+  /**
+   * True when the function runs a Standard Schema and returns its result. On
+   * a result, `pipe` sets it to say a schema check returned it.
+   */
   readonly "~schema"?: boolean;
 }
+
+// A primitive's `then` comes from its prototype, which nothing sets.
+export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  typeof (value as { then?: unknown } | null | undefined)?.then === "function";
 
 /** True for an object or function with a `~standard` key. */
 export const isSchema = (input: unknown): input is StandardSchemaV1 =>

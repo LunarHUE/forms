@@ -103,11 +103,13 @@ The form hook then needs those options as its second argument.
 | `validateOn(check, timing)` | Runs `check` first on `"input"`, `"blur"` or `"submit"` instead of the shared `validate` setting. |
 | `debounced(check, ms)` | Waits for a pause of `ms` before it runs `check`. A submit skips the wait. |
 | `recheckOnSubmit(check)` | Runs `check` on every submit, even when its last result is still current. |
+| `pipe(...checks)` | Runs `checks` in order on the same value and stops at the first that returns an error. Stays sync while its checks are, so a `debounced` check after a failing one never starts. |
 
 `check` is a validator function or a Standard Schema. The three wrappers
 return a check that goes anywhere a bare one does, in `fieldValidators`,
 `formValidator`, a `validate` prop or `registerValidator`, and they nest in any
-order. See [Validation](../basics/validation#when-validators-run).
+order. `pipe` takes the same checks and goes to the same places. See
+[Validation](../basics/validation#when-validators-run).
 
 <Only framework="react">
 

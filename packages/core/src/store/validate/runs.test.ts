@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { debounced, recheckOnSubmit, validateOn } from "../../validate-timing.js";
+import { debounced, pipe, recheckOnSubmit, validateOn } from "../../validate-timing.js";
 import type { ErrorMap, FormError } from "../../errors.js";
 import type { Path } from "../../path.js";
 import type { StandardSchemaV1 } from "../../standard-schema.js";
@@ -32,6 +32,7 @@ const schema = <T = unknown>(validate: (value: unknown) => StandardSchemaV1.Resu
 });
 
 const required = (value: unknown) => (value === "" ? err("Required") : undefined);
+const short = (value: string) => (value.length < 3 ? err("Short") : undefined);
 
 /** A check that resolves to `error` after `ms`, recording each call's signal. */
 const slow = (ms: number, error: FormError | undefined, signals: PlatformAbortSignal[] = []) =>
@@ -306,6 +307,76 @@ describe("blur and form-level validators", () => {
     });
     root.at("b").setValue("y");
     expect(messages(["a"])).toEqual([]);
+  });
+});
+
+describe("pipe", () => {
+  it("runs on array items from validate.fields, answering sync errors at once", async () => {
+    const lookup = vi.fn<Check>(() => err("Taken"));
+    const { root, messages, validating } = make(
+      { rows: [{ t: "" }] },
+      { timing: "input", validate: { fields: fieldValidators({ rows: [{ t: pipe(short, debounced(lookup, 100)) }] }) } },
+    );
+    const t = root.at("rows").item("k0").at("t");
+    t.setValue("ab");
+    expect(messages(["rows", "k0", "t"])).toEqual(["Short"]);
+    expect(validating(["rows", "k0", "t"])).toBe(false);
+    t.setValue("abc");
+    expect(validating(["rows", "k0", "t"])).toBe(true);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(messages(["rows", "k0", "t"])).toEqual(["Taken"]);
+  });
+
+  it("places ErrorMaps and schema issues from a form validator pipe", () => {
+    const later = vi.fn<() => ErrorMap<FormError>>(() => ({ form: err("Later") }));
+    const formSchema = schema<{ a: string; b: string }>((value) =>
+      typeof value === "object" && value !== null && "b" in value && value.b === "" ? { issues: [{ message: "B", path: ["b"] }] } : { value },
+    );
+    const { root, messages } = make(
+      { a: "", b: "z" },
+      {
+        timing: "input",
+        validate: {
+          form: formValidator(pipe((value) => ({ fields: { a: value.a === "" ? err("A") : undefined } }), formSchema, later)),
+        },
+      },
+    );
+    root.at("b").setValue("");
+    expect(messages(["a"])).toEqual(["A"]);
+    expect(messages(["b"])).toEqual([]);
+    root.at("a").setValue("x");
+    expect(messages(["a"])).toEqual([]);
+    expect(messages(["b"])).toEqual(["B"]);
+    expect(later).not.toHaveBeenCalled();
+    root.at("b").setValue("y");
+    expect(messages(["b"])).toEqual([]);
+    expect(messages([])).toEqual(["Later"]);
+  });
+
+  it("lets submit skip a debounced wait the pipe reaches after submit starts", async () => {
+    const lookup = vi.fn<Check>(() => err("Taken"));
+    const { root, messages, validation } = make({ name: "" }, { timing: "input" });
+    root.at("name").registerValidator(pipe(slow(20, undefined), debounced(lookup, 1000)));
+    root.at("name").setValue("ada");
+    let done = false;
+    void validation.settleForSubmit().then(() => (done = true));
+    await vi.advanceTimersByTimeAsync(20);
+    expect(done).toBe(true);
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(messages(["name"])).toEqual(["Taken"]);
+  });
+
+  it("turns a throw in any check into an error through mapError", async () => {
+    const { root, messages } = make({ name: "" }, { timing: "input" });
+    root.at("name").registerValidator(
+      pipe(
+        () => undefined,
+        () => Promise.reject(new Error("Down")),
+      ),
+    );
+    root.at("name").setValue("x");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(messages(["name"])).toEqual(["Down"]);
   });
 });
 

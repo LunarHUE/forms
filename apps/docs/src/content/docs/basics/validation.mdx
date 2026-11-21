@@ -113,6 +113,11 @@ Schema and nest in any order. They work everywhere a validator does: in
 `fieldValidators`, in `formValidator`, in the `validate` prop and in
 `registerValidator`. [Async validation](./async-validation) uses all three.
 
+`pipe(...checks)` runs checks in order and stops at the first that finds an
+error, so a cheap check can keep an expensive one from running. It goes
+anywhere a validator does. Wrap the pipe in `validateOn` to set its timing. See
+[Cheap checks first](./async-validation#cheap-checks-first).
+
 A submit runs every validator and stops if any field has an error.
 `field.validate()` runs one field's validators now and resolves true when it
 is valid. `form.store.validate()` runs them all.
