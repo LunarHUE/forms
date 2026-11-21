@@ -56,6 +56,31 @@ zustand(useAppStore, {
 A store change that leaves the slice as the same object doesn't reach the
 form, so other parts of the store can change freely.
 
+`update` also gets the store's state before the write. Use it when the slice
+sits inside a bigger object, such as one entry of a map, so the write keeps
+the other keys:
+
+```tsx
+zustand(useReviewStore, {
+  select: (state) => state.summaries[reviewKey],
+  update: (summary, state) => ({ summaries: { ...state.summaries, [reviewKey]: summary } }),
+});
+```
+
+When `select` builds a new object each time, every store change looks like a
+new slice. Pass `isEqual` to say when two slices match, and a change to
+`count` or any other field leaves the form alone:
+
+```tsx
+zustand(useReviewStore, {
+  select: ({ verdict, body }) => ({ verdict, body }),
+  update: (review) => review,
+  isEqual: (previous, next) => previous.verdict === next.verdict && previous.body === next.body,
+});
+```
+
+`isEqual` defaults to `Object.is`.
+
 ## Where it goes
 
 Put the binding in the definition's `plugins` when the store lives at module
