@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "https://forms.lunarhue.dev/" }
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -7,6 +11,7 @@ import {
   ANALYTICS_HOSTS,
   channelFor,
   countryOf,
+  crossSite,
   isAgentPath,
   normalizePath,
   parsePageview,
@@ -19,8 +24,10 @@ import {
   type PagesEnv,
   type PagesRequest,
 } from "../../functions/_analytics";
+import { onRequest as relay, RUM_ENDPOINT } from "../../functions/_/r";
 import { onRequest as track } from "../../functions/_/t";
 import { onRequest as middleware } from "../../functions/_middleware";
+import { BEACON_URL, cfBeacon, fetchBeacon } from "../../integrations/cf-beacon";
 import routes from "../../public/_routes.json";
 import { resetAnalyticsForTests, startAnalytics, trackPageview } from "./analytics";
 import { AVAILABLE_FRAMEWORKS } from "./frameworks";
@@ -47,6 +54,12 @@ function context(req: PagesRequest, env: PagesEnv, served = new Response("ok")) 
 
 const post = (url: string, body: unknown, headers: Record<string, string> = {}) =>
   request(url, { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body), headers }, "us");
+
+/** Whether Pages runs Functions for a path: exclude wins, `*` only trails. */
+function routed(path: string): boolean {
+  const matches = (rule: string) => (rule.endsWith("*") ? path.startsWith(rule.slice(0, -1)) : path === rule);
+  return !routes.exclude.some(matches) && routes.include.some(matches);
+}
 
 const at = (url: string) => jsdom.reconfigure({ url });
 const root = () => document.documentElement;
@@ -123,6 +136,14 @@ describe("analytics helpers", () => {
     expect(referrerHost(`https://${"a".repeat(60)}.${"b".repeat(60)}.${"c".repeat(60)}.com/`, "x")).toHaveLength(128);
   });
 
+  it("tells cross-site posts apart", () => {
+    const url = new URL("https://forms.lunarhue.dev/_/t");
+    expect(crossSite(request(url.href), url)).toBe(false);
+    expect(crossSite(request(url.href, { headers: { origin: "https://forms.lunarhue.dev" } }), url)).toBe(false);
+    expect(crossSite(request(url.href, { headers: { origin: "https://evil.example" } }), url)).toBe(true);
+    expect(crossSite(request(url.href, { headers: { origin: "https://next.forms.lunarhue.dev" } }), url)).toBe(true);
+  });
+
   it("reads the country only when it is a real code", () => {
     expect(countryOf(request("https://forms.lunarhue.dev/", {}, "de"))).toBe("DE");
     expect(countryOf(request("https://forms.lunarhue.dev/", {}, "T1"))).toBe("");
@@ -195,8 +216,11 @@ describe("analytics helpers", () => {
 
   it("routes Functions for every framework and agent file, and no static assets", () => {
     for (const framework of AVAILABLE_FRAMEWORKS) expect(routes.include).toContain(`/${framework}/*`);
-    for (const path of ["/_/t", "/llms.txt", "/llms-full.txt", "/agents.txt", "/errors.md"]) expect(routes.include).toContain(path);
+    for (const path of ["/_/t", "/_/r", "/llms.txt", "/llms-full.txt", "/agents.txt", "/errors.md"]) expect(routes.include).toContain(path);
     for (const path of ["/_astro/*", "/pagefind/*"]) expect(routes.exclude).toContain(path);
+    for (const path of ["/_/t", "/_/r", "/react/install", "/solid/introduction.md", "/llms.txt"]) expect(routed(path)).toBe(true);
+    // The beacon is a static file.
+    for (const path of ["/_/b.js", "/_astro/x.js", "/pagefind/pagefind.js", "/compare/index.html", "/"]) expect(routed(path)).toBe(false);
     // Pages allows a wildcard only at the end and 100 rules in all.
     for (const rule of [...routes.include, ...routes.exclude]) expect(rule.slice(0, -1)).not.toContain("*");
     expect(routes.include.length + routes.exclude.length).toBeLessThanOrEqual(100);
@@ -259,6 +283,140 @@ describe("POST /_/t", () => {
     expect(get.status).toBe(405);
     expect(get.headers.get("allow")).toBe("POST");
     expect(points).toEqual([]);
+  });
+});
+
+describe("POST /_/r", () => {
+  const report = { pageloadId: "abc", siteToken: "test-token", eventType: 1, timingsV2: { loadEventEnd: 812 } };
+  let upstream: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
+
+  beforeEach(() => {
+    upstream = vi.fn<typeof globalThis.fetch>(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", upstream);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("relays a report from a public site to Cloudflare with only a few headers", async () => {
+    const req = post("https://forms.lunarhue.dev/_/r", report, {
+      origin: "https://forms.lunarhue.dev",
+      referer: "https://forms.lunarhue.dev/react/install",
+      "accept-language": "de-DE",
+      cookie: "session=1",
+      authorization: "Bearer x",
+      "x-forwarded-for": "203.0.113.9",
+    });
+    const response = await relay(context(req, {}));
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(upstream).toHaveBeenCalledOnce();
+    const [target, init] = upstream.mock.calls[0] ?? [];
+    expect(target).toBe(RUM_ENDPOINT);
+    expect(RUM_ENDPOINT).toBe("https://cloudflareinsights.com/cdn-cgi/rum");
+    expect(init?.method).toBe("POST");
+    expect(typeof init?.body).toBe("string");
+    expect(JSON.parse(typeof init?.body === "string" ? init.body : "")).toEqual(report);
+    expect(Object.fromEntries(new Headers(init?.headers))).toEqual({
+      "content-type": "application/json",
+      "user-agent": CHROME,
+      origin: "https://forms.lunarhue.dev",
+      referer: "https://forms.lunarhue.dev/react/install",
+      "accept-language": "de-DE",
+    });
+  });
+
+  it("answers with Cloudflare's status", async () => {
+    upstream.mockResolvedValueOnce(new Response("nope", { status: 400 }));
+    const response = await relay(context(post("https://next.forms.lunarhue.dev/_/r", report), {}));
+    expect(response.status).toBe(400);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).toBe("");
+  });
+
+  it("answers 204 when Cloudflare can't be reached", async () => {
+    upstream.mockRejectedValueOnce(new TypeError("network"));
+    const response = await relay(context(post("https://forms.lunarhue.dev/_/r", report), {}));
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("answers 204 but relays nothing elsewhere, for the smoke test or from another site", async () => {
+    for (const req of [
+      post("http://127.0.0.1:4560/_/r", report),
+      post("https://pr-12.lunarhue-forms-docs.pages.dev/_/r", report),
+      post("https://forms.lunarhue.dev/_/r", report, { "user-agent": "forms-docs-smoke" }),
+      post("https://forms.lunarhue.dev/_/r", report, { origin: "https://evil.example" }),
+    ]) {
+      const response = await relay(context(req, {}));
+      expect(response.status).toBe(204);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("rejects bad bodies and other methods", async () => {
+    for (const body of ["{not json", "[1,2]", "null", '"text"', "42", JSON.stringify({ blob: "a".repeat(40_000) })]) {
+      const response = await relay(context(post("https://forms.lunarhue.dev/_/r", body), {}));
+      expect(response.status).toBe(400);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    const get = await relay(context(request("https://forms.lunarhue.dev/_/r"), {}));
+    expect(get.status).toBe(405);
+    expect(get.headers.get("allow")).toBe("POST");
+    expect(get.headers.get("cache-control")).toBe("no-store");
+    expect(upstream).not.toHaveBeenCalled();
+  });
+});
+
+describe("Cloudflare beacon download", () => {
+  const script = "!function(){/* beacon */}();";
+  const wait = vi.fn<(ms: number) => Promise<void>>(async () => {});
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "cf-beacon-"));
+    wait.mockClear();
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("adds no build step without a token", () => {
+    expect(cfBeacon("").hooks).toEqual({});
+    expect(cfBeacon("test-token").hooks).toHaveProperty("astro:build:done");
+  });
+
+  it("writes the beacon, making the folder", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(script));
+    const output = join(dir, "_", "b.js");
+    expect(await fetchBeacon(output, { fetch, wait })).toBe(script.length);
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(BEACON_URL);
+    expect(await readFile(output, "utf8")).toBe(script);
+    expect(wait).not.toHaveBeenCalled();
+  });
+
+  it("tries again after a failure", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockRejectedValueOnce(new TypeError("network"))
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(new Response(script));
+    const output = join(dir, "_", "b.js");
+    await fetchBeacon(output, { fetch, wait });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(wait.mock.calls).toEqual([[1000], [2000]]);
+    expect(await readFile(output, "utf8")).toBe(script);
+  });
+
+  it("throws when every try fails or the script is empty", async () => {
+    const output = join(dir, "_", "b.js");
+    const down = vi.fn<typeof globalThis.fetch>(async () => new Response("down", { status: 500 }));
+    await expect(fetchBeacon(output, { fetch: down, wait })).rejects.toThrow(/answered 500/);
+    expect(down).toHaveBeenCalledTimes(3);
+    const empty = vi.fn<typeof globalThis.fetch>(async () => new Response("  \n"));
+    await expect(fetchBeacon(output, { fetch: empty, wait, attempts: 1 })).rejects.toThrow(/was empty/);
+    await expect(readFile(output, "utf8")).rejects.toThrow(/ENOENT/);
   });
 });
 

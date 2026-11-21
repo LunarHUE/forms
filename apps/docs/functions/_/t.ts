@@ -7,6 +7,7 @@
  */
 import {
   countryOf,
+  crossSite,
   parsePageview,
   recordingChannel,
   referrerHost,
@@ -27,12 +28,6 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     return undefined;
   }
-}
-
-/** Whether a browser sent this from another site, which no tracker of ours does. */
-function crossSite(request: Request, url: URL): boolean {
-  const origin = request.headers.get("origin");
-  return origin !== null && origin !== url.origin;
 }
 
 export async function onRequest(context: PagesContext): Promise<Response> {
