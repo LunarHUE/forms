@@ -5,7 +5,7 @@ section: plugins
 order: 5
 ---
 
-A reload, a crash or a closed tab loses what the user typed. `persist()`
+A reload, a crash or a closed tab loses what the user typed. `persist`
 keeps a draft in storage and puts it back.
 
 <Demo name="persist/feedback" />
@@ -13,9 +13,10 @@ keeps a draft in storage and puts it back.
 Type something, then reload the page or press Discard draft.
 
 `persist("feedback-draft")` saves the form value as JSON in `localStorage`
-under that key, once the page is idle after a write. Pass other storage as
-the second argument, as in `persist("feedback-draft", sessionStorage)`. Any
-object with `getItem`, `setItem` and `removeItem` works.
+under that key, once the page is idle after a write. For other storage, pass
+an object with the key and the storage, as in
+`persist({ key: "feedback-draft", storage: sessionStorage })`. Any object
+with `getItem`, `setItem` and `removeItem` works.
 
 ## Restoring
 
@@ -31,7 +32,7 @@ after.
 
 A reset writes the defaults, and `persist` saves those too, so the draft is
 gone after the next reload. To stop saving, leave `persist` out of the list.
-`persist(key, undefined)` still means `localStorage`.
+`persist({ key, storage: undefined })` still means `localStorage`.
 
 ## When storage fails
 
