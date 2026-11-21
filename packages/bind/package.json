@@ -1,7 +1,7 @@
 {
   "name": "@lunarhue/forms-bind",
   "license": "MIT",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Bind a forms form to a Zustand store or a Solid signal.",
   "keywords": ["form", "forms", "zustand", "solid", "state"],
   "homepage": "https://github.com/LunarHUE/forms#readme",

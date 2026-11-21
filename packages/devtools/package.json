@@ -1,7 +1,7 @@
 {
   "name": "@lunarhue/forms-devtools",
   "license": "MIT",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Devtools for forms: inspect live forms in a panel on the page.",
   "keywords": ["form", "forms", "devtools", "debugging"],
   "homepage": "https://github.com/LunarHUE/forms#readme",
