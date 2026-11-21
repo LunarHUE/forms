@@ -75,13 +75,13 @@
       "name": "./valibot",
       "path": "dist/esm/valibot.js",
       "import": "*",
-      "limit": "750 B"
+      "limit": "1 kB"
     },
     {
       "name": "./zod",
       "path": "dist/esm/zod.js",
       "import": "*",
-      "limit": "700 B"
+      "limit": "1 kB"
     },
     {
       "name": "core + valibot()",
@@ -89,7 +89,7 @@
         "../core/dist/esm/index.js": "{ createFormsCore }",
         "dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "9.7 kB"
+      "limit": "10.5 kB"
     },
     {
       "name": "core + zod()",
@@ -97,7 +97,7 @@
         "../core/dist/esm/index.js": "{ createFormsCore }",
         "dist/esm/zod.js": "{ zod }"
       },
-      "limit": "9.65 kB"
+      "limit": "10.5 kB"
     }
   ]
 }

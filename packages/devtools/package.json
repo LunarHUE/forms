@@ -61,7 +61,7 @@
       "path": "dist/esm/index.js",
       "import": "{ devtools }",
       "ignore": ["./panel.js"],
-      "limit": "1.1 kB"
+      "limit": "1.5 kB"
     },
     {
       "name": "core + devtools()",
@@ -70,14 +70,14 @@
         "dist/esm/index.js": "{ devtools }"
       },
       "ignore": ["./panel.js"],
-      "limit": "9.75 kB"
+      "limit": "11 kB"
     },
     {
       "name": "panel chunk, minified",
       "path": "dist/esm/panel.js",
       "ignore": ["@lunarhue/forms-core"],
       "brotli": false,
-      "limit": "73.5 kB"
+      "limit": "85 kB"
     }
   ]
 }

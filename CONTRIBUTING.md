@@ -119,8 +119,12 @@ Each entry point has a limit in its package's `size-limit` list, and
 
 - A feature should cost nothing for people who don't use it. Put it in a
   plugin or its own entry point before you put it in core.
-- A limit is a guard, not a budget to fill. If your change needs more room,
-  raise the limit in the same pull request and say by how much and why.
+- A limit is a guard, not a budget to fill. Keep limits at clean round
+  numbers with practical headroom (~15–25%, or ~0.5–2 kB depending on the
+  entry) so normal fixes can drift a few hundred bytes without churn while
+  architectural regressions and broken tree-shaking still fail CI. If your
+  change needs more room, raise the limit in the same pull request and say by
+  how much and why.
 - Readable code wins over a few bytes. Don't golf core to stay under.
 - The "everything on" lines have no limit. They are printed so the total
   stays in view.

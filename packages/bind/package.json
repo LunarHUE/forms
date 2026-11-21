@@ -75,13 +75,13 @@
       "name": "./solid",
       "path": "dist/esm/solid.js",
       "import": "*",
-      "limit": "350 B"
+      "limit": "500 B"
     },
     {
       "name": "./zustand",
       "path": "dist/esm/zustand.js",
       "import": "*",
-      "limit": "350 B"
+      "limit": "500 B"
     },
     {
       "name": "core + signal()",
@@ -90,7 +90,7 @@
         "../core/dist/esm/plugins/index.js": "{ bind }",
         "dist/esm/solid.js": "{ signal }"
       },
-      "limit": "11.8 kB"
+      "limit": "12.5 kB"
     },
     {
       "name": "core + zustand()",
@@ -99,7 +99,7 @@
         "../core/dist/esm/plugins/index.js": "{ bind }",
         "dist/esm/zustand.js": "{ zustand }"
       },
-      "limit": "11.8 kB"
+      "limit": "12.5 kB"
     }
   ]
 }

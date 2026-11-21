@@ -128,26 +128,26 @@
       "import": {
         "dist/esm/index.js": "{ createForms, useForm }"
       },
-      "limit": "11.8 kB"
+      "limit": "12 kB"
     },
     {
       "name": "react + inputProps",
       "import": {
         "dist/esm/index.js": "{ createForms, useForm, inputProps }"
       },
-      "limit": "12.35 kB"
+      "limit": "12.5 kB"
     },
     {
       "name": "react + every props function",
       "import": {
         "dist/esm/index.js": "{ createForms, useForm, inputProps, textareaProps, selectProps, numberProps, rangeProps, checkboxProps, checkboxGroupProps, radioProps, numberPieces }"
       },
-      "limit": "11.75 kB"
+      "limit": "13 kB"
     },
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "12.95 kB"
+      "limit": "15 kB"
     },
     {
       "name": "react + valibot()",
@@ -155,7 +155,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.4 kB"
+      "limit": "15.5 kB"
     },
     {
       "name": "react + dirty()",
@@ -163,7 +163,7 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.55 kB"
+      "limit": "15.5 kB"
     },
     {
       "name": "react, everything on",
@@ -179,14 +179,14 @@
       "import": {
         "dist/esm/mini.js": "{ createForms, useForm, inputProps }"
       },
-      "limit": "2.45 kB"
+      "limit": "3 kB"
     },
     {
       "name": "react/mini + inputProps + perField()",
       "import": {
         "dist/esm/mini.js": "{ createForms, useForm, inputProps, perField }"
       },
-      "limit": "2.65 kB"
+      "limit": "3.5 kB"
     }
   ]
 }

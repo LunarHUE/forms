@@ -94,67 +94,67 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "9.5 kB"
+      "limit": "11 kB"
     },
     {
       "name": "./plugins, plugin authoring",
       "path": "dist/esm/plugins/index.js",
       "import": "{ definePlugin, flushPlugins, refuse }",
-      "limit": "2.3 kB"
+      "limit": "3 kB"
     },
     {
       "name": "./plugins dirty()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ dirty }",
-      "limit": "1.2 kB"
+      "limit": "1.5 kB"
     },
     {
       "name": "./plugins bind()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ bind }",
-      "limit": "3.15 kB"
+      "limit": "3.5 kB"
     },
     {
       "name": "./plugins history()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ history }",
-      "limit": "2.85 kB"
+      "limit": "3.5 kB"
     },
     {
       "name": "./plugins transform()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ transform }",
-      "limit": "3.15 kB"
+      "limit": "4 kB"
     },
     {
       "name": "./text masked()",
       "path": "dist/esm/text/index.js",
       "import": "{ masked }",
-      "limit": "3.35 kB"
+      "limit": "4 kB"
     },
     {
       "name": "./plugins persist()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ persist }",
-      "limit": "2.7 kB"
+      "limit": "3 kB"
     },
     {
       "name": "./plugins rebase()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rebase }",
-      "limit": "2.95 kB"
+      "limit": "3.5 kB"
     },
     {
       "name": "./plugins rules()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ rules }",
-      "limit": "2.3 kB"
+      "limit": "3 kB"
     },
     {
       "name": "./plugins/testing",
       "path": "dist/esm/plugins/testing.js",
       "import": "{ testStore }",
-      "limit": "12.05 kB"
+      "limit": "12.5 kB"
     },
     {
       "name": "history() + masked()",
@@ -162,7 +162,7 @@
         "dist/esm/plugins/index.js": "{ history }",
         "dist/esm/text/index.js": "{ masked }"
       },
-      "limit": "4.0 kB"
+      "limit": "5 kB"
     },
     {
       "name": "core + dirty()",
@@ -170,25 +170,25 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/index.js": "{ dirty }"
       },
-      "limit": "10.1 kB"
+      "limit": "12 kB"
     },
     {
       "name": "dirty() + baselineOnSubmit()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ dirty, baselineOnSubmit }",
-      "limit": "3.75 kB"
+      "limit": "4 kB"
     },
     {
       "name": "./mini",
       "path": "dist/esm/mini/index.js",
       "import": "{ createFormsCore, fieldValidators }",
-      "limit": "1.85 kB"
+      "limit": "2.5 kB"
     },
     {
       "name": "./mini + perField()",
       "path": "dist/esm/mini/index.js",
       "import": "{ createFormsCore, fieldValidators, perField }",
-      "limit": "2.1 kB"
+      "limit": "3 kB"
     }
   ]
 }
