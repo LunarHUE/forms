@@ -16,6 +16,7 @@
   "files": [
     "dist",
     "plugins",
+    "text",
     "legacy"
   ],
   "main": "./dist/cjs/index.js",
@@ -42,6 +43,17 @@
       "require": {
         "types": "./dist/cjs/plugins.d.ts",
         "default": "./dist/cjs/plugins.js"
+      }
+    },
+    "./text": {
+      "@lunarhue/source": "./src/text.ts",
+      "import": {
+        "types": "./dist/esm/text.d.ts",
+        "default": "./dist/esm/text.js"
+      },
+      "require": {
+        "types": "./dist/cjs/text.d.ts",
+        "default": "./dist/cjs/text.js"
       }
     },
     "./legacy": {
@@ -146,7 +158,8 @@
       "import": {
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }",
-        "dist/esm/plugins.js": "{ history, mask, persist, rules, rebase, bind, dirty, baselineOnSubmit }"
+        "dist/esm/plugins.js": "{ history, persist, rules, rebase, bind, dirty, baselineOnSubmit }",
+        "dist/esm/text.js": "{ masked }"
       }
     }
   ]

@@ -36,7 +36,9 @@ export function createFormRuntime(definition: object, ...args: unknown[]): Runti
 
 /** See `createForms`. */
 export function createFormsRuntime(options: RuntimeOptions = {}) {
-  const core = createFormsCore(options);
+  // The parts of the field types and fieldsets, so a store whose plugins have no hooks gets the hooks a part with none of its own needs.
+  const known: Part[] = Object.values(options.fields ?? {}).flatMap((entry) => ("parts" in entry ? entry.parts : []));
+  const core = createFormsCore({ ...options, "~parts": known });
   const scopeOf = scopeCache(options.fields ?? {});
 
   // `config` is a definition config, or a function of per-form options that returns one.
@@ -70,9 +72,10 @@ export function createFormsRuntime(options: RuntimeOptions = {}) {
    * after attaching its parts. Its first argument is its schema, or its
    * first part when it has no schema.
    */
-  const fieldset = (first?: object, ...rest: readonly Part[]) => {
+  const fieldset = (first?: object, ...rest: readonly (Part | readonly Part[])[]) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
+    const parts = (first === undefined || "~standard" in first ? rest : [first as Part, ...rest]).flat();
+    known.push(...parts);
     return {
       scope(handle: RuntimeHandle) {
         attach(handle, parts, true);

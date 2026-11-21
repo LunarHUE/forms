@@ -15,6 +15,7 @@ import type {
   IntentArgs,
   InvalidField,
   Part,
+  Parts,
   PluginApis,
   NamesOf,
   PluginNames,
@@ -333,14 +334,14 @@ export interface Forms<P extends Plugins = [], E = FormError, F extends FieldCom
    */
   fieldset<S extends StandardSchemaV1, N extends string = never>(
     schema: S,
-    ...parts: readonly Part<N, SchemaValue<S, P>>[]
+    ...parts: readonly Parts<N, SchemaValue<S, P>>[]
   ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   /**
    * Makes a reusable shape from a type, with no schema:
    * `forms.fieldset<Address>()`. With parts, name their plugins' factories
    * too: `forms.fieldset<Address, typeof rules>(ruled(...))`.
    */
-  fieldset<V, Q = never>(...parts: readonly Part<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+  fieldset<V, Q = never>(...parts: readonly Parts<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
 }
 
 /** A form as the runtime builds it. */
@@ -417,8 +418,11 @@ export const createForms: <const P extends Plugins = [], E = FormError, F extend
 ) => Forms<P, E, F> = (options = {}) => {
   // The runtime is untyped inside. The contract's types are checked by the type tests.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  const core = createFormsCore(options) as unknown as LooseCore;
   const fields: FieldComponentMap = options.fields ?? {};
+  // The parts of the field types and fieldsets, so a store whose plugins have no hooks gets the hooks a part with none of its own needs.
+  const known: Part[] = Object.values(fields).flatMap((entry) => ("parts" in entry ? entry.parts : []));
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const core = createFormsCore({ ...options, "~parts": known }) as unknown as LooseCore;
   const scopes = new WeakMap<object, AnyScope>();
   // Every form made here shares this cache, so one handle always gives the same components.
   const scope = (handle: AnyScope["root"]): AnyScope => cached(scopes, handle, () => makeScope(handle, fields));
@@ -445,9 +449,10 @@ export const createForms: <const P extends Plugins = [], E = FormError, F extend
   };
 
   // A fieldset's first argument is its schema, or its first part when it has no schema.
-  const fieldset = (first?: object, ...rest: readonly Part[]) => {
+  const fieldset = (first?: object, ...rest: readonly (Part | readonly Part[])[]) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const parts = first === undefined || "~standard" in first ? rest : [first as Part, ...rest];
+    const parts = (first === undefined || "~standard" in first ? rest : [first as Part, ...rest]).flat();
+    known.push(...parts);
     return {
       scope(handle: AnyScope["root"]) {
         attach(handle, parts);

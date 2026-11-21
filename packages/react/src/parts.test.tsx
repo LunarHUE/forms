@@ -4,7 +4,8 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { createForms, type FieldApi, defineField, type HandleOf, inputProps, useForm } from "./index.js";
-import { digits, mask, masked, ruled, rules } from "./plugins.js";
+import { ruled, rules } from "./plugins.js";
+import { digits, masked } from "./text.js";
 
 /** Shows "5551234" as "(555) 123-4". */
 function formatPhone(value: string): string {
@@ -26,7 +27,7 @@ function TextInput({ field: text, label }: InputProps) {
 
 const PhoneField = defineField(TextInput, masked({ clean: digits, display: formatPhone }));
 
-const forms = createForms({ plugins: [mask(), rules()], fields: { TextField: TextInput, PhoneField } });
+const forms = createForms({ plugins: [rules()], fields: { TextField: TextInput, PhoneField } });
 
 interface Address {
   same: boolean;

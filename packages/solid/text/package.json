@@ -1,0 +1,5 @@
+{
+  "main": "../dist/cjs/text.js",
+  "module": "../dist/esm/text.js",
+  "types": "../dist/cjs/text.d.ts"
+}

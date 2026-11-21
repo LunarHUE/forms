@@ -16,7 +16,8 @@
   "files": [
     "dist",
     "v1",
-    "plugins"
+    "plugins",
+    "text"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -59,6 +60,17 @@
       "require": {
         "types": "./dist/cjs/plugins.d.ts",
         "default": "./dist/cjs/plugins.js"
+      }
+    },
+    "./text": {
+      "@lunarhue/source": "./src/text.ts",
+      "import": {
+        "types": "./dist/esm/text.d.ts",
+        "default": "./dist/esm/text.js"
+      },
+      "require": {
+        "types": "./dist/cjs/text.d.ts",
+        "default": "./dist/cjs/text.js"
       }
     },
     "./package.json": "./package.json"
@@ -112,19 +124,19 @@
       "import": {
         "dist/esm/index.js": "{ createForms, createForm, inputProps, textareaProps, selectProps, numberProps, rangeProps, checkboxProps, checkboxGroupProps, radioProps, numberPieces }"
       },
-      "limit": "11.25 kB"
+      "limit": "11.27 kB"
     },
     {
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "13.08 kB"
+      "limit": "13.11 kB"
     },
     {
       "name": "./v1",
       "path": "dist/v1/esm/index.js",
       "import": "*",
-      "limit": "13.12 kB"
+      "limit": "13.17 kB"
     },
     {
       "name": "solid + valibot()",
@@ -132,7 +144,7 @@
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }"
       },
-      "limit": "13.53 kB"
+      "limit": "13.59 kB"
     },
     {
       "name": "solid + dirty()",
@@ -140,14 +152,15 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins.js": "{ dirty }"
       },
-      "limit": "13.65 kB"
+      "limit": "13.71 kB"
     },
     {
       "name": "solid, everything on",
       "import": {
         "dist/esm/index.js": "*",
         "../schema/dist/esm/valibot.js": "{ valibot }",
-        "dist/esm/plugins.js": "{ history, mask, persist, rules, rebase, bind, dirty, baselineOnSubmit }"
+        "dist/esm/plugins.js": "{ history, persist, rules, rebase, bind, dirty, baselineOnSubmit }",
+        "dist/esm/text.js": "{ masked }"
       }
     }
   ]

@@ -22,6 +22,7 @@ import type {
   Nested,
   ObjectHandle,
   Part,
+  Parts,
   PluginApis,
   NamesOf,
   PluginNames,
@@ -668,7 +669,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
      * With parts, name their plugins' factories too:
      * `forms.fieldset<Address, typeof rules>(ruled(...))`.
      */
-    <V, Q = never>(...parts: readonly Part<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
+    <V, Q = never>(...parts: readonly Parts<NamesOf<Q>, V>[]): Fieldset<V, E, F, PluginNames<P>, NamesOf<Q>>;
     /**
      * The shape from a schema: the `Draft` of its input when an installed
      * schema plugin accepts it, as `define` types it, and the input itself
@@ -676,7 +677,7 @@ export interface SolidForms<P extends Plugins = [], E = FormError, F extends Fie
      */
     <S extends StandardSchemaV1, N extends string = never>(
       schema: S,
-      ...parts: readonly Part<N, SchemaValue<S, P>>[]
+      ...parts: readonly Parts<N, SchemaValue<S, P>>[]
     ): Fieldset<SchemaValue<S, P>, E, F, PluginNames<P>, N>;
   };
 }

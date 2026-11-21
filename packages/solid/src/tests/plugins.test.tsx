@@ -1,6 +1,7 @@
 import { flush } from "./solid.js";
 import type { PluginContext } from "@lunarhue/forms-core";
-import { baselineOnSubmit, definePlugin, dirty, history, mask, masked, type Rebase, rebase, refuse, upper as upperCase } from "../plugins.js";
+import { baselineOnSubmit, definePlugin, dirty, history, type Rebase, rebase, refuse } from "../plugins.js";
+import { masked, upper as upperCase } from "../text.js";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { Items, createField, createForm, createForms, type FieldApi, defineField, type FormOf, inputProps } from "../index.js";
 import { get, getAs, mount, settle, typeText } from "./dom.js";
@@ -138,7 +139,7 @@ describe("the history plugin", () => {
 /** A sku input whose field type upper-cases what it holds. */
 const SkuField = defineField((props: { readonly field: FieldApi<string> }) => <input {...inputProps(props.field)} />, masked({ clean: upperCase }));
 
-const Lines = createForms({ plugins: [arrays(), dirty(), mask()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
+const Lines = createForms({ plugins: [arrays(), dirty()], fields: { SkuField } }).define({ defaultValues: { lines: [{ sku: "ab-1" }] } });
 
 function LinesPage() {
   const form = createForm(Lines);
