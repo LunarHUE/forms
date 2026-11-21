@@ -7,7 +7,7 @@ import type { FormContext } from "./context.js";
 import { addErrors, type Placed } from "./placed.js";
 import type { SchemaOutput, Validation, ValidationOptions } from "./runner.js";
 import type { ItemValidators } from "./validate/fields.js";
-import { isThenable, type Spec, toSpec } from "./validate/inputs.js";
+import { isThenable, type Spec, stepSlot, toSpec } from "./validate/inputs.js";
 import { place, thrownMessage } from "./validate/place.js";
 import { keyOf, type Pattern, startsWith } from "./validate/paths.js";
 import { copyTree } from "./tree.js";
@@ -58,6 +58,8 @@ export interface Run {
   marked?: boolean;
   /** The fields this run put errors on, to clear on its next run. */
   readonly written: Map<string, Path>;
+  /** For a `pipe()` validator, the step index that produced the currently displayed error. */
+  failedStep?: number | undefined;
   waiters: (() => void)[];
 }
 
@@ -83,6 +85,7 @@ const passed = (result: unknown): result is StandardSchemaV1.SuccessResult<unkno
 };
 
 const defaultMapError: MapError<FormError> = (raw) => ({ message: raw.message });
+const emptyPlaced: Placed<never> = new Map();
 
 /**
  * The validation runner: field and form validators, their timing, async
@@ -211,14 +214,16 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
   let captured: SchemaOutput | undefined;
 
   // `input` is the value the check ran on.
-  const land = (run: Run, result: unknown, input: unknown) => {
+  const land = (run: Run, result: unknown, input: unknown, failedStep?: number) => {
     if (run.reg === schemaReg) captured = passed(result) ? { input, output: result.value } : undefined;
+    run.failedStep = failedStep;
     write(run, place(core, run.reg.spec, run.path, result, mapError));
   };
 
   const fail = (run: Run, cause: unknown) => {
     if (run.reg === schemaReg) captured = undefined;
     run.thrown = true;
+    run.failedStep = undefined;
     const placed: Placed<E> = new Map();
     addErrors(placed, run.path, [mapError({ source: "thrown", message: thrownMessage(cause), path: run.path, cause })]);
     write(run, placed);
@@ -232,7 +237,8 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     run.thrown = false;
     const call: Call = { controller: undefined, aborted: false };
     run.call = call;
-    const ctx: ValidatorContext<E> = {
+    let callStep: number | undefined;
+    const ctx: ValidatorContext<E> & { readonly [stepSlot]: (index: number, failed: boolean) => void } = {
       get signal() {
         if (!call.controller) {
           call.controller = new AbortController();
@@ -242,6 +248,20 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       },
       path: run.path,
       store: context.store(),
+      [stepSlot](index, failed) {
+        if (run.call !== call) return;
+        if (failed) {
+          callStep = index;
+          return;
+        }
+        // Once a `pipe()` passes the step that produced the displayed error, clear that stale error immediately.
+        if (run.failedStep !== undefined && index >= run.failedStep) {
+          run.failedStep = undefined;
+          core.batch(() => {
+            if (live(run)) write(run, emptyPlaced);
+          });
+        }
+      },
     };
     const input = core.getSnapshot(run.path).value;
     let result: unknown;
@@ -255,7 +275,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
     }
     if (!isThenable(result)) {
       run.call = undefined;
-      land(run, result, input);
+      land(run, result, input, callStep);
       settle(run);
       return;
     }
@@ -274,7 +294,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
       });
     };
     void result.then(
-      (value) => finish(() => land(run, value, input)),
+      (value) => finish(() => land(run, value, input, callStep)),
       (cause: unknown) => finish(() => fail(run, cause)),
     );
   };
@@ -380,6 +400,7 @@ export function createValidation<V, E, I, R>(context: FormContext<V, E, I, R>, o
         run.scopes = undefined;
         run.ran = false;
         run.thrown = false;
+        run.failedStep = undefined;
         // The baseline clears the errors.
         run.written.clear();
       }

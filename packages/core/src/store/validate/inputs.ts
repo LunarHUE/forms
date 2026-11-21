@@ -20,6 +20,12 @@ export interface Spec {
   readonly recheckOnSubmit: boolean;
 }
 
+/** Internal: `validation.ts` attaches a step callback on `ctx` for `pipe()`. */
+export const stepSlot = Symbol();
+
+/** Reports a `pipe()` step outcome to the validation runner. */
+export type StepHook = (index: number, failed: boolean) => void;
+
 /** What `debounced`, `validateOn` and `recheckOnSubmit` put on the function they return. */
 export interface Tags {
   /** Set by `validateOn`. */

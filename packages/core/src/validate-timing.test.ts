@@ -294,4 +294,79 @@ describe("pipe", () => {
     expect("~on" in required).toBe(false);
     expect(pipeline).not.toHaveProperty("~schema", true);
   });
+
+  it("clears a failing sync step's error at once once it passes and a later async step starts", async () => {
+    const lookup = vi.fn<typeof required>((value) => (value === "taken" ? err("Taken") : undefined));
+    const { root, messages, validating } = make({ name: "" }, { timing: "input" });
+    root.at("name").registerValidator(pipe(short, debounced(lookup, 400)));
+    root.at("name").setValue("ab");
+    expect(messages(["name"])).toEqual(["Short"]);
+    expect(validating(["name"])).toBe(false);
+    // Passing step 0 clears "Short" right away while the debounced lookup waits.
+    root.at("name").setValue("abcd");
+    expect(messages(["name"])).toEqual([]);
+    expect(validating(["name"])).toBe(true);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(messages(["name"])).toEqual([]);
+    expect(validating(["name"])).toBe(false);
+  });
+
+  it("keeps an async step's error while the same step re-runs on a new value", async () => {
+    const lookup = vi.fn<typeof required>((value) => (typeof value === "string" && value.startsWith("ada") ? err("Taken") : undefined));
+    const { root, messages, validating } = make({ name: "" }, { timing: "input" });
+    root.at("name").registerValidator(pipe(short, debounced(lookup, 400)));
+    root.at("name").setValue("ada");
+    await vi.advanceTimersByTimeAsync(400);
+    expect(messages(["name"])).toEqual(["Taken"]);
+    // Typing "adam" passes step 0 again, but step 1 is still re-running, so "Taken" stays until it settles.
+    root.at("name").setValue("adam");
+    expect(validating(["name"])).toBe(true);
+    expect(messages(["name"])).toEqual(["Taken"]);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(messages(["name"])).toEqual(["Taken"]);
+    // Typing "grace" clears "Taken" once step 1 settles.
+    root.at("name").setValue("grace");
+    expect(messages(["name"])).toEqual(["Taken"]);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(messages(["name"])).toEqual([]);
+  });
+
+  it("clears an async step's error as soon as it passes before a later async step finishes", async () => {
+    const { root, messages, validating } = make({ name: "" }, { timing: "input" });
+    root.at("name").registerValidator(
+      pipe(
+        (value: unknown) =>
+          new Promise<FormError | undefined>((resolve) => setTimeout(() => resolve(value === "bad" ? err("First") : undefined), 10)),
+        later(50, err("Second")),
+      ),
+    );
+    root.at("name").setValue("bad");
+    await vi.advanceTimersByTimeAsync(10);
+    expect(messages(["name"])).toEqual(["First"]);
+    root.at("name").setValue("good");
+    // Step 0 is still running, so "First" stays.
+    expect(messages(["name"])).toEqual(["First"]);
+    await vi.advanceTimersByTimeAsync(10);
+    // Step 0 passed and step 1 is now running: "First" is gone.
+    expect(messages(["name"])).toEqual([]);
+    expect(validating(["name"])).toBe(true);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(messages(["name"])).toEqual(["Second"]);
+    expect(validating(["name"])).toBe(false);
+  });
+
+  it("tracks failed steps per field when one pipe is shared and across nested pipes", async () => {
+    const shared = pipe(pipe(required, short), debounced(() => undefined, 400));
+    const { root, messages } = make({ a: "", b: "" }, { timing: "input" });
+    root.at("a").registerValidator(shared);
+    root.at("b").registerValidator(shared);
+    root.at("a").setValue("ab");
+    root.at("b").setValue("cd");
+    expect(messages(["a"])).toEqual(["Short"]);
+    expect(messages(["b"])).toEqual(["Short"]);
+    // Passing on `a` clears `a` immediately without affecting `b`.
+    root.at("a").setValue("abcd");
+    expect(messages(["a"])).toEqual([]);
+    expect(messages(["b"])).toEqual(["Short"]);
+  });
 });
