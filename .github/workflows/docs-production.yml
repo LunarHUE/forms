@@ -6,8 +6,8 @@ name: Docs production
 #
 # The packages release as one fixed group, so the core package's tag marks
 # every release. Pushing it, after `bun run release`, runs this. A manual run
-# redeploys the latest release tag, to pick up a fix to this workflow or the
-# smoke test, or to re-run a failed deploy.
+# redeploys the latest release tag by default, or an explicit `ref` (such as
+# `main`) to ship docs-only changes without cutting a package release.
 #
 # The gate: build once, upload the build to the `release-candidate` branch
 # alias, smoke-test that deployment, and only then upload the same dist to
@@ -19,6 +19,12 @@ on:
       # Prereleases don't replace the stable docs.
       - "!@lunarhue/forms-core@*-*"
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (e.g. main or a commit SHA). Defaults to the latest release tag."
+        required: false
+        default: ""
+        type: string
 
 permissions: {}
 
@@ -60,12 +66,37 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Production shows the newest stable release. A tag pushed for an older
-      # line, such as a backported patch, would roll the docs back, so that
-      # run stops here.
+      # Production shows the newest stable release unless a manual run asks for
+      # an explicit ref (e.g. `main` for a docs-only update). A tag pushed for
+      # an older line, such as a backported patch, would roll the docs back, so
+      # that run stops here.
       - id: release
         if: steps.secrets.outputs.ready == 'true'
+        env:
+          INPUT_REF: ${{ inputs.ref }}
         run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$INPUT_REF" ]; then
+            if ! printf '%s' "$INPUT_REF" | grep -Eq '^[A-Za-z0-9._/@-]+$' || printf '%s' "$INPUT_REF" | grep -Eq '(^-|\.\.)'; then
+              echo "::error::Invalid ref \"$INPUT_REF\"."
+              exit 1
+            fi
+            if resolved=$(git rev-parse --verify "${INPUT_REF}^{commit}" 2>/dev/null); then
+              :
+            elif resolved=$(git rev-parse --verify "refs/remotes/origin/${INPUT_REF}^{commit}" 2>/dev/null); then
+              :
+            elif resolved=$(git rev-parse --verify "refs/tags/${INPUT_REF}^{commit}" 2>/dev/null); then
+              :
+            else
+              echo "::error::Could not resolve ref \"$INPUT_REF\" to a commit."
+              exit 1
+            fi
+            echo "ref=$resolved" >> "$GITHUB_OUTPUT"
+            echo "label=$INPUT_REF ($resolved)" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           latest=$(git tag --list '@lunarhue/forms-core@*' --sort=-version:refname | { grep -v '@[0-9.]*-' || true; } | sed -n 1p)
           if [ -z "$latest" ]; then
             echo "::error::No @lunarhue/forms-core release tag found."
@@ -76,19 +107,21 @@ jobs:
             echo "deploy=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "ref=refs/tags/$latest" >> "$GITHUB_OUTPUT"
+          echo "label=$latest" >> "$GITHUB_OUTPUT"
           echo "tag=$latest" >> "$GITHUB_OUTPUT"
           echo "deploy=true" >> "$GITHUB_OUTPUT"
 
       # The smoke test comes from the commit this workflow runs from, so a
       # manual run uses main's copy and a fix to the test reaches the next
       # re-run without a release. It reads only fetch and Node built-ins.
-      # Then the release itself is checked out to build.
+      # Then the chosen ref is checked out to build.
       - if: steps.release.outputs.deploy == 'true'
         env:
-          TAG: ${{ steps.release.outputs.tag }}
+          REF: ${{ steps.release.outputs.ref }}
         run: |
           git show "$GITHUB_SHA:apps/docs/scripts/smoke.ts" > "$RUNNER_TEMP/smoke.ts"
-          git checkout --detach "refs/tags/$TAG"
+          git checkout --detach "$REF"
 
       - if: steps.release.outputs.deploy == 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -125,10 +158,10 @@ jobs:
       - if: steps.release.outputs.deploy == 'true'
         env:
           URL: ${{ steps.candidate.outputs.deployment-url }}
-          TAG: ${{ steps.release.outputs.tag }}
+          LABEL: ${{ steps.release.outputs.label }}
         run: |
           {
-            echo "Release: $TAG"
+            echo "Target: $LABEL"
             echo ""
             echo "Candidate: $URL"
             echo ""
@@ -166,9 +199,9 @@ jobs:
 
       # Updates the docs comment docs-deploy.yml left on the Version Packages
       # pull request, or adds one. That is the newest merged one whose merge
-      # commit is in this tag's history; without one, it skips the comment.
-      # A failed comment doesn't fail the deploy.
-      - if: steps.release.outputs.deploy == 'true'
+      # commit is in this tag's history; without one (or on a manual non-tag
+      # deploy), it skips the comment. A failed comment doesn't fail the deploy.
+      - if: steps.release.outputs.deploy == 'true' && steps.release.outputs.tag != ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
