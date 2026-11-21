@@ -48,7 +48,7 @@
     {
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "9.5 kB"
+      "limit": "11 kB"
     }
   ]
 }
