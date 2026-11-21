@@ -1,4 +1,4 @@
-/** Where the dock sits on a wide screen. Phones get a bottom sheet instead. */
+/** Where the dock sits. A phone gets no panel at all. */
 export const corners = ["bottom-left", "bottom-right", "top-left", "top-right"] as const;
 export type Corner = (typeof corners)[number];
 

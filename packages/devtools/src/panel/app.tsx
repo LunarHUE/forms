@@ -9,7 +9,7 @@ import { empty, panelRoot, surface } from "./classes.js";
 import { Fields, type FieldsProps } from "./fields.js";
 import { type Listed, listForms } from "./forms.js";
 import { useFrame } from "./frame.js";
-import { IconButton, iconTone, smallBox } from "./icons.js";
+import { IconButton, smallBox } from "./icons.js";
 import { ancestors, FieldCard, type Found, Outlines, useInspect } from "./inspect.js";
 import { Log } from "./log.js";
 import { Plugins } from "./plugins.js";
@@ -22,7 +22,7 @@ const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
   { id: "plugins", label: "Plugins" },
 ];
 
-/** At this width and below the dock is a button that opens a bottom sheet. */
+/** At this width and below the panel renders nothing. */
 const phoneQuery = "(max-width: 640px)";
 
 /** Where the dock sits, and which way it stacks the panel and the bar: the panel goes on the far side from the corner. */
@@ -110,8 +110,17 @@ export interface AppProps {
   readonly host: HTMLElement;
 }
 
-/** The panel: a dock in a corner of the page, or a bottom sheet on a phone. */
-export function App({ hook, host }: AppProps): JSX.Element {
+/**
+ * The panel, at widths above a phone's. Narrowing the window to a phone's
+ * width unmounts the dock with its outlines and inspecting.
+ */
+export function App({ hook, host }: AppProps): JSX.Element | null {
+  const phone = useMedia(phoneQuery);
+  return phone ? null : <Dock hook={hook} host={host} />;
+}
+
+/** The dock in a corner of the page, and the outlines and cards it draws over the page. */
+function Dock({ hook, host }: AppProps): JSX.Element {
   const forms = useForms(hook);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const selected = forms.find((form) => form.id === selectedId);
@@ -120,8 +129,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
   const [corner, setCorner] = useState<Corner>(readCorner);
   // The open menu, and its left edge: the left edge of the button that opened it.
   const [menu, setMenu] = useState<{ readonly kind: "dock" | "forms"; readonly left: number } | null>(null);
-  const phone = useMedia(phoneQuery);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [view, setView] = useState<View>(() => fresh(-1));
   const formId = shown?.id ?? -1;
   const current = view.form === formId ? view : fresh(formId);
@@ -177,7 +184,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
       return;
     }
     setTab((open) => open ?? "fields");
-    if (phone) setSheetOpen(true);
   };
 
   /** Opens the `kind` menu under the button of `event`, or closes it when it is open. */
@@ -229,14 +235,8 @@ export function App({ hook, host }: AppProps): JSX.Element {
           },
   };
 
-  // Menus open under their button on a phone and in a top corner, else above it.
-  const menuBelow = phone || corner.startsWith("top");
-
-  const chip = (
-    <FormChip phone={phone} selected={selected} noForms={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
-  );
-
-  const inspectButton = tracked ? <InspectButton inspecting={inspecting} onToggle={() => setInspecting(!inspecting)} /> : null;
+  // Menus open under their button in a top corner, else above it.
+  const menuBelow = corner.startsWith("top");
 
   // The elements of the field under the pointer, or of the hovered row.
   const card = hovered ?? pinned;
@@ -252,14 +252,6 @@ export function App({ hook, host }: AppProps): JSX.Element {
     </>
   );
 
-  const layers = (
-    <>
-      <FormOutlines hook={hook} forms={forms} selectedId={selectedId} onPick={select} />
-      {fieldLayer}
-      <Tip root={root} />
-    </>
-  );
-
   const openMenu =
     menu?.kind === "dock" ? (
       <DockMenu below={menuBelow} menuRef={menuRef} left={menu.left} corner={corner} onMove={move} onTurnOff={onDisable ? turnOff : undefined} />
@@ -267,50 +259,11 @@ export function App({ hook, host }: AppProps): JSX.Element {
       <FormsMenu below={menuBelow} menuRef={menuRef} left={menu.left} forms={forms} selectedId={selectedId} onSelect={select} />
     ) : null;
 
-  if (phone) {
-    const open = tab ?? "fields";
-    return (
-      <div class={panelRoot} ref={root}>
-        {layers}
-        {sheetOpen ? (
-          <div
-            class="fixed inset-x-0 bottom-0 z-[2147483000] flex flex-col max-h-[70vh] bg-surface border-t border-line rounded-t-xl shadow-panel"
-            role="dialog"
-            aria-label="Forms devtools"
-          >
-            <div class="w-9 h-1 mt-2 mx-auto rounded-[2px] bg-thumb" aria-hidden="true" />
-            <div class="relative flex items-center gap-0.5 h-12 px-2" ref={menuButtons}>
-              {chip}
-              {inspectButton}
-              <div class="flex ml-auto">
-                {onDisable ? <IconButton label="Turn off devtools" icon={EyeOff} onClick={turnOff} /> : null}
-                <IconButton label="Close the devtools" icon={X} onClick={() => setSheetOpen(false)} />
-              </div>
-              {openMenu}
-            </div>
-            <TabList phone active={open} onTab={setTab} />
-            <section class="flex flex-col w-0 min-w-full min-h-32 overflow-hidden" aria-label={`Devtools ${open}`}>
-              <TabContent tab={open} form={shown} fields={fields} />
-            </section>
-          </div>
-        ) : (
-          <IconButton
-            label="Open the forms devtools"
-            icon={SquareEqual}
-            class={`fixed right-4 bottom-4 z-[2147483000] inline-flex items-center justify-center size-12 rounded-full bg-surface border border-line shadow-panel ${iconTone} [&_svg]:size-5`}
-            onClick={() => {
-              if (selected === undefined && shown) setSelectedId(shown.id);
-              setSheetOpen(true);
-            }}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div class={panelRoot} ref={root}>
-      {layers}
+      <FormOutlines hook={hook} forms={forms} selectedId={selectedId} onPick={select} />
+      {fieldLayer}
+      <Tip root={root} />
       <div class={`dock ${dock(corner)}`} data-corner={corner}>
         {tab ? (
           <section class={`${surface} flex flex-col w-0 min-w-full max-h-[min(560px,calc(100vh-120px))] overflow-hidden`} aria-label={`Devtools ${tab}`}>
@@ -326,10 +279,10 @@ export function App({ hook, host }: AppProps): JSX.Element {
             data-tip="Dock position and turning off"
             onClick={(event) => toggleMenu("dock", event)}
           />
-          {chip}
+          <FormChip selected={selected} noForms={forms.length === 0} menuOpen={menu?.kind === "forms"} onMenu={(event) => toggleMenu("forms", event)} onClear={() => select(null)} />
           <div class="shrink-0 w-px h-4 mx-1 bg-line" aria-hidden="true" />
-          {inspectButton}
-          <TabList phone={false} active={tab} onTab={openTab} />
+          {tracked ? <InspectButton inspecting={inspecting} onToggle={() => setInspecting(!inspecting)} /> : null}
+          <TabList active={tab} onTab={openTab} />
           {openMenu}
         </div>
       </div>
@@ -357,20 +310,18 @@ function TabContent({ tab, form, fields }: TabContentProps): JSX.Element {
 }
 
 interface TabListProps {
-  /** On a phone the tabs share the sheet's width. */
-  readonly phone: boolean;
   readonly active: Tab | null;
   readonly onTab: (tab: Tab) => void;
 }
 
 /** The row of tabs. */
-function TabList({ phone, active, onTab }: TabListProps): JSX.Element {
+function TabList({ active, onTab }: TabListProps): JSX.Element {
   return (
-    <div class={phone ? "flex gap-0.5 px-2 pb-2 border-b border-line" : "flex gap-0.5"} role="tablist" aria-label="Devtools tabs">
+    <div class="flex gap-0.5" role="tablist" aria-label="Devtools tabs">
       {tabs.map((item) => (
         <button
           key={item.id}
-          class={`${phone ? "flex-1 " : ""}h-8 px-2.5 rounded-md font-sans text-sm/5 text-soft whitespace-nowrap hover:text-fg hover:bg-hover aria-selected:bg-active aria-selected:text-fg`}
+          class="h-8 px-2.5 rounded-md font-sans text-sm/5 text-soft whitespace-nowrap hover:text-fg hover:bg-hover aria-selected:bg-active aria-selected:text-fg"
           role="tab" aria-selected={active === item.id ? "true" : "false"} onClick={() => onTab(item.id)}>
           {item.label}
         </button>
@@ -380,8 +331,6 @@ function TabList({ phone, active, onTab }: TabListProps): JSX.Element {
 }
 
 interface FormChipProps {
-  /** On a phone the chip takes the room it needs. */
-  readonly phone: boolean;
   readonly selected: Listed | undefined;
   /** True when the page has no forms. */
   readonly noForms: boolean;
@@ -391,9 +340,9 @@ interface FormChipProps {
 }
 
 /** The selected form's name, which opens the forms menu, and the button that clears the selection. */
-function FormChip({ phone, selected, noForms, menuOpen, onMenu, onClear }: FormChipProps): JSX.Element {
+function FormChip({ selected, noForms, menuOpen, onMenu, onClear }: FormChipProps): JSX.Element {
   return (
-    <div class={`flex items-center min-w-0 ${phone ? "max-w-none" : "max-w-[180px]"} h-8 pr-1.5 rounded-md hover:bg-hover has-[[aria-expanded=true]]:bg-hover`}>
+    <div class="flex items-center min-w-0 max-w-[180px] h-8 pr-1.5 rounded-md hover:bg-hover has-[[aria-expanded=true]]:bg-hover">
       <button
         class="chip-main flex items-center gap-1.5 min-w-0 h-full pl-2"
         aria-haspopup="menu"

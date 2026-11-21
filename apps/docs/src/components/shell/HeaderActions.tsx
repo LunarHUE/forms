@@ -11,7 +11,8 @@ const iconButton =
 
 /**
  * The header's icon buttons: search (phones only), GitHub (desktop only),
- * devtools and theme. One island, so their tooltips hydrate together.
+ * devtools (hidden at 640px and below) and theme. One island, so their
+ * tooltips hydrate together.
  */
 export function HeaderActions() {
   return (
