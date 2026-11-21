@@ -20,39 +20,35 @@ export default function ChecklistForm() {
   // A handle to the array. Its commands change the list.
   const tasks = form.root.at("tasks");
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          {/* Each row renders once per key. A move or a remove keeps
-              the row's DOM, and `index` is a signal that follows it. */}
-          <Items handle={tasks}>
-            {(task, index) => (
-              <div>
-                <form.TextField handle={task.at("title")} label={`Task ${index() + 1}`} />
-                <div>
-                  <button type="button" disabled={index() === 0} onClick={() => tasks.move(index(), index() - 1)}>
-                    Up
-                  </button>
-                  <button type="button" onClick={() => tasks.remove(index())}>
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )}
-          </Items>
+    <form {...form.formProps}>
+      {/* Each row renders once per key. A move or a remove keeps
+          the row's DOM, and `index` is a signal that follows it. */}
+      <Items handle={tasks}>
+        {(task, index) => (
           <div>
-            <button type="button" onClick={() => tasks.push({ title: "" })}>
-              Add task
-            </button>
-            <button type="submit">Save</button>
+            <form.TextField handle={task.at("title")} label={`Task ${index() + 1}`} />
+            <div>
+              <button type="button" disabled={index() === 0} onClick={() => tasks.move(index(), index() - 1)}>
+                Up
+              </button>
+              <button type="button" onClick={() => tasks.remove(index())}>
+                Remove
+              </button>
+            </div>
           </div>
-          <p role="status">
-            <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
-              {(submission) => submission().result.map((task) => task.title).join(", ")}
-            </Show>
-          </p>
-        </form>
-      )}
-    </form.Form>
+        )}
+      </Items>
+      <div>
+        <button type="button" onClick={() => tasks.push({ title: "" })}>
+          Add task
+        </button>
+        <button type="submit">Save</button>
+      </div>
+      <p role="status">
+        <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+          {(submission) => submission().result.map((task) => task.title).join(", ")}
+        </Show>
+      </p>
+    </form>
   );
 }

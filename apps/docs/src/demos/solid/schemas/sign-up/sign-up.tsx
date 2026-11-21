@@ -23,54 +23,50 @@ const signUp = forms.define({
 export default function SignUpForm() {
   const form = createForm(signUp, { id: "sign-up" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="name">
-            {(field) => (
-              <label>
-                Name
-                <input {...inputProps(field)} />
-                {field.shownErrors[0]?.message}
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="age">
-            {(field) => (
-              <label>
-                Age
-                <input {...numberProps(field)} />
-                {field.shownErrors[0]?.message}
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="plan">
-            {(field) => (
-              <label>
-                Plan
-                <select {...selectProps(field)}>
-                  <option value="free">Free</option>
-                  <option value="pro">Pro</option>
-                </select>
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="newsletter">
-            {(field) => (
-              <label>
-                <input {...checkboxProps(field)} />
-                Send me the newsletter
-              </label>
-            )}
-          </form.Field>
-          <button type="submit">Sign up</button>
-          <p role="status">
-            <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
-              {(submission) => submission().result}
-            </Show>
-          </p>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="name">
+        {(field) => (
+          <label>
+            Name
+            <input {...inputProps(field)} />
+            {field.shownErrors[0]?.message}
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="age">
+        {(field) => (
+          <label>
+            Age
+            <input {...numberProps(field)} />
+            {field.shownErrors[0]?.message}
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="plan">
+        {(field) => (
+          <label>
+            Plan
+            <select {...selectProps(field)}>
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+            </select>
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="newsletter">
+        {(field) => (
+          <label>
+            <input {...checkboxProps(field)} />
+            Send me the newsletter
+          </label>
+        )}
+      </form.Field>
+      <button type="submit">Sign up</button>
+      <p role="status">
+        <Show when={form.state.submission.status === "succeeded" && form.state.submission}>
+          {(submission) => submission().result}
+        </Show>
+      </p>
+    </form>
   );
 }

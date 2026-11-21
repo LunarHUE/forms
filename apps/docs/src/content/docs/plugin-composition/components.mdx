@@ -107,7 +107,9 @@ function SaveBar() {
 The form's type knows the shared plugins, the error type and the registered
 field components, so `form.plugins.history`, `dirty` and `form.TextField` all
 type-check. Its value type is unknown, and plugins added by a definition or
-by one form are not in its type. `useFormContext` throws when no form of
+by one form are not in its type. A form is above when the component renders
+inside its `form.Form`, as [Submit](../basics/submit#a-submit-button-from-context)
+shows. `useFormContext` throws when no form of
 those forms is above.
 
 ## Passing the form as a prop

@@ -27,17 +27,13 @@ const signUp = forms.define({
 export default function SignUpForm() {
   const form = useForm(signUp, { id: "sign-up" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="username">{(field) => <TextInput field={field} label="Username" />}</form.Field>
-          <form.Field name="email">{(field) => <TextInput field={field} label="Email" type="email" />}</form.Field>
-          <button type="submit">Sign up</button>
-          <form.State select={(state) => state.submission}>
-            {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
-          </form.State>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="username">{(field) => <TextInput field={field} label="Username" />}</form.Field>
+      <form.Field name="email">{(field) => <TextInput field={field} label="Email" type="email" />}</form.Field>
+      <button type="submit">Sign up</button>
+      <form.State select={(state) => state.submission}>
+        {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
+      </form.State>
+    </form>
   );
 }

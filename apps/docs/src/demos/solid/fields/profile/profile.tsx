@@ -21,56 +21,52 @@ const profile = forms.define<Profile>({
 export default function ProfileForm() {
   const form = createForm(profile, { id: "profile" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="name">
-            {(field) => (
-              <label>
-                Name
-                <input {...inputProps(field)} />
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="nickname">
-            {(field) => (
-              <label>
-                Nickname (optional)
-                <input {...inputProps(field)} />
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="age">
-            {(field) => (
-              <label>
-                Age
-                <input {...numberProps(field)} />
-                <output>Stored: {JSON.stringify(field.value) ?? "undefined"}</output>
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="plan">
-            {(field) => (
-              <label>
-                Plan
-                <select {...selectProps(field, { empty: "free" })}>
-                  <option value="free">Free</option>
-                  <option value="pro">Pro</option>
-                </select>
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="newsletter">
-            {(field) => (
-              <label>
-                <input {...checkboxProps(field)} />
-                Send me the newsletter
-              </label>
-            )}
-          </form.Field>
-          <button type="submit">Save</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="name">
+        {(field) => (
+          <label>
+            Name
+            <input {...inputProps(field)} />
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="nickname">
+        {(field) => (
+          <label>
+            Nickname (optional)
+            <input {...inputProps(field)} />
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="age">
+        {(field) => (
+          <label>
+            Age
+            <input {...numberProps(field)} />
+            <output>Stored: {JSON.stringify(field.value) ?? "undefined"}</output>
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="plan">
+        {(field) => (
+          <label>
+            Plan
+            <select {...selectProps(field, { empty: "free" })}>
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+            </select>
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="newsletter">
+        {(field) => (
+          <label>
+            <input {...checkboxProps(field)} />
+            Send me the newsletter
+          </label>
+        )}
+      </form.Field>
+      <button type="submit">Save</button>
+    </form>
   );
 }

@@ -20,20 +20,16 @@ const order = forms.define({
 export default function OrderForm() {
   const form = useForm(order, { id: "primitives" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="name">{(field) => <TextField field={field} label="Name" />}</form.Field>
-          <form.Field name="quantity">{(field) => <NumberField field={field} label="Boxes" />}</form.Field>
-          <form.Field name="terms">{(field) => <CheckboxField field={field} label="I accept the terms" />}</form.Field>
-          <div>
-            <button type="submit">Order</button>
-            <button type="button" onClick={() => form.root.reset()}>
-              Clear
-            </button>
-          </div>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="name">{(field) => <TextField field={field} label="Name" />}</form.Field>
+      <form.Field name="quantity">{(field) => <NumberField field={field} label="Boxes" />}</form.Field>
+      <form.Field name="terms">{(field) => <CheckboxField field={field} label="I accept the terms" />}</form.Field>
+      <div>
+        <button type="submit">Order</button>
+        <button type="button" onClick={() => form.root.reset()}>
+          Clear
+        </button>
+      </div>
+    </form>
   );
 }

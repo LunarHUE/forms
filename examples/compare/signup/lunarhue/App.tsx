@@ -46,29 +46,25 @@ export function App() {
   const form = useForm(signUpForm);
   return (
     <Page title="Create an account" lede="Core only: field validators, a cross-field check, an async check and server errors.">
-      <form.Form>
-        {(formProps) => (
-          <form {...formProps}>
-            <form.TextField name="email" label="Email" type="email" />
-            <form.TextField name="username" label="Username" />
-            <form.TextField name="password" label="Password" type="password" />
-            <form.TextField name="confirm" label="Confirm password" type="password" />
-            <form.Checkbox name="terms" label="I accept the terms" />
-            <form.State select={(state) => state.submitting}>
-              {(submitting) => (
-                <div className="actions">
-                  <button type="submit" disabled={submitting}>
-                    {submitting ? "Creating account..." : "Create account"}
-                  </button>
-                </div>
-              )}
-            </form.State>
-            <form.State select={(state) => state.submission}>
-              {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
-            </form.State>
-          </form>
-        )}
-      </form.Form>
+      <form {...form.formProps}>
+        <form.TextField name="email" label="Email" type="email" />
+        <form.TextField name="username" label="Username" />
+        <form.TextField name="password" label="Password" type="password" />
+        <form.TextField name="confirm" label="Confirm password" type="password" />
+        <form.Checkbox name="terms" label="I accept the terms" />
+        <form.State select={(state) => state.submitting}>
+          {(submitting) => (
+            <div className="actions">
+              <button type="submit" disabled={submitting}>
+                {submitting ? "Creating account..." : "Create account"}
+              </button>
+            </div>
+          )}
+        </form.State>
+        <form.State select={(state) => state.submission}>
+          {(submission) => <p role="status">{submission.status === "succeeded" ? submission.result : null}</p>}
+        </form.State>
+      </form>
     </Page>
   );
 }

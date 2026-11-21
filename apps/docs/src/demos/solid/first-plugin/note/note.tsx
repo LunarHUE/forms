@@ -12,29 +12,25 @@ const note = forms.define({
 export default function NoteForm() {
   const form = createForm(note, { id: "note" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="title">
-            {(field) => (
-              <label>
-                Title
-                <input {...inputProps(field)} />
-                <output>Stored: {JSON.stringify(field.value)}</output>
-              </label>
-            )}
-          </form.Field>
-          <form.Field name="body">
-            {(field) => (
-              <label>
-                Body
-                <input {...inputProps(field)} />
-                <output>Stored: {JSON.stringify(field.value)}</output>
-              </label>
-            )}
-          </form.Field>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="title">
+        {(field) => (
+          <label>
+            Title
+            <input {...inputProps(field)} />
+            <output>Stored: {JSON.stringify(field.value)}</output>
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="body">
+        {(field) => (
+          <label>
+            Body
+            <input {...inputProps(field)} />
+            <output>Stored: {JSON.stringify(field.value)}</output>
+          </label>
+        )}
+      </form.Field>
+    </form>
   );
 }

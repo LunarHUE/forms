@@ -16,19 +16,19 @@
     "signup": {
       "lunarhue": {
         "total": {
-          "min": 255371,
-          "gzip": 80931,
-          "brotli": 70138
+          "min": 255349,
+          "gzip": 80926,
+          "brotli": 70201
         },
         "forms": {
-          "min": 35702,
-          "gzip": 13468,
-          "brotli": 12280
+          "min": 35688,
+          "gzip": 13464,
+          "brotli": 12284
         },
         "app": {
-          "min": 3712,
-          "gzip": 1601,
-          "brotli": 1394
+          "min": 3698,
+          "gzip": 1596,
+          "brotli": 1390
         }
       },
       "tanstack": {

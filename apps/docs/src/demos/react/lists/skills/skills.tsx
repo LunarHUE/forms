@@ -13,16 +13,12 @@ const profile = forms.define({
 export default function SkillsForm() {
   const form = useForm(profile, { id: "skills" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <h3>Skills</h3>
-          <NamedList items={form.root.at("skills")} create={(base) => base} />
-          <h3>Languages</h3>
-          <NamedList items={form.root.at("languages")} create={(base) => ({ ...base, level: "basic" })} />
-          <button type="submit">Save</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <h3>Skills</h3>
+      <NamedList items={form.root.at("skills")} create={(base) => base} />
+      <h3>Languages</h3>
+      <NamedList items={form.root.at("languages")} create={(base) => ({ ...base, level: "basic" })} />
+      <button type="submit">Save</button>
+    </form>
   );
 }

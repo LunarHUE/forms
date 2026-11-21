@@ -16,17 +16,13 @@ const feedback = forms.define({
 export default function FeedbackForm() {
   const form = useForm(feedback, { id: "feedback" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="subject" label="Subject" />
-          <form.TextField name="message" label="Message" />
-          {/* Reset writes the defaults, and `persist` saves those too. */}
-          <button type="button" onClick={() => form.root.reset()}>
-            Discard draft
-          </button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="subject" label="Subject" />
+      <form.TextField name="message" label="Message" />
+      {/* Reset writes the defaults, and `persist` saves those too. */}
+      <button type="button" onClick={() => form.root.reset()}>
+        Discard draft
+      </button>
+    </form>
   );
 }

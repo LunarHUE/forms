@@ -39,7 +39,7 @@ The second argument has:
 
 ## What a submit does
 
-Spreading `formProps` on the `<form>` element wires its submit event to
+Spreading `form.formProps` on the `<form>` element wires its submit event to
 `form.handleSubmit`. A submit then:
 
 1. Clears the errors the last submit set with `setErrors`, counts the
@@ -81,9 +81,6 @@ const submitting = useFormState(form, (state) => state.submitting);
 </form.State>;
 ```
 
-A component under `form.Form` gets the form from `useFormContext(forms)`,
-so a submit button needs no props.
-
 </Only>
 
 <Only framework="solid">
@@ -97,10 +94,60 @@ Read it from `form.state`. Its members are reactive, so
 </button>
 ```
 
-A component under `form.Form` gets the form from `useFormContext(forms)`,
-so a submit button needs no props.
+</Only>
+
+## A submit button from context
+
+A button that reads the submit state needs the form. Pass it as a prop, or
+read it from `useFormContext(forms)`, which returns the nearest form made from
+one of `forms`' definitions. The form has to be above the button for that, so
+render the `<form>` inside `form.Form`. Its child is a function that gets the
+same `formProps`:
+
+```tsx
+<form.Form>
+  {(formProps) => (
+    <form {...formProps}>
+      <form.Field name="name">{(field) => <TextInput field={field} label="Name" />}</form.Field>
+      <SubmitButton />
+    </form>
+  )}
+</form.Form>
+```
+
+<Only framework="react">
+
+```tsx
+function SubmitButton() {
+  const form = useFormContext(forms);
+  const submitting = useFormState(form, (state) => state.submitting);
+  return (
+    <button type="submit" disabled={submitting}>
+      {submitting ? "Saving..." : "Save"}
+    </button>
+  );
+}
+```
 
 </Only>
+
+<Only framework="solid">
+
+```tsx
+function SubmitButton() {
+  const form = useFormContext(forms);
+  return (
+    <button type="submit" disabled={form.state.submitting}>
+      {form.state.submitting ? "Saving..." : "Save"}
+    </button>
+  );
+}
+```
+
+</Only>
+
+A form whose components don't call `useFormContext` can skip `form.Form` and
+spread `form.formProps` on the `<form>` directly.
 
 ## When the server says no
 

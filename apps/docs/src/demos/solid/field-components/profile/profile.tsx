@@ -25,20 +25,16 @@ const profile = forms.define<Profile>({
 export default function ProfileForm() {
   const form = createForm(profile, { id: "profile" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField
-            name="name"
-            label="Name"
-            validate={(name) => (name ? undefined : { message: "Enter your name." })}
-          />
-          <form.TextField name="nickname" label="Nickname (optional)" />
-          <form.NumberField name="age" label="Age" />
-          <form.CheckboxField name="newsletter" label="Send me the newsletter" />
-          <button type="submit">Save</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField
+        name="name"
+        label="Name"
+        validate={(name) => (name ? undefined : { message: "Enter your name." })}
+      />
+      <form.TextField name="nickname" label="Nickname (optional)" />
+      <form.NumberField name="age" label="Age" />
+      <form.CheckboxField name="newsletter" label="Send me the newsletter" />
+      <button type="submit">Save</button>
+    </form>
   );
 }

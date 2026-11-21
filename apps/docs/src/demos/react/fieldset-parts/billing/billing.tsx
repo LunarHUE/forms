@@ -18,15 +18,11 @@ const order = forms.define(
 export default function BillingForm() {
   const form = useForm(order, { id: "billing" });
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="shipping.street" label="Shipping street" />
-          <form.TextField name="shipping.city" label="Shipping city" />
-          <BillingFields field={form.root.at("billing")} />
-          <button type="submit">Order</button>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.TextField name="shipping.street" label="Shipping street" />
+      <form.TextField name="shipping.city" label="Shipping city" />
+      <BillingFields field={form.root.at("billing")} />
+      <button type="submit">Order</button>
+    </form>
   );
 }
