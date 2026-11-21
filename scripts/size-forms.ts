@@ -5,8 +5,10 @@
 // forms code plus the fixture's own few lines. Run from the repo root:
 //
 //   bun run size:forms
+//   bun run size:forms --json   # the same sizes as JSON, for scripts/size-report.ts
 //
-// In GitHub Actions the table also goes to the job summary.
+// In GitHub Actions the table also goes to the job summary, unless --json is
+// passed.
 import { appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,27 +82,39 @@ async function measure(framework: string, plugins: PluginOption[], form: string,
   return chunks.reduce((total, chunk) => total + brotliCompressSync(chunk.code).length, 0);
 }
 
-const bytes = (size: number): string => `${size.toLocaleString("en-US")} B`;
+const json = process.argv.includes("--json");
 
-const header = ["Form", ...frameworks.flatMap(([, name]) => modes.map((mode) => `${name} ${mode === "production" ? "prod" : "dev"}`))];
-const rows: string[][] = [];
+const bytes = (size: number): string => `${size.toLocaleString("en-US")} B`;
+const line = (cells: readonly string[]): string => `| ${cells.join(" | ")} |`;
+
+const column = (framework: string, mode: Mode): string => `${framework} ${mode === "production" ? "prod" : "dev"}`;
+const columns = frameworks.flatMap(([, name]) => modes.map((mode) => column(name, mode)));
+
+const rows: { name: string; sizes: Record<string, number> }[] = [];
 for (const [form, label, only] of forms) {
-  const row: string[] = [label];
-  for (const [framework, , plugins] of frameworks) {
-    for (const mode of modes) row.push(only && only !== framework ? "n/a" : bytes(await measure(framework, plugins(), form, mode)));
+  const sizes: Record<string, number> = {};
+  for (const [framework, name, plugins] of frameworks) {
+    if (only && only !== framework) continue;
+    for (const mode of modes) sizes[column(name, mode)] = await measure(framework, plugins(), form, mode);
   }
-  rows.push(row);
+  rows.push({ name: label, sizes });
 }
 
-const line = (cells: readonly string[]): string => `| ${cells.join(" | ")} |`;
-const table = [
-  line(header),
-  line(header.map((_, index) => (index === 0 ? "---" : "---:"))),
-  ...rows.map(line),
-].join("\n");
+if (json) {
+  console.log(JSON.stringify({ columns, rows }, null, 2));
+} else {
+  const header = ["Form", ...columns];
+  const table = [
+    line(header),
+    line(header.map((_, index) => (index === 0 ? "---" : "---:"))),
+    ...rows.map((row) =>
+      line([row.name, ...columns.map((name) => (row.sizes[name] === undefined ? "n/a" : bytes(row.sizes[name])))]),
+    ),
+  ].join("\n");
 
-console.log("Minified, brotli. React, Solid and Valibot are external.\n");
-console.log(table);
+  console.log("Minified, brotli. React, Solid and Valibot are external.\n");
+  console.log(table);
 
-const summary = process.env["GITHUB_STEP_SUMMARY"];
-if (summary) appendFileSync(summary, `### Form sizes\n\nMinified, brotli. React, Solid and Valibot are external.\n\n${table}\n`);
+  const summary = process.env["GITHUB_STEP_SUMMARY"];
+  if (summary) appendFileSync(summary, `### Form sizes\n\nMinified, brotli. React, Solid and Valibot are external.\n\n${table}\n`);
+}
