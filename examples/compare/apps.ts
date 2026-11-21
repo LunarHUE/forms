@@ -2,6 +2,7 @@
 // config, the Playwright config and scripts/size-compare.ts all read this.
 
 export const apps = [
+  { name: "login", title: "Sign-in (/mini)" },
   { name: "signup", title: "Sign-up" },
   { name: "profile", title: "Profile settings" },
   { name: "backoffice", title: "Back office" },

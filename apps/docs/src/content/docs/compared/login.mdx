@@ -1,0 +1,39 @@
+---
+title: Sign-in form (/mini)
+description: A small login form comparing @lunarhue/forms-react/mini with TanStack Form.
+section: compared
+order: 4
+navTitle: Sign-in (/mini)
+---
+
+<Only framework="solid">
+
+<Callout>
+These side-by-side comparisons are written in React to keep them focused. `@lunarhue/forms-react/mini` is currently React-only.
+</Callout>
+
+</Only>
+
+<Callout>
+**Full disclosure:** this comparison is deliberately cherry-picked. It uses `@lunarhue/forms-react/mini`, our ~2.3 kB subset built specifically for small forms with no plugins, async checks, arrays, or focus management, against TanStack Form's full library. That said, it's still a valid real-world comparison: login dialogs, search bars, and newsletter boxes make up a huge share of forms on the web, and `/mini` lets you pay a fraction of the bundle cost for them while keeping the same API when a form grows.
+</Callout>
+
+Here is a two-field sign-in form built once with `@lunarhue/forms-react/mini` and once with [TanStack Form](https://tanstack.com/form). Both render identical markup and talk to the same mock API; switch between builds in the preview below to compare them.
+
+<Compare app="login" />
+
+## What the form does
+
+It collects an email and password with synchronous validation (valid email format, at least 8 characters for the password). Errors appear after a field is blurred or the form is submitted, then update on every keystroke. Submitting `locked@example.com` returns a server-side refusal on the email field that clears as soon as you edit it.
+
+## Where the two implementations differ
+
+On the `@lunarhue/forms` side, everything comes from `@lunarhue/forms-react/mini`: `createForms`, `fieldValidators`, `inputProps`, and `useForm`. Because `/mini` leaves out plugins, async validation, element tracking, and configurable `show` policies, the form ships only the tiny mini store (~2.3 kB brotli with React external). If this form ever needs async checks, `dirty()`, or `focusOnInvalid`, graduating it means changing the import to `@lunarhue/forms-react` (see [Using `/mini` with the full entry](/react/basics/mini-and-full)).
+
+On the TanStack Form side, we use `useForm` directly (skipping `createFormHook` to keep the TanStack bundle as lean as possible), with `onChange` validators plus a blur trigger and `onSubmitAsync` for the server check. Because TanStack Form ships one general-purpose store for every form, even a two-field login form carries the full library.
+
+## How bundle sizes were measured
+
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three slices: **Forms + app** (excluding React and `react-dom`), **Total** (everything), and **App only** (excluding the form libraries too).
+
+Measured from built package outputs against TanStack Form 1.33.5 and enforced in CI. Source and shared Playwright specs live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).

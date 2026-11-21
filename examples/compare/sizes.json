@@ -13,6 +13,42 @@
     "app": "The app's own code only. React, react-dom, Zod, @lunarhue/* and @tanstack/* are external."
   },
   "apps": {
+    "login": {
+      "lunarhue": {
+        "total": {
+          "min": 227542,
+          "gzip": 71357,
+          "brotli": 61481
+        },
+        "forms": {
+          "min": 8173,
+          "gzip": 3740,
+          "brotli": 3360
+        },
+        "app": {
+          "min": 2439,
+          "gzip": 1189,
+          "brotli": 1025
+        }
+      },
+      "tanstack": {
+        "total": {
+          "min": 286969,
+          "gzip": 84570,
+          "brotli": 72887
+        },
+        "forms": {
+          "min": 67687,
+          "gzip": 17382,
+          "brotli": 15382
+        },
+        "app": {
+          "min": 2992,
+          "gzip": 1343,
+          "brotli": 1155
+        }
+      }
+    },
     "signup": {
       "lunarhue": {
         "total": {

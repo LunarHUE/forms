@@ -19,6 +19,24 @@ export function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+// Sign-in
+
+export interface SignInRequest {
+  readonly email: string;
+  readonly password: string;
+}
+
+export type SignInResponse = { readonly ok: true } | { readonly ok: false; readonly errors: Readonly<Record<string, string>> };
+
+/** Signs the user in, or says which field the server refused. */
+export async function signIn(request: SignInRequest): Promise<SignInResponse> {
+  await wait(300);
+  if (request.email.toLowerCase() === "locked@example.com") {
+    return { ok: false, errors: { email: "This account is locked." } };
+  }
+  return { ok: true };
+}
+
 // Sign-up
 
 const takenNames = new Set(["ada", "grace", "admin"]);
