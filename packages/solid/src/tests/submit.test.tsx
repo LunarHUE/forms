@@ -115,6 +115,33 @@ describe("submit", () => {
     expect(host.querySelectorAll(".disabled-error")).toHaveLength(0);
   });
 
+  it("focuses the field onSubmit refused with setErrors", async () => {
+    const Refusing = forms.define({
+      schema,
+      onSubmit: (_value, { store }) => {
+        store.setErrors({ fields: { body: { message: "Taken" } } });
+        return null;
+      },
+    });
+    let form: FormOf<typeof Refusing> | undefined;
+    const { host } = mount(() => {
+      form = createForm(Refusing);
+      const f = form;
+      return (
+        <form {...f.formProps}>
+          <f.TextField name="title" label="Title" />
+          <f.TextField name="body" label="Body" />
+        </form>
+      );
+    });
+    if (!form) throw new Error("The form was not created.");
+    form.root.at("title").setValue("Hello");
+    form.root.at("body").setValue("World");
+    await form.handleSubmit();
+    expect(form.store.peek().submission.status).toBe("invalid");
+    expect(document.activeElement).toBe(get(host, `[id="${form.root.at("body").id}"]`));
+  });
+
   it("calls a focusOnInvalid function instead of focusing", async () => {
     const targets: FocusTarget[] = [];
     const { form, host } = mountPost((target) => targets.push(target));

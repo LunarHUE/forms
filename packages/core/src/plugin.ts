@@ -255,9 +255,9 @@ export interface PluginHooks<A = undefined> {
    * Runs once a submit has ended, with how it ended. `input` is the form
    * value the definition's `onSubmit` got as `ctx.input`, read once
    * validation finished, so it holds edits made while validation ran. It is
-   * there when the submit ended `"succeeded"` or `"failed"`, and undefined
-   * when it ended `"invalid"`. A submit that a reset aborts doesn't end
-   * here.
+   * there whenever `onSubmit` ran, including a submit it ended `"invalid"`
+   * with `setErrors`, and undefined when validation or a plugin stopped the
+   * submit first. A submit that a reset aborts doesn't end here.
    */
   onSubmitted?(submission: Submission<unknown>, input: unknown): void;
   /**

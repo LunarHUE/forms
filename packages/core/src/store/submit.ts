@@ -82,7 +82,10 @@ export function createSubmit<V, E, I, R, O = V>(
       // The schema's output, or the form value without a schema, which is what `O` names.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const result = options.onSubmit ? await options.onSubmit(out.output as O, ctx) : (undefined as R);
-      return end(controller, { status: "succeeded", result }, out.input);
+      // Errors `onSubmit` set are a refusal, such as a server's, so nothing was saved.
+      // Validation errors from edits made while it ran don't undo a save that happened.
+      const refused = core.invalid().some((path) => core.getSnapshot(path).userErrors.length > 0);
+      return end(controller, refused ? { status: "invalid" } : { status: "succeeded", result }, out.input);
     } catch (error) {
       return end(controller, { status: "failed", error }, out.input);
     }

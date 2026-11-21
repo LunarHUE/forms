@@ -120,13 +120,8 @@ once it succeeds. A reset puts the submission back to idle, so the "sent"
 message lives in React state.
 
 The company form handles the refusal the way the submit docs say: `setErrors`
-in `onSubmit`, then return. That ends the submit as succeeded, so
-`baselineOnSubmit()` takes the refused values as the baseline and the form
-reads clean although nothing was saved. This is
-[#224](https://github.com/LunarHUE/forms/issues/224). The app keeps the
-documented pattern and carries the bug until it is fixed. The spec "leaves a
-refused save unsaved" is marked `test.fail` for our build, so it starts
-failing once the fix lands and the mark can go.
+in `onSubmit`, then return. Errors set there end the submit as invalid, so
+`baselineOnSubmit()` leaves the refused values unsaved.
 
 TanStack's side uses `createFormHook` with the save bar, the error summary and
 the form element as form components, `withFieldGroup` for the address,

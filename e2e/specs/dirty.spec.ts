@@ -44,6 +44,27 @@ test("after a successful save the form is clean, and a field edited during the s
   await expect(save).toBeDisabled();
 });
 
+test("a save the server refuses leaves the form dirty and focuses the refused field", async ({ page }) => {
+  const save = page.getByRole("button", { name: submit.idle });
+  const email = input(page, labels.email);
+  await email.fill(scenario.takenEmail);
+  await save.click();
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  await expect(await describedBy(page, email)).toHaveText(errors.taken);
+  await expect(email).toBeFocused();
+  await expect(page.getByRole("status")).toHaveText("");
+  await expect(save).toBeEnabled();
+  await expect
+    .poll(async () => {
+      const { form, fields } = await probe(page);
+      return { form: form.dirty, email: fields["email"]?.dirty };
+    })
+    .toEqual({ form: true, email: true });
+  // Reset still goes back to the value before the refused save.
+  await page.getByRole("button", { name: labels.reset, exact: true }).click();
+  await expect(email).toHaveValue("ada@example.com");
+});
+
 test("reset puts back the values and clears errors and touched", async ({ page }) => {
   const name = input(page, labels.name);
   const email = input(page, labels.email);

@@ -78,7 +78,9 @@ const settings = forms.define({
 
 When a submit ends `"succeeded"`, the value `onSubmit` got as `ctx.input`
 becomes the baseline. An invalid, refused or failed submit leaves the baseline
-alone, and so does a submit that a reset stops.
+alone, and so does a submit that a reset stops. A save the server refuses
+counts as invalid when `onSubmit` puts its errors on the form with
+`setErrors`.
 
 - A field the user edits while the save runs keeps the newer text and stays
   dirty. Typing the saved text back makes it clean.

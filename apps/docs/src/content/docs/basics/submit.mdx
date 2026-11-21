@@ -48,7 +48,10 @@ Spreading `form.formProps` on the `<form>` element wires its submit event to
 3. Stops with status `"invalid"` if any field has an error, and moves focus
    to the first invalid field. `onSubmit` isn't called.
 4. Otherwise calls `onSubmit`. Its return value ends the submit as
-   `"succeeded"`, and a throw as `"failed"`.
+   `"succeeded"`, and a throw as `"failed"`. If `onSubmit` left errors on
+   the form with `setErrors`, the submit ends `"invalid"` instead, and focus
+   moves to the first field with one. See
+   [When the server says no](#when-the-server-says-no).
 
 A submit while one is running doesn't start another. It returns the running
 one.
@@ -152,7 +155,8 @@ spread `form.formProps` on the `<form>` directly.
 ## When the server says no
 
 A server that refuses the save usually says why. Put that on the form with
-`store.setErrors` and return:
+`store.setErrors` and return. The submit then ends `"invalid"`, and what
+`onSubmit` returned is dropped:
 
 ```ts
 onSubmit: async (value, { store }) => {
@@ -167,6 +171,13 @@ onSubmit: async (value, { store }) => {
   return `Saved ${value.name}.`;
 },
 ```
+
+Nothing was saved, so nothing reads as a success: the submission has no
+result, [`baselineOnSubmit()`](../plugins/dirty) keeps the edits dirty, and
+focus moves to the first field the server refused, or to the `<form>` when
+there are `form` errors. Only errors from
+`setErrors` count. A field the user breaks while the save runs doesn't turn a
+save that went through into a refusal.
 
 `fields` is keyed by field name. `form` errors land on the form's root
 field, so render the root's errors somewhere, or the user sees nothing. See
@@ -239,17 +250,6 @@ function Summary() {
 ```
 
 </Only>
-
-A submit that validation stops moves focus to the first invalid field. One
-that `onSubmit` ends with `setErrors` doesn't, since the submit itself
-succeeded. To focus the first field the server refused, call
-`store.firstInvalid()` after the submit resolves:
-
-```ts
-await form.submit();
-const field = form.store.firstInvalid();
-if (field) document.getElementById(field.id)?.focus();
-```
 
 A plugin can refuse a submit too. Its `onSubmit` hook returns `refuse`, and
 the submit ends `"invalid"` without calling yours. See

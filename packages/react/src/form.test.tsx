@@ -138,6 +138,35 @@ describe("submit", () => {
     expect(screen.getByTestId("disabled").textContent).toBe("");
   });
 
+  it("focuses the field onSubmit refused with setErrors", async () => {
+    const refusing = forms.define({
+      defaultValues: { name: "Ada", email: "taken@example.com" },
+      onSubmit: (_value, { store }) => {
+        store.setErrors({ fields: { email: { message: "taken" } } });
+        return null;
+      },
+    });
+    function Refusing() {
+      const form = useForm(refusing);
+      return (
+        <form.Form>
+          {(formProps) => (
+            <form {...formProps}>
+              <form.TextField name="name" label="Name" />
+              <form.TextField name="email" label="Email" />
+              <SubmitButton />
+            </form>
+          )}
+        </form.Form>
+      );
+    }
+    render(<Refusing />);
+    await userEvent.setup().click(screen.getByText("Save"));
+    await act(settle);
+    expect(screen.getByTestId("status").textContent).toBe("invalid");
+    expect(document.activeElement).toBe(input("Email"));
+  });
+
   it("calls a custom focusOnInvalid instead of focusing", async () => {
     const targets: FocusTarget[] = [];
     render(<Account focusOnInvalid={(target) => targets.push(target)} />);
