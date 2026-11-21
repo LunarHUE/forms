@@ -143,8 +143,10 @@ interface Field<E> extends Cell<FieldSnapshot<unknown, E>>, PartTarget {
   readonly name: string;
   readonly handle: NamedAnyFieldHandle<E>;
   touched: boolean;
-  /** Validation errors. */
+  /** Errors from the field's validator. */
   found: readonly E[];
+  /** Issues the schema put here. */
+  issues: readonly E[];
   /** Errors `setErrors` put here. */
   user: readonly E[];
 }
@@ -273,8 +275,9 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
   }
 
   const build = (field: Field<E>) => {
-    const { found, user, snapshot } = field;
-    const joined = user.length ? (found.length ? [...found, ...user] : user) : found;
+    const { found, issues, user, snapshot } = field;
+    // The schema's first, as in full.
+    const joined = [...issues, ...found, ...user];
     const errors = same(joined, snapshot.errors) ? snapshot.errors : joined;
     replace(
       field,
@@ -294,40 +297,39 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
     );
   };
 
+  /** True when validation failed at `field`. Errors from `setErrors` don't count. */
+  const failed = (field: Field<E>) => field.found.length + field.issues.length > 0;
+
   // Brings every snapshot up to date. Commands run it inside a batch, which wakes listeners at its end.
   const refresh = () => {
     let valid = true;
     for (const field of fields.values()) {
       build(field);
-      if (field.found.length) valid = false;
+      if (failed(field)) valid = false;
     }
     replace(form, settle({ valid, submitting: submission.status === "submitting", submission, submitCount }, form.snapshot, form.before));
   };
 
-  // Runs validators and the schema, at `only` or everywhere. Returns the schema's output, or the value, when nothing failed.
+  // Runs the validators at `only` or everywhere, and the schema, which checks the whole value, so its issues
+  // land on every field. Returns the schema's output, or the value, when nothing failed.
   const check = (only?: string): { readonly output: unknown } | undefined => {
-    const found = new Map<string, E[]>();
-    const add = (name: string, errors: readonly E[]) => {
-      if (errors.length) found.set(name, [...(found.get(name) ?? []), ...errors]);
-    };
     let output = value;
     for (const name in validators) {
-      if (only === undefined || only === name) add(name, list(sync(validators[name]?.(read(value, split(name)), { path: split(name), store }))));
+      if (only === undefined || only === name) fieldOf(name).found = list(sync(validators[name]?.(read(value, split(name)), { path: split(name), store })));
     }
     if (schema) {
       // `sync` throws in development when the result is a promise.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       const result = sync(schema["~standard"].validate(value)) as StandardSchemaV1.Result<unknown>;
-      if (result.issues) {
-        for (const issue of result.issues) {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-          add((issue.path ?? []).map((step) => (typeof step === "object" ? step.key : step)).join("."), [{ message: issue.message } as E]);
-        }
-      } else output = result.value;
+      for (const field of fields.values()) field.issues = none;
+      for (const issue of result.issues ?? []) {
+        const field = fieldOf((issue.path ?? []).map((step) => (typeof step === "object" ? step.key : step)).join("."));
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        field.issues = [...field.issues, { message: issue.message } as E];
+      }
+      if (!result.issues) output = result.value;
     }
-    for (const name of found.keys()) fieldOf(name);
-    for (const field of fields.values()) if (only === undefined || only === field.name) field.found = found.get(field.name) ?? none;
-    return found.size ? undefined : { output };
+    return [...fields.values()].some(failed) ? undefined : { output };
   };
 
   // Runs the observers whose path is at, above or below `name`.
@@ -370,8 +372,9 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
           value = write(value, path, next);
           if (writeOptions?.edited ?? !quiet) {
             field!.user = none;
-            // Once a field was blurred, has an error, or the form was submitted, each change checks it again.
-            if (field!.touched || submitCount || field!.found.length) check(name);
+            // Once a field was blurred, has a schema issue, or the form was submitted, each change checks it again.
+            // A validator's errors land only after one of those.
+            if (field!.touched || submitCount || field!.issues.length) check(name);
           }
           refresh();
           observe(name);
@@ -383,7 +386,7 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
     };
     // `build` below gives the first snapshot. It reads only `errors` from the one before.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    field = { path, name, handle, touched: false, found: none, user: none, writes: [], snapshot: { errors: none } } as unknown as Field<E>;
+    field = { path, name, handle, touched: false, found: none, issues: none, user: none, writes: [], snapshot: { errors: none } } as unknown as Field<E>;
     fields.set(name, field);
     build(field);
     return field;
@@ -449,7 +452,7 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
         submission = idle;
         for (const field of fields.values()) {
           field.touched = false;
-          field.found = field.user = none;
+          field.found = field.issues = field.user = none;
         }
         refresh();
       }),
