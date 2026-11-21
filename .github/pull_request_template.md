@@ -10,4 +10,4 @@ Closes #
 - [ ] `bun run e2e:changed` passes
 - [ ] A changeset is added, or this change is invisible to users and needs the `no-changeset` label
 - [ ] Docs are updated (`README.md`, `apps/docs`) if behaviour or API changed
-- [ ] Any raised size limit is listed above with the reason
+- [ ] Any raised size limit is listed above with the reason. CI posts the size tables, so don't paste them
