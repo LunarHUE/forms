@@ -1,6 +1,6 @@
 import { frameworkLabel, AVAILABLE_FRAMEWORKS, type Framework } from "./frameworks";
 import { markdownHref, type SitePage } from "./pages";
-import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "./site";
+import { deployUrl, SITE_DESCRIPTION, SITE_NAME } from "./site";
 
 export const LLMS_HREF = "/llms.txt";
 export const LLMS_FULL_HREF = "/llms-full.txt";
@@ -8,7 +8,7 @@ export const LLMS_FULL_HREF = "/llms-full.txt";
 export const llmsFullHref = (framework: Framework): string => `/${framework}${LLMS_FULL_HREF}`;
 
 const item = (page: SitePage) =>
-  `- [${page.title}](${absoluteUrl(markdownHref(page.href))}): ${page.description}`;
+  `- [${page.title}](${deployUrl(markdownHref(page.href))}): ${page.description}`;
 
 /**
  * The index for language models, following https://llmstxt.org: a title, a
@@ -21,10 +21,10 @@ export function llmsIndex(pages: readonly SitePage[]): string {
   });
   const shared = pages.filter((page) => page.framework === undefined);
   const fullTexts = [
-    `- [All pages](${absoluteUrl(LLMS_FULL_HREF)}): every page below in one file`,
+    `- [All pages](${deployUrl(LLMS_FULL_HREF)}): every page below in one file`,
     ...AVAILABLE_FRAMEWORKS.map(
       (framework) =>
-        `- [${frameworkLabel(framework)} pages](${absoluteUrl(llmsFullHref(framework))}): the ${frameworkLabel(framework)} pages and the error codes in one file`,
+        `- [${frameworkLabel(framework)} pages](${deployUrl(llmsFullHref(framework))}): the ${frameworkLabel(framework)} pages and the error codes in one file`,
     ),
   ];
   return [
@@ -45,6 +45,6 @@ export function llmsIndex(pages: readonly SitePage[]): string {
 export function llmsFull(pages: readonly SitePage[], framework?: Framework): string {
   const chosen = framework ? pages.filter((page) => page.framework === undefined || page.framework === framework) : pages;
   const scope = framework ? `${frameworkLabel(framework)} docs` : "docs for every framework";
-  const header = `# ${SITE_NAME}\n\n> ${SITE_DESCRIPTION}\n\nThe ${scope}, one page after another. Index: ${absoluteUrl(LLMS_HREF)}\n`;
+  const header = `# ${SITE_NAME}\n\n> ${SITE_DESCRIPTION}\n\nThe ${scope}, one page after another. Index: ${deployUrl(LLMS_HREF)}\n`;
   return [header, ...chosen.map((page) => page.markdown())].join("\n---\n\n");
 }

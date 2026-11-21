@@ -99,6 +99,9 @@ jobs:
           # The next site labels itself "next" in the version picker and stays
           # out of search. Previews build like a release.
           DOCS_CHANNEL: ${{ steps.branch.outputs.name == 'next' && 'next' || '' }}
+          # A preview's Markdown copies and llms files link to the preview
+          # itself. next and production link to their own sites.
+          DOCS_URL: ${{ steps.branch.outputs.name != 'next' && format('https://{0}.lunarhue-forms-docs.pages.dev', steps.branch.outputs.name) || '' }}
         run: bun run build
 
       - id: deploy

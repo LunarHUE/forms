@@ -52,7 +52,10 @@ export default defineConfig({
   ],
   vite: {
     // Vite only exposes PUBLIC_ variables, and this one reaches client code too.
-    define: { "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel) },
+    define: {
+      "import.meta.env.DOCS_CHANNEL": JSON.stringify(channel),
+      "import.meta.env.DOCS_URL": JSON.stringify(process.env["DOCS_URL"] ?? ""),
+    },
     // The devtools panel builds from source here, its stylesheet included.
     plugins: [tailwindcss(), panelCss()],
     resolve: { conditions: [sourceCondition, ...defaultClientConditions] },

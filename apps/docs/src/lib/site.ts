@@ -31,5 +31,18 @@ export const adapterPackage = (framework: Framework): string => `@lunarhue/forms
 
 export const npmUrl = (pkg: string): string => `https://www.npmjs.com/package/${pkg}`;
 
-/** An absolute URL on the production site. */
+/** An absolute URL on the channel's site, for canonical links, Open Graph and the sitemap. */
 export const absoluteUrl = (path: string): string => new URL(path, SITE_URL).href;
+
+/**
+ * Where this build is served: a pull request preview's branch alias, or the
+ * channel's site. docs-deploy.yml sets DOCS_URL for previews.
+ */
+export const DEPLOY_URL: string = import.meta.env.DOCS_URL || SITE_URL;
+
+/**
+ * An absolute URL on the deployment serving this build. The Markdown copies
+ * and llms files link with these, so a copy taken from a preview points back
+ * at that preview, even once pasted somewhere else.
+ */
+export const deployUrl = (path: string): string => new URL(path, DEPLOY_URL).href;
