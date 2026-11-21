@@ -50,7 +50,8 @@ Our side has one `createForms` with `zod()`, `dirty()`, `rebase()`, `rules()`,
 such as `PhoneField` and `MoneyField`, so a form only names the field, and
 they need no plugin. The state rule sits on an `AddressFieldset`, so every
 address gets it. The save bar, the error summary and the address fields find
-their form with `useFormContext(forms)`, and the invite draft is
+their form with `useFormContext(forms)`, under the `form.Form` each record
+form renders, and the invite draft is
 `persist("backoffice-invite")` on its definition.
 
 TanStack's side uses `createFormHook` with the save bar, the error summary and

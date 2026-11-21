@@ -39,8 +39,9 @@ you have.
 ## Where the code differs
 
 Our side has `zod()`, `dirty()` and `rebase()` in its plugins and
-`baselineOnSubmit()` on the form. The save bar reads the change count from
-`store.changes()`, and Refresh is one `rebase` call that says which fields take
+`baselineOnSubmit()` on the form. The save bar finds the form with
+`useFormContext(forms)`, so the page renders its `<form>` inside `form.Form`.
+It reads the change count from `store.changes()`, and Refresh is one `rebase` call that says which fields take
 the server's value.
 
 `store.changes()` is a read, not a subscription, and the form's state doesn't

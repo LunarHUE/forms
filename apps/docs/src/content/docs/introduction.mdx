@@ -21,15 +21,11 @@ const signUp = createForms().define({
 function SignUpForm() {
   const form = useForm(signUp);
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
-          {/* Type error: "emial" is not a field of signUp. */}
-          <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
+      {/* Type error: "emial" is not a field of signUp. */}
+      <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
+    </form>
   );
 }
 ```
@@ -43,15 +39,11 @@ const signUp = createForms().define({
 function SignUpForm() {
   const form = createForm(signUp);
   return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
-          {/* Type error: "emial" is not a field of signUp. */}
-          <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
-        </form>
-      )}
-    </form.Form>
+    <form {...form.formProps}>
+      <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
+      {/* Type error: "emial" is not a field of signUp. */}
+      <form.Field name="emial">{(field) => <input {...inputProps(field)} />}</form.Field>
+    </form>
   );
 }
 ```
