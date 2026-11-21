@@ -334,6 +334,21 @@ describe.each(entries)("%s", (_name, entry, options) => {
     expect(input("Query").getAttribute("aria-describedby")).toBe("search--q---error");
   });
 
+  it("takes new values on reset, and a later reset comes back to them", () => {
+    mount(entry, plain());
+    fireEvent.change(input("Query"), { target: { value: "x" } });
+    fireEvent.blur(input("Query"));
+    act(() => current().store.setErrors({ fields: { page: { message: "Too far." } } }));
+    act(() => current().store.reset({ values: { q: "saved", page: "3" } }));
+    expect(input("Query").value).toBe("saved");
+    expect(input("Page").value).toBe("3");
+    expect(errorsOf("Page")).toBe("");
+    expect(handleOf("q").peek()).toMatchObject({ value: "saved", touched: false, errors: [] });
+    fireEvent.change(input("Query"), { target: { value: "edited" } });
+    act(() => current().store.reset());
+    expect(input("Query").value).toBe("saved");
+  });
+
   it("gives every form its own generated id", () => {
     const SearchForm = componentOf(entry);
     render(

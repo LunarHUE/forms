@@ -33,6 +33,7 @@ export type {
   ValueAtName,
 } from "./store.js";
 export type { ErrorMap, FormError, Many } from "../errors.js";
+export type { FormResetOptions, ResetValues } from "../store.js";
 export type { Submission } from "../snapshot.js";
 export type { StandardSchemaV1 };
 

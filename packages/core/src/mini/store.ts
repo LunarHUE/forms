@@ -1,11 +1,11 @@
 import type { ErrorMap, FormError, Many } from "../errors.js";
-import type { NamedAnyFieldHandle as FullAnyHandle, ResetOptions, WriteOptions } from "../handle.js";
+import type { NamedAnyFieldHandle as FullAnyHandle, WriteOptions } from "../handle.js";
 import type { FieldPath, Path } from "../path.js";
 import type { FieldDisplay, WriteCause } from "../plugin.js";
 import type { PartWrite as FullPartWrite, ValuePartContext } from "../plugins/part.js";
 import type { FieldSnapshotBase, FormSnapshotBase, Submission } from "../snapshot.js";
 import type { StandardSchemaV1 } from "../standard-schema.js";
-import type { FormStoreBase } from "../store.js";
+import type { FormResetOptions, FormStoreBase } from "../store.js";
 import type { ValidatorContext as FullValidatorContext } from "../validator.js";
 import type { ChildValue, DeepReadonly, KeysOf, ShapeOf } from "../value.js";
 import type { Cell, Cells } from "../store/cells.js";
@@ -445,11 +445,13 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
         for (const [name, entry] of Object.entries(errors.fields ?? {})) if (entry !== undefined) fieldOf(name).user = list(entry);
         refresh();
       }),
-    // Mini has no baseline to move, so `to` makes no difference.
-    reset: (_options?: ResetOptions) =>
+    // Mini's baseline is its starting value, so `to` makes no difference
+    // and `values` replaces both.
+    reset: (resetOptions?: FormResetOptions<V>) =>
       batch(() => {
         runs++;
         running = undefined;
+        if (resetOptions && "values" in resetOptions) start = resetOptions.values;
         // As in full, the submit count stays: it counts every submit the store has run.
         value = start;
         submission = idle;
