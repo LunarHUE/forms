@@ -5,17 +5,15 @@ section: plugin-composition
 order: 4
 ---
 
-A list component shared by many forms takes an array handle. Make it generic
-in the item, and it takes lists whose items carry more keys than it knows
-about. Both lists below use one component.
+When multiple forms have editable lists whose rows share a common base shape (like `{ id, name }`), you can extract a single reusable list component that accepts an array handle. Making it generic lets it work even when some lists carry extra properties on each item.
+
+Both lists in the demo below are rendered by the same `NamedList` component.
 
 <Demo name="lists/skills" />
 
-## A generic list
+## Typing a generic list component
 
-Type the prop as `ArrayHandle<T[], typeof arrays>`, where `typeof arrays`
-says it needs the [`arrays()`](../plugins/arrays) plugin. The component can't
-build the keys it doesn't know, so it takes a function that makes a full item:
+Type the array prop as `ArrayHandle<T[], typeof arrays>`, where `typeof arrays` declares that the component needs the [`arrays()`](../plugins/arrays) plugin. Because the list component doesn't know what extra fields `T` might require when adding a new row, accept a small `create` callback that fills them in:
 
 ```tsx framework=react
 interface NamedListProps<T extends Named> {
@@ -59,10 +57,9 @@ function NamedList<T extends Named>(props: NamedListProps<T>) {
 <NamedList items={form.root.at("languages")} create={(base) => ({ ...base, level: "basic" })} />;
 ```
 
-## Each row
+## Rendering each row
 
-A row's handle is generic too, so render it through a
-[generic fieldset](../composition/fieldsets#generic-fieldsets):
+Each row handle passed to `<Items>` is generic over `T` too, so pair it with a [generic fieldset](../composition/fieldsets#accepting-extra-keys-with-generic-fieldsets) to render the shared fields:
 
 ```tsx framework=react
 const NamedFieldset = forms.fieldset<Named>();

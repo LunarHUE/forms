@@ -1,302 +1,57 @@
-# forms
+# @lunarhue/forms
 
-Forms for React and Solid, with the form logic in one small core that knows
-nothing about either. A Vue adapter is planned.
+Type-safe forms for React and Solid built on one small, framework-agnostic core (with Vue planned).
 
-We wrote it because we wanted three things at once: field names the compiler
-checks, a bundle well under what the big form libraries ship, and a way to add
-features without everyone paying for them. So the core does values,
-validation and submit, since checking input is what a form library is for.
-Lists, undo, schema libraries and the rest are plugins you install, and a
-mask is a part you put on one field type.
+Values, validation, errors, and submission live in the core. Everything else (dynamic arrays, dirty tracking, undo history, persistence, rebase, conditional rules, schema defaults, and devtools) ships as opt-in plugins so your bundle only pays for what you use.
 
-## Install
+## Documentation
 
-```sh
-npm install @lunarhue/forms-react    # React 18+, or 16.8+ with a condition
-npm install @lunarhue/forms-solid    # Solid 2, or Solid 1.8+ from ./v1
-```
+Read the full guides, live interactive demos, and API reference at **[forms.lunarhue.dev](https://forms.lunarhue.dev)**:
 
-The adapter brings the core and the plugins that need no other library. Add
-these when you want them:
+- [Introduction](https://forms.lunarhue.dev/react/introduction) and [Install](https://forms.lunarhue.dev/react/install)
+- [Your first form](https://forms.lunarhue.dev/react/basics/first-form) ([Solid](https://forms.lunarhue.dev/solid/basics/first-form))
+- [Plugins](https://forms.lunarhue.dev/react/plugins/using-plugins) and [Writing plugins](https://forms.lunarhue.dev/react/writing-plugins/first-plugin)
+- [API reference](https://forms.lunarhue.dev/react/reference/api) and [Error codes](https://forms.lunarhue.dev/errors)
+
+## Quick install
 
 ```sh
-npm install @lunarhue/forms-schema zod    # or valibot
-npm install @lunarhue/forms-bind          # Zustand or a Solid signal
+npm install @lunarhue/forms-react    # React 18+, or 16.8/17 with @lunarhue/react-legacy (plus /mini)
+npm install @lunarhue/forms-solid    # Solid 2, or Solid 1.8+ from /v1
 ```
 
-On Solid 1, import the adapter from `@lunarhue/forms-solid/v1`. It has the
-same functions and types as the main entry, built against `solid-js` 1.8 and
-later, so this form works on either major once you change the import:
+Optional packages:
 
-```tsx
-import { createForm, createForms, inputProps } from "@lunarhue/forms-solid/v1";
-import { render } from "solid-js/web";
-
-const signUp = createForms().define({
-  defaultValues: { name: "" },
-  onSubmit: (value) => `Signed up ${value.name}.`,
-});
-
-function SignUp() {
-  const form = createForm(signUp);
-  return (
-    <form {...form.formProps}>
-      <form.Field name="name">{(field) => <input {...inputProps(field)} />}</form.Field>
-      <button type="submit">Sign up</button>
-      <p>{form.state.submission.status}</p>
-    </form>
-  );
-}
-
-render(() => <SignUp />, document.getElementById("app")!);
+```sh
+npm install @lunarhue/forms-schema zod  # or valibot (automatic schema defaults)
+npm install @lunarhue/forms-bind        # Zustand 5 or Solid 2 signal bindings
+npm install @lunarhue/forms-devtools    # Live on-page form inspector plugin
 ```
-
-## What it looks like
-
-A profile form in React. Zod validates it, the address is a reusable fieldset,
-and Refresh pulls the server's copy without wiping what the user has typed.
-
-It is also bound to a Zustand store. That part is easy to misread, so to be
-clear: the form's state does not live in Zustand. The form always keeps its own
-store, with the values, errors, touched flags and everything else. The binding
-only keeps the two in step. A change in the form is copied out to your store,
-and a change in your store is copied into the form. Take the binding away and
-the form works exactly the same.
-
-```tsx
-import { z } from "zod";
-import { create } from "zustand";
-import {
-  createForms,
-  inputProps,
-  useForm,
-  useFormContext,
-  useFormState,
-  type FieldApi,
-  type HandleOf,
-} from "@lunarhue/forms-react";
-import { rebase } from "@lunarhue/forms-react/plugins";
-import { zod } from "@lunarhue/forms-schema/zod";
-import { zustand } from "@lunarhue/forms-bind/zustand";
-
-// Your own input, registered once.
-interface TextFieldProps {
-  readonly field: FieldApi<string>;
-  readonly label: string;
-}
-
-function TextField({ field, label }: TextFieldProps) {
-  return (
-    <div>
-      <label htmlFor={field.id}>{label}</label>
-      <input {...inputProps(field)} />
-      <ul id={field.errorId}>
-        {field.shownErrors.map((error) => (
-          <li key={error.message}>{error.message}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// One plugin list. Zod brings validation.
-// Rebase merges fresh server data.
-const forms = createForms({
-  plugins: [zod(), rebase()],
-  fields: { TextField },
-});
-
-const Address = z.object({
-  street: z.string().min(1),
-  city: z.string().min(1),
-});
-
-const Profile = z.object({
-  name: z.string().min(1),
-  email: z.email(),
-  address: Address,
-});
-
-// A store your app already has. The form does not
-// live in it. The binding below copies values both ways.
-const useProfileStore = create(() => ({
-  name: "",
-  email: "",
-  address: { street: "", city: "" },
-}));
-
-const saveProfile = (value: z.infer<typeof Profile>) =>
-  fetch("/api/profile", {
-    method: "PUT",
-    body: JSON.stringify(value),
-  });
-
-const profile = forms.define({
-  schema: Profile,
-  // Keep this form's value and the store in step.
-  plugins: [zustand(useProfileStore)],
-  onSubmit: saveProfile,
-});
-
-// A reusable group of fields,
-// usable under any form with an address.
-const AddressFieldset = forms.fieldset(Address);
-
-interface AddressFieldsProps {
-  readonly field: HandleOf<typeof AddressFieldset>;
-}
-
-function AddressFields({ field }: AddressFieldsProps) {
-  const scope = AddressFieldset.scope(field);
-  return (
-    <fieldset>
-      <scope.TextField name="street" label="Street" />
-      <scope.TextField name="city" label="City" />
-    </fieldset>
-  );
-}
-
-// Works under any form.
-function SubmitButton() {
-  const form = useFormContext();
-  const submitting = useFormState(
-    form,
-    (state) => state.submitting,
-  );
-  return (
-    <button type="submit" disabled={submitting}>
-      Save
-    </button>
-  );
-}
-
-export default function ProfileForm() {
-  const form = useForm(profile);
-
-  // Take the server's copy,
-  // but keep whatever the user has typed.
-  const refresh = async () => {
-    const response = await fetch("/api/profile");
-    const fresh = await response.json();
-    form.plugins.rebase(form.root, fresh, (leaf) =>
-      leaf.edited ? "keep" : "take",
-    );
-  };
-
-  return (
-    <form.Form>
-      {(formProps) => (
-        <form {...formProps}>
-          <form.TextField name="name" label="Name" />
-          <form.TextField name="email" label="Email" />
-          <AddressFields field={form.root.at("address")} />
-          <SubmitButton />
-          <button type="button" onClick={refresh}>
-            Refresh
-          </button>
-        </form>
-      )}
-    </form.Form>
-  );
-}
-```
-
-Type `name="emial"` and the build fails. Same if you pass a Zod schema with
-no `zod()` in the list.
 
 ## Packages
 
-| Package                  | What it is                                       |
-| ------------------------ | ------------------------------------------------ |
-| `@lunarhue/forms-core`   | The core, plus the plugins that need nothing else |
-| `@lunarhue/forms-react`  | React adapter, React 18 and later, 16.8 with the `@lunarhue/react-legacy` condition |
-| `@lunarhue/forms-solid`  | Solid adapter, Solid 2, and Solid 1 from `./v1`  |
-| `@lunarhue/forms-schema` | Schema plugins: `./valibot` and `./zod`          |
-| `@lunarhue/forms-bind`   | Bindings to outside stores: `./zustand` and `./solid` |
-
-## Plugins
-
-Everything goes in one list, on `createForms` for every form or on `define`
-for one form. A plugin you don't install costs you no bytes.
-
-We sort them by one question: does it need someone else's library?
-
-### First class
-
-No dependencies beyond core. They live in core and each adapter re-exports
-them, so you import from the package you already have.
-
-| Plugin         | What it does                                                                                   |
-| -------------- | ---------------------------------------------------------------------------------------------- |
-| `dirty()`      | Tracks which fields differ from their baseline, for `dirty` and `store.changes()`.             |
-| `arrays()`     | Lists: `Items`, row keys that follow moves, and `push`, `insert`, `remove` and `move`.         |
-| `history()`    | Undo and redo. One step per keystroke or batch, and array rows keep their identity.            |
-| `rules()`      | Works out `disabled` and `hidden` for a field from the form's value, with `ruled(...)` parts.  |
-| `persist()`    | Saves the draft to storage when the page is idle and restores it on load.                      |
-| `rebase()`     | Takes a fresh copy of the data and lets you decide, leaf by leaf, whether to keep the user's edit. |
-| `bind()`       | Copies the form's value to a store you own and back. The form keeps its own state; only the value is shared. |
-
-### Schema
-
-These work with a schema library, so they sit in `@lunarhue/forms-schema`, one
-entry per library. Validation is already in every form, so each one only
-adapts its library: it lets `schema` take that library's schemas and fills in
-the starting values.
-
-| Plugin      | Import                           | What it does                                           |
-| ----------- | -------------------------------- | ------------------------------------------------------ |
-| `zod()`     | `@lunarhue/forms-schema/zod`     | Validates with Zod 4 and types the form from the schema. |
-| `valibot()` | `@lunarhue/forms-schema/valibot` | The same for Valibot.                                  |
-
-For any other [Standard Schema](https://standardschema.dev) library, make a
-schema plugin with `definePlugin({ name, schema })`. See
-[Schemas](https://forms.lunarhue.dev/react/plugins/schemas#another-library).
-
-Bindings for outside stores follow the same rule. `zustand()` comes from
-`@lunarhue/forms-bind/zustand` and `signal()` for a Solid signal from
-`@lunarhue/forms-bind/solid`, not from core. A binding never replaces the
-form's store. It is a two-way copy of the value, set up per form, so two forms
-can bind to two different stores.
-
-### Writing your own
-
-`definePlugin` gives you hooks for writes, resets and submit, your own slot for
-field and form state, and an API that shows up typed at `form.plugins.<name>`.
-A plugin can also take parts: config for one field type, fieldset or form,
-as in `forms.fieldset<Address, typeof rules>(ruled({ ... }))`. A form that
-uses a field type or fieldset without the plugin its parts need is a type
-error. A part can also bring hooks of its own and need no plugin, as
-`transform`, `text`, `observe` and the masks from `/text` do. Reach for those
-first, and write a plugin when the behaviour needs meta, an API or another
-plugin. Plugins can't step on each other: a write made inside a hook is
-queued, and each plugin sees the records frozen. A plugin depends on core and never on an
-adapter, so it works under React and Solid alike. If you publish one, call it
-`forms-plugin-<name>`.
-
-The full rules are in
-[Writing a plugin](https://forms.lunarhue.dev/react/writing-plugins/first-plugin), and
-every error code is listed on [the errors page](https://forms.lunarhue.dev/errors).
+| Package | Description |
+| --- | --- |
+| `@lunarhue/forms-core` | Framework-agnostic store, validation, first-class plugins (`/plugins`), text masks (`/text`), and `/mini` |
+| `@lunarhue/forms-react` | React adapter (React 18+ default, 16.8/17 via `@lunarhue/react-legacy`, experimental `/mini` entry) |
+| `@lunarhue/forms-solid` | Solid adapter (Solid 2 default, Solid 1.8+ via `/v1`) |
+| `@lunarhue/forms-schema` | Schema default adapters (`/zod`, `/valibot`) |
+| `@lunarhue/forms-bind` | External store bindings (`/zustand`, `/solid`) |
+| `@lunarhue/forms-devtools` | On-page devtools panel built as a core plugin |
 
 ## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers setup, how work lands, changesets and
-the size rules. Report a vulnerability through [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, pull request workflow, changesets, and bundle-size checks. Report security issues through [SECURITY.md](SECURITY.md).
 
-## Scripts
+### Repo scripts
 
-Run these from the repo root with `bun run <name>`. Each one covers every package.
+Run from the repository root with `bun run <script>`:
 
-- `typecheck`: `tsc` over the tooling config files and each package. Packages read
-  each other from source, so no build is needed first.
-- `lint`: oxlint with type-aware rules, plus the React Compiler rules for
-  `packages/react`. Warnings fail it.
-- `test`: vitest, runtime tests and `*.test-d.ts` type tests.
-- `build`: ESM in `dist/esm` and CJS in `dist/cjs` with tsdown, declarations
-  with `tsc`. Packages build in dependency order.
-- `check:package`: publint and arethetypeswrong on the packed package. Needs a build.
-- `size`: size-limit on each entry point. Needs a build.
-- `e2e`: the browser suite in [`e2e`](e2e/README.md), every adapter on every
-  supported major (React 16 to 19, Solid 2). Not part of the checks above.
-- `e2e:changed`: the same suite for the majors the changes since
-  `origin/main` can reach. `--base <ref>` picks another base.
+- `typecheck`: runs `tsc` across all packages, apps, examples, and e2e suites (packages resolve from source, no build needed first).
+- `lint`: runs `oxlint` with type-aware rules and React Compiler rules for `packages/react`.
+- `test`: runs Vitest runtime tests and `*.test-d.ts` type tests.
+- `build`: builds ESM (`dist/esm`), CJS (`dist/cjs`), and `.d.ts` bundles in dependency order.
+- `check:package`: runs `publint` and `arethetypeswrong` on packed packages (requires `build`).
+- `size`, `size:forms`, `size:compare`: checks entry-point and comparison bundle budgets (requires `build`).
+- `e2e`: runs the Playwright suite in [`e2e`](e2e/README.md) across supported React and Solid majors.
+- `e2e:changed`: runs only the e2e majors affected by changes since `origin/main` (`--base <ref>` overrides the base).

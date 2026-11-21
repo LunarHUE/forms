@@ -8,80 +8,40 @@ order: 1
 <Only framework="solid">
 
 <Callout>
-These comparisons are written in React, to keep them simple. A headless form
-library carries over closely between frameworks, so the Solid version of each
-form would be wired the same way.
+These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the same patterns.
 </Callout>
 
 </Only>
 
-A sign-up form, built once with `@lunarhue/forms` and once with
-[TanStack Form](https://tanstack.com/form). Both builds render the same markup
-and call the same fake server, so the only code that differs is how each one
-wires the form. Switch the build on the preview: they behave the same.
+Here is a sign-up form built twice: once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Both versions render identical markup and talk to the same mock API, so the only difference is the form wiring. Toggle between the two builds in the preview below; they behave the same.
 
 <Compare app="signup" />
 
 ## What the form does
 
-Email, username, password, confirmation and a terms checkbox. A field shows
-its errors after its first blur, then after every input. The confirmation is
-checked against the password, and changing the password checks it again.
+It collects an email, username, password, confirmation, and terms checkbox. Fields show errors after their first blur and re-validate on every keystroke after that. Password confirmation validates against `password`, re-checking automatically whenever `password` changes.
 
-The username's length and format rules answer as you type. Only a
-well-formed name goes to the server, after a 400 ms pause in typing, and a
-newer check aborts the older request. Try `ada` or `admin`. The server can also
-refuse the email: `taken@example.com` is in use, and its message stays on the
-field until you edit it.
+Username validation runs cheap local rules (length and allowed characters) as you type, and only hits the server once the format is valid, after a 400 ms pause, aborting stale requests if you keep typing. Try `ada` or `admin` to see the server check, or `taken@example.com` to see a server-side refusal on submit that clears as soon as you edit the email.
 
-## Where the code differs
+## Where the two implementations differ
 
-Our side uses the core package only. The field checks sit in
-`validate.fields`, the cross-field check in `validate.form`, and the server's
-refusal goes on the fields with `setErrors`. The username's rules are a
-`pipe`: two sync checks, then the server check in `debounced`. A failing rule
-stops the pipe, so the server check never starts. Errors following blur, then input,
-is the default, so neither form says when to validate.
+On the `@lunarhue/forms` side, everything uses just the core package with no plugins needed. Field rules live in `validate.fields`, the password match lives in `validate.form`, and server refusals go onto fields via `setErrors`. The username check is a single `pipe` combining two sync checks with a `debounced` async check: when a sync check fails, the pipe stops and never starts the timer or request. Blur-then-input validation is the default, so no timing configuration is needed.
 
-TanStack's side uses `createFormHook` for its field components, a validator
-per field, `onChangeListenTo` to check the confirmation again, and a form-level
-`onSubmitAsync` for the server call. Getting the same behaviour took a few
-choices of its own:
+On the TanStack Form side, the form uses `createFormHook` for field components, per-field validators, `onChangeListenTo` to re-check password confirmation, and a form-level `onSubmitAsync` for the server call. Matching the same behavior required a few workarounds:
 
-- TanStack keeps an `onBlur` error until the next blur, even once the value is
-  fixed. So every check is listed under `onChange`, and the field components
-  run it on blur with `field.validate("change")`.
-- `isTouched` turns true on the first keystroke, so the components wait for
-  `isBlurred` before they show errors.
-- `onChangeAsync` runs on every change. The username check returns early
-  until the field has been blurred, so no request goes out before then.
-- The server call runs in `onSubmitAsync`, which is how TanStack's docs put
-  server errors on fields. Its submit has no result, so the welcome message is
-  React state.
+- TanStack keeps `onBlur` errors stuck until the next blur even after the user fixes the value, so all rules move to `onChange` and field components manually call `field.validate("change")` on blur.
+- `isTouched` flips to `true` on the first keystroke, so components wait for `isBlurred` before displaying errors.
+- `onChangeAsync` runs on every change, so the username validator bails out early until the field has been blurred.
+- The server request runs inside `onSubmitAsync` (the documented way to attach server errors to fields), and because submit doesn't store a return value, the welcome message lives in separate React state.
 
-One difference shows in the preview. TanStack's submit does nothing while a
-check is pending, debounce included, so its button follows `canSubmit`, as in
-TanStack's docs: it stays disabled until checks settle and while a touched form
-is invalid. Ours stays enabled, and a submit waits for the pending check.
+You will notice one small difference in the preview: TanStack's submit ignores clicks while an async check or debounce is pending, so its button disables via `canSubmit`. Ours stays enabled and waits for any pending check to settle before submitting.
 
-## How it was measured
+## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts)
-builds each app with Vite for production, minified, three times per library,
-and the table above reads its output. Only JavaScript counts, since both sides
-load the same stylesheet.
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only, since both share the same CSS) in three variants per library:
 
-- **Forms + app** is the form library and the app's own code. React, react-dom
-  and Zod are left out.
-- **Total** is everything the page loads, React and Zod included.
-- **App only** leaves the form libraries out too, so it is the code written
-  for this form.
+- **Forms + app**: the form library plus the app's own form code (excluding React, `react-dom`, and Zod).
+- **Total**: everything the page loads, including React and Zod.
+- **App only**: just the form-specific app code, excluding the form libraries too.
 
-Our packages are measured from their built files, as an app that installs them
-would get them. TanStack Form is 1.33.5, the latest stable release. CI measures
-again on every change and fails when the numbers in the repo are stale, so the
-table can't drift from the code.
-
-The apps and their Playwright specs are in
-[`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
-The specs run each app against both builds.
+Our packages are measured from their built dist outputs, compared against TanStack Form 1.33.5. CI re-runs this script on every PR and fails if the committed numbers drift. Both apps and their shared Playwright test suite live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).

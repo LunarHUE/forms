@@ -1,4 +1,4 @@
-import { checkboxProps, createForms, fieldValidators, formValidator, useForm } from "@lunarhue/forms-react";
+import { checkboxProps, createForms, fieldValidators, formValidator, pipe, useForm } from "@lunarhue/forms-react";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -7,9 +7,12 @@ const forms = createForms({ plugins: [docsDevtools] });
 const signUp = forms.define({
   defaultValues: { username: "", password: "", confirm: "", terms: false },
   validate: {
-    // One function per field. Return an error, or undefined when it passes.
+    // One function or pipe per field. Return an error, or undefined when it passes.
     fields: fieldValidators({
-      username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+      username: pipe(
+        (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+        (name) => (/^[a-z0-9_]+$/i.test(name) ? undefined : { message: "Use letters, digits and underscores." }),
+      ),
       password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
     }),
     // Sees the whole value, so it can compare two fields.

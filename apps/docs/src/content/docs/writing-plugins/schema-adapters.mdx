@@ -5,17 +5,12 @@ section: writing-plugins
 order: 6
 ---
 
-`definePlugin` from `@lunarhue/forms-core/plugins` makes a schema plugin for
-any [Standard Schema](https://standardschema.dev) library when you give it a
-`name` and a `schema` adapter. Validation and types already go through
-Standard Schema, so the adapter only says which schemas it accepts and what
-values they start from. It has:
+Because core already validates and types forms using [Standard Schema](https://standardschema.dev), building a schema plugin for another library (like ArkType) only requires teaching the form how to derive default values from that library's schemas.
 
-- `vendor`: the library's name, matched against `schema["~standard"].vendor`.
-- `defaultValue(schema)`: the value a form starts from when `defaultValues`
-  leaves it out.
-- `itemValue(schema, path)`: the value `push` or `insert` gives a new item of
-  the array at `path` when it gets none.
+Pass a `schema` adapter to `definePlugin` with three members:
+- **`vendor`**: matches `schema["~standard"].vendor`.
+- **`defaultValue(schema)`**: builds the form's starting value when `defaultValues` is omitted.
+- **`itemValue(schema, path)`**: builds an empty row when `push()` or `insert()` is called with no item argument.
 
 ```ts
 import type { SchemaAdapter } from "@lunarhue/forms-core";
@@ -31,14 +26,11 @@ const adapter: SchemaAdapter<ArkSchema> = {
 export const ark = definePlugin({ name: "ark", schema: adapter });
 ```
 
-With `ark()` in a form's plugins, `defaultValues` becomes optional for an
-`ArkSchema`. Without it, `defaultValues` is required and complete. `zod()` and
-`valibot()` are schema plugins of the same shape.
+Once `ark()` is installed in a form's `plugins`, `defaultValues` becomes optional for `ArkSchema` forms (just like `zod()` and `valibot()`).
 
 ## TS2353 from `define` in a function generic over the schema
 
-A helper that takes any schema and returns a definition fails to compile when
-its type parameter is the schema type:
+If you write a reusable helper function that takes any schema and calls `forms.define({ schema })`, making the helper generic over the *schema type itself* triggers a `TS2353` error:
 
 ```ts
 const forms = createFormsCore({ plugins: [zod()] });
@@ -53,17 +45,9 @@ error TS2353: Object literal may only specify known properties, and 'schema' doe
 '(options: void) => WithPlugins<Definition<never, S, readonly [Plugin<undefined, "zod", never, never, ZodSchema>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<...>>>'.
 ```
 
-`define` uses conditional types to ask two things about the schema: is there
-one at all, and does an installed schema plugin accept it? While `S` is a type
-parameter, TypeScript can't answer either, so the config matches no case. A
-bound of `S extends StandardSchemaV1`, explicit type arguments such as
-`define<never, S>`, and the function form `define(() => ({ schema }))` fail
-the same way. The adapters' `define` takes the same config, so React and Solid
-show the same error.
+**Why this happens:** `define` uses conditional types to check two things: whether a schema was provided, and whether an installed schema plugin accepts it. While `S` is an unresolved type parameter, TypeScript can't evaluate either conditional, so the config object fails to match any overload. Constraining `S extends StandardSchemaV1`, passing explicit type args like `define<never, S>`, or using `define(() => ({ schema }))` hits the same limitation in React and Solid adapters too.
 
-Make the helper generic over the schema's values instead. Then the schema type
-is concrete and TypeScript can tell the zod plugin accepts it. The form gets
-the same types an ordinary `define` gives it. These two compile:
+**The fix:** make your helper generic over the schema's *input/output values* instead of the schema type. That keeps the schema type concrete so TypeScript resolves the plugin cleanly and preserves full inference:
 
 ```ts
 import { createFormsCore, type StandardSchemaV1 } from "@lunarhue/forms-core";
@@ -72,12 +56,12 @@ import { z } from "zod";
 
 const forms = createFormsCore({ plugins: [zod()] });
 
-// I is the schema's input and O its output.
+// I is the schema's input and O is its output.
 export function makeForm<I extends object, O>(schema: z.ZodType<O, I>, onSubmit: (value: O) => void) {
   return forms.define({ schema, onSubmit });
 }
 
-// Any Standard Schema. No schema plugin accepts this type, so it needs defaultValues.
+// Generic Standard Schema (no schema plugin matches, so defaultValues is required).
 export function makeStandard<V extends object>(schema: StandardSchemaV1<V>, defaultValues: V) {
   return forms.define({ schema, defaultValues });
 }

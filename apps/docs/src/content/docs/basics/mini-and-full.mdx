@@ -1,0 +1,104 @@
+---
+title: Using /mini with the full entry
+description: Running /mini and the full entry side by side, sharing field components safely, and graduating forms cleanly.
+section: basics
+order: 9
+navTitle: Mixing /mini and full
+frameworks: [react]
+---
+
+You don't have to pick one entry for your entire app. A common setup is to keep small, widely rendered forms (search bars, login dialogs, newsletter signups) on `@lunarhue/forms-react/mini` while richer forms (settings pages, multi-step wizards, dynamic lists) use `@lunarhue/forms-react`.
+
+Because `/mini`'s types are a strict subset of the full entry's, the two coexist cleanly, with one important caveat around shared field components and `ref`.
+
+## Running both entries side by side
+
+Create two `createForms()` instances in your shared forms module, one from each entry:
+
+```ts title="forms.ts" framework=react
+import { createForms as createFullForms } from "@lunarhue/forms-react";
+import { createForms as createMiniForms } from "@lunarhue/forms-react/mini";
+import { arrays, dirty } from "@lunarhue/forms-react/plugins";
+
+export const miniForms = createMiniForms({ fields: { MiniTextField } });
+export const fullForms = createFullForms({
+  plugins: [dirty(), arrays()],
+  fields: { TextField, NumberField, Checkbox },
+});
+```
+
+Each entry is independent at runtime, so a route that only renders a `miniForms` form never bundles the full core or any plugins.
+
+## Sharing field components (and the `ref` caveat)
+
+Because the full entry's `FieldApi<T>` is a superset of `/mini`'s `FieldApi<T>`, a plain component typed against `/mini`'s `FieldApi<string>` type-checks on **both** `miniForms` and `fullForms`:
+
+```tsx title="MiniTextField.tsx" framework=react
+import { type FieldApi, inputProps } from "@lunarhue/forms-react/mini";
+
+interface TextFieldProps {
+  field: FieldApi<string>;
+  label: string;
+}
+
+export function MiniTextField({ field, label }: TextFieldProps) {
+  return (
+    <label>
+      {label}
+      <input {...inputProps(field)} />
+      {field.shownErrors[0] ? <p id={field.errorId}>{field.shownErrors[0].message}</p> : null}
+    </label>
+  );
+}
+```
+
+Going the other direction does **not** compile: `/mini`'s `createForms({ fields })` rejects any component whose `field` prop asks for members `/mini` lacks (like `field.ref`, `field.disabled`, `field.readOnly`, or full's `FieldApi`).
+
+### Watch out for missing `ref` on full-entry forms
+
+Sharing `MiniTextField` onto `fullForms` compiles, **but it comes with a runtime trade-off**:
+
+1. `/mini`'s `FieldApi` does not include `ref`, `disabled`, or `readOnly`.
+2. `/mini`'s `inputProps(field)` does not return `ref`, `disabled`, or `readOnly`.
+
+That means if you register a mini-typed component on a **full-entry** form, its `<input>` is never registered in the form's element map:
+
+- `focusOnInvalid` will not focus that input when submit fails.
+- `isFocused(handle)` will always return `false` for that field.
+- `elementsOf(handle)` and `fieldOf(element)` will not see the input (and `@lunarhue/forms-devtools` won't highlight or inspect it).
+- `disabled` and `readOnly` flags (for example from `rules()` or `define({ disabled })`) will not forward to the `<input>`.
+
+### The recommended pattern for field components
+
+For most apps, keep your full-entry field components separate from your `/mini` ones (or have both wrap the same presentational `<FieldShell>` / styled `<Input>`):
+
+- **On `miniForms`:** bind with `FieldApi` and `inputProps` from `@lunarhue/forms-react/mini` (keeps the mini bundle free of full-entry code).
+- **On `fullForms`:** bind with `FieldApi` and `inputProps` from `@lunarhue/forms-react` so `ref`, `disabled`, `readOnly`, `focusOnInvalid`, and `isFocused` all work automatically. If you bind a custom UI primitive by hand instead of `inputProps`, pull `ref` out first (`const { ref } = field`) before passing `ref={ref}` so React Compiler doesn't bail out on the component (see [Binding UI component libraries](./fields#binding-ui-component-libraries)).
+
+Only register a mini-typed component on `fullForms` when you intentionally don't need focus-on-invalid, `isFocused`, devtools inspection, or `disabled`/`readOnly` forwarding on those inputs.
+
+## Graduating a form from `/mini` to the full entry
+
+When a form starts on `/mini` and later needs a full-entry feature (like `show: "submitted"`, async validation, `dirty()`, `arrays()`, `focusOnInvalid`, `useFormContext`, or `numberProps`), graduating takes a few small steps:
+
+1. **Swap the main import:** change `@lunarhue/forms-react/mini` to `@lunarhue/forms-react`.
+2. **Move standalone part imports (if any):** if the form imported `transform`, `text`, `observe`, or `refuse` from `@lunarhue/forms-react/mini`, import them from `@lunarhue/forms-react/plugins` instead.
+3. **Leave or remove `subscribe: perField()`:** the full entry accepts `subscribe: perField()` and ignores it (full always wakes per field), so existing calls compile unchanged and you can delete the option whenever you like.
+4. **Upgrade field components if you want full bindings:** switch any component that should participate in `focusOnInvalid`, `isFocused`, `disabled`/`readOnly`, or `defineField` to import `FieldApi` and `inputProps` from `@lunarhue/forms-react` (and destructure `const { ref } = field` if passing `ref` manually under React Compiler).
+5. **Turn on the full features you needed:** add `plugins`, `show`, `validateOn` / `pipe` / `debounced`, `formValidator`, `useFormContext`, or specialized props helpers like `checkboxProps` and `numberProps`.
+
+## Quick comparison
+
+| Capability | `@lunarhue/forms-react/mini` | `@lunarhue/forms-react` |
+| --- | --- | --- |
+| Typical bundle (React external) | ~2.6 kB brotli | ~11 kB brotli |
+| `createForms`, `define`, `useForm`, `Field`, `State`, `Form` | Yes (leaf fields only) | Yes (leaves, objects, arrays) |
+| `define((options) => config)` & `reset({ values })` | Yes | Yes |
+| Registered plain field components (`fields`) | Yes (`MiniCheckedFields`) | Yes (plus `defineField`) |
+| Validation | Sync `fieldValidators` & Standard Schema | Sync + async, `formValidator`, `pipe`, `debounced`, `validateOn`, `recheckOnSubmit`, `useValidator` |
+| Error visibility (`show`) & `mapError` | Fixed `"touched-or-submitted"`, `FormError` | Configurable `show` & `mapError` |
+| `field.ref`, `focusOnInvalid`, `isFocused`, element lookup | No | Yes |
+| Props helpers | `inputProps` (string inputs, no `ref`/`disabled`/`readOnly`) | `inputProps`, `textareaProps`, `selectProps`, `numberProps`, `rangeProps`, `checkboxProps`, `checkboxGroupProps`, `radioProps`, `numberPieces` |
+| Plugins & `useFormContext` | No | Yes |
+| Standalone parts (`transform`, `text`, `observe`) | From `/mini` (pinned with `fieldset().at()`) | From `/plugins` (on `define`, `defineField`, `fieldset`) |
+| Subscriptions | Whole-form by default (`perField()` opt-in) | Always per-field |

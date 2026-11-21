@@ -5,25 +5,22 @@ section: plugins
 order: 6
 ---
 
-A long text or a settings page needs undo. `history()` records the user's
-edits so an Undo button can step back through them. Type, then undo.
+For rich editors, settings screens, or any form where accidental changes are painful, `history()` tracks the user's edits and lets them step backward and forward. Try typing in the demo below and clicking Undo.
 
 <Demo name="history/note" />
 
-`history()` records the user's value and array writes, one step per task, such
-as one keystroke or one paste. `form.plugins.history` has `undo()` and
-`redo()`, and each returns false when there is no step to take. It keeps the
-latest 100 steps. Pass another limit as `history(50)`.
+## Setting up undo and redo
 
-## Undo buttons
+Install `history()` on `createForms` or on a form definition. It records user value and array edits (one step per task, such as a keystroke or paste) and keeps the latest 100 steps by default. Pass a custom cap like `history(50)` if you want a different limit.
 
-Whether there is a step to undo or redo is form meta. Read it with the
-`formMeta` reader on `history`, the factory you import:
+Call `form.plugins.history.undo()` or `form.plugins.history.redo()` to step through the stack; each returns `false` if there is nothing left to undo or redo.
+
+To enable or disable your buttons, read `canUndo` and `canRedo` from form meta using `history.formMeta(state)`:
 
 ```tsx framework=react
 const forms = createForms({ plugins: [history()] });
 
-// In a component with a form of those forms.
+// Inside a component rendering a form from `forms`:
 <form.State select={(state) => history.formMeta(state).canUndo}>
   {(canUndo) => (
     <button
@@ -40,7 +37,7 @@ const forms = createForms({ plugins: [history()] });
 ```tsx framework=solid
 const forms = createForms({ plugins: [history()] });
 
-// In a component with a form of those forms.
+// Inside a component rendering a form from `forms`:
 <button
   type="button"
   disabled={!history.formMeta(form.state).canUndo}
@@ -50,25 +47,16 @@ const forms = createForms({ plugins: [history()] });
 </button>;
 ```
 
-Both flags are false before the first step, on the server too. They change in
-the same render as an undo, a redo or a reset. After an edit they change a
-microtask later, when `history` records the step.
+Both flags start `false` (including during SSR). They update synchronously on undo, redo, or reset, and one microtask after a user edit once `history` finishes recording the step.
 
-## What it records
+## What gets recorded
 
-Only user writes make a step. A plugin's writes, resets and rebases don't, and
-a reset clears both stacks. A plugin that writes to the store directly instead
-of through `ctx.write` makes a user write, so that does make a step. See
-[Writing a plugin](../writing-plugins/first-plugin).
+Only user edits create history entries. Plugin writes (through `ctx.write`), resets, and rebases stay out of the undo stack, and resetting the form clears both undo and redo stacks. (Note that if a custom plugin writes to the store directly instead of via `ctx.write`, it looks like a user edit and will be recorded. See [Writing a plugin](../writing-plugins/first-plugin).)
 
-Undo and redo go through the fields, so validation runs on the values they
-write.
+Because undo and redo write back through the form's fields, validation runs on the restored values.
 
-## Arrays
+## How history works with arrays
 
-Undoing an insert or a move keeps the keys of the rows that stay, and their
-touched, edited and error state with them.
+Undoing an `insert` or `move` preserves the keys (and therefore the `touched`, `edited`, and error state) of every remaining row.
 
-Undoing a remove puts the row back with a new key. Core never brings a removed
-key back, so the row's state starts fresh: touched, edited and errors are
-gone, and a component keyed by the old key mounts again.
+Undoing a `remove` restores the row's values under a fresh key. Because core never resurrects a deleted key, the restored row starts with clean `touched`, `edited`, and error state and mounts as a fresh component.

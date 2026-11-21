@@ -5,39 +5,32 @@ section: plugins
 order: 4
 ---
 
-The user is editing a record when a fresher copy arrives from the server.
-Taking it whole loses their typing, and ignoring it leaves stale values in
-the fields they didn't touch. `rebase` merges the two, field by field.
+Suppose a user is halfway through editing their profile when a fresher copy arrives from the server (a background refetch, a WebSocket update, or a save response). Replacing the form wholesale wipes out what they're typing, while ignoring the refresh leaves stale data in untouched fields.
+
+`rebase` merges the two field by field. Try editing the name in the demo below, then click **Refresh**. Your typed name stays put while the email picks up the server's update.
 
 <Demo name="rebase/profile" />
 
-Edit the name, then press Refresh. The name keeps your text and the email
-takes the server's.
+## Rebasing onto fresh data
 
-`form.plugins.rebase(handle, incoming, resolve)` moves the baseline of the
-subtree at `handle` to `incoming`, such as a fresh copy from the server. A
-leaf whose current value already equals the incoming one only moves its
-baseline. For every other leaf, `resolve` picks what it becomes:
+Call `form.plugins.rebase(handle, incoming, resolve)` to move the baseline at `handle` to `incoming`. Any leaf whose current value already matches `incoming` simply advances its baseline. For every leaf that differs, your `resolve` callback chooses what happens:
 
 ```ts
 const fresh = await fetchProfile();
 form.plugins.rebase(form.root, fresh, (leaf) => (leaf.edited ? "keep" : "take"));
 ```
 
-- `"keep"` keeps the current value. The field stays dirty against the new
-  baseline.
-- `"take"` writes the incoming value.
-- `{ value }` writes a value of your own, such as a merge of the two.
+Each `leaf` gives you its `path`, current `value`, previous `baseline`, `incoming` value, and `edited` (`true` if the user has edited it). Return one of three outcomes:
 
-Each leaf comes with its `path`, the current `value`, the old `baseline`, the
-`incoming` value and `edited`, true when the user has edited it.
+- **`"keep"`**: preserve the user's current value (the field remains dirty against the new baseline).
+- **`"take"`**: adopt the incoming server value.
+- **`{ value }`**: write a custom merged value of your own.
 
-## Keeping the focused field
+## Protecting the currently focused field
 
-A user who clicked into a field but hasn't typed yet has `edited` false, so
-the resolve above writes the server's value under their cursor. Keep the
-focused field too. `isFocused(handle)` is true while focus is on one of the
-field's elements or inside one:
+There is a subtle edge case with `leaf.edited ? "keep" : "take"`: if the user clicked into a field and is about to type, `edited` is still `false`, so a background refresh could swap the value right under their cursor.
+
+Pair `leaf.edited` with `isFocused(handle)` to protect whichever field currently has focus (including inputs nested inside custom components):
 
 ```ts framework=react
 import { isFocused } from "@lunarhue/forms-react";
@@ -57,62 +50,35 @@ form.plugins.rebase(form.root, fresh, (leaf) => {
 });
 ```
 
-`isFocused` reads the elements the field's ref got, the ones `elementsOf`
-lists, so it needs no setup in production. Checking
-`fieldOf(document.activeElement)` instead works in development and then
-finds nothing in production, unless the app called `trackElements()` before
-the form rendered. It also misses an input inside a custom component, since
-`fieldOf` doesn't look at ancestors.
+`isFocused` checks the elements registered via `field.ref` (the same ones `elementsOf` returns), so it works in production with no extra setup. By contrast, `fieldOf(document.activeElement)` only works in production if you called `trackElements()` up front, and it doesn't walk up ancestor elements inside custom components.
 
-A leaf is one value. A custom input on an object field, such as a date range
-over `{ start, end }`, registers on the object, so check the leaf's parent:
-`form.store.fieldAt(leaf.path.slice(0, -1))`.
+If you have a custom composite input bound to an object field, like a date range over `{ start, end }`, its ref is registered on the parent object, so check the leaf's parent handle with `form.store.fieldAt(leaf.path.slice(0, -1))`.
 
-## Rebase or reset
+## When to use `rebase` vs. `reset({ values })`
 
-Rebase is for keeping edits. When the user's edits should go, as after a save
-or when they pick a different record, reset the form to the new copy instead.
-It needs no plugin:
+Use `rebase` when you want to **preserve** the user's edits while updating the baseline. When you want to **discard** edits and start fresh with new data (like after a save or when loading a different record), you don't need a plugin at all. Use `form.store.reset({ values })`:
 
 ```ts
 const fresh = await fetchProfile();
 form.store.reset({ values: fresh });
 ```
 
-`reset({ values })` writes the values and makes them the baseline in one
-step. It clears touched, edited and error state, and aborts a running submit,
-as `reset()` does. With [`dirty()`](./dirty) the form is clean afterwards,
-and a later `reset()` comes back to these values. `reset({ to: "initial" })`
-still goes back to the values the form started with. `history` forgets its
-steps, as on any reset.
+`reset({ values })` writes the new values and sets them as the new baseline in a single step. Just like `reset()`, it clears touched, edited, and error state, aborts any in-flight submit, and clears `history`. With [`dirty()`](./dirty), the form is immediately clean, a later `reset()` returns to these new values, and `reset({ to: "initial" })` still returns to the original defaults.
 
-Writing the values with `setValue` doesn't do this. It leaves the baseline
-where it was, so the form stays dirty and `reset()` brings the old values
-back.
+Avoid doing this with `setValue`: `setValue` leaves the baseline untouched, so the form stays dirty and `reset()` reverts to the old values.
 
-## What it returns
+## Return value and partial rebases
 
-`rebase` returns `{ taken }`, the paths it wrote with `"take"` or `{ value }`.
-Validators that already ran on those fields run again. Listeners run
-once, after the whole rebase.
+`rebase` returns `{ taken }`, listing the paths written via `"take"` or `{ value }`. Any validators that had already run on those fields re-run automatically, and listeners notify once after the entire rebase finishes.
 
-Pass any handle of the form, such as `form.root.at("address")`, to rebase one
-part of it. A handle from another form throws
-[`rebase:store`](/errors#core:rebase:store).
+You can pass any handle in the form, like `form.root.at("address")`, to rebase just that subtree. Passing a handle from a different form throws [`rebase:store`](/errors#core:rebase:store).
 
-## Comparing values
+## How values and arrays are compared
 
-With [`dirty()`](./dirty) installed, rebase compares values with the form's
-dirty comparison, including any `equals` you gave. Without it, values compare
-by `Object.is`, so a date with the same time counts as changed and goes to
-`resolve`.
+When [`dirty()`](./dirty) is installed, `rebase` uses your form's dirty equality check (including any custom `equals` function). Without `dirty()`, it compares with `Object.is`, meaning two `Date` instances with the same timestamp count as different and go to `resolve`.
 
-Objects are walked key by key. An array is walked item by item when its items
-still have the keys and order of its baseline and the incoming array is as
-long. Otherwise the whole array is one leaf.
+Plain objects are walked key by key. Arrays are walked item by item when their baseline keys and order still match and the incoming array has the same length; otherwise, the entire array is passed to `resolve` as a single leaf.
 
-## Other plugins
+## Interaction with other plugins
 
-Rebase writes aren't user edits. `history` records no step for them, and a
-`masked` part doesn't clean them, since the incoming value is the server's
-copy.
+Rebase updates aren't user edits: `history` won't record an undo step for them, and `masked` parts won't clean them, since the incoming data is already the server's baseline copy.

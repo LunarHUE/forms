@@ -1,0 +1,112 @@
+---
+title: Mini entry
+description: A ~3 kB React subset for simple forms, what it leaves out to stay tiny, and when to use it.
+section: basics
+order: 8
+navTitle: Mini entry
+frameworks: [react]
+---
+
+For small forms like a login box, newsletter signup, or search filter, you rarely need plugins, dynamic arrays, async checks, or focus management. `@lunarhue/forms-react/mini` is an experimental ~2.6 kB brotli subset of the library (against ~11 kB for the full entry, with React external) that keeps the same API names and types.
+
+Because it is experimental, expect breaking changes in minor releases. When a form outgrows `/mini`, graduating to `@lunarhue/forms-react` is mostly changing the import path (see [Mixing `/mini` and full](./mini-and-full)).
+
+## Starting with `/mini`
+
+Import `createForms`, `useForm`, `fieldValidators`, and `inputProps` from `@lunarhue/forms-react/mini`:
+
+```tsx title="login.tsx" framework=react
+import { createForms, fieldValidators, inputProps, useForm } from "@lunarhue/forms-react/mini";
+
+const forms = createForms();
+
+const login = forms.define({
+  defaultValues: { email: "", password: "" },
+  validate: {
+    fields: fieldValidators({
+      email: (v) => (v.includes("@") ? undefined : { message: "Enter a valid email." }),
+      password: (v) => (v.length >= 8 ? undefined : { message: "Use at least 8 characters." }),
+    }),
+  },
+  onSubmit: async (value, { store }) => {
+    const res = await signIn(value);
+    if (!res.ok) {
+      store.setErrors({ fields: { email: { message: "Invalid credentials." } } });
+      return;
+    }
+    return res.user;
+  },
+});
+
+export default function LoginForm() {
+  const form = useForm(login);
+  return (
+    <form {...form.formProps}>
+      <form.Field name="email">
+        {(field) => (
+          <label>
+            Email
+            <input {...inputProps(field, { type: "email" })} />
+            {field.shownErrors[0] ? <p id={field.errorId}>{field.shownErrors[0].message}</p> : null}
+          </label>
+        )}
+      </form.Field>
+      <form.Field name="password">
+        {(field) => (
+          <label>
+            Password
+            <input {...inputProps(field, { type: "password" })} />
+            {field.shownErrors[0] ? <p id={field.errorId}>{field.shownErrors[0].message}</p> : null}
+          </label>
+        )}
+      </form.Field>
+      <button type="submit">Sign in</button>
+    </form>
+  );
+}
+```
+
+## What's included in `/mini`
+
+Every export in `/mini` is a strict subset of the full entry:
+
+- **Form definitions and options:** `forms.define(config, ...parts)` and `forms.define((options) => config, ...parts)`, with `useForm(definition, options?, { id? })`.
+- **Typed fields and registered components:** `form.Field`, `form.State`, `form.Form`, `form.formProps`, `inputProps(field, { type? })`, and `createForms({ fields: { TextField } })` for plain field components typed with `/mini`'s `FieldApi<T>`.
+- **Sync validation:** `fieldValidators(...)`, Standard Schema `schema` validation (including cross-field schema rules like Zod `.refine()`, with complete `defaultValues`), and `store.setErrors(...)` for server refusals (ending the submit as `"invalid"`).
+- **Standalone parts:** `transform(...)`, `text(...)`, `observe(...)`, and `refuse`, plus `forms.fieldset<T>(...parts).at(name)` to pin parts onto a field in `define`.
+- **Reset:** `form.store.reset()`, `reset({ to: "initial" })`, and `reset({ values })`.
+- **Subscription mode:** by default, `/mini` keeps one listener list for the whole store (the smallest code size). Pass `subscribe: perField()` to `createForms` if you want per-field subscriptions for about 220 B more.
+
+## What `/mini` leaves out (and why)
+
+To stay around 3 kB, `/mini` drops whole subsystems rather than shipping partial versions of them. Knowing what is missing up front makes it clear when a form belongs on `/mini` versus the full entry.
+
+### No `ref` or DOM element registration
+
+`/mini` does not track DOM elements at all. On a `/mini` field object, `field.ref` does not exist, `inputProps(field)` returns only `id`, `name`, `type`, `value`, `onChange`, `onBlur`, `aria-invalid`, and `aria-describedby` (no `ref`), and `form.formProps` returns only `id`, `noValidate`, and `onSubmit` (no `tabIndex` or `ref`).
+
+That means `/mini` has no `focusOnInvalid`, no `isFocused(handle)`, no `useFieldRef`, and no `elementsOf` / `fieldOf` / `trackElements`. Skipping the element map and focus logic saves both bundle size and ref-lifecycle overhead.
+
+### No plugins or `defineField`
+
+`/mini` has no plugin host, no baseline diffing, and no meta slots. None of `dirty()`, `baselineOnSubmit()`, `arrays()`, `history()`, `persist()`, `rebase()`, `rules()`, `devtools()`, or schema default plugins (`zod()`, `valibot()`) work on `/mini`, and `defineField(...)` is omitted. Passing a plugin or a full-entry part to `/mini`'s `define` is a compile-time error.
+
+If you need simple input cleaning or display formatting on `/mini`, use `/mini`'s standalone `transform`, `text`, and `observe` parts pinned with `forms.fieldset<T>(...).at(name)`.
+
+### Fixed error visibility and sync-only validation
+
+`/mini` omits configurable `show` policies (such as `show: "submitted"`, `"always"`, `"touched"`, or a custom predicate) and custom `mapError` transforms. Errors always follow `"touched-or-submitted"` visibility and use the `{ message: string }` shape.
+
+Validators and schemas in `/mini` must be **synchronous** (returning a Promise throws in development). They run on blur and submit, and then on every change once the field has been blurred, has an error, or the form has been submitted. There is no `formValidator`, `pipe`, `debounced`, `validateOn`, `recheckOnSubmit`, `validate` prop, or `useValidator`. (For cross-field rules in `/mini`, use a sync Standard Schema like Zod `.refine()`.)
+
+### Leaves only, no field flags, and no context
+
+- **Leaf fields only:** `form.Field` and registered components only bind leaf fields (nested dotted paths like `"address.city"` work, but binding an object or array field itself does not).
+- **No `disabled`, `readOnly`, `edited`, `dirty`, or `validating` flags:** `/mini`'s `FieldApi` keeps `value`, `name`, `errors`, `shownErrors`, `invalid`, `touched`, `id`, `errorId`, `text`, `setText`, `setValue`, `handleBlur`, and `setErrors`. `inputProps` does not emit `disabled` or `readOnly`.
+- **Text `inputProps` only:** `/mini` only ships `inputProps` for text-like `<input>` elements. For checkboxes, selects, textareas, numbers, or radios on `/mini`, bind `field.value`, `field.setValue`, and `field.handleBlur` directly.
+- **No `useFormContext`:** `form.Form` is kept so your JSX shape matches the full entry, but it renders its children without mounting a React context provider.
+- **Coarser `form.State` updates:** `form.State` accepts `isEqual` to match the full entry's signature, but re-renders its children on each new form snapshot.
+
+## Next
+
+Most apps don't choose one entry globally; they use `/mini` for small, high-traffic forms and the full entry for complex ones. Head to [Mixing `/mini` and full](./mini-and-full) to see how both entries coexist, the `ref` trade-off when sharing field components between them, and how to graduate a form cleanly.

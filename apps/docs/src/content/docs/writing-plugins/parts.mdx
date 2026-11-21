@@ -5,41 +5,31 @@ section: writing-plugins
 order: 2
 ---
 
-A plugin that applies everywhere is too blunt for most jobs. A length limit
-belongs on a note field, not on every string in the form. A part carries hooks
-to one place: a field type, a fieldset or a definition. Type past 20
-characters below.
+A form-wide plugin is often too broad: a 20-character cap belongs on a note field, not on every string in your app. **Parts** let you attach hooks to one specific place: a field type, a fieldset, or a single form definition. Try typing past 20 characters below.
 
 <Demo name="parts/note" />
 
-## Parts with no plugin
+## Standalone parts (no plugin required)
 
-Most per-field behaviour keeps no state and needs nothing from the rest of the
-form. Make it a part with hooks of its own. `@lunarhue/forms-core/plugins`
-has three, and the form installs nothing for them:
+Most per-field behaviors don't need form-level state or a shared API. `@lunarhue/forms-core/plugins` exports three standalone part helpers that work without installing any plugin:
 
-- `transform<V>((value, write) => V | refuse)` changes each value written at
-  its path, and the value there when it attaches.
-- `text<V>(display, afterInput?)` sets the text a text input shows for the
-  value. See [Display text](./meta#display-text).
-- `observe<V>((value, ctx) => void)` runs when it attaches and after each batch
-  that wrote at its path. Write through `ctx.write`.
+- **`transform<V>((value, write) => V | refuse)`**: cleans or normalizes values written to that path (including its initial value on attach).
+- **`text<V>(display, afterInput?)`**: formats what text inputs display without changing the stored value (see [Display text](./meta#display-text)).
+- **`observe<V>((value, ctx) => void)`**: runs on attach and after every batch that touches its path; use `ctx.write(...)` for side effects.
 
 ```ts
 import { observe, transform } from "@lunarhue/forms-core/plugins";
 
-// Fits string fields only.
+// Only fits string fields.
 export const capped = (max: number) => transform<string>((value) => value.slice(0, max));
 
-// Fills in the slug from the title.
+// Auto-generates the slug whenever the title changes.
 export const slugged = observe<Post>((post, ctx) => ctx.write(() => ctx.at("slug").setValue(slugify(post.title))));
 ```
 
-`V` is the value the part fits, so `defineField(NumberInput, capped(20))` is
-a type error. For other hooks, `part<V>(hooks)` takes the same hooks a
-plugin's part gets, or a function of the part's context that returns them.
-The context has `value()`, the value at the part's path now, and `at(name)`,
-the handle of a field below it:
+The `V` type parameter constrains which fields can accept the part, so `defineField(NumberInput, capped(20))` fails at compile time.
+
+Need other hooks (like `onWrite` or `onBlur`)? Use `part<V>(hooks)` directly, or pass a callback receiving the part context, which gives you `ctx.value()` for the current value and `ctx.at(name)` for child handles:
 
 ```ts
 import { part } from "@lunarhue/forms-core/plugins";
@@ -49,21 +39,16 @@ const logged = part<string>((ctx) => ({
 }));
 ```
 
-These parts run after every plugin's hooks, and `ctx.parts` lists them under
-the name `part`.
+Standalone parts run after all plugin hooks and appear in `ctx.parts` under the name `"part"`.
 
-## Parts of a plugin
+## Plugin-backed parts
 
-A part that keeps meta, gives the form an API or needs another plugin
-belongs to a plugin. The plugin's `part` hook runs once for each place a part
-lands on, with the part's config and a context for that path, and returns
-the hooks there. `part(plugin, config)` makes the part, with `config` typed
-from the hook's second parameter. The demo's limit is small enough to be a
-`transform`, but it shows the shape:
+When a part needs to write plugin meta, coordinate with a form-level API, or require another plugin, define a `part` hook inside `definePlugin`. It runs once per attached path with that part's config and path context, and `part(plugin, config)` creates typed instances of it. (The character limit below is small enough for `transform`, but shows the pattern clearly:)
 
 ```ts
 import type { Part } from "@lunarhue/forms-core";
 import { definePlugin, part } from "@lunarhue/forms-core/plugins";
+import { replaceText } from "@lunarhue/forms-core/text";
 
 interface Limit {
   readonly max: number;
@@ -71,47 +56,33 @@ interface Limit {
 
 export const limit = definePlugin({
   name: "limit",
-  part: (_ctx, { max }: Limit) => ({
-    beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
-  }),
+  part: (_ctx, { max }: Limit) => {
+    const cap = (value: string) => value.slice(0, max);
+    return {
+      beforeWrite: (write) => (typeof write.value === "string" ? cap(write.value) : write.value),
+      display: (value) => (typeof value === "string" ? value : ""),
+      afterInput: (input, value, event) => replaceText(input, typeof value === "string" ? value : "", cap, event),
+    };
+  },
 });
 
 // Fits string fields only.
 export const limited = (max: number): Part<typeof limit, string> => part(limit, { max });
 ```
 
-An app puts `limit()` in the form's plugins and `limited(...)` where it
-applies. `Part<typeof limit, string>` makes two things type errors: a part on
-a field type whose value isn't a string, and a form that uses the field type
-without `limit()` in its plugins. The return type is where `V` comes from.
-To give it in the call instead, give the plugin's type too:
-`part<typeof limit, string>(limit, { max })`.
+Returning `display` and `afterInput` with `replaceText` keeps the user's caret in place if they edit in the middle of the text rather than jumping it to the end. Consumers install `limit()` in `plugins` and attach `limited(...)` wherever needed. Annotating the return type as `Part<typeof limit, string>` enforces both compile-time checks: attaching `limited` to a non-string field fails, and using it on a form without `limit()` installed fails. (You can also pass the type arguments directly on `part<typeof limit, string>(limit, { max })`.)
 
-## Where parts go
+## How and where parts attach
 
-Every kind of part goes in the same places: `defineField(NoteInput,
-limited(140))` for every field a component renders, `forms.fieldset(Address,
-part)` for a fieldset, or `forms.define(config, part)` for the form.
+Every part, standalone or plugin-backed, plugs into the same three places: `defineField(NoteInput, limited(140))`, `forms.fieldset(Address, part)`, or `forms.define(config, part)`.
 
-`ctx.path` is the stable path the part attached at. A part's hooks get only
-the writes that reach that path. A write above it arrives walked down to the
-path, and a refuse there refuses the whole write. A write below it arrives as
-it is. When the field goes away, as when its array item is removed, its hooks
-go too.
+Inside a part's hooks, `ctx.path` is the stable path it attached to, and hooks only receive writes relevant to that path:
+- A write *above* the path is walked down to it (and returning `refuse` cancels the whole parent write).
+- A write *below* the path arrives as-is.
+- If the field disappears (for example, when an array row is removed), its part hooks are torn down automatically.
 
-A part's `beforeWrite` also gets the value already at its path once, when it
-attaches, with `cause: "attach"`. A value it changes is kept with no write
-record, and the baseline moves with it while the field isn't dirty, so a
-cleaned starting value doesn't make the form dirty.
+When a part first attaches, its `beforeWrite` runs once with the existing value and `cause: "attach"`. Any transformed value is stored quietly with no write record, and the baseline moves with it if the field isn't dirty, so cleaning an initial value won't start the form dirty.
 
-A field type's parts attach the first time it renders a field. A fieldset's
-attach the first time its scope is read, and a definition's when the store is
-made. Before the store has listeners, a part's hooks are made at once and
-what they write is part of the starting state, as in setup. After that they
-are made on a microtask, so their writes don't land while a framework is
-rendering. Either way their writes make no records.
+Timing depends on where the part lives: definition parts attach immediately when the store is created, field-type parts attach on first render, and fieldset parts attach on first `scope()` call. If the store doesn't have subscribers yet (such as during SSR), hooks initialize synchronously so their writes show up in the initial HTML; once subscribers exist, they initialize on a microtask so writes never fire mid-render.
 
-A fieldset with parts that need no plugin must exist before the store does,
-unless a plugin with hooks is installed. Make it at module scope, next to
-`createForms`. In development, a fieldset made too late throws
-[`parts:late`](/errors#core:parts:late).
+Always declare fieldsets with standalone parts at module scope next to `createForms`. Creating one after a store already exists without any hooked plugins throws [`parts:late`](/errors#core:parts:late) in development.

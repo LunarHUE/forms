@@ -8,102 +8,47 @@ order: 3
 <Only framework="solid">
 
 <Callout>
-These comparisons are written in React, to keep them simple. A headless form
-library carries over closely between frameworks, so the Solid version of each
-form would be wired the same way.
+These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the same patterns.
 </Callout>
 
 </Only>
 
-A back-office page with three record forms and a dialog, built once with
-`@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). The
-schemas, formatters and markup are shared, so the code below is the form
-wiring only. Switch the build on the preview: they behave the same.
+A back-office workspace with three record forms and an invite dialog, built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Schemas, formatters, and markup are shared across both builds so you are comparing form wiring only. Switch builds in the preview below; both behave the same.
 
 <Compare app="backoffice" />
 
-## What the page does
+## What the workspace does
 
-Each form loads its record from the server.
+Each record form loads from the mock server and shares a save bar (with change count, Undo, Discard, and Save) plus an error summary after a failed submit:
 
-- **Customer.** Contact details, a billing address, and a shipping address
-  that shows only when "Ship to the billing address" is unchecked. Its errors
-  count only while it shows.
-- **Order.** A list of lines with a SKU, a quantity and a price, a running
-  total, and a gift message once the order is a gift.
-- **Company settings.** Name, phone, tax ID and a registered address. The
-  server refuses the tax ID `00-0000000`, and its message stays on the field
-  until you edit it.
-- **Invite a teammate.** A dialog whose draft survives closing it and reloading
-  the page.
+- **Customer:** contact details, billing address, and a conditional shipping address shown only when "Ship to the billing address" is unchecked (whose errors only count while visible).
+- **Order:** dynamic line items (SKU, quantity, price) with a live running total, plus a conditional gift message.
+- **Company settings:** name, phone, tax ID, and registered address. Submitting tax ID `00-0000000` triggers a server refusal that stays on the field until edited.
+- **Invite a teammate:** a modal dialog whose draft persists across closing the dialog and reloading the page.
 
-Every address asks for a state only in the US. Phone, tax ID, quantity and
-price are masked: the form stores digits, or digits and a decimal point, and
-the input shows them formatted. Each record form has the profile page's save
-bar plus Undo, and an error summary that lists every invalid field once a save
-is tried.
+Across every address, the State field only appears for US addresses. Phone, tax ID, quantity, and price fields are masked, storing clean digits (or decimals) while displaying formatted text.
 
-## Where the code differs
+## Where the two implementations differ
 
-Our side has one `createForms` with `zod()`, `dirty()`, `rebase()`, `rules()`,
-`arrays()` and `history()`. The masks are `masked(...)` parts on field types
-such as `PhoneField` and `MoneyField`, so a form only names the field, and
-they need no plugin. The state rule sits on an `AddressFieldset`, so every
-address gets it. The save bar, the error summary and the address fields find
-their form with `useFormContext(forms)`, under the `form.Form` each record
-form renders, and the invite draft is
-`persist("backoffice-invite")` on its definition.
+On the `@lunarhue/forms` side, one `createForms` installs `zod()`, `dirty()`, `rebase()`, `rules()`, `arrays()`, and `history()`. Masks attach via `masked(...)` parts on `PhoneField` and `MoneyField` (no plugin needed), the US-state rule travels inside `AddressFieldset`, the save bar and error summary find their form via `useFormContext(forms)` inside `<form.Form>`, and the invite dialog persists with a single `persist("backoffice-invite")` plugin.
 
-TanStack's side uses `createFormHook` with the save bar, the error summary and
-the form element as form components, `withFieldGroup` for the address,
-Standard Schema validators, `isDefaultValue` and `form.reset`. The rest is
-written in the app:
+On the TanStack Form side, `createFormHook` provides the shared form components, `withFieldGroup` handles addresses, and Standard Schema + `isDefaultValue` + `form.reset` cover validation and dirty state. The rest is implemented in app code:
 
-- **Masks.** Neither side uses a mask library. `MaskedInput` stores the clean
-  text, shows it formatted, and puts the caret back after the same number of
-  clean characters. A TanStack user could pull in a mask library instead, or
-  write their own as here. Writing your own often isn't worth it: this one
-  doesn't step over separators on backspace, which a library would.
-- **Undo.** TanStack has no history. The field components and the line
-  buttons record a field's old value before each change, and Undo writes it
-  back with `setFieldValue`.
-- **Rules.** The state, the shipping address and the gift message are shown or
-  hidden with `form.Subscribe` or `useStore` around each field, in each form.
-- **Change count and Refresh.** The `rebaseline` idea from the
-  [profile page](./profile), walking the values for leaf names such as
-  `lines[0].price`.
-- **Invite draft.** Read from `localStorage` once for the defaults, and written
-  in an effect on every change.
+- **Masks:** a custom `MaskedInput` cleans values and restores the caret by clean-character count (a real app would usually reach for a dedicated masking library; this minimal one doesn't step over separators on backspace).
+- **Undo:** since TanStack doesn't ship history, field components and line-item buttons record previous values manually and replay them with `setFieldValue`.
+- **Conditional rules:** each conditional field wraps itself in `form.Subscribe` or `useStore` inside every form.
+- **Change counts and Refresh:** reuses the `rebaseline` pattern from the [profile comparison](./profile), walking leaf paths like `lines[0].price`.
+- **Invite draft:** reads `localStorage` once for initial defaults and writes back inside an effect on every change.
 
-And the choices it needed:
+A few extra details were needed on the TanStack side to keep behavior identical:
+- Defaults are mirrored in React state after every save, refresh, and invite so `useForm` doesn't snap them back on re-render.
+- Because the form context's `options` don't reflect `reset(values)`, the save bar takes current defaults as a prop and undo stacks are keyed by `formId`.
+- Input IDs are constructed from `formId` + field name so error summary links can jump to inputs.
+- Order totals subscribe to `lines` directly (since array fields only re-render on row add/remove), and rows are keyed by index per TanStack's docs.
+- Record forms save inside `onSubmit` and attach server refusals via `form.setErrorMap`; because `isSubmitSuccessful` stays set, the "Saved" message lives in React state.
 
-- Each form keeps its defaults in React state and moves them after every save,
-  refresh and sent invite, since `useForm` applies its options again on every
-  render.
-- The form context hands components a copy of the form whose `options` don't
-  follow `reset(values)`. The save bar takes the current defaults as a prop,
-  and undo stacks are keyed by `formId`.
-- The error summary links to inputs, so input ids come from the form's id and
-  the field name.
-- An array field re-renders only when rows come or go, so the order total
-  subscribes to the lines on its own. Rows are keyed by index, as in
-  TanStack's docs.
-- A record form saves in `onSubmit` to know which values it sent. A refusal
-  there goes on the fields with `form.setErrorMap`, and `isSubmitSuccessful`
-  is still set, so the "saved" line is React state.
+## How bundle sizes were measured
 
-## How it was measured
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production (minified, JS only) in three slices: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything), and **App only** (excluding the form libraries too, so our plugins count in **Forms + app**, while TanStack's hand-written masks, undo, and draft persistence count in **App only**).
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts)
-builds each app with Vite for production, minified, three times per library.
-Only JavaScript counts. **Forms + app** leaves out React, react-dom and Zod,
-**Total** is everything the page loads, and **App only** leaves out the form
-libraries too, so it is the code written for these forms. Our plugins are in
-**Forms + app**, and TanStack's hand-written masks, undo and draft are in
-**App only**.
-
-Our packages are measured from their built files, as an app that installs them
-would get them. TanStack Form is 1.33.5, the latest stable release. The numbers
-are published as measured, and CI fails when the ones in the repo are stale.
-The apps and their specs are in
-[`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
+Measured from built package outputs against TanStack Form 1.33.5 and enforced in CI. Source and shared Playwright specs are in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).

@@ -8,78 +8,39 @@ order: 2
 <Only framework="solid">
 
 <Callout>
-These comparisons are written in React, to keep them simple. A headless form
-library carries over closely between frameworks, so the Solid version of each
-form would be wired the same way.
+These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the same patterns.
 </Callout>
 
 </Only>
 
-A settings form that loads its values from the server, built once with
-`@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form).
-Both builds render the same markup and call the same fake server. Switch the
-build on the preview: they behave the same.
+A settings screen that loads an existing profile from the server, built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Both render the exact same markup and hit the same mock API; toggle between builds in the preview to see them behave identically.
 
 <Compare app="profile" />
 
 ## What the form does
 
-Name, email, bio, time zone and a nested `notifications` object, checked by
-one Zod schema and loaded from the server first.
+The form edits name, email, bio, time zone, and a nested `notifications` object, validated by a shared Zod schema.
 
-Each changed field gets a mark, and typing the original value back clears it.
-The save bar counts the changes, and Save stays disabled while there are none.
-After a save the form is clean again, except for fields edited while the save
-ran. Discard goes back to the last saved copy.
+Modified fields show a changed indicator that clears if you type the original value back in. The save bar counts modified fields and keeps **Save** disabled while clean. After saving, the form returns to clean except for any field the user edited *while* the save was in flight. Clicking **Discard** reverts to the last saved copy.
 
-"Edit on the server" changes the profile behind the form's back. Refresh then
-takes the server's copy for every field you haven't changed and keeps the ones
-you have.
+Clicking **Edit on the server** simulates a background update; clicking **Refresh** pulls in the server's new values for untouched fields while keeping whatever you edited.
 
-## Where the code differs
+## Where the two implementations differ
 
-Our side has `zod()`, `dirty()` and `rebase()` in its plugins and
-`baselineOnSubmit()` on the form. The save bar finds the form with
-`useFormContext(forms)`, so the page renders its `<form>` inside `form.Form`.
-It reads the change count from `store.changes()`, and Refresh is one `rebase` call that says which fields take
-the server's value.
+On the `@lunarhue/forms` side, we install `zod()`, `dirty()`, and `rebase()` globally and add `baselineOnSubmit()` on the form. The save bar grabs the form via `useFormContext(forms)` inside `<form.Form>`, counts dirty fields with `store.changes()`, and handles Refresh with one `rebase` call.
 
-`store.changes()` is a read, not a subscription, and the form's state doesn't
-change on a second edit while the form is already dirty. So the save bar reads
-the count under `useField(form.root, ...)`, which runs again on every value
-change. That is a detail a reader of our side has to know.
+One nuance to note on our side: `store.changes()` is a plain read rather than a subscription, and the form's `dirty` boolean doesn't flip again on a second edit once the form is already dirty, so the save bar reads the count inside `useField(form.root, ...)` to re-run whenever any value changes.
 
-TanStack's side uses its Standard Schema support for Zod, `isDefaultValue`,
-`form.reset`, `formOptions` and `withForm`. Its choices:
+On the TanStack Form side, the form uses Standard Schema support for Zod, `isDefaultValue`, `form.reset`, `formOptions`, and `withForm`, with a few extra steps to match the same UX:
 
-- `isDirty` stays true once the user types, even when they type the original
-  back. The marks and the count read `isDefaultValue` instead.
-- TanStack has no call that moves the defaults and keeps some values. A small
-  helper, `rebaseline`, reads the fields to keep, calls `form.reset(values)`,
-  and writes the kept ones back. The save and Refresh both use it, walking a
-  hand-kept list of the form's fields.
-- `useForm` applies its options again on every render, and an untouched form
-  takes new `defaultValues` as its values. Defaults moved with
-  `form.reset(values)` would snap back on the next render, so the form keeps
-  its defaults in React state and moves them after every save and refresh.
-  Refresh lives in the form component for that reason, and the save bar gets
-  it as a prop.
-- `withForm` types the save bar from `formOptions`, which want default values,
-  but the real ones are loaded. The shared options carry a blank profile, and
-  `useAppForm` gets the loaded one.
-- TanStack's field context can't tie a select's options to the field's value
-  type, so `Select` takes strings.
+- `isDirty` stays `true` even after typing the original value back, so change badges and counts read `isDefaultValue` instead.
+- Because TanStack has no built-in way to move defaults while keeping selected edits, a small `rebaseline` helper reads kept fields, calls `form.reset(values)`, and writes the kept values back, walking a manually maintained list of field paths.
+- `useForm` re-applies options on every render (and an untouched form adopts new `defaultValues`), so defaults moved via `form.reset(values)` would snap back unless tracked in React state. That also means Refresh has to live in the form component and be passed down to the save bar as a prop.
+- `withForm` expects `defaultValues` inside `formOptions` even though real values are loaded asynchronously, so shared options carry a blank profile while `useAppForm` overrides it with the loaded data.
+- TanStack's field context doesn't constrain `<Select>` options to the field's value type, so `Select` falls back to strings.
 
-## How it was measured
+## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts)
-builds each app with Vite for production, minified, three times per library.
-Only JavaScript counts. **Forms + app** leaves out React, react-dom and Zod,
-**Total** is everything the page loads, and **App only** leaves out the form
-libraries too. Zod is in **Total** on both sides, since both validate with the
-same schema.
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three variants: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything including React and Zod), and **App only** (excluding the form libraries too). Both sides validate with the same Zod schema.
 
-Our packages are measured from their built files, as an app that installs them
-would get them. TanStack Form is 1.33.5, the latest stable release. CI fails
-when the numbers in the repo are stale. The apps and their specs are in
-[`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
+Our packages are measured from their built dist outputs against TanStack Form 1.33.5, verified automatically in CI. Source and shared Playwright specs live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
