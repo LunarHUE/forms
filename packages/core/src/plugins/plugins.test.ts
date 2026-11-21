@@ -821,14 +821,14 @@ describe("reset and submit", () => {
     const codeRules = ruled<Contact>({ code: (value) => ({ disabled: value.phone === "" }) });
     const store = makeWith(contact(), [watch, plugin, rules(), history(), persist({ key: "contact", storage })], [codeRules]);
     store.root.at("phone").setValue("1");
-    flushPlugins();
+    flushPlugins(store);
     expect(store.getSnapshot(["code"]).disabled).toBe(false);
     expect(store.plugins.history.undo()).toBe(true);
     store.root.at("phone").setValue("2");
-    flushPlugins();
+    flushPlugins(store);
     calls.length = 0;
     store.reset({ values: { phone: "", code: "x" } });
-    flushPlugins();
+    flushPlugins(store);
     expect(seen).toEqual([{ path: [], value: { phone: "", code: "x" } }]);
     expect(calls.flat().filter((record) => record.type === "value").map((record) => record.cause)).toEqual(["reset"]);
     expect(store.getSnapshot(["code"]).disabled).toBe(true);
