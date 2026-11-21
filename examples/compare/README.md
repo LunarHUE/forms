@@ -23,11 +23,12 @@ build of the packages, published as 0.2.0.
 
 **Sign-up** (`signup/`). Email, username, password, confirmation and a terms
 checkbox. Errors show after a field's first blur and then follow every
-input. The confirmation is checked against the password. The username goes to
-the server after a 400 ms pause, and a newer check aborts the older one. The
+input. The confirmation is checked against the password. The username's
+length and format rules answer at once, and only a well-formed name goes to
+the server, after a 400 ms pause. A newer check aborts the older one. The
 server can refuse the email, and that message shows on the field until the
-user edits it. Our side uses core only: `validate.fields`, `validate.form`,
-registered field components and `setErrors`. TanStack's uses
+user edits it. Our side uses core only: `validate.fields` with `pipe` and `debounced`,
+`validate.form`, registered field components and `setErrors`. TanStack's uses
 `createFormHook`, field validators, `onChangeListenTo` and a form-level
 `onSubmitAsync`.
 

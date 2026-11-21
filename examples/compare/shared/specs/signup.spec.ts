@@ -45,6 +45,35 @@ test("the username check runs on the server after a pause", async ({ open }) => 
   await expect(fieldOf(page, "Username")).not.toContainText("Checking...");
 });
 
+/** Marks the field with `data-saw-checking` if it shows "Checking..." at any point from now on. */
+async function watchChecking(page: import("@playwright/test").Page, label: string) {
+  await fieldOf(page, label).evaluate((element) => {
+    if (!(element instanceof HTMLElement)) return;
+    new MutationObserver(() => {
+      if (element.textContent.includes("Checking...")) element.dataset["sawChecking"] = "";
+    }).observe(element, { subtree: true, childList: true, characterData: true });
+  });
+}
+
+test("the username's format rules answer at once, without a server check", async ({ open }) => {
+  const page = await open("signup");
+  const username = page.getByLabel("Username");
+  const field = fieldOf(page, "Username");
+  await watchChecking(page, "Username");
+  await username.fill("ad");
+  await username.blur();
+  await expect(field).toContainText("Use at least 3 characters.");
+  await username.fill("ad-a");
+  await expect(field).toContainText("Use letters, digits and underscores.");
+  await username.fill("a");
+  await expect(field).toContainText("Use at least 3 characters.");
+  await expect(field).not.toHaveAttribute("data-saw-checking");
+  // A well-formed name is the only kind that waits for the server.
+  await username.fill("ada");
+  await expect(field).toHaveAttribute("data-saw-checking");
+  await expect(field).toContainText("That username is taken.");
+});
+
 test("submitting an empty form shows every error", async ({ open }) => {
   const page = await open("signup");
   await page.getByRole("button", { name: "Create account" }).click();
