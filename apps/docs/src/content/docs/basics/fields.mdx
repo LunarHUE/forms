@@ -238,9 +238,12 @@ const number = numberPieces(field);
 
 <Only framework="react">
 
-Take `ref` out of the field before passing it. React Compiler's lint treats
-an object whose member is passed as `ref` as a ref, and flags every other
-read of `field` during render.
+Take `ref` out of the field before passing it, or get it from
+`useFieldRef(handle)`. React Compiler treats an object whose member is
+passed as `ref` as a ref, so `ref={field.ref}` makes it flag every other
+read of `field` during render and skip the component. Inside a
+`form.Field` render prop, `ref={field.ref}` is fine, since the Compiler
+doesn't check a callback as render code.
 
 </Only>
 
