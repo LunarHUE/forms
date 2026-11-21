@@ -15,19 +15,30 @@ rule: untick "Same as shipping" and the billing address appears.
 
 Pass parts after the schema, or after the type argument when there is no
 schema. With a type argument, name the plugins the parts need as the second
-one:
+one, by their factories:
 
 ```ts
-const BillingFieldset = forms.fieldset<Billing, "rules">(
+const BillingFieldset = forms.fieldset<Billing, typeof rules>(
   ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }),
 );
 
 const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
 ```
 
+Or give the value type to `ruled` and leave the fieldset's type arguments
+out. The fieldset takes both from the part:
+
+```ts
+const BillingFieldset = forms.fieldset(ruled<Billing>({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
+```
+
 A fieldset's rules get the fieldset's value, not the form's, and name fields
-below it. To write rules apart from the fieldset, name the value type:
-`ruled<Billing>({ ... })`.
+below it.
+
+Make a fieldset at module scope, next to `createForms`. A store made before a
+fieldset whose parts need no plugin, such as `transform(...)`, can't run
+those parts when its own plugins have no hooks. In development that throws
+[`parts:late`](/errors#core:parts:late).
 
 ## Pinning with at()
 
