@@ -216,7 +216,7 @@
     },
     "packages/bind": {
       "name": "@lunarhue/forms-bind",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
         "solid-js": "catalog:",
@@ -234,11 +234,11 @@
     },
     "packages/core": {
       "name": "@lunarhue/forms-core",
-      "version": "0.1.1",
+      "version": "0.2.0",
     },
     "packages/devtools": {
       "name": "@lunarhue/forms-devtools",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
         "@tailwindcss/node": "4.3.5",
@@ -255,7 +255,7 @@
     },
     "packages/react": {
       "name": "@lunarhue/forms-react",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "dependencies": {
         "@lunarhue/forms-core": "workspace:^",
       },
@@ -298,7 +298,7 @@
     },
     "packages/schema": {
       "name": "@lunarhue/forms-schema",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "devDependencies": {
         "@lunarhue/forms-core": "workspace:^",
         "valibot": "catalog:",
@@ -316,7 +316,7 @@
     },
     "packages/solid": {
       "name": "@lunarhue/forms-solid",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "dependencies": {
         "@lunarhue/forms-core": "workspace:^",
       },
