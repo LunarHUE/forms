@@ -28,7 +28,7 @@ function entrySources(): string[] {
 }
 
 it("finds every entry in package.json", () => {
-  expect(entrySources()).toEqual(["./index.ts", "./plugins/index.ts", "./text/index.ts", "./plugins/testing.ts"]);
+  expect(entrySources()).toEqual(["./index.ts", "./plugins/index.ts", "./text/index.ts", "./plugins/testing.ts", "./mini/index.ts"]);
 });
 
 it.each(entrySources().filter((source) => source !== "./plugins/testing.ts"))("leaves the testing helper out of %s", async (source) => {

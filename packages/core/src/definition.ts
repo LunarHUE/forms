@@ -3,6 +3,7 @@ import type { Path } from "./path.js";
 import type { HasSchemaPlugin, Needs, NamedParts, Part, PluginApis, PluginErrorHandler, PluginNames, Plugins, PluginsFor, RequiresMet } from "./plugin.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
 import type { FormStore } from "./store.js";
+import type { Subscribe } from "./store/cells.js";
 import type { FieldValidatorSet, FormValidatorSet, ValidateTiming } from "./validator.js";
 import type { ChildValue, DeepPartial, DeepReadonly, Draft, IsUnknown, ItemOf, KeysOf, PlatformAbortSignal, ShapeOf, Widened } from "./value.js";
 
@@ -77,6 +78,12 @@ export interface FormsConfig<P extends Plugins = [], E = FormError> {
    * task, where the page's error handler sees it.
    */
   readonly onPluginError?: PluginErrorHandler;
+  /**
+   * How listeners wake. The full entry always wakes per field, so this
+   * changes nothing here. It is accepted so a form written for `/mini`
+   * with `subscribe: perField()` moves to the full entry by its import.
+   */
+  readonly subscribe?: Subscribe;
   /**
    * The parts of the adapter's field types and fieldsets, which may attach
    * to any store this makes. A fieldset made later adds its own. Internal.

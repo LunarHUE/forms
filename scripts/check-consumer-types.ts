@@ -93,6 +93,34 @@ const [get, set] = createSignal({ email: "" });
 export const signUp = forms.define({ schema: z.object({ email: z.string() }), plugins: [signal(get, set)] });
 `;
 
+// /mini: a form with each portable part, and the same refuse as the main entry's.
+const reactMini = `
+import { createForms, fieldValidators, observe, perField, refuse, text, transform, type FieldApi } from "@lunarhue/forms-react/mini";
+import type { refuse as fromPlugins } from "@lunarhue/forms-react/plugins";
+
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+export const oneCopy: Same<typeof fromPlugins, typeof refuse> = true;
+
+export const forms = createForms({ subscribe: perField() });
+
+export const Query = forms.fieldset<string>(
+  transform((value) => value.trimStart()),
+  text((value) => value.toUpperCase()),
+  observe((value) => console.log(value)),
+);
+
+export const search = forms.define(
+  {
+    defaultValues: { q: "", page: 1 },
+    validate: { fields: fieldValidators({ q: (value: string) => (value ? undefined : { message: "Type something." }) }) },
+    onSubmit: (value) => value.q,
+  },
+  Query.at("q"),
+);
+
+export const label = (field: FieldApi<string>) => field.text;
+`;
+
 const ours = (name: string) => ({ [`@lunarhue/forms-${name}`]: `packages/${name}` });
 const react = { ...ours("react"), react: "packages/react/node_modules/react", "@types/react": "packages/react/node_modules/@types/react" };
 const solid = { ...ours("solid"), "solid-js": "packages/solid/node_modules/solid-js", "@solidjs/web": "packages/solid/node_modules/@solidjs/web" };
@@ -100,6 +128,7 @@ const solid = { ...ours("solid"), "solid-js": "packages/solid/node_modules/solid
 const consumers: readonly Consumer[] = [
   { name: "react", source: plugins("react"), links: react },
   { name: "solid", source: plugins("solid"), links: solid },
+  { name: "react/mini", source: reactMini, links: react },
   {
     name: "react + schema + bind",
     source: reactSchemaBind,

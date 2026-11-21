@@ -2,6 +2,7 @@ import type { FormError, Show } from "../errors.js";
 import type { Path, PathSegment } from "../path.js";
 import { problem } from "../problem.js";
 import type { FormSnapshot, Submission } from "../snapshot.js";
+import { createCells, type Cell } from "./cells.js";
 import { blank, entries, idle, listOf, none, sameList, settle, type Snapshot } from "./entries.js";
 import { deepFreeze, freeze, freezePath } from "./freeze.js";
 import { hadKey, indexOfKey, initialIndex, initialKeys, keyAt, keysView, type KeyList } from "./keys.js";
@@ -182,21 +183,6 @@ export interface StoreCore<E = FormError, I = undefined, R = unknown> {
   stats(): { readonly nodes: number; readonly subscribed: number };
 }
 
-interface Subscription {
-  readonly listener: () => void;
-  /** The snapshot this listener last saw. It isn't called again until the snapshot differs. */
-  seen: unknown;
-  active: boolean;
-}
-
-/** Something listeners watch: a field node or the form. */
-interface Cell<S> {
-  snapshot: S;
-  /** The snapshot from before the first change since listeners last ran. Set only while the cell waits to wake them. */
-  before: S | undefined;
-  subscriptions: Set<Subscription> | undefined;
-}
-
 /** A disabled or read-only flag on one node. */
 interface Flag {
   /** The part of the `Flags` declaration at this node. */
@@ -312,9 +298,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
   let root: Node<E> | undefined;
   // How many commands have changed something. While it is 0 the current snapshot is the server snapshot.
   let changes = 0;
-  let batchDepth = 0;
-  // Cells whose snapshot changed and whose listeners haven't run yet.
-  const pending = new Set<Cell<unknown>>();
+  const [replace, listen, flush, batch] = createCells();
   // Each owner's place in the error order.
   const ownerRank = new Map<string, number>();
   let nextRank = 0;
@@ -412,17 +396,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
       readOnly: node.readOnly.on,
       ...(node.meta && { meta: node.meta }),
     });
-  };
-
-  // Gives `cell` its new snapshot and queues its listeners.
-  const replace = <S>(cell: Cell<S>, next: S) => {
-    const previous = cell.snapshot;
-    if (next === previous) return;
-    cell.snapshot = next;
-    if (cell.subscriptions && !pending.has(cell)) {
-      cell.before = previous;
-      pending.add(cell);
-    }
   };
 
   const rebuild = (node: Node<E>) => replace(node, settle(build(node), node.snapshot, node.before));
@@ -634,39 +607,12 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     rebuild(node);
   };
 
-  const flush = () => {
-    if (pending.size === 0) return;
-    const cells = [...pending];
-    pending.clear();
-    let failed = false;
-    let error: unknown;
-    for (const cell of cells) {
-      cell.before = undefined;
-      if (!cell.subscriptions) continue;
-      // A Set skips entries deleted during the loop. One added during the loop
-      // has already seen the current snapshot, so the check below skips it.
-      for (const subscription of cell.subscriptions) {
-        if (!subscription.active || subscription.seen === cell.snapshot) continue;
-        subscription.seen = cell.snapshot;
-        try {
-          subscription.listener();
-        } catch (caught) {
-          if (!failed) {
-            failed = true;
-            error = caught;
-          }
-        }
-      }
-    }
-    if (failed) throw error;
-  };
-
   // Ends a command: brings the form snapshot up to date and runs listeners unless a batch is open.
   const finish = (changed: boolean): boolean => {
     if (!changed) return false;
     changes++;
     refreshForm();
-    if (batchDepth === 0) flush();
+    flush();
     return true;
   };
 
@@ -774,22 +720,6 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     return finish(changed);
   };
 
-  const listen = <S>(cell: Cell<S>, listener: () => void): (() => void) => {
-    const subscription: Subscription = { listener, seen: cell.snapshot, active: true };
-    (cell.subscriptions ??= new Set()).add(subscription);
-    return () => {
-      if (!subscription.active) return;
-      subscription.active = false;
-      cell.subscriptions?.delete(subscription);
-      // The set and the pending entry only serve subscribers, so they go with the last one.
-      if (cell.subscriptions?.size === 0) {
-        cell.subscriptions = undefined;
-        cell.before = undefined;
-        pending.delete(cell);
-      }
-    };
-  };
-
   const kit = options.arrays?.<E>(fieldAt, writeAt, bump, withErrors, ownerNodes, invalidChanged);
 
   const form = (): Cell<FormSnapshot<I, R, "dirty">> =>
@@ -807,15 +737,7 @@ export function createStoreCore<E = FormError, I = undefined, R = unknown>(optio
     subscribeForm: (listener) => listen(form(), listener),
     getFormSnapshot: () => form().snapshot,
     getServerFormSnapshot: serverFormSnapshot,
-    batch(fn) {
-      batchDepth++;
-      try {
-        return fn();
-      } finally {
-        batchDepth--;
-        if (batchDepth === 0) flush();
-      }
-    },
+    batch,
     set(path, value) {
       const node = fieldAt(path);
       if (!node || Object.is(node.value, value)) return false;

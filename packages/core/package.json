@@ -16,7 +16,8 @@
   "files": [
     "dist",
     "plugins",
-    "text"
+    "text",
+    "mini"
   ],
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -66,6 +67,17 @@
         "default": "./dist/cjs/plugins/testing.js"
       }
     },
+    "./mini": {
+      "@lunarhue/source": "./src/mini/index.ts",
+      "import": {
+        "types": "./dist/esm/mini/index.d.ts",
+        "default": "./dist/esm/mini/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/mini/index.d.ts",
+        "default": "./dist/cjs/mini/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -82,7 +94,7 @@
       "name": ".",
       "path": "dist/esm/index.js",
       "import": "*",
-      "limit": "9.45 kB"
+      "limit": "9.5 kB"
     },
     {
       "name": "./plugins, plugin authoring",
@@ -158,13 +170,25 @@
         "dist/esm/index.js": "*",
         "dist/esm/plugins/index.js": "{ dirty }"
       },
-      "limit": "10.05 kB"
+      "limit": "10.1 kB"
     },
     {
       "name": "dirty() + baselineOnSubmit()",
       "path": "dist/esm/plugins/index.js",
       "import": "{ dirty, baselineOnSubmit }",
       "limit": "3.75 kB"
+    },
+    {
+      "name": "./mini",
+      "path": "dist/esm/mini/index.js",
+      "import": "{ createFormsCore, fieldValidators }",
+      "limit": "1.85 kB"
+    },
+    {
+      "name": "./mini + perField()",
+      "path": "dist/esm/mini/index.js",
+      "import": "{ createFormsCore, fieldValidators, perField }",
+      "limit": "2.1 kB"
     }
   ]
 }

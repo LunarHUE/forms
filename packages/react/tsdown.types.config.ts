@@ -1,3 +1,3 @@
 import { typesBuild } from "../../tsdown.base.ts";
 
-export default typesBuild(["index", "plugins", "text", "legacy"]);
+export default typesBuild(["index", "plugins", "text", "legacy", "mini"]);

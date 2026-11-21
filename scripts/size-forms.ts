@@ -22,7 +22,8 @@ const sourceCondition = "@lunarhue/source";
 
 const external = /^(react|react-dom|solid-js|@solidjs\/web|valibot)(\/|$)/;
 
-const forms = [
+// The third member names the only framework a fixture exists for. /mini is React only.
+const forms: readonly (readonly [form: string, label: string, only?: string])[] = [
   ["bare", "Bare form, one field bound by hand"],
   ["validator", "+ a field validator"],
   ["schema", "+ a Valibot schema"],
@@ -31,7 +32,13 @@ const forms = [
   ["arrays", "+ an array: items, add, remove, move"],
   ["everything", "Everything on"],
   ["devtools", "Bare form + devtools()"],
-] as const;
+  ["search", "Search box: one required field", "react"],
+  ["search-mini", "Search box on /mini", "react"],
+  ["search-mini-per-field", "Search box on /mini + perField()", "react"],
+  ["login", "Login: two fields, a Valibot schema", "react"],
+  ["login-mini", "Login on /mini", "react"],
+  ["login-mini-per-field", "Login on /mini + perField()", "react"],
+];
 
 const frameworks = [
   ["react", "React", (): PluginOption[] => []],
@@ -76,10 +83,10 @@ const bytes = (size: number): string => `${size.toLocaleString("en-US")} B`;
 
 const header = ["Form", ...frameworks.flatMap(([, name]) => modes.map((mode) => `${name} ${mode === "production" ? "prod" : "dev"}`))];
 const rows: string[][] = [];
-for (const [form, label] of forms) {
+for (const [form, label, only] of forms) {
   const row: string[] = [label];
   for (const [framework, , plugins] of frameworks) {
-    for (const mode of modes) row.push(bytes(await measure(framework, plugins(), form, mode)));
+    for (const mode of modes) row.push(only && only !== framework ? "n/a" : bytes(await measure(framework, plugins(), form, mode)));
   }
   rows.push(row);
 }
