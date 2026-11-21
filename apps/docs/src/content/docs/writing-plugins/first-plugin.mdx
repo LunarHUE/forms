@@ -12,31 +12,62 @@ field, on every form that installs it. Type two spaces in a row below.
 
 <Demo name="first-plugin/note" />
 
+## A part or a plugin
+
+Behaviour for one field type that keeps no state of its own needs no plugin.
+`transform`, `text` and `observe` from `@lunarhue/forms-core/plugins` make
+[parts](./parts) that run themselves, so a form installs nothing:
+
+```ts
+import { transform } from "@lunarhue/forms-core/plugins";
+
+export const NoteField = defineField(NoteInput, transform<string>((value) => value.replace(/ {2,}/g, " ")));
+```
+
+Write a plugin when the behaviour covers the whole form, as this one does,
+or when it keeps meta, gives the form an API or needs another plugin.
+
 ## definePlugin
 
 Make a plugin with `definePlugin`, from `@lunarhue/forms-core/plugins` or the
-same entry under your adapter. Wrap it in a function so each `createForms`
-call gets its own:
+same entry under your adapter. It returns a factory, and each call of the
+factory gives a plugin to install:
 
 ```ts
 import { definePlugin } from "@lunarhue/forms-core/plugins";
 
-export const collapseSpaces = () =>
-  definePlugin({
-    name: "collapseSpaces",
-    setup: () => ({
-      beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
-    }),
-  });
+export const collapseSpaces = definePlugin({
+  name: "collapseSpaces",
+  setup: () => ({
+    beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ {2,}/g, " ") : write.value),
+  }),
+});
 
 const forms = createForms({ plugins: [collapseSpaces()] });
 ```
 
 `setup` runs once per store and returns hooks that see the whole form. Here
 `beforeWrite` gets every value write and returns the value to store. A
-plugin can also have an `attach`, which runs once for each field a
+plugin can also have a `part` hook, which runs once for each field a
 [part](./parts) of it is put on and returns hooks for that field. A plugin
 can have either or both.
+
+The factory's arguments are `setup`'s second parameter. Type it, and the
+factory takes the same options:
+
+```ts
+export const squeeze = definePlugin({
+  name: "squeeze",
+  setup: (_ctx, max: number) => ({
+    beforeWrite: (write) => (typeof write.value === "string" ? write.value.replace(/ +/g, (run) => run.slice(0, max)) : write.value),
+  }),
+});
+
+createForms({ plugins: [squeeze(2)] });
+```
+
+With an optional parameter the options are optional. With none, the factory
+takes nothing.
 
 ## Setup
 
@@ -52,7 +83,7 @@ store's starting state:
   written to, as on the server, starts no timer.
 - It doesn't move the baseline. A value written in setup is dirty against the
   defaults. To start from a value without making the form dirty, use
-  [`initial`](./submit#starting-values).
+  [`initialValue`](./submit#starting-values).
 
 So setup must give the same result on the server and the client. Anything
 that reads the browser or the environment, such as storage, goes in
@@ -65,8 +96,8 @@ never listens, so it never runs there. [`persist`](../plugins/persist) restores 
 `beforeWrite` runs before each value write, in plugin order, and returns the
 value to write or `refuse` to stop it. A write of an object comes through
 once, at the object's path. Hooks from `setup` see it there. Hooks from
-`attach` get it walked down to their path, so `mask` cleans a phone field
-when a reset writes the whole form.
+a part get it walked down to their path, so a `masked` part cleans a phone
+field when a reset writes the whole form.
 
 A row that `push` or `insert` adds comes through as a write at the row's path,
 with `before` undefined. The row is already in the array by then, since the
@@ -84,7 +115,7 @@ baseline to a value from outside, as [`rebase`](../plugins/rebase) does, can pas
 `"rebase"` instead: `ctx.write(fn, "rebase")`. Those are the only two causes a
 plugin gets. `"user"` and `"reset"` belong to the form. The host passes every
 write to every plugin with its cause, and each plugin decides what to do with
-it. `mask`, for one, skips rebases.
+it. `masked`, for one, skips rebases.
 
 ## Writes after an `await`
 
@@ -95,7 +126,7 @@ it. Write through `ctx.write`, and pass `edited: false` when the value isn't
 the user's:
 
 ```ts
-async onSubmit() {
+async beforeSubmit() {
   const token = await fetchToken();
   // Wrong: a user edit, with an undo step.
   ctx.store.root.at("token").setValue(token);

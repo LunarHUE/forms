@@ -107,17 +107,16 @@ import { testStore } from "@lunarhue/forms-core/plugins/testing";
 import { expect, it } from "vitest";
 
 // Trims the ends of every string written at `fields`.
-const trim = (...fields: string[]) =>
-  definePlugin({
-    name: "trim",
-    setup: () => ({
-      beforeWrite: (write) =>
-        typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value,
-    }),
-  });
+const trim = definePlugin({
+  name: "trim",
+  setup: (_ctx, fields: readonly string[]) => ({
+    beforeWrite: (write) =>
+      typeof write.value === "string" && fields.includes(write.path.join(".")) ? write.value.trim() : write.value,
+  }),
+});
 
 it("trims the fields it names", () => {
-  const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim("name")] });
+  const { store, records, errors } = testStore({ defaultValues: { name: "", note: "" }, plugins: [trim(["name"])] });
   store.root.at("name").setValue("  Ada ");
   store.root.at("note").setValue(" hi ");
   expect(store.root.peek().value).toEqual({ name: "Ada", note: " hi " });
@@ -129,7 +128,8 @@ it("trims the fields it names", () => {
 `testStore` takes what `define` takes (`defaultValues` or a `schema`,
 `validate`, `onSubmit` and the rest) with the plugins under test in `plugins`.
 Put `dirty()` or a schema plugin there too when the test needs them.
-Validators work without one. It returns:
+Validators work without one. Parts go after the config, as `define` takes them,
+and attach at the root when the store is made. It returns:
 
 - `store`: the store, typed as an app's would be, so `store.plugins.<name>`
   has your plugin's API. Drive it as an app would. `store.root.at("name")`
