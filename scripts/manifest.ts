@@ -13,12 +13,16 @@ function dropKey(value: unknown, condition: string): unknown {
 }
 
 /**
- * The package.json text with `condition` taken out of its `exports` map. Only `exports` is
- * touched, so a dependency that happens to share the name stays.
+ * The package.json text with `condition` taken out of its `exports` and `imports` maps. Only
+ * those fields are touched, so a dependency that happens to share the name stays.
  */
 export function withoutCondition(manifest: string, condition: string): string {
   const parsed: unknown = JSON.parse(manifest);
-  if (typeof parsed !== "object" || parsed === null || !("exports" in parsed)) return manifest;
-  // Spreading keeps `exports` where it was among the other keys.
-  return `${JSON.stringify({ ...parsed, exports: dropKey(parsed.exports, condition) }, undefined, 2)}\n`;
+  if (typeof parsed !== "object" || parsed === null) return manifest;
+  if (!("exports" in parsed) && !("imports" in parsed)) return manifest;
+  // Spreading keeps `exports` and `imports` where they were among the other keys.
+  const next: Record<string, unknown> = { ...parsed };
+  if ("exports" in parsed) next.exports = dropKey(parsed.exports, condition);
+  if ("imports" in parsed) next.imports = dropKey(parsed.imports, condition);
+  return `${JSON.stringify(next, undefined, 2)}\n`;
 }
