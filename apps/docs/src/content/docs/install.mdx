@@ -33,25 +33,31 @@ Need to keep a form in sync with a Solid signal? Install `@lunarhue/forms-bind`:
 
 <Install packages="@lunarhue/forms-bind" />
 
+Want a live on-page panel to inspect field values, errors, writes, and plugins during development? Add `@lunarhue/forms-devtools`:
+
+<Install packages="@lunarhue/forms-devtools" />
+
 ## Requirements
 
 <Only framework="react">
 
-|                         |                     |
-| ----------------------- | ------------------- |
-| @lunarhue/forms-react   | React 18 and later, or 16.8 and 17 with the condition below |
-| @lunarhue/forms-schema  | Zod 4 or Valibot 1  |
-| @lunarhue/forms-bind    | Zustand 5           |
+|                          |                     |
+| ------------------------ | ------------------- |
+| @lunarhue/forms-react    | React 18 and later, or 16.8 and 17 with the condition below |
+| @lunarhue/forms-schema   | Zod 4 or Valibot 1  |
+| @lunarhue/forms-bind     | Zustand 5           |
+| @lunarhue/forms-devtools | Any adapter (browser only; hides below 640px) |
 
 </Only>
 
 <Only framework="solid">
 
-|                         |                    |
-| ----------------------- | ------------------ |
-| @lunarhue/forms-solid   | Solid 2, or Solid 1.8 and later from `/v1` |
-| @lunarhue/forms-schema  | Zod 4 or Valibot 1 |
-| @lunarhue/forms-bind    | Solid 2            |
+|                          |                    |
+| ------------------------ | ------------------ |
+| @lunarhue/forms-solid    | Solid 2, or Solid 1.8 and later from `/v1` |
+| @lunarhue/forms-schema   | Zod 4 or Valibot 1 |
+| @lunarhue/forms-bind     | Solid 2            |
+| @lunarhue/forms-devtools | Any adapter (browser only; hides below 640px) |
 
 If you are on Solid 1, import from `@lunarhue/forms-solid/v1` instead. It exports the exact same functions and types as the main entry, so moving from Solid 1 to Solid 2 is just an import path change. Note that `signal()` from `@lunarhue/forms-bind` requires Solid 2. On Solid 1, use `bind()` from `@lunarhue/forms-solid/plugins` instead.
 
@@ -59,7 +65,7 @@ If you are on Solid 1, import from `@lunarhue/forms-solid/v1` instead. It export
 
 <Only framework="react">
 
-## Using React 16.8 or 17
+## React 16.8 and 17
 
 By default, `@lunarhue/forms-react` relies on React 18's `useSyncExternalStore` and `useId`. To support React 16.8 or 17, the package ships a legacy entry with fallbacks for both hooks.
 

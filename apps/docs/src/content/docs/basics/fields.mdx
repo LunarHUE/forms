@@ -30,7 +30,7 @@ Try typing a number with a trailing `.` in the Age input below and watch how the
 | `touched`, `edited`, `dirty` | Whether the field has been blurred, changed by the user, or differs from its baseline (`dirty` requires the `dirty()` plugin). |
 | `invalid`, `validating` | Whether the field has any errors, and whether an async validator is currently running. |
 | `disabled`, `readOnly` | Inherited from this field or any parent field above it. |
-| `setValue`, `setTouched`, `setErrors`, `handleBlur`, `reset`, `validate` | Field commands. Array fields also include `push`, `insert`, `remove`, and `move`. |
+| `setValue`, `setTouched`, `setErrors`, `handleBlur`, `reset`, `validate` | Field commands. Array fields also include `push`, `insert`, `remove`, and `move` (requires the [`arrays()`](../plugins/arrays) plugin). |
 | `text`, `setText`, `ref` | Low-level bindings for custom inputs and component libraries (see below). |
 | `handle` | The stable field handle, useful to pass to child components or keep for later. |
 | `id`, `errorId` | Stable DOM IDs for the input and its error container. |

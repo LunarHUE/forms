@@ -47,6 +47,6 @@ That same check protects field types carrying a plugin [part](../writing-plugins
 | Third-party | Yes | Its dedicated package, like `@lunarhue/forms-schema/zod` |
 | Community | Depends on the plugin | The author's package, conventionally `forms-plugin-<name>` |
 
-All first-class plugins (`dirty`, `rebase`, `persist`, `history`, `arrays`, and `rules`) live in `@lunarhue/forms-core/plugins` and are re-exported from each framework adapter's `/plugins` entry. [Schema plugins](./schemas) live in `@lunarhue/forms-schema`, and [Masks](./masks) are standalone parts from `/text` that don't require a plugin.
+All first-class plugins (`arrays`, `dirty`, `baselineOnSubmit`, `rebase`, `persist`, `history`, `rules`, and `bind`) live in `@lunarhue/forms-core/plugins` and are re-exported from each framework adapter's `/plugins` entry. [Schema plugins](./schemas) live in `@lunarhue/forms-schema`, external store bindings live in `@lunarhue/forms-bind`, the live inspector lives in `@lunarhue/forms-devtools`, and [Masks](./masks) are standalone parts from `/text` that don't require a plugin.
 
 Want to build your own? Head over to [Writing plugins](../writing-plugins/first-plugin).

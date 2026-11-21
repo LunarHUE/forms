@@ -13,7 +13,7 @@ Your framework adapter re-exports everything from `@lunarhue/forms-core`, and it
 
 <Only framework="react">
 
-`@lunarhue/forms-react` targets React 18 and later. For React 16.8 and 17, enable the `@lunarhue/react-legacy` resolve condition (see [Install](../install#using-react-168-or-17)), or alias `#lunarhue/react` to `@lunarhue/forms-react/legacy` if your bundler doesn't support custom export conditions.
+`@lunarhue/forms-react` targets React 18 and later. For React 16.8 and 17, enable the `@lunarhue/react-legacy` resolve condition (see [Install](../install#react-168-and-17)), or alias `#lunarhue/react` to `@lunarhue/forms-react/legacy` if your bundler doesn't support custom export conditions.
 
 For simple forms where bundle size is the top priority, `@lunarhue/forms-react/mini` offers a ~3 kB subset that upgrades cleanly to the full entry. See [Mini entry](../basics/mini).
 
@@ -38,7 +38,7 @@ createForms(options?: {
   show?: Show;               // when errors become visible ("touched-or-submitted" by default)
   equals?: Equals;           // custom dirty comparison (requires dirty())
   focusOnInvalid?: FocusOnInvalid; // focus behavior on invalid submit (true by default)
-  subscribe?: SubscribeMode; // e.g. perField() (React)
+  subscribe?: Subscribe;     // e.g. perField() (matches /mini; ignored on full entry)
   onPluginError?: PluginErrorHandler;
 }): Forms
 ```
@@ -325,12 +325,14 @@ Value writes accept `{ edited: false }` for programmatic updates that shouldn't 
 | `FieldType<C, N>` | Return type of `defineField`. |
 | `Part<P, V>` | Part type (`P` = plugin factory or `never` for standalone, `V` = accepted field value). |
 | `FormOf<typeof definition>` | Form instance type for a definition or `forms` object. |
-| `FieldHandle<V>` | Leaf, object, or array handle matching `V`. |
+| `FieldHandle<V, P, E>` | Leaf, object, or array handle matching `V` (also `LeafHandle`, `ObjectHandle`, `ArrayHandle`, `ItemHandle`, `AnyFieldHandle<P, E>`). |
 | `FieldPath<V>`, `ValueAt<V, P>` | Valid dotted paths of `V` and the value type at path `P`. |
 | `ValueOf<H>`, `ErrorOf<H>` | Extracts value and error types from a handle. |
 | `FieldSnapshot<V>`, `FormSnapshot` | Snapshot types for fields and the form. |
 | `FormResetOptions<V>`, `ResetOptions`, `ResetValues<V>` | Options accepted by `store.reset(...)` and `handle.reset(...)`. |
 | `ErrorsByKind<E>`, `ValidatorKind` | Return type and keys of `errorsByKind(handle)`. |
+| `InvalidField<E>`, `DisabledInvalid<E>` | Entry shape `{ field, name, errors }` returned by `invalidFields` and `disabledInvalid`. |
+| `Subscribe`, `WrappedSchema<Input>` | Subscription mode type for `perField()`, and return type of wrapped Standard Schemas. |
 | `Submission`, `FormError`, `Choice`, `Draft<T>`, `StandardSchemaV1` | Supporting form, error, choice, draft, and schema types. |
 
 Internal helper types that show up in editor hovers aren't part of the public contract and may change between releases; stick to the exported types above.
@@ -380,7 +382,8 @@ Import from `@lunarhue/forms-solid/plugins`.
 | Plugin | What it adds |
 | --- | --- |
 | `arrays()` | Dynamic array rows (`Items`, `useItems`/`createItems`, `push`, `insert`, `remove`, `move`) with stable keys. See [Arrays](../plugins/arrays). |
-| `dirty()` | `dirty` flags, `equals`, and `store.changes()`. Pair with `baselineOnSubmit()` to clear dirty state on save. See [Dirty](../plugins/dirty). |
+| `dirty()` | `dirty` flags, `equals`, and `store.changes()`. See [Dirty](../plugins/dirty). |
+| `baselineOnSubmit()` | Advances the baseline on `"succeeded"` submits (leaves refused/failed submits dirty). See [Dirty](../plugins/dirty#marking-a-form-clean-after-saving). |
 | `history(limit = 100)` | Undo/redo via `form.plugins.history.undo()` / `.redo()` and `history.formMeta(state)`. See [History](../plugins/history). |
 | `persist(key \| { key, storage })` | Idle-time JSON draft persistence and restore on mount. See [Persist](../plugins/persist). |
 | `rebase()` | `form.plugins.rebase(handle, incoming, resolve)` returning `{ taken }`. See [Rebase](../plugins/rebase). |
@@ -433,3 +436,10 @@ See [Zustand](../integrations/zustand).
 See [Solid signals](../integrations/solid-signals).
 
 </Only>
+
+## Devtools (`@lunarhue/forms-devtools`)
+
+| Export | What it does |
+| --- | --- |
+| `devtools(options?)` | Plugin that registers mounted forms with the on-page devtools panel (`enabled?: boolean \| (() => boolean)`, `onDisable?: () => void`). Gate with `dev && devtools()` to omit it from production bundles. |
+| `syncDevtools()` | Re-checks every registered form's `enabled()` callback so the panel mounts or unmounts immediately when your toggle changes. |

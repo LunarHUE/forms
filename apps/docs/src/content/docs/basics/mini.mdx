@@ -7,7 +7,7 @@ navTitle: Mini entry
 frameworks: [react]
 ---
 
-For small forms like a login box, newsletter signup, or search filter, you might not need plugins, arrays, or cross-field rules. `@lunarhue/forms-react/mini` gives you a ~3 kB subset of the library with the exact same API names and types, so if a form outgrows `/mini`, moving to `@lunarhue/forms-react` is just changing the import path.
+For small forms like a login box, newsletter signup, or search filter, you might not need plugins, arrays, or cross-field rules. `@lunarhue/forms-react/mini` is an experimental ~3 kB subset of the library (expect breaking changes in minor releases) with the exact same API names and types, so if a form outgrows `/mini`, moving to `@lunarhue/forms-react` is just changing the import path.
 
 ## Starting with `/mini`
 
@@ -58,13 +58,13 @@ Every export in `/mini` is a strict subset of the full entry:
 
 - **Form definition and options:** `forms.define(config)` and `forms.define((options) => config)`, with `useForm(definition, options, settings?)`.
 - **Typed fields and registered components:** `form.Field`, `form.State`, `form.Form`, `form.formProps`, `inputProps`, and `createForms({ fields: { TextField } })` for plain field components typed with `/mini`'s `FieldApi<T>`.
-- **Validation:** `fieldValidators(...)`, Standard Schema `schema` validation (including cross-field schema rules like Zod `.refine()`), and `store.setErrors(...)` for server refusals (ending the submit as `"invalid"`).
-- **Standalone transforms:** `transform(...)` and `forms.fieldset<T>(...)` parts pinned via `.at(name)`.
+- **Sync validation:** `fieldValidators(...)`, Standard Schema `schema` validation (including cross-field schema rules like Zod `.refine()`), and `store.setErrors(...)` for server refusals (ending the submit as `"invalid"`). Validators run synchronously on blur and submit, then on each change once the field has been blurred, has an error, or the form has been submitted.
+- **Standalone parts:** `transform(...)`, `text(...)`, `observe(...)`, and `refuse`, plus `forms.fieldset<T>(...)` parts pinned via `.at(name)`.
 - **Reset:** `form.store.reset()`, `reset({ to: "initial" })`, and `reset({ values })`.
 - **Subscription mode:** pass `subscribe: perField()` to `createForms` if you want per-field subscriptions (the default in `/mini` subscribes at the form level to save bytes on tiny forms).
 
 ## Upgrading to the full entry
 
-When a form needs plugins (`dirty`, `arrays`, `history`, `persist`, `rebase`, `rules`), `defineField(...)`, `formValidator`, `pipe()`, custom `show` policies, or `useFormContext`, change the import from `@lunarhue/forms-react/mini` to `@lunarhue/forms-react`.
+When a form needs async validation, plugins (`dirty`, `arrays`, `history`, `persist`, `rebase`, `rules`, `devtools`), object fields in `form.Field`, `defineField(...)`, `formValidator`, `pipe()`, custom `show` policies, or `useFormContext`, change the import from `@lunarhue/forms-react/mini` to `@lunarhue/forms-react`.
 
 Because `/mini`'s `FieldApi`, `FormStore`, and `FormsOptions` are narrowed versions of the full types, every component and definition you wrote for `/mini` continues to type-check and run without rewriting a line.
