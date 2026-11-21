@@ -84,8 +84,12 @@ test("the header and sidebar persist, and the sidebar mark moves", async ({ page
   const header = await page.locator("astro-island:has([aria-label='Forms devtools'])").elementHandle();
   const nav = sidebar(page).locator("[data-sidebar-scroll]");
   await nav.evaluate((element) => element.scrollTo(0, 120));
+  const dirty = sidebar(page).getByRole("link", { name: "Dirty" });
+  await dirty.scrollIntoViewIfNeeded();
+  const scroll = await nav.evaluate((element) => element.scrollTop);
+  expect(scroll).toBeGreaterThan(0);
 
-  await sidebar(page).getByRole("link", { name: "Dirty" }).click();
+  await dirty.click();
   await page.waitForURL("**/react/plugins/dirty");
   await stillLoaded(page);
 
@@ -96,7 +100,7 @@ test("the header and sidebar persist, and the sidebar mark moves", async ({ page
       header,
     ),
   ).toBe(true);
-  expect(await nav.evaluate((element) => element.scrollTop)).toBe(120);
+  expect(await nav.evaluate((element) => element.scrollTop)).toBe(scroll);
   const current = sidebar(page).locator('a[aria-current="page"]');
   await expect(current).toHaveCount(1);
   await expect(current).toHaveAttribute("href", "/react/plugins/dirty");

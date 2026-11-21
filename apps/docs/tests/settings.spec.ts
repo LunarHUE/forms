@@ -9,6 +9,7 @@ test("picking a package manager switches every install line and survives a reloa
   await page.goto("/react/install");
   const lines = page.locator("[data-install]");
   await expect(lines.first()).toBeVisible();
+  await lines.last().scrollIntoViewIfNeeded();
   await hydrated(page, "astro-island:has([data-install])");
 
   await lines.first().getByRole("button", { name: "npm", exact: true }).click();
