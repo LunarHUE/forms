@@ -15,11 +15,11 @@ field marks itself changed.
 ## A field component that reads a plugin
 
 A component that reads a plugin's member from its field says so in its type.
-The third type argument of `FieldApi` names the plugins it needs:
+The second type argument of `FieldApi` names the plugins it needs, by factory:
 
 ```tsx framework=react
 interface TextFieldProps {
-  field: FieldApi<string, FormError, "dirty">;
+  field: FieldApi<string, typeof dirty>;
   label: string;
 }
 
@@ -35,7 +35,7 @@ function TextField({ field, label }: TextFieldProps) {
 
 ```tsx framework=solid
 interface TextFieldProps {
-  field: FieldApi<string, FormError, "dirty">;
+  field: FieldApi<string, typeof dirty>;
   label: string;
 }
 
