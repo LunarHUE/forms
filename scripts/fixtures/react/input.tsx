@@ -1,4 +1,5 @@
-import type { FieldApi } from "@lunarhue/forms-react";
+// Mini's field type, which full's field objects fit too, so registered.tsx and registered-mini.tsx share these.
+import type { FieldApi } from "@lunarhue/forms-react/mini";
 
 interface TextInputProps {
   readonly field: FieldApi<string>;
