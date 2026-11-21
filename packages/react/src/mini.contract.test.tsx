@@ -377,6 +377,61 @@ describe.each(entries)("%s", (_name, entry, options) => {
   });
 });
 
+// Mini only for now. These join the contract above once the full entry's fix for #224 lands on main.
+describe.each(entries.filter(([, entry]) => entry === miniEntry))("%s: a refused submit", (_name, entry, options) => {
+  const forms = entry.createForms(options);
+  const define = (onSubmit: (value: Search, ctx: mini.SubmitContext<Search>) => unknown) =>
+    forms.define({ defaultValues: { q: "shoes", page: "1" }, validate: { fields: entry.fieldValidators<Search>({ q: required }) }, onSubmit });
+
+  it.each([
+    ["returns nothing", undefined],
+    ["returns a value", "saved"],
+  ])("ends invalid when onSubmit calls store.setErrors and %s", async (_case, result) => {
+    mount(
+      entry,
+      define((_value, { store }) => {
+        store.setErrors({ fields: { q: { message: "Taken." } } });
+        return result;
+      }),
+    );
+    expect(await act(() => current().submit())).toEqual({ status: "invalid" });
+    expect(statusText()).toBe("invalid");
+    expect(errorsOf("Query")).toBe("Taken.");
+  });
+
+  it("ends invalid when onSubmit sets a field's errors", async () => {
+    mount(
+      entry,
+      define((_value, { store }) => {
+        store.fieldAt(store.pathOf("page") ?? [])?.setErrors({ message: "Too far." });
+      }),
+    );
+    expect(await act(() => current().submit())).toEqual({ status: "invalid" });
+    expect(errorsOf("Page")).toBe("Too far.");
+  });
+
+  it("ends succeeded when onSubmit returns nothing and sets no errors", async () => {
+    mount(entry, define(() => {}));
+    expect(await act(() => current().submit())).toEqual({ status: "succeeded", result: undefined });
+  });
+
+  it("ends succeeded when an edit made while onSubmit runs fails a validator", async () => {
+    const pending: (() => void)[] = [];
+    mount(entry, define(() => new Promise<void>((resolve) => pending.push(resolve))));
+    let submitted: Promise<unknown> = Promise.resolve();
+    act(() => {
+      submitted = current().submit();
+    });
+    fireEvent.change(input("Query"), { target: { value: " " } });
+    expect(errorsOf("Query")).toBe("Type something.");
+    await act(async () => {
+      pending[0]?.();
+      await submitted;
+    });
+    expect(current().store.getFormSnapshot().submission).toEqual({ status: "succeeded", result: undefined });
+  });
+});
+
 interface TextFieldProps {
   readonly field: mini.FieldApi<string>;
   readonly label: string;

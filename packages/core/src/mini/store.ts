@@ -411,7 +411,10 @@ export function createStore<V, E = FormError, R = unknown>(options: StoreOptions
       try {
         // The output is what the definition's `onSubmit` was typed for.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        next = { status: "succeeded", result: (await onSubmit?.(output as never, ctx as never)) as R };
+        const result = (await onSubmit?.(output as never, ctx as never)) as R;
+        // Errors `onSubmit` set mean the save was refused, so it didn't succeed.
+        // Validator errors from edits made while it ran don't count.
+        next = [...fields.values()].some((field) => field.user.length) ? { status: "invalid" } : { status: "succeeded", result };
       } catch (error) {
         next = { status: "failed", error };
       }
