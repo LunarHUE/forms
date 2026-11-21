@@ -239,6 +239,15 @@ export interface PluginHooks<A = undefined> {
   /** Runs inside a reset's batch, after the values went back, with the reset field's stable path. */
   onReset?(path: Path): void;
   /**
+   * Runs on each blur of a field through `handleBlur`, with the field's
+   * stable path, inside the blur's batch: after the field is touched and
+   * validation has run. It runs on every blur, not only the first, so a
+   * plugin can save or clean up a field each time the user leaves it.
+   * `setTouched` doesn't call it. Hooks from `part` get only the blurs at
+   * or below their path.
+   */
+  onBlur?(path: Path): void;
+  /**
    * Runs when a submit starts. A returned promise runs alongside validation,
    * and submit waits for both before it reads the schema output. A throw or
    * a rejection goes to `onPluginError` and the submit carries on.

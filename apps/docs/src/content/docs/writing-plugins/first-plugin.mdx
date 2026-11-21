@@ -134,3 +134,29 @@ async beforeSubmit() {
   ctx.write(() => ctx.store.root.at("token").setValue(token, { edited: false }));
 }
 ```
+
+## Blur
+
+`onBlur(path)` runs each time a field's `handleBlur` runs, with the field's
+stable path. It runs on every blur, not only the first one that sets
+`touched`, so a plugin can clean up or save a field each time the user leaves
+it. It runs inside the blur's batch, after the field is touched and its blur
+validators ran. Writes it makes through `ctx.write` land in that batch, so
+listeners run once:
+
+```ts
+const trim = definePlugin({
+  name: "trim",
+  setup: (ctx) => ({
+    onBlur(path) {
+      const value = ctx.store.getSnapshot(path).value;
+      if (typeof value === "string" && value !== value.trim()) {
+        ctx.write(() => ctx.store.fieldAt(path)?.setValue(value.trim(), { edited: false }));
+      }
+    },
+  }),
+});
+```
+
+`setTouched(true)` doesn't run it, and neither does a blur on a field that is
+gone. Hooks from a part get only the blurs at or below the part's path.

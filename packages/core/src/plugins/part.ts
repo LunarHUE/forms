@@ -38,6 +38,8 @@ export interface ValuePartHooks<V> {
   onWrite?(records: readonly WriteRecord[]): void;
   /** Runs after a reset at, above or below the part's path. */
   onReset?(path: Path): void;
+  /** Runs on every blur at or below the part's path, after the field is touched, with the blurred field's path. */
+  onBlur?(path: Path): void;
   /** Runs when the store gets its first listener. Return a cleanup for when it loses its last. */
   onActive?(): (() => void) | undefined;
   /** Runs when a submit starts. Return `refuse`, directly or from a promise, to stop it. */

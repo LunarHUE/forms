@@ -428,7 +428,7 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 | | |
 | --- | --- |
-| `definePlugin(definition)` | Returns a plugin factory. The definition has a `setup`, whose second parameter is the factory's options, a `part` hook for its parts, `requires`, `initialValue`, or a `schema` adapter for a schema plugin. A plugin with meta has `meta` and `formMeta` readers on the factory. See [Writing a plugin](../writing-plugins/first-plugin) and [Schema adapters](../writing-plugins/schema-adapters). |
+| `definePlugin(definition)` | Returns a plugin factory. The definition has a `setup`, whose second parameter is the factory's options, a `part` hook for its parts, `requires`, `initialValue`, or a `schema` adapter for a schema plugin. `setup` and `part` return hooks: `beforeWrite`, `onWrite`, `onReset`, `onBlur`, `beforeSubmit`, `onSubmitted` and `onActive`. A plugin with meta has `meta` and `formMeta` readers on the factory. See [Writing a plugin](../writing-plugins/first-plugin) and [Schema adapters](../writing-plugins/schema-adapters). |
 | `part(plugin, config)` | A part of a plugin, with `config` typed from the plugin's `part` hook. See [Parts](../writing-plugins/parts). |
 | `part<V>(hooks)` | A part with hooks of its own, which needs no plugin. `hooks` can be a function of the part's context. |
 | `transform<V>(fn)` | A part that changes each value written at its path: `fn(value, write)` returns the value to keep, or `refuse`. |
