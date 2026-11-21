@@ -100,3 +100,20 @@ export function createCells(): Cells {
     },
   ];
 }
+
+/** How a store wakes its listeners. Pass `perField()` as `subscribe`. */
+export type Subscribe = () => Cells;
+
+/**
+ * Wakes each field's listeners only when that field's snapshot changes,
+ * once per change, with writes in a batch woken together. Pass it as
+ * `createForms({ subscribe: perField() })`.
+ *
+ * In `/mini` the default is one subscription for the whole form: every
+ * change wakes every listener, and each one compares its snapshot. That is
+ * the smallest code, and fine for a few fields. `perField()` costs a few
+ * hundred bytes and suits a form whose fields are many or slow to render.
+ * The full entry always wakes per field and takes the option so a form
+ * moves from `/mini` with one changed import.
+ */
+export const perField = (): Subscribe => createCells;

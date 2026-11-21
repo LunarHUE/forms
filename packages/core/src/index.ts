@@ -13,6 +13,7 @@ export { formValidator } from "./store/validate/form.js";
 export { invalidFields, subscribeInvalid } from "./invalid.js";
 export { splitPath } from "./path.js";
 export { encodeSegment, errorId, fieldId, optionId } from "./store/ids.js";
+export { perField, type Subscribe } from "./store/cells.js";
 
 export type {
   AttachedPart,
