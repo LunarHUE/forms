@@ -1,0 +1,94 @@
+---
+title: Devtools
+description: Inspect live form values, errors, writes, and plugins in an on-page panel built entirely as a plugin.
+section: plugins
+order: 10
+---
+
+import Install from "@/components/mdx/Install.astro";
+
+Have you noticed that dashed line around every form in these docs so far?
+
+That isn't a custom docs widget or a special hook baked into React or Solid. It's `@lunarhue/forms-devtools`, an on-page inspector built as a regular `@lunarhue/forms-core` plugin. Click any form's name tag (or the dock in the corner) on a wider screen to poke around, or toggle it from the header.
+
+## Installing `devtools()`
+
+Install `@lunarhue/forms-devtools` alongside your adapter:
+
+<Install packages="@lunarhue/forms-devtools" />
+
+Then add `devtools()` to your shared `createForms` plugins (or to a single form definition). Because `devtools()` never checks `NODE_ENV` on its own, gate it with your bundler's dev flag so the entire package tree-shakes out of production builds:
+
+```tsx framework=react
+import { createForms } from "@lunarhue/forms-react";
+import { devtools } from "@lunarhue/forms-devtools";
+
+const dev = import.meta.env.DEV;
+
+export const forms = createForms({
+  plugins: [dev && devtools()],
+});
+```
+
+```tsx framework=solid
+import { createForms } from "@lunarhue/forms-solid";
+import { devtools } from "@lunarhue/forms-devtools";
+
+const dev = import.meta.env.DEV;
+
+export const forms = createForms({
+  plugins: [dev && devtools()],
+});
+```
+
+Plugin arrays ignore `false`, `null`, and `undefined`, so in production `devtools` is dropped completely. Even when installed, the panel UI itself lives in a separate lazy-loaded chunk that only downloads the first time a form's `enabled` option reads `true`.
+
+## What you can inspect
+
+Once a form mounts with `devtools()`, it registers with the page until it unmounts:
+
+- **Form outlines and tags:** every mounted form gets a dashed outline labeled with its `id` (or `form 1`, `form 2` when the adapter generated the ID). Click any tag to select that form in the panel.
+- **Fields tab:** shows the full value tree with icon flags for each field (hover a flag to see its details, like active errors, baseline vs. current value, or the last write). Filter by field name or toggle errors-only, hover a row to outline its DOM elements on the page, click the pointer icon to scroll an element into view, or click a row to inspect its value, baseline, and write history.
+- **Inspect mode:** turn on the inspect button, or hold `Alt` while moving the pointer. Hovering any input (or its `<label>`) opens a live card for that field; clicking pins it and selects its row in the panel.
+- **Log tab:** lists the form's last 500 writes and submissions newest first, showing each write's cause (`user`, `reset`, `rebase`, or plugin name) and submissions aborted by a reset.
+- **Plugins tab:** lists every installed plugin in hook execution order alongside its form meta and exposed API.
+
+On narrow viewports (640px wide and below), the panel unmounts automatically so phones never get a dock, outlines, or hover inspection.
+
+## Toggling the panel at runtime
+
+If you want a toggle in your app (like the switch in this site's header, or a hidden flag for staging builds), pass `enabled` as a function and call `syncDevtools()` whenever that flag changes:
+
+```ts
+import { devtools, syncDevtools } from "@lunarhue/forms-devtools";
+
+let showPanel = true;
+
+export const toggleDevtools = (on: boolean) => {
+  showPanel = on;
+  syncDevtools();
+};
+
+export const devPlugin = devtools({
+  enabled: () => showPanel,
+  onDisable: () => {
+    showPanel = false;
+  },
+});
+```
+
+When `onDisable` is provided, the panel adds a **Turn off devtools** action that calls it. Turning the panel off unmounts the UI and clears the buffered write and submission logs.
+
+## Yes, the whole panel is just a plugin
+
+One reason `@lunarhue/forms-devtools` exists is to show how far the plugin API goes. Nothing in `@lunarhue/forms-core`, `@lunarhue/forms-react`, or `@lunarhue/forms-solid` has special devtools hooks.
+
+Under the hood, `devtools()` is built with the exact same primitives documented in [Writing plugins](../writing-plugins/first-plugin):
+
+- `onActive` registers and unregisters the store as the form mounts and unmounts.
+- `onWrite` and `onSubmitted` feed the ring buffer behind the Log tab.
+- `ctx.installed` supplies the plugin list, hook order, and metadata for the Plugins tab.
+- `trackElements()` listens to element registrations from any adapter so inspect mode and row highlights work across React and Solid alike.
+- The panel itself is a standalone Preact UI rendered inside a Shadow DOM (so your app's CSS never collides with it), reading snapshots on animation frames while open without ever subscribing to your store.
+
+If a full interactive inspector can live outside core as a plain plugin, your own app-specific plugins (analytics, autosave banners, audit logs, custom inspectors) can build on the exact same foundation.
