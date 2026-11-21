@@ -19,10 +19,10 @@ A second parameter on `setup` types the factory's options, and `initialValue` ge
 
 The meta readers moved from the plugin to the factory: `history.formMeta(state)` and `upload.meta(field)`, with no instance to keep around.
 
-`part(plugin, config)` from `/plugins` makes a plugin's parts, with `config` typed from the `part` hook's second parameter, so hand-written `Part<"name", V>` constructors aren't needed. The part's value type comes from where it goes. To fix it in a helper, annotate the return type or pass both type arguments:
+`part(plugin, config)` from `/plugins` makes a plugin's parts, with `config` typed from the `part` hook's second parameter, so hand-written parts aren't needed. `Part` names the plugin by its factory too: `Part<typeof limit, string>`, where it used to take the name. The part's value type comes from where it goes. To fix it in a helper, annotate the return type or pass both type arguments:
 
 ```ts
-const limited = (max: number): Part<"limit", string> => part(limit, max);
+const limited = (max: number): Part<typeof limit, string> => part(limit, max);
 const limited = (max: number) => part<typeof limit, string>(limit, max);
 ```
 

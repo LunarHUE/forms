@@ -17,29 +17,28 @@ landed on. Write a typed constructor for your parts, so each one names the
 plugin and the values it fits:
 
 ```ts
-import type { Part, PluginContext } from "@lunarhue/forms-core";
-import { definePlugin } from "@lunarhue/forms-core/plugins";
+import type { Part } from "@lunarhue/forms-core";
+import { definePlugin, part } from "@lunarhue/forms-core/plugins";
 
 interface Limit {
   readonly max: number;
 }
 
-export const limit = () =>
-  definePlugin({
-    name: "limit",
-    attach: (_ctx: PluginContext, { max }: Limit) => ({
-      beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
-    }),
-  });
+export const limit = definePlugin({
+  name: "limit",
+  part: (_ctx, { max }: Limit) => ({
+    beforeWrite: (write) => (typeof write.value === "string" ? write.value.slice(0, max) : write.value),
+  }),
+});
 
 // Fits string fields only.
-export const limited = (max: number): Part<"limit", string> => ({ plugin: "limit", config: { max } });
+export const limited = (max: number): Part<typeof limit, string> => part(limit, { max });
 ```
 
 An app puts `limit()` in the form's plugins and `limited(...)` where it
 applies: `defineField(NoteInput, limited(140))` for every field a component
 renders, `forms.fieldset(Address, part)` for a fieldset, or
-`forms.define(config, part)` for the form. `Part<"limit", string>` makes two
+`forms.define(config, part)` for the form. `Part<typeof limit, string>` makes two
 things type errors: a part on a field type whose value isn't a string, and a
 form that uses the field type without `limit()` in its plugins.
 

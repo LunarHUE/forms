@@ -14,4 +14,4 @@ export const limit = definePlugin({
 });
 
 // The part. It fits string fields only and needs limit() in the form's plugins.
-export const limited = (max: number): Part<"limit", string> => part(limit, { max });
+export const limited = (max: number): Part<typeof limit, string> => part(limit, { max });
