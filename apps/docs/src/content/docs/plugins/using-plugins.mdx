@@ -5,7 +5,7 @@ section: plugins
 order: 1
 ---
 
-Everything we covered in Basics and Composition—values, validation, submission, reusable field components, and fieldsets—comes straight from the core. Everything else is opt-in plugins. Each plugin adds capabilities to your form (like `dirty` tracking on fields, or `form.plugins.history.undo()`), and if you don't install a plugin, none of its code ends up in your bundle.
+Everything in Basics and Composition (values, validation, submission, reusable field components, and fieldsets) comes from the core. Everything else is opt-in plugins. Each plugin adds capabilities to your form, like `dirty` tracking on fields or `form.plugins.history.undo()`, and if you don't install a plugin, none of its code ends up in your bundle.
 
 ## Where to install plugins
 
@@ -31,13 +31,13 @@ const form = createForm(signUp, { plugins: [persist("sign-up")] });
 
 ## Catching missing plugins at compile time
 
-If you use a feature or component that depends on a plugin your form hasn't installed, TypeScript catches it immediately and tells you exactly what to add:
+If you use a feature or component that depends on a plugin your form hasn't installed, TypeScript catches it and tells you what to add:
 
 ```text
 Add limit() to this form's plugins: ShortNote uses it
 ```
 
-That same check protects field types carrying a plugin [part](../writing-plugins/parts), array commands like `push` without `arrays()`, and `equals` without `dirty()`. If untyped code calls a missing plugin anyway, development builds throw a clear runtime error (such as [`dirty:missing`](/errors#core:dirty:missing)).
+That same check protects field types carrying a plugin [part](../writing-plugins/parts), array commands like `push` without `arrays()`, and `equals` without `dirty()`. If untyped code calls a missing plugin anyway, development builds throw a runtime error (such as [`dirty:missing`](/errors#core:dirty:missing)).
 
 ## Where plugins live
 
@@ -47,6 +47,6 @@ That same check protects field types carrying a plugin [part](../writing-plugins
 | Third-party | Yes | Its dedicated package, like `@lunarhue/forms-schema/zod` |
 | Community | Depends on the plugin | The author's package, conventionally `forms-plugin-<name>` |
 
-All first-class plugins—`dirty`, `rebase`, `persist`, `history`, `arrays`, and `rules`—live in `@lunarhue/forms-core/plugins` and are re-exported from each framework adapter's `/plugins` entry. [Schema plugins](./schemas) live in `@lunarhue/forms-schema`, and [Masks](./masks) are lightweight standalone parts from `/text` that don't require a plugin at all.
+All first-class plugins (`dirty`, `rebase`, `persist`, `history`, `arrays`, and `rules`) live in `@lunarhue/forms-core/plugins` and are re-exported from each framework adapter's `/plugins` entry. [Schema plugins](./schemas) live in `@lunarhue/forms-schema`, and [Masks](./masks) are standalone parts from `/text` that don't require a plugin.
 
 Want to build your own? Head over to [Writing plugins](../writing-plugins/first-plugin).

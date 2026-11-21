@@ -5,15 +5,15 @@ section: plugins
 order: 6
 ---
 
-For rich editors, settings screens, or any form where accidental changes are painful, `history()` tracks the user's edits and lets them step backward and forward. Try typing in the demo below and hitting Undo.
+For rich editors, settings screens, or any form where accidental changes are painful, `history()` tracks the user's edits and lets them step backward and forward. Try typing in the demo below and clicking Undo.
 
 <Demo name="history/note" />
 
 ## Setting up undo and redo
 
-Install `history()` on `createForms` or on a form definition. It records user value and array edits—one step per task (such as a keystroke or paste)—and keeps the latest 100 steps by default (pass a custom cap like `history(50)` if you want fewer or more).
+Install `history()` on `createForms` or on a form definition. It records user value and array edits (one step per task, such as a keystroke or paste) and keeps the latest 100 steps by default. Pass a custom cap like `history(50)` if you want a different limit.
 
-Call `form.plugins.history.undo()` or `form.plugins.history.redo()` to step through the stack; each returns `false` if there's nothing left to undo or redo.
+Call `form.plugins.history.undo()` or `form.plugins.history.redo()` to step through the stack; each returns `false` if there is nothing left to undo or redo.
 
 To enable or disable your buttons, read `canUndo` and `canRedo` from form meta using `history.formMeta(state)`:
 
@@ -51,12 +51,12 @@ Both flags start `false` (including during SSR). They update synchronously on un
 
 ## What gets recorded
 
-Only actual user edits create history entries. Plugin writes (through `ctx.write`), resets, and rebases stay out of the undo stack—and resetting the form clears both undo and redo stacks completely. (Note that if a custom plugin writes to the store directly instead of via `ctx.write`, it looks like a user edit and will be recorded—see [Writing a plugin](../writing-plugins/first-plugin).)
+Only user edits create history entries. Plugin writes (through `ctx.write`), resets, and rebases stay out of the undo stack, and resetting the form clears both undo and redo stacks. (Note that if a custom plugin writes to the store directly instead of via `ctx.write`, it looks like a user edit and will be recorded. See [Writing a plugin](../writing-plugins/first-plugin).)
 
-Because undo and redo write back through the form's fields, validation runs automatically on the restored values.
+Because undo and redo write back through the form's fields, validation runs on the restored values.
 
 ## How history works with arrays
 
-Undoing an `insert` or `move` preserves the keys—and therefore the `touched`, `edited`, and error state—of every remaining row.
+Undoing an `insert` or `move` preserves the keys (and therefore the `touched`, `edited`, and error state) of every remaining row.
 
-Undoing a `remove` restores the row's values under a fresh key. Because core never resurrects a deleted key, the restored row starts with clean `touched`/`edited`/error state and mounts as a fresh component.
+Undoing a `remove` restores the row's values under a fresh key. Because core never resurrects a deleted key, the restored row starts with clean `touched`, `edited`, and error state and mounts as a fresh component.

@@ -11,7 +11,7 @@ Start by installing the adapter for your framework:
 
 <Install adapter />
 
-That single package pulls in the core along with every built-in plugin that doesn't require an external library.
+That single package brings in the core along with every built-in plugin that doesn't require an external library.
 
 ## Optional packages
 
@@ -21,13 +21,13 @@ If you want to generate default values automatically from a Zod or Valibot schem
 
 <Only framework="react">
 
-Need to keep a form in sync with a Zustand store? Grab `@lunarhue/forms-bind`:
+Need to keep a form in sync with a Zustand store? Install `@lunarhue/forms-bind`:
 
 </Only>
 
 <Only framework="solid">
 
-Need to keep a form in sync with a Solid signal? Grab `@lunarhue/forms-bind`:
+Need to keep a form in sync with a Solid signal? Install `@lunarhue/forms-bind`:
 
 </Only>
 
@@ -53,7 +53,7 @@ Need to keep a form in sync with a Solid signal? Grab `@lunarhue/forms-bind`:
 | @lunarhue/forms-schema  | Zod 4 or Valibot 1 |
 | @lunarhue/forms-bind    | Solid 2            |
 
-If you're on Solid 1, import from `@lunarhue/forms-solid/v1` instead. It exports the exact same functions and types as the main entry, so upgrading from Solid 1 to Solid 2 is just a matter of updating your import path. Note that `signal()` from `@lunarhue/forms-bind` requires Solid 2—on Solid 1, use `bind()` from `@lunarhue/forms-solid/plugins` instead.
+If you are on Solid 1, import from `@lunarhue/forms-solid/v1` instead. It exports the exact same functions and types as the main entry, so moving from Solid 1 to Solid 2 is just an import path change. Note that `signal()` from `@lunarhue/forms-bind` requires Solid 2. On Solid 1, use `bind()` from `@lunarhue/forms-solid/plugins` instead.
 
 </Only>
 
@@ -61,11 +61,11 @@ If you're on Solid 1, import from `@lunarhue/forms-solid/v1` instead. It exports
 
 ## Using React 16.8 or 17
 
-By default, `@lunarhue/forms-react` relies on React 18's built-in `useSyncExternalStore` and `useId`. To support React 16.8 or 17, the package ships a legacy entry with fallbacks for both hooks.
+By default, `@lunarhue/forms-react` relies on React 18's `useSyncExternalStore` and `useId`. To support React 16.8 or 17, the package ships a legacy entry with fallbacks for both hooks.
 
-You can opt into it by enabling the `@lunarhue/react-legacy` export condition in your bundler. If you forget to set it on React 17, development builds will fail fast with a `react:legacy` error on load (production builds skip the check and will break when the first form renders).
+Enable the `@lunarhue/react-legacy` export condition in your bundler to opt into it. If you forget to set it on React 17, development builds fail fast with a `react:legacy` error on load (production builds skip that check and break when the first form renders).
 
-Here's how to wire that condition up in the most common setups:
+Here is how to configure that condition in common setups:
 
 **Vite**
 
@@ -93,7 +93,7 @@ module.exports = {
 };
 ```
 
-**esbuild** (setting `conditions` overrides the default `module` condition, so include it explicitly):
+**esbuild** (setting `conditions` overrides the default `module` condition, so list it again):
 
 ```js
 await esbuild.build({
@@ -124,8 +124,8 @@ module.exports = {
 };
 ```
 
-If Node loads the adapter directly on the server without bundling `node_modules`, pass the condition to Node as well: `NODE_OPTIONS=--conditions=@lunarhue/react-legacy`.
+If Node loads the adapter directly on the server without bundling `node_modules`, pass the condition to Node too: `NODE_OPTIONS=--conditions=@lunarhue/react-legacy`.
 
-The legacy build works fine on React 18 and 19 too—handy if you're shipping a shared library that needs to support older React versions now and drop the condition later.
+The legacy build also works on React 18 and 19, which is useful if you maintain a shared library that needs to support older React versions now and drop the condition later.
 
 </Only>

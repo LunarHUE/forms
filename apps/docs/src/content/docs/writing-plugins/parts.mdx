@@ -5,7 +5,7 @@ section: writing-plugins
 order: 2
 ---
 
-A form-wide plugin is often too broad—a 20-character cap belongs on a note field, not on every string in your app. **Parts** let you target hooks to a specific place: a field type, a fieldset, or a single form definition. Try typing past 20 characters below.
+A form-wide plugin is often too broad: a 20-character cap belongs on a note field, not on every string in your app. **Parts** let you attach hooks to one specific place: a field type, a fieldset, or a single form definition. Try typing past 20 characters below.
 
 <Demo name="parts/note" />
 
@@ -13,9 +13,9 @@ A form-wide plugin is often too broad—a 20-character cap belongs on a note fie
 
 Most per-field behaviors don't need form-level state or a shared API. `@lunarhue/forms-core/plugins` exports three standalone part helpers that work without installing any plugin:
 
-- **`transform<V>((value, write) => V | refuse)`** — cleans or normalizes values written to that path (including its initial value on attach).
-- **`text<V>(display, afterInput?)`** — formats what text inputs display without changing the stored value (see [Display text](./meta#display-text)).
-- **`observe<V>((value, ctx) => void)`** — runs on attach and after every batch that touches its path; use `ctx.write(...)` for side effects.
+- **`transform<V>((value, write) => V | refuse)`**: cleans or normalizes values written to that path (including its initial value on attach).
+- **`text<V>(display, afterInput?)`**: formats what text inputs display without changing the stored value (see [Display text](./meta#display-text)).
+- **`observe<V>((value, ctx) => void)`**: runs on attach and after every batch that touches its path; use `ctx.write(...)` for side effects.
 
 ```ts
 import { observe, transform } from "@lunarhue/forms-core/plugins";
@@ -27,9 +27,9 @@ export const capped = (max: number) => transform<string>((value) => value.slice(
 export const slugged = observe<Post>((post, ctx) => ctx.write(() => ctx.at("slug").setValue(slugify(post.title))));
 ```
 
-The `V` type parameter constrains which fields can accept the part, so `defineField(NumberInput, capped(20))` is caught at compile time.
+The `V` type parameter constrains which fields can accept the part, so `defineField(NumberInput, capped(20))` fails at compile time.
 
-Need other hooks (like `onWrite` or `onBlur`)? Use `part<V>(hooks)` directly, or pass a callback receiving the part context—which gives you `ctx.value()` for the current value and `ctx.at(name)` for child handles:
+Need other hooks (like `onWrite` or `onBlur`)? Use `part<V>(hooks)` directly, or pass a callback receiving the part context, which gives you `ctx.value()` for the current value and `ctx.at(name)` for child handles:
 
 ```ts
 import { part } from "@lunarhue/forms-core/plugins";
@@ -43,7 +43,7 @@ Standalone parts run after all plugin hooks and appear in `ctx.parts` under the 
 
 ## Plugin-backed parts
 
-When a part needs to write plugin meta, coordinate with a form-level API, or require another plugin, define a `part` hook inside `definePlugin`. It runs once per attached path with that part's config and path context, and `part(plugin, config)` creates typed instances of it. (Our character limit below is simple enough for `transform`, but it illustrates the pattern cleanly:)
+When a part needs to write plugin meta, coordinate with a form-level API, or require another plugin, define a `part` hook inside `definePlugin`. It runs once per attached path with that part's config and path context, and `part(plugin, config)` creates typed instances of it. (The character limit below is small enough for `transform`, but shows the pattern clearly:)
 
 ```ts
 import type { Part } from "@lunarhue/forms-core";
@@ -68,15 +68,15 @@ Consumers install `limit()` in `plugins` and attach `limited(...)` wherever need
 
 ## How and where parts attach
 
-Every part—standalone or plugin-backed—plugs into the same three places: `defineField(NoteInput, limited(140))`, `forms.fieldset(Address, part)`, or `forms.define(config, part)`.
+Every part, standalone or plugin-backed, plugs into the same three places: `defineField(NoteInput, limited(140))`, `forms.fieldset(Address, part)`, or `forms.define(config, part)`.
 
 Inside a part's hooks, `ctx.path` is the stable path it attached to, and hooks only receive writes relevant to that path:
 - A write *above* the path is walked down to it (and returning `refuse` cancels the whole parent write).
 - A write *below* the path arrives as-is.
 - If the field disappears (for example, when an array row is removed), its part hooks are torn down automatically.
 
-When a part first attaches, its `beforeWrite` runs once with the existing value and `cause: "attach"`. Any transformed value is stored quietly with no write record, and the baseline moves with it if the field isn't dirty—so cleaning an initial value won't start the form dirty.
+When a part first attaches, its `beforeWrite` runs once with the existing value and `cause: "attach"`. Any transformed value is stored quietly with no write record, and the baseline moves with it if the field isn't dirty, so cleaning an initial value won't start the form dirty.
 
 Timing depends on where the part lives: definition parts attach immediately when the store is created, field-type parts attach on first render, and fieldset parts attach on first `scope()` call. If the store doesn't have subscribers yet (such as during SSR), hooks initialize synchronously so their writes show up in the initial HTML; once subscribers exist, they initialize on a microtask so writes never fire mid-render.
 
-One rule of thumb: always declare fieldsets with standalone parts at module scope next to `createForms`. Creating one after a store already exists without any hooked plugins throws [`parts:late`](/errors#core:parts:late) in development.
+Always declare fieldsets with standalone parts at module scope next to `createForms`. Creating one after a store already exists without any hooked plugins throws [`parts:late`](/errors#core:parts:late) in development.

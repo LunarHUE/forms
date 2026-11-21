@@ -5,13 +5,13 @@ section: writing-plugins
 order: 3
 ---
 
-Plugins often need their own reactive state—like `history`'s `{ canUndo, canRedo }` on the form or `rules`'s `{ hidden }` on a field. Each plugin gets a private meta slot on fields and on the form, plus parts can customize what text inputs display.
+Plugins often need their own reactive state, like `history`'s `{ canUndo, canRedo }` on the form or `rules`'s `{ hidden }` on a field. Each plugin gets a private meta slot on fields and on the form, and parts can customize what text inputs display.
 
 ## Field and form meta
 
-Use `ctx.setMeta(path, value)` and `ctx.setFormMeta(value)` to update your plugin's slot. Annotate `ctx` on `setup` or `part` as `PluginContext<FieldMeta, FormMeta>` so TypeScript knows the shapes. Consumers read them back using the `.meta(snapshot)` and `.formMeta(snapshot)` helpers attached to the factory returned by `definePlugin` (such as `history.formMeta(state)`).
+Use `ctx.setMeta(path, value)` and `ctx.setFormMeta(value)` to update your plugin's slot. Annotate `ctx` on `setup` or `part` as `PluginContext<FieldMeta, FormMeta>` so TypeScript knows the shapes. Consumers read them back with the `.meta(snapshot)` and `.formMeta(snapshot)` helpers attached to the factory returned by `definePlugin` (such as `history.formMeta(state)`).
 
-Any plugin that uses meta must also supply `initialMeta` (for fields) or `initialFormMeta` (for the form)—omitting it is a type error. Until your plugin writes a value, the reader returns that initial value directly from the snapshot, so readers never return `undefined` (unless you explicitly include `undefined` in your meta type) and SSR always matches the first client render:
+Any plugin that uses meta must also supply `initialMeta` (for fields) or `initialFormMeta` (for the form); omitting it is a type error. Until your plugin writes a value, the reader returns that initial value directly from the snapshot, so readers never return `undefined` (unless you include `undefined` in your meta type) and SSR matches the first client render:
 
 ```ts
 const history = definePlugin({
@@ -45,12 +45,12 @@ Under the hood, `definePlugin` returns a `PluginFactory<A, N, M, F, ...>` (API, 
 
 Just like [`masked`](../plugins/masks), any part can separate what a text input *shows* from what the store *holds* using two part-only hooks:
 
-- **`display(value)`** — returns the formatted string to display for the stored value.
-- **`afterInput(input, value, event)`** *(optional)* — called by the adapter right after an edit hits the store while `input` still holds the raw typed text and caret position, letting you write the formatted string back and position the caret accurately.
+- **`display(value)`**: returns the formatted string to display for the stored value.
+- **`afterInput(input, value, event)`** *(optional)*: called by the adapter right after an edit hits the store while `input` still holds the raw typed text and caret position, letting you write the formatted string back and place the caret accurately.
 
 If multiple parts on the same field provide `display`, the first one in hook order wins. Any display attached before the store has listeners also renders in SSR HTML.
 
-To build a standalone formatting part without a plugin, use `text(display, afterInput?)` from `@lunarhue/forms-core/plugins`. For `afterInput`, you can reuse `replaceText` from `@lunarhue/forms-core/text` (or your adapter's `/text` entry)—pass the same cleaner function your field uses so caret math counts only the characters kept in the store:
+To build a standalone formatting part without a plugin, use `text(display, afterInput?)` from `@lunarhue/forms-core/plugins`. For `afterInput`, reuse `replaceText` from `@lunarhue/forms-core/text` (or your adapter's `/text` entry), passing the same cleaner function your field uses so caret math counts only the characters kept in the store:
 
 ```ts
 import { text, transform } from "@lunarhue/forms-core/plugins";
@@ -63,4 +63,4 @@ export const CardField = defineField(
 );
 ```
 
-If all you need is a cleaner plus a display formatter, `masked({ clean, display })` from `/text` bundles this exact pattern into one call. Plugin-backed `part` hooks can also return `display` and `afterInput` alongside their other hooks.
+If all you need is a cleaner plus a display formatter, `masked({ clean, display })` from `/text` bundles this pattern into one call. Plugin-backed `part` hooks can also return `display` and `afterInput` alongside their other hooks.

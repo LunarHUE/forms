@@ -13,7 +13,7 @@ Install `dirty()` to track that. Try editing a field in the demo below, then typ
 
 ## Tracking changes
 
-Once `dirty()` is installed, every field and the form itself expose a `dirty` boolean—`true` whenever the current value differs from the field's baseline (which starts out as `defaultValues`). Changing a field back to its baseline makes it clean again.
+Once `dirty()` is installed, every field and the form itself expose a `dirty` boolean that is `true` whenever the current value differs from the field's baseline (which starts as `defaultValues`). Changing a field back to its baseline makes it clean again.
 
 ```tsx framework=react
 import { dirty } from "@lunarhue/forms-react/plugins";
@@ -33,13 +33,13 @@ Inside event handlers or effects, call `form.store.changes()` to get a list of e
 
 If `dirty()` isn't installed, reading `dirty`, calling `changes()`, or passing `equals` is a compile-time type error. At runtime, snapshots still carry `dirty: false`, and `changes()` throws [`dirty:missing`](/errors#core:dirty:missing) in development (returning an empty array in production).
 
-If you're writing a shared component that reads `field.dirty`, declare the plugin requirement in `FieldApi<T, typeof dirty>`—see [Components that need a plugin](../plugin-composition/components).
+If you're writing a shared component that reads `field.dirty`, declare the plugin requirement in `FieldApi<T, typeof dirty>`. See [Components that need a plugin](../plugin-composition/components).
 
 Even without `dirty()`, core still maintains the baseline internally, so `reset()`, `rebase`, and `bind` all continue to work (`rebase` simply falls back to `Object.is` comparisons).
 
 ## Marking a form clean after saving
 
-By default, a successful submit doesn't move the baseline—which makes sense for a create form that navigates away, but on a settings page that stays mounted, the form would stay stuck as "dirty" after saving.
+By default, a successful submit doesn't move the baseline. That makes sense for a create form that navigates away, but on a settings page that stays mounted, the form would stay stuck as "dirty" after saving.
 
 Add `baselineOnSubmit()` from the same `plugins` entry to advance the baseline automatically whenever a save succeeds:
 
@@ -65,12 +65,12 @@ const settings = forms.define({
 });
 ```
 
-When a submit finishes with `"succeeded"`, the value that was sent (`ctx.input`) becomes the new baseline. Invalid, refused, failed, or reset-aborted submits leave the baseline untouched—including when your `onSubmit` sets server errors via `store.setErrors`.
+When a submit finishes with `"succeeded"`, the value that was sent (`ctx.input`) becomes the new baseline. Invalid, refused, failed, or reset-aborted submits leave the baseline untouched, including when your `onSubmit` sets server errors via `store.setErrors`.
 
-A few nice details it handles automatically:
-- **In-flight edits are preserved:** if the user keeps typing in a field while the save request is still running, that field keeps their newer text and stays dirty (typing the saved text back makes it clean).
+Here is how it handles edge cases:
+- **In-flight edits stay safe:** if the user keeps typing in a field while the save request is running, that field keeps their newer text and stays dirty (typing the saved text back makes it clean).
 - **Arrays stay aligned:** array rows pair by the keys they had when the save started, so rows added, removed, or reordered mid-save keep accurate dirty flags.
-- **No extra undo steps:** advancing the baseline doesn't write new values, so `history` doesn't record a bogus entry.
+- **No extra undo steps:** advancing the baseline doesn't write new values, so `history` doesn't record a step.
 - **Works even without `dirty()`:** the baseline still moves, so a later `reset()` returns to the saved values.
 
 You don't need `baselineOnSubmit()` if your form unmounts after saving, or if you refetch from the server after saving and apply the fresh copy with `form.store.reset({ values })` or [`rebase`](./rebase). Likewise, if the server normalizes or adds fields on save (like trimming strings or bumping `updatedAt`), pull the server's response back in with [`rebase`](./rebase) instead.

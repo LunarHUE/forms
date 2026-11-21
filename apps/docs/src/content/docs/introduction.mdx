@@ -5,11 +5,11 @@ section: start
 order: 1
 ---
 
-`@lunarhue/forms` splits form handling into two layers: a small, framework-agnostic core that manages values, arrays, validation, and submission state, and a thin adapter (`@lunarhue/forms-react` or `@lunarhue/forms-solid`, with Vue on the way) that connects that state to your components.
+`@lunarhue/forms` splits form handling into two layers: a small, framework-agnostic core that manages values, arrays, validation, and submission state, and a thin adapter (`@lunarhue/forms-react` or `@lunarhue/forms-solid`, with Vue planned) that connects that state to your components.
 
-Out of the box, validation is built right in. Everything else—dirty tracking, undo/redo history, persistence, schema defaults, conditional rules—ships as opt-in plugins from a single `plugins` entry point. Text formatting and input masks live in the `text` entry and attach directly to individual fields without needing a plugin at all. Because nothing is wired in until you import it, your bundle only pays for the features you actually use.
+Validation is built into the core. Everything else (dirty tracking, undo/redo history, persistence, schema defaults, conditional rules) ships as opt-in plugins from a single `plugins` entry point. Text formatting and input masks live in the `text` entry and attach directly to individual fields without needing a plugin. Because nothing is wired in until you import it, your bundle only pays for the features you use.
 
-Everything is typed from the start. Your form's type is inferred straight from its `defaultValues`, so TypeScript catches typos in field names before you even hit save:
+Everything is typed from the start. Your form's type comes straight from `defaultValues`, so TypeScript catches typos in field names before you even save the file:
 
 ```tsx framework=react
 const signUp = createForms().define({
@@ -50,6 +50,6 @@ function SignUpForm() {
 ## Where to go next
 
 - [Install](install) the adapter for your framework.
-- Walk through [your first form](basics/first-form)—every page in Basics works with the adapter alone, no plugins required.
-- Once you're ready to cut down on boilerplate, build [reusable field components](composition/field-components).
+- Walk through [your first form](basics/first-form). Every page in Basics works with the adapter alone, with no plugins required.
+- Once you want to cut down on boilerplate, build [reusable field components](composition/field-components).
 - Add [plugins](plugins/using-plugins) when you need dirty tracking, undo history, masks, or persistence.

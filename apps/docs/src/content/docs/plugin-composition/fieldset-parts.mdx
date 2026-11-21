@@ -6,7 +6,7 @@ order: 2
 navTitle: Fieldsets
 ---
 
-Just like field components, fieldsets can carry their own parts—so conditional rules or transforms travel right alongside the UI section they belong to. Try unchecking "Same as shipping" below: that show/hide rule is defined on `BillingFieldset` itself, not on the order form.
+Just like field components, fieldsets can carry their own parts so conditional rules or transforms travel alongside the UI section they belong to. Try unchecking "Same as shipping" below: that show/hide rule is defined on `BillingFieldset` itself, not on the order form.
 
 <Demo name="fieldset-parts/billing" />
 
@@ -22,19 +22,19 @@ const BillingFieldset = forms.fieldset<Billing, typeof rules>(
 const Billing = forms.fieldset(BillingSchema, ruled({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
 ```
 
-Even simpler: pass the value type directly to `ruled<Billing>(...)` and omit the type arguments on `fieldset`—TypeScript will infer both the value type and required plugins from the part:
+Or pass the value type directly to `ruled<Billing>(...)` and omit the type arguments on `fieldset`. TypeScript infers both the value type and required plugins from the part:
 
 ```ts
 const BillingFieldset = forms.fieldset(ruled<Billing>({ address: (billing) => ({ hidden: billing.sameAsShipping }) }));
 ```
 
-Rules attached to a fieldset receive that fieldset's own value (not the entire form's) and reference child fields relative to the fieldset.
+Rules attached to a fieldset receive that fieldset's own value (not the whole form's) and reference child fields relative to the fieldset.
 
 Always declare fieldsets at module scope next to `createForms`. Creating a fieldset with standalone parts (like `transform(...)`) *after* a store already exists can throw [`parts:late`](/errors#core:parts:late) in development if that store had no plugin hooks initialized.
 
 ## Pinning fieldset parts with `at()`
 
-Normally, a fieldset's parts attach the first time its `scope(handle)` is called. If a rule needs to run before the fieldset mounts—for example, hiding or disabling fields on an unvisited wizard step—pin it on the form definition using `.at()`:
+Normally, a fieldset's parts attach the first time its `scope(handle)` is called. If a rule needs to run before the fieldset mounts (for example, hiding or disabling fields on an unvisited wizard step), pin it on the form definition using `.at()`:
 
 ```ts
 const order = forms.define({ defaultValues, onSubmit }, BillingFieldset.at("billing"));

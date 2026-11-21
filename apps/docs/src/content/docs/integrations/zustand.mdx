@@ -8,13 +8,13 @@ frameworks: [react]
 
 import Install from "@/components/mdx/Install.astro";
 
-If part of your app already lives in Zustand 5 and you want a form to stay in sync with it, `zustand()` bridges the two. Your form keeps its own internal store for errors, touched state, and validation—the plugin simply syncs values both ways. Edits in the form update Zustand, and updates to Zustand flow back into the form.
+If part of your app already lives in Zustand 5 and you want a form to stay in sync with it, `zustand()` bridges the two. Your form keeps its own internal store for errors, touched state, and validation; the plugin simply copies values both ways. Edits in the form update Zustand, and updates to Zustand flow back into the form.
 
 <Install packages="@lunarhue/forms-bind zustand" />
 
 <Demo name="zustand/settings" />
 
-Type into the fields above and watch the greeting (which reads straight from Zustand) update live. Click **Load saved** to update Zustand from outside, and the form picks up the new values immediately.
+Type into the fields above and watch the greeting (which reads from Zustand) update live. Click **Load saved** to update Zustand from outside, and the form picks up the new values immediately.
 
 ## Binding a whole store
 
@@ -48,7 +48,7 @@ zustand(useAppStore, {
 
 Unrelated changes elsewhere in `useAppStore` won't touch the form as long as `select` returns the same reference.
 
-`update` also receives the store's current `state` as its second argument—super handy when your slice is nested inside a record or map and you want to preserve sibling keys:
+`update` also receives the store's current `state` as its second argument, which helps when your slice lives inside a record or map and you want to keep sibling keys intact:
 
 ```tsx
 zustand(useReviewStore, {
@@ -57,7 +57,7 @@ zustand(useReviewStore, {
 });
 ```
 
-If your `select` constructs a fresh object on every call (like picking two top-level keys), pass `isEqual` so updates to unrelated fields don't look like a new slice:
+If your `select` builds a fresh object on every call (like picking two top-level keys), pass `isEqual` so updates to unrelated fields don't look like a new slice:
 
 ```tsx
 zustand(useReviewStore, {
@@ -81,7 +81,7 @@ const form = useForm(settingsForm, {
 
 TypeScript checks that the bound slice matches your form's value type, so mismatches fail at compile time.
 
-Each form can have one external binding. The binding only subscribes to Zustand while the form has active listeners (i.e., while mounted), and automatically catches up if the store changed while unmounted.
+Each form can have one external binding. The binding only subscribes to Zustand while the form has active listeners (while mounted), and catches up if the store changed while unmounted.
 
 ## Options
 
@@ -96,6 +96,6 @@ Both forms of `zustand()` accept two options to control sync direction and confl
 zustand(useProfileStore, { incoming: "rebase" });
 ```
 
-Using `incoming: "rebase"` is especially nice when a background fetch updates Zustand: untouched fields pick up the fresh data while anything the user is actively editing stays safe.
+Using `incoming: "rebase"` works well when a background fetch updates Zustand: untouched fields pick up the fresh data while anything the user is editing stays safe.
 
 Need to sync with a store other than Zustand? Use the generic `bind()` plugin from `@lunarhue/forms-react/plugins`, which takes `{ get, set, subscribe }` along with the same `initial` and `incoming` options.

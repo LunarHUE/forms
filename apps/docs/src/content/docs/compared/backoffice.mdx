@@ -8,12 +8,12 @@ order: 3
 <Only framework="solid">
 
 <Callout>
-These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the exact same patterns.
+These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the same patterns.
 </Callout>
 
 </Only>
 
-A full back-office workspace with three record forms and an invite dialog—built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Schemas, formatters, and markup are shared across both builds so you're comparing pure form wiring. Switch builds in the preview below; both behave identically.
+A back-office workspace with three record forms and an invite dialog, built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Schemas, formatters, and markup are shared across both builds so you are comparing form wiring only. Switch builds in the preview below; both behave the same.
 
 <Compare app="backoffice" />
 
@@ -26,7 +26,7 @@ Each record form loads from the mock server and shares a save bar (with change c
 - **Company settings:** name, phone, tax ID, and registered address. Submitting tax ID `00-0000000` triggers a server refusal that stays on the field until edited.
 - **Invite a teammate:** a modal dialog whose draft persists across closing the dialog and reloading the page.
 
-Across every address, the State field only appears for US addresses. Phone, tax ID, quantity, and price fields are masked—storing clean digits (or decimals) while displaying formatted text.
+Across every address, the State field only appears for US addresses. Phone, tax ID, quantity, and price fields are masked, storing clean digits (or decimals) while displaying formatted text.
 
 ## Where the two implementations differ
 
@@ -34,7 +34,7 @@ On the `@lunarhue/forms` side, one `createForms` installs `zod()`, `dirty()`, `r
 
 On the TanStack Form side, `createFormHook` provides the shared form components, `withFieldGroup` handles addresses, and Standard Schema + `isDefaultValue` + `form.reset` cover validation and dirty state. The rest is implemented in app code:
 
-- **Masks:** a custom `MaskedInput` cleans values and restores the caret by clean-character count (a real app would usually reach for a dedicated masking library—this minimal one doesn't step over separators on backspace).
+- **Masks:** a custom `MaskedInput` cleans values and restores the caret by clean-character count (a real app would usually reach for a dedicated masking library; this minimal one doesn't step over separators on backspace).
 - **Undo:** since TanStack doesn't ship history, field components and line-item buttons record previous values manually and replay them with `setFieldValue`.
 - **Conditional rules:** each conditional field wraps itself in `form.Subscribe` or `useStore` inside every form.
 - **Change counts and Refresh:** reuses the `rebaseline` pattern from the [profile comparison](./profile), walking leaf paths like `lines[0].price`.
@@ -49,6 +49,6 @@ A few extra details were needed on the TanStack side to keep behavior identical:
 
 ## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app with Vite for production (minified, JS only) in three slices: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything), and **App only** (excluding the form libraries too—so our plugins count in **Forms + app**, while TanStack's hand-written masks, undo, and draft persistence count in **App only**).
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production (minified, JS only) in three slices: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything), and **App only** (excluding the form libraries too, so our plugins count in **Forms + app**, while TanStack's hand-written masks, undo, and draft persistence count in **App only**).
 
 Measured from built package outputs against TanStack Form 1.33.5 and enforced in CI. Source and shared Playwright specs are in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).

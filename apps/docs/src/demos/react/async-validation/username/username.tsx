@@ -1,4 +1,4 @@
-import { createForms, debounced, fieldValidators, useForm, validateOn } from "@lunarhue/forms-react";
+import { createForms, debounced, fieldValidators, pipe, useForm, validateOn } from "@lunarhue/forms-react";
 import { TextInput } from "./TextInput";
 import { docsDevtools } from "@/devtools/enabled";
 
@@ -19,14 +19,16 @@ const account = forms.define({
   defaultValues: { username: "" },
   validate: {
     fields: fieldValidators({
-      // Checks while the user types, not only after they leave the field.
+      // Cheap local checks run first; the server check only starts once they pass.
       username: validateOn(
-        // Waits for a pause in typing. Submit skips the wait.
-        debounced(
-          // A newer run aborts this one's `signal` and drops its result.
-          async (name, { signal }) =>
-            (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
-          400,
+        pipe(
+          (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+          (name) => (/^[a-z0-9_]+$/i.test(name) ? undefined : { message: "Use letters, digits and underscores." }),
+          debounced(
+            async (name, { signal }) =>
+              (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined,
+            400,
+          ),
         ),
         "input",
       ),

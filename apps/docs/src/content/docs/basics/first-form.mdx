@@ -8,17 +8,17 @@ navTitle: First form
 
 import Install from "@/components/mdx/Install.astro";
 
-Let's build a small sign-up form from scratch. Here's what we're aiming for—go ahead and type into it and submit to see it in action.
+Let's build a small sign-up form from scratch. Here is what we're building. Try filling it in and submitting to see it work.
 
 <Demo name="first-form/sign-up" />
 
-Everything in the Basics section uses just the framework adapter on its own, with no plugins or extra setup. If you haven't installed it yet:
+Everything in Basics uses just the framework adapter on its own, with no plugins or extra setup. If you haven't installed it yet:
 
 <Install adapter />
 
 ## 1. Create a forms instance
 
-Start by calling `createForms()`. Think of this object as your app's shared form setup—later on, you can register shared plugins, reusable field components, and default settings here. For now, an empty call is all we need.
+Start by calling `createForms()`. This object holds whatever your forms share: plugins, reusable field components, and default settings. For now, an empty call is all we need.
 
 ```ts title="sign-up.tsx" framework=react
 import { createForms } from "@lunarhue/forms-react";
@@ -34,7 +34,7 @@ const forms = createForms();
 
 ## 2. Define the form
 
-Next, describe the form's shape and submit behavior with `forms.define()`. Defining forms outside your component keeps them reusable and cleanly separated from rendering.
+Next, describe the form's shape and submit handler with `forms.define()`. Defining forms outside your component keeps them reusable and separates form logic from rendering.
 
 ```ts title="sign-up.tsx"
 const signUp = forms.define({
@@ -43,13 +43,13 @@ const signUp = forms.define({
 });
 ```
 
-`defaultValues` does double duty: it sets the starting values for every field, and TypeScript infers the form's entire value type (`{ name: string; email: string }`) straight from it. When the user submits, `onSubmit` receives a fresh copy of those values.
+`defaultValues` sets the starting values for every field, and TypeScript infers the form's value type (`{ name: string; email: string }`) from it. When the user submits, `onSubmit` receives a fresh copy of those values.
 
 ## 3. Render the form
 
 <Only framework="react">
 
-Inside your component, pass the definition to `useForm` to create a live form instance for that component:
+Inside your component, pass the definition to `useForm` to create a live form instance:
 
 ```tsx title="sign-up.tsx"
 import { inputProps, useForm } from "@lunarhue/forms-react";
@@ -117,15 +117,15 @@ export default function SignUpForm() {
 
 </Only>
 
-Here's what each piece is doing:
+Here is what each piece does:
 
-- **`form.formProps`** hooks up the `<form>`'s `onSubmit` handler and adds `noValidate` so the browser's built-in popups don't fight with your own error UI.
-- **`form.Field`** subscribes to a single field by name and hands its state to your render function. Because field names are type-checked against `defaultValues`, a typo like `name="emial"` is caught immediately by TypeScript.
+- **`form.formProps`** hooks up the `<form>`'s `onSubmit` handler and sets `noValidate` so the browser's built-in popups don't fight with your own error UI.
+- **`form.Field`** subscribes to a single field by name and passes its state to your render function. Because field names are type-checked against `defaultValues`, a typo like `name="emial"` fails at compile time.
 - **`inputProps(field)`** wires up the standard `<input>` attributes for you: `value`, `name`, `id`, change and blur handlers, `ref`, and ARIA error attributes.
 
 ## 4. Show the submit result
 
-Anything you return from `onSubmit` becomes `submission.result` on the form's state. Let's render it right below the button:
+Anything you return from `onSubmit` becomes `submission.result` on the form's state. Render it right below the button:
 
 ```tsx framework=react
 <form.State select={(state) => state.submission}>
@@ -145,7 +145,7 @@ Anything you return from `onSubmit` becomes `submission.result` on the form's st
 
 <Only framework="react">
 
-Using `form.State` with a selector keeps updates surgical: only its children re-render, and only when the selected `submission` actually changes.
+`form.State` only re-renders its children, and only when the selected `submission` value changes.
 
 </Only>
 
@@ -155,8 +155,8 @@ Because `form.state` is fine-grained reactive, only that text node updates when 
 
 </Only>
 
-A submission moves through five possible statuses: `"idle"`, `"submitting"`, `"invalid"`, `"failed"`, or `"succeeded"`. If `onSubmit` throws an error, the status becomes `"failed"` and `submission.error` holds whatever was thrown. We'll dig into the full lifecycle on the [Submit](./submit) page.
+A submission can be `"idle"`, `"submitting"`, `"invalid"`, `"failed"`, or `"succeeded"`. If `onSubmit` throws, the status becomes `"failed"` and `submission.error` holds whatever was thrown. We cover the full lifecycle on the [Submit](./submit) page.
 
 ## Next
 
-Right now, the form happily accepts empty inputs. Head over to [Validation](./validation) to add rules and show error messages.
+Right now, the form accepts empty inputs. Head over to [Validation](./validation) to add rules and show error messages.

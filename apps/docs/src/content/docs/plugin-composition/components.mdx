@@ -6,7 +6,7 @@ order: 3
 navTitle: Shared components
 ---
 
-UI elements like a "changed" badge on inputs, an undo button, or a sticky save bar usually belong across *every* form in your app, not duplicated in each form component. Below, a single shared save bar works under any form from the same `createForms`, and `TextField` automatically highlights itself when edited.
+UI elements like a "changed" badge on inputs, an undo button, or a sticky save bar usually belong across *every* form in your app, not duplicated in each form component. Below, a single shared save bar works under any form from the same `createForms`, and `TextField` marks itself when edited.
 
 <Demo name="shared-components/editor" />
 
@@ -46,11 +46,11 @@ function TextField(props: TextFieldProps) {
 }
 ```
 
-Import `dirty` as a type (`import type { dirty } from "@lunarhue/forms-react/plugins"`). Without that second type argument, reading `field.dirty` is a compile error—and with it, TypeScript ensures `TextField` can only be used on forms that actually install `dirty()`.
+Import `dirty` as a type (`import type { dirty } from "@lunarhue/forms-react/plugins"`). Without that second type argument, reading `field.dirty` is a compile error. With it, TypeScript ensures `TextField` can only be used on forms that install `dirty()`.
 
 ## Reading shared plugins from context
 
-A shared save bar can't hardcode a single form definition—it needs to work with *whichever* form it's rendered inside. Pass your `forms` object (from `createForms`) to `useFormContext(forms)` to grab the nearest matching form above it:
+A shared save bar can't hardcode a single form definition; it needs to work with whichever form it's rendered inside. Pass your `forms` object (from `createForms`) to `useFormContext(forms)` to grab the nearest matching form above it:
 
 ```tsx framework=react
 export const forms = createForms({ plugins: [dirty(), history()], fields: { TextField } });
@@ -94,9 +94,9 @@ function SaveBar() {
 }
 ```
 
-Because `forms` knows about your shared plugins, error type, and registered components, `form.plugins.history`, `state.dirty`, and `form.TextField` all type-check automatically—even though the specific form's value type is unknown. (Plugins added only to an individual form definition aren't included on the shared context type.)
+Because `forms` knows about your shared plugins, error type, and registered components, `form.plugins.history`, `state.dirty`, and `form.TextField` all type-check automatically, even though the specific form's value type is unknown. (Plugins added only to an individual form definition aren't included on the shared context type.)
 
-Remember to wrap the `<form>` in `<form.Form>` so the context is provided—see [Reading the form from context](../basics/submit#reading-the-form-from-context). Calling `useFormContext(forms)` without a matching `<form.Form>` above it throws an error.
+Remember to wrap the `<form>` in `<form.Form>` so the context is provided. See [Reading the form from context](../basics/submit#reading-the-form-from-context). Calling `useFormContext(forms)` without a matching `<form.Form>` above it throws an error.
 
 ## Passing the form as a prop instead
 
@@ -122,4 +122,4 @@ function SaveBar(props: SaveBarProps) {
 }
 ```
 
-Any form created from `forms` will match that prop type cleanly.
+Any form created from `forms` fits that prop type.

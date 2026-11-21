@@ -5,7 +5,7 @@ section: plugins
 order: 8
 ---
 
-Phone numbers are a classic example: you want to store clean digits (`5551234567`), but show the user `(555) 123-4567` as they type—without the cursor jumping to the end when they edit the middle.
+Phone numbers are a common example: you want to store clean digits (`5551234567`), but show the user `(555) 123-4567` as they type, without the cursor jumping to the end when they edit the middle.
 
 The `masked(...)` part handles both cleaning and formatting, with no plugin required. Try typing a phone number in the demo below, then click into the middle of it and insert or delete digits.
 
@@ -23,32 +23,32 @@ export const PhoneField = defineField(PhoneInput, masked({ clean: digits, displa
 const forms = createForms({ fields: { PhoneField } });
 ```
 
-Because masks are standalone parts, you don't install any plugin—just register `PhoneField` and use `<form.PhoneField name="phone" />`. Every value entering that field runs through `clean` first, whether the user typed it, `reset()` wrote it, or another plugin updated it. `digits` and `upper` are built-in cleaners, or you can pass any `(value: string) => string` function.
+Because masks are standalone parts, you don't install any plugin. Register `PhoneField` and use `<form.PhoneField name="phone" />`. Every value entering that field runs through `clean` first, whether the user typed it, `reset()` wrote it, or another plugin updated it. `digits` and `upper` are built-in cleaners, or you can pass any `(value: string) => string` function.
 
 `masked` is strictly typed for string fields, so attaching it to a `NumberInput` is a compile error.
 
 If you only need one half of a mask, the `/text` entry exports them separately too: `cleaned(clean)` only transforms stored values, `displayed(display, clean?)` only formats what the input shows, and `replaceText` helps preserve caret position if you write a custom display helper.
 
-By default, a field type's mask attaches the first time it renders. If you need it active earlier (such as on an unvisited wizard step or in SSR), pin it on the form definition—see [Parts on field components](../plugin-composition/field-parts).
+By default, a field type's mask attaches the first time it renders. If you need it active earlier (such as on an unvisited wizard step or in SSR), pin it on the form definition. See [Parts on field components](../plugin-composition/field-parts).
 
 ## How display text works
 
 `clean` decides what gets stored; `display` decides what the user sees in the `<input>`. With `formatPhone` above, the input displays `(555) 123-4567`, while `field.value`, schemas, `onSubmit`, `dirty`, `history`, and `persist` all work with `5551234567`.
 
-`display` receives the cleaned string (non-string values arrive as `""`) and returns the formatted string. Keep it pure—both SSR and the browser call it so server-rendered inputs hydrate with formatted text already in place. Text inputs and `<textarea>` use display text; numbers, checkboxes, radios, and selects ignore it.
+`display` receives the cleaned string (non-string values arrive as `""`) and returns the formatted string. Keep it pure, since both SSR and the browser call it so server-rendered inputs hydrate with formatted text already in place. Text inputs and `<textarea>` use display text; numbers, checkboxes, radios, and selects ignore it.
 
-Under the hood, display text lives on `field.text`, which `inputProps(field)` wires up automatically. If you're binding a custom input by hand, bind `field.text` and write edits through `field.setText(text, event)` so caret tracking keeps working—see [Binding UI component libraries](../basics/fields#binding-ui-component-libraries).
+Under the hood, display text lives on `field.text`, which `inputProps(field)` wires up automatically. If you're binding a custom input by hand, bind `field.text` and write edits through `field.setText(text, event)` so caret tracking keeps working. See [Binding UI component libraries](../basics/fields#binding-ui-component-libraries).
 
 Want your own custom part to provide display text? See [Display text](../writing-plugins/meta#display-text).
 
-## Keeping the caret in place
+## Caret
 
 `masked` tracks the cursor across formatting characters:
-- Typing or pasting steps smoothly over inserted punctuation like `-` or `)`.
+- Typing or pasting steps over inserted punctuation like `-` or `)`.
 - Pressing Backspace stays on the right side of formatting characters so the next Backspace deletes an actual digit.
 - Typing a character that `clean` strips out leaves both the text and cursor untouched.
 
-If you only supply a `clean` function (like `upper`) without `display`, React or Solid may jump the cursor to the end when rewriting the input value. Passing `{ clean: upper, display: (value) => value }` keeps the caret locked in place.
+If you only supply a `clean` function (like `upper`) without `display`, React or Solid may jump the cursor to the end when rewriting the input value. Passing `{ clean: upper, display: (value) => value }` keeps the caret in place.
 
 ## Stacking multiple masks
 
@@ -57,6 +57,6 @@ You can pass more than one `masked` part to a single `defineField`. Each cleaner
 ## What gets cleaned (and what doesn't)
 
 - **Parent and array writes:** calling `setValue` on a parent object, syncing a root value via `bind`, or pushing a new array row all run the mask's `clean` on any masked fields underneath.
-- **Initial attach:** when the mask attaches, it cleans the current value—and cleans the baseline too if the field isn't dirty yet—so your form doesn't start dirty and `reset()` stays clean.
+- **Initial attach:** when the mask attaches, it cleans the current value (and cleans the baseline too if the field isn't dirty yet), so your form doesn't start dirty and `reset()` stays clean.
 - **User edits, resets, and `persist`:** all pass through `clean`, so restored drafts come back clean.
 - **Rebases are skipped:** incoming rebase values represent the server's baseline, so cleaning them would immediately make the form dirty against its own baseline.

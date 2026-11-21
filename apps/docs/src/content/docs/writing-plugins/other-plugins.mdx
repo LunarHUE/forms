@@ -6,7 +6,7 @@ order: 4
 navTitle: Other plugins
 ---
 
-Plugins can build on top of each other—and stay aware of what else is installed—without coupling tightly.
+Plugins can build on top of each other and inspect what else is installed without tight coupling.
 
 ## Declaring plugin dependencies with `requires`
 
@@ -37,7 +37,7 @@ Declaring `requires` gives you three things at once:
 
 ## Inspecting installed plugins and parts
 
-Sometimes a plugin wants to back off when another plugin or part is already handling a field—for example, a generic formatter yielding to a field-specific mask.
+Sometimes a plugin wants to back off when another plugin or part is already handling a field, for example a generic formatter yielding to a field-specific mask.
 
 - **`ctx.installed`** lists every installed plugin on the store in hook execution order.
 - **`ctx.parts(path)`** returns the parts attached at or above `path` in hook order as `{ name, path }` entries (standalone parts without a plugin use the name `"part"`).

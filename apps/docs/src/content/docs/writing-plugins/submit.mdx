@@ -10,7 +10,7 @@ Plugins can participate at both ends of a form's lifecycle: supplying the initia
 
 ## Gating or refusing a submit (`beforeSubmit`)
 
-`beforeSubmit` runs as soon as a submit starts—if it returns a promise, it runs in parallel with validation. Unexpected throws or rejected promises are treated as plugin bugs (sent to `onPluginError` while the submit continues).
+`beforeSubmit` runs as soon as a submit starts. If it returns a promise, it runs in parallel with validation. Unexpected throws or rejected promises are treated as plugin bugs (sent to `onPluginError` while the submit continues).
 
 To intentionally block a submit, return `refuse` (either directly or resolved from a promise). The form skips `onSubmit`, ends the submission as `"invalid"`, and passes that result to `onSubmitted`. Always attach an error first so the user knows what went wrong:
 
@@ -38,9 +38,9 @@ Returning `refuse` synchronously short-circuits any later plugins' `beforeSubmit
 
 ## Reacting after a submit (`onSubmitted`)
 
-`onSubmitted(submission, input)` runs when a submit completes. `input` is the snapshot read right after validation (the same `ctx.input` passed to `onSubmit`, including any edits made while async validation ran). It's defined whenever `onSubmit` actually ran—even if `onSubmit` ended `"invalid"` via `setErrors`—and `undefined` if validation or a plugin blocked the submit first. Submits aborted by `reset()` never reach `onSubmitted`.
+`onSubmitted(submission, input)` runs when a submit completes. `input` is the snapshot read right after validation (the same `ctx.input` passed to `onSubmit`, including any edits made while async validation ran). It is defined whenever `onSubmit` ran (even if `onSubmit` ended `"invalid"` via `setErrors`) and `undefined` if validation or a plugin blocked the submit first. Submits aborted by `reset()` never reach `onSubmitted`.
 
-If your plugin needs to advance the baseline after a save, call `ctx.baseline.move(path, value, keep)`. By default, arrays pair with their current items by index; pass a `keep` callback to either return `true` (preserve the previous baseline pairing) or return an explicit list of item keys—which is how `baselineOnSubmit` keeps array dirty flags accurate across in-flight edits.
+If your plugin needs to advance the baseline after a save, call `ctx.baseline.move(path, value, keep)`. By default, arrays pair with their current items by index; pass a `keep` callback to either return `true` (preserve the previous baseline pairing) or return an explicit list of item keys, which is how `baselineOnSubmit` keeps array dirty flags accurate across in-flight edits.
 
 ## Starting values
 
@@ -56,10 +56,10 @@ export const startFrom = definePlugin({
 const form = useForm(profile, { plugins: [startFrom(saved)] });
 ```
 
-The store, its baseline, and its server snapshot all start from that value cleanly—no write records are emitted, and the form starts clean (not dirty). If multiple plugins define `initialValue`, they chain in order so the last one wins.
+The store, its baseline, and its server snapshot all start from that value with no write records emitted, and the form starts clean (not dirty). If multiple plugins define `initialValue`, they chain in order so the last one wins.
 
 Keep two things in mind:
 - **Replaces wholesale:** `initialValue` replaces the starting value rather than deep-merging with schema defaults, though it receives those merged defaults as its first argument if you want to merge yourself.
 - **Must match on server and client:** returning browser-only data (like `localStorage`) from `initialValue` will cause hydration mismatches. Read client-only storage in `onActive` with `ctx.write` instead, just like `persist`.
 
-Parts don't have an `initialValue` hook—instead, a part's `beforeWrite` runs once on attach with `cause: "attach"`, moving the baseline along with it if the field isn't dirty (which is how `masked` cleans initial values without marking the form dirty).
+Parts don't have an `initialValue` hook. Instead, a part's `beforeWrite` runs once on attach with `cause: "attach"`, moving the baseline along with it if the field isn't dirty (which is how `masked` cleans initial values without marking the form dirty).

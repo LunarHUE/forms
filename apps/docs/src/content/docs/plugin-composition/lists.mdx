@@ -13,7 +13,7 @@ Both lists in the demo below are rendered by the same `NamedList` component.
 
 ## Typing a generic list component
 
-Type the array prop as `ArrayHandle<T[], typeof arrays>`—the second argument declares that the component relies on the [`arrays()`](../plugins/arrays) plugin. Because the list component doesn't know what extra fields `T` might require when adding a new row, accept a small `create` callback that fills them in:
+Type the array prop as `ArrayHandle<T[], typeof arrays>`, where `typeof arrays` declares that the component needs the [`arrays()`](../plugins/arrays) plugin. Because the list component doesn't know what extra fields `T` might require when adding a new row, accept a small `create` callback that fills them in:
 
 ```tsx framework=react
 interface NamedListProps<T extends Named> {

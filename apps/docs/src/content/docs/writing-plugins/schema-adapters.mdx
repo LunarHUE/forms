@@ -8,9 +8,9 @@ order: 6
 Because core already validates and types forms using [Standard Schema](https://standardschema.dev), building a schema plugin for another library (like ArkType) only requires teaching the form how to derive default values from that library's schemas.
 
 Pass a `schema` adapter to `definePlugin` with three members:
-- **`vendor`** — matches `schema["~standard"].vendor`.
-- **`defaultValue(schema)`** — builds the form's starting value when `defaultValues` is omitted.
-- **`itemValue(schema, path)`** — builds an empty row when `push()` or `insert()` is called with no item argument.
+- **`vendor`**: matches `schema["~standard"].vendor`.
+- **`defaultValue(schema)`**: builds the form's starting value when `defaultValues` is omitted.
+- **`itemValue(schema, path)`**: builds an empty row when `push()` or `insert()` is called with no item argument.
 
 ```ts
 import type { SchemaAdapter } from "@lunarhue/forms-core";
@@ -30,7 +30,7 @@ Once `ark()` is installed in a form's `plugins`, `defaultValues` becomes optiona
 
 ## TS2353 from `define` in a function generic over the schema
 
-If you write a reusable helper function that takes any schema and calls `forms.define({ schema })`, making the helper generic over the *schema type itself* triggers a confusing `TS2353` error:
+If you write a reusable helper function that takes any schema and calls `forms.define({ schema })`, making the helper generic over the *schema type itself* triggers a `TS2353` error:
 
 ```ts
 const forms = createFormsCore({ plugins: [zod()] });
@@ -45,7 +45,7 @@ error TS2353: Object literal may only specify known properties, and 'schema' doe
 '(options: void) => WithPlugins<Definition<never, S, readonly [Plugin<undefined, "zod", never, never, ZodSchema>], FormError, undefined, unknown>, [], NoInfer<DefinedValue<...>>>'.
 ```
 
-**Why this happens:** `define` uses conditional types to check two things: whether a schema was provided, and whether an installed schema plugin accepts it. While `S` is an unresolved type parameter, TypeScript can't evaluate either conditional, so the config object fails to match any overload. (Constraining `S extends StandardSchemaV1`, passing explicit type args like `define<never, S>`, or using `define(() => ({ schema }))` hits the same limitation—in React and Solid adapters too.)
+**Why this happens:** `define` uses conditional types to check two things: whether a schema was provided, and whether an installed schema plugin accepts it. While `S` is an unresolved type parameter, TypeScript can't evaluate either conditional, so the config object fails to match any overload. Constraining `S extends StandardSchemaV1`, passing explicit type args like `define<never, S>`, or using `define(() => ({ schema }))` hits the same limitation in React and Solid adapters too.
 
 **The fix:** make your helper generic over the schema's *input/output values* instead of the schema type. That keeps the schema type concrete so TypeScript resolves the plugin cleanly and preserves full inference:
 

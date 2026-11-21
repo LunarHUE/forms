@@ -6,7 +6,7 @@ order: 3
 navTitle: Fieldsets
 ---
 
-In the demo below, a single `AddressFields` component renders both the shipping and billing addresses. You hand it a field handle, and all of its field names are scoped relative to that handle—so it works on any form that contains an address.
+In the demo below, a single `AddressFields` component renders both the shipping and billing addresses. You hand it a field handle, and all of its field names are scoped relative to that handle, so it works on any form that contains an address.
 
 <Demo name="fieldsets/order" />
 
@@ -60,15 +60,15 @@ function AddressFields(props: AddressFieldsProps) {
 
 ## How scopes work
 
-`AddressFieldset.scope(handle)` returns the same component helpers you get on a form—`Field`, `Items`, and all of your registered field components—with every `name` resolved relative to `handle`. It's a cached lookup rather than a hook, so you can call it anywhere without hook-order restrictions.
+`AddressFieldset.scope(handle)` returns `root`, `Field`, and all of your registered field components with every `name` resolved relative to `handle`. It's a cached lookup rather than a hook, so you can call it anywhere without hook-order rules. (For arrays inside a fieldset, import `Items` from your adapter and pass `handle.at("items")`.)
 
-Note that passing a schema to `forms.fieldset(Address)` is only for typing the shape—the form's own schema still handles validation.
+Note that passing a schema to `forms.fieldset(Address)` is only for typing the shape. The form's own schema still handles validation.
 
 ## Why handles check exact shapes
 
-Any handle with the exact `Address` shape fits `AddressFields`—whether it's a nested object on another form from the same `createForms`, or a row inside an array.
+Any handle with the exact `Address` shape fits `AddressFields`, whether it's a nested object on another form from the same `createForms`, or a row inside an array.
 
-A handle for an object with *extra* keys (say, `Address & { phone: string }`) won't fit by default. Because a handle can call `setValue` to replace the entire object, allowing a narrower type could accidentally wipe out keys the component doesn't know about. (Plugins are the opposite: a handle from a form with *more* plugins always fits a fieldset that asks for fewer.)
+A handle for an object with *extra* keys (say, `Address & { phone: string }`) won't fit by default. Because a handle can call `setValue` to replace the entire object, allowing a narrower type could accidentally drop keys the component doesn't know about. Plugins work the opposite way: a handle from a form with *more* plugins always fits a fieldset that asks for fewer.
 
 ## Accepting extra keys with generic fieldsets
 
@@ -112,16 +112,16 @@ function AddressFields<A extends Address>(props: AddressFieldsProps<A>) {
 <AddressFields field={form.root.at("office")} />;
 ```
 
-Any primitive child defined on `Address` (like `field.at("city")`) resolves to its known type, so it plugs straight into a `FieldApi<string>` component. Nested object children stay generic and should be handed to their own generic fieldset. You also can't call `field.setValue({ city: "Oslo" })` directly on a generic handle—write to the child handle instead (`field.at("city").setValue("Oslo")`).
+Any primitive child defined on `Address` (like `field.at("city")`) resolves to its known type, so it fits a `FieldApi<string>` component. Nested object children stay generic and should be handed to their own generic fieldset. You also can't call `field.setValue({ city: "Oslo" })` directly on a generic handle; write to the child handle instead (`field.at("city").setValue("Oslo")`).
 
 <Only framework="react">
 
-When calling `useField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = field.at("city")`) so `useField(city)` infers `string` cleanly before you pass it to `inputProps`.
+When calling `useField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = field.at("city")`) so `useField(city)` infers `string` before you pass it to `inputProps`.
 
 </Only>
 
 <Only framework="solid">
 
-When calling `createField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = props.field.at("city")`) so `createField(city)` infers `string` cleanly before you pass it to `inputProps`.
+When calling `createField` on a child of a generic handle, annotate the child handle first (`const city: FieldHandle<string> = props.field.at("city")`) so `createField(city)` infers `string` before you pass it to `inputProps`.
 
 </Only>

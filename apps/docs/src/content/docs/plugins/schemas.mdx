@@ -7,9 +7,9 @@ order: 3
 
 import Install from "@/components/mdx/Install.astro";
 
-You can already [validate with any Standard Schema](../basics/schema-validation) out of the box—no plugin required. The catch is that Standard Schema only exposes a `validate` function and TypeScript types, so core can't inspect your schema's fields to infer starting values.
+You can already [validate with any Standard Schema](../basics/schema-validation) with no plugin installed. The catch is that Standard Schema only exposes a `validate` function and TypeScript types, so core can't inspect your schema's fields to infer starting values.
 
-That's what schema plugins are for. Because a schema plugin understands Zod or Valibot directly, it can walk your schema and generate starting values automatically—letting you skip `defaultValues` completely, just like the demo below.
+Schema plugins fill that gap. Because a schema plugin understands Zod or Valibot directly, it can walk your schema and generate starting values automatically, letting you omit `defaultValues` completely, just like the demo below.
 
 <Demo name="schemas/sign-up" />
 
@@ -38,12 +38,12 @@ const signUp = forms.define({
 
 ## How default values are generated
 
-The plugin derives sensible starting values straight from your schema:
+The plugin derives starting values straight from your schema:
 - **Strings** start as `""`, **booleans** as `false`, and **arrays** as `[]`.
 - Any explicit `.default(...)` in your schema wins.
 - **Numbers** and **enums** have no obvious empty value, so they start as `undefined`.
 
-`defaultValues` becomes optional—if you do pass it, anything you specify overrides the schema-generated defaults.
+`defaultValues` becomes optional. If you do pass it, anything you specify overrides the schema-generated defaults.
 
 If a form uses a schema from a library without an installed plugin, validation still works via Standard Schema; you just provide complete `defaultValues` as shown in Basics.
 
@@ -53,8 +53,8 @@ Schema plugins are also the foundation for pulling field constraints (like `min`
 
 ## Writing a generic helper around `define`
 
-If you write a helper function that accepts *any* schema and calls `forms.define({ schema })`, making the function generic over the schema type itself can trigger a `TS2353` error. Make it generic over the schema's value type instead—[Writing a schema adapter](../writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema) explains why and shows both patterns.
+If you write a helper function that accepts *any* schema and calls `forms.define({ schema })`, making the function generic over the schema type itself can trigger a `TS2353` error. Make it generic over the schema's value type instead. [Writing a schema adapter](../writing-plugins/schema-adapters#ts2353-from-define-in-a-function-generic-over-the-schema) explains why and shows both patterns.
 
 ## Adding another schema library
 
-Want the same automatic defaults for ArkType or another Standard Schema library? You can build a custom schema plugin using the `schema` adapter hook—see [Schema adapters](../writing-plugins/schema-adapters).
+Want the same automatic defaults for ArkType or another Standard Schema library? You can build a custom schema plugin using the `schema` adapter hook. See [Schema adapters](../writing-plugins/schema-adapters).

@@ -5,7 +5,7 @@ section: plugins
 order: 9
 ---
 
-In real forms, fields constantly depend on each other: disable the street address when "Store pickup" is checked, or hide the gift message unless "Include a gift note" is enabled. The `rules()` plugin computes `disabled` and `hidden` flags straight from the form's values—updating in the exact same render as the change.
+In real forms, fields often depend on each other: disable the street address when "Store pickup" is checked, or hide the gift message unless "Include a gift note" is enabled. The `rules()` plugin computes `disabled` and `hidden` flags straight from the form's values, updating in the same render as the change.
 
 <Demo name="rules/delivery" />
 
@@ -25,19 +25,19 @@ const order = forms.define(
 );
 ```
 
-`ruled` infers the form's value type straight from `define`, so `value` is fully typed and a typo like `"stret"` fails at compile time. Forgetting to include `rules()` in `plugins` is also caught by TypeScript.
+`ruled` infers the form's value type straight from `define`, so `value` is typed and a typo like `"stret"` fails at compile time. Forgetting to include `rules()` in `plugins` is also caught by TypeScript.
 
-Rules evaluate once when the part attaches and again after every batch that writes a value—before listeners fire—so there's never a flicker or extra render. Disabling a parent object (like `address`) automatically disables every field underneath it.
+Rules evaluate once when the part attaches and again after every batch that writes a value, before listeners fire, so there is never an extra render. Disabling a parent object (like `address`) automatically disables every field underneath it.
 
 Because dotted names stop at arrays, rules target fields and objects rather than individual array items (you can still put a rule on the array itself or its parent object).
 
 ## Attaching rules to a fieldset
 
-Reusable fieldsets can bundle their own self-contained rules so they travel with the UI everywhere it's used—see [Parts on fieldsets](../plugin-composition/fieldset-parts).
+Reusable fieldsets can carry their own rules so they travel with the UI everywhere it's used. See [Parts on fieldsets](../plugin-composition/fieldset-parts).
 
 ## Reading `disabled` and `hidden` in components
 
-`disabled` is a built-in field flag, so `inputProps(field)` forwards it to the DOM automatically. `hidden` lives in `rules`'s plugin meta, leaving your component in full control of how hiding renders (omitting the element, collapsing a panel, etc.):
+`disabled` is a built-in field flag, so `inputProps(field)` forwards it to the DOM automatically. `hidden` lives in `rules`'s plugin meta, leaving your component in control of how hiding renders (omitting the element, collapsing a panel, and so on):
 
 ```tsx framework=react
 function TextField({ field, label }: TextFieldProps) {
@@ -60,4 +60,4 @@ Fields without a `hidden` rule default to `{ hidden: false }`, so `rules.meta(fi
 
 ## Server rendering
 
-Any flags computed before the store has listeners become part of its initial state—so fields hidden or disabled by rules render that way on the server and hydrate cleanly with no layout shift.
+Any flags computed before the store has listeners become part of its initial state, so fields hidden or disabled by rules render that way on the server and hydrate with no layout shift.

@@ -8,12 +8,12 @@ order: 2
 <Only framework="solid">
 
 <Callout>
-These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the exact same patterns.
+These side-by-side comparisons are written in React to keep them focused. Because both libraries are headless, the Solid wiring follows the same patterns.
 </Callout>
 
 </Only>
 
-A settings screen that loads an existing profile from the server—built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Both render the exact same markup and hit the same mock API; toggle between builds in the preview to verify they behave identically.
+A settings screen that loads an existing profile from the server, built once with `@lunarhue/forms` and once with [TanStack Form](https://tanstack.com/form). Both render the exact same markup and hit the same mock API; toggle between builds in the preview to see them behave identically.
 
 <Compare app="profile" />
 
@@ -21,21 +21,21 @@ A settings screen that loads an existing profile from the server—built once wi
 
 The form edits name, email, bio, time zone, and a nested `notifications` object, validated by a shared Zod schema.
 
-Modified fields show a changed indicator that clears if you type the original value back in. The save bar counts modified fields and keeps **Save** disabled while clean. After saving, the form returns to clean—except for any field the user edited *while* the save was in flight. Clicking **Discard** reverts to the last saved copy.
+Modified fields show a changed indicator that clears if you type the original value back in. The save bar counts modified fields and keeps **Save** disabled while clean. After saving, the form returns to clean except for any field the user edited *while* the save was in flight. Clicking **Discard** reverts to the last saved copy.
 
-Clicking **Edit on the server** simulates a background update; clicking **Refresh** pulls in the server's new values for untouched fields while keeping whatever you've edited.
+Clicking **Edit on the server** simulates a background update; clicking **Refresh** pulls in the server's new values for untouched fields while keeping whatever you edited.
 
 ## Where the two implementations differ
 
-On the `@lunarhue/forms` side, we install `zod()`, `dirty()`, and `rebase()` globally and add `baselineOnSubmit()` on the form. The save bar grabs the form via `useFormContext(forms)` inside `<form.Form>`, counts dirty fields with `store.changes()`, and handles Refresh with a single `rebase` call.
+On the `@lunarhue/forms` side, we install `zod()`, `dirty()`, and `rebase()` globally and add `baselineOnSubmit()` on the form. The save bar grabs the form via `useFormContext(forms)` inside `<form.Form>`, counts dirty fields with `store.changes()`, and handles Refresh with one `rebase` call.
 
-One nuance to note on our side: `store.changes()` is a plain read rather than a subscription, and the form's `dirty` boolean doesn't flip again on a second edit once the form is already dirty—so the save bar reads the count inside `useField(form.root, ...)` to re-run whenever any value changes.
+One nuance to note on our side: `store.changes()` is a plain read rather than a subscription, and the form's `dirty` boolean doesn't flip again on a second edit once the form is already dirty, so the save bar reads the count inside `useField(form.root, ...)` to re-run whenever any value changes.
 
 On the TanStack Form side, the form uses Standard Schema support for Zod, `isDefaultValue`, `form.reset`, `formOptions`, and `withForm`, with a few extra steps to match the same UX:
 
 - `isDirty` stays `true` even after typing the original value back, so change badges and counts read `isDefaultValue` instead.
-- Because TanStack has no built-in way to move defaults while keeping selected edits, a small `rebaseline` helper reads kept fields, calls `form.reset(values)`, and writes the kept values back—walking a manually maintained list of field paths.
-- `useForm` re-applies options on every render (and an untouched form adopts new `defaultValues`), so defaults moved via `form.reset(values)` would snap back unless tracked in React state—which also means Refresh has to live in the form component and be passed down to the save bar as a prop.
+- Because TanStack has no built-in way to move defaults while keeping selected edits, a small `rebaseline` helper reads kept fields, calls `form.reset(values)`, and writes the kept values back, walking a manually maintained list of field paths.
+- `useForm` re-applies options on every render (and an untouched form adopts new `defaultValues`), so defaults moved via `form.reset(values)` would snap back unless tracked in React state. That also means Refresh has to live in the form component and be passed down to the save bar as a prop.
 - `withForm` expects `defaultValues` inside `formOptions` even though real values are loaded asynchronously, so shared options carry a blank profile while `useAppForm` overrides it with the loaded data.
 - TanStack's field context doesn't constrain `<Select>` options to the field's value type, so `Select` falls back to strings.
 

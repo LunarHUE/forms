@@ -5,7 +5,7 @@ section: plugins
 order: 7
 ---
 
-Dynamic lists—like checklists, invoice line items, or multiple phone numbers—need rows you can add, remove, and reorder without losing focus or mixing up field state as items shift around. The `arrays()` plugin handles all of that: `<Items>` renders one child per row, and array handles expose the commands to modify the list.
+Dynamic lists (like checklists, invoice line items, or multiple phone numbers) need rows you can add, remove, and reorder without losing focus or mixing up field state as items shift around. The `arrays()` plugin handles that: `<Items>` renders one child per row, and array handles expose the commands to modify the list.
 
 <Demo name="arrays/checklist" />
 
@@ -25,7 +25,7 @@ import { arrays } from "@lunarhue/forms-solid/plugins";
 const forms = createForms({ plugins: [arrays()] });
 ```
 
-If you forget to install `arrays()`, passing an array handle to `Items`, `useItems`, or `createItems`—or calling `push`, `insert`, `remove`, or `move`—gives you a clear compile-time error telling you to add `arrays()`. Forms without dynamic lists leave it out and ship less code.
+If you forget to install `arrays()`, passing an array handle to `Items`, `useItems`, or `createItems` (or calling `push`, `insert`, `remove`, or `move`) produces a compile-time error telling you to add `arrays()`. Forms without dynamic lists leave it out and ship less code.
 
 ## Rendering rows with `<Items>`
 
@@ -49,11 +49,11 @@ import { Items } from "@lunarhue/forms-solid";
 
 <Only framework="solid">
 
-In Solid, `index` is a reactive accessor (`index()`), so each row mounts once and its label updates smoothly when moved. You can also pass a `fallback` prop to render when the list is empty.
+In Solid, `index` is a reactive accessor (`index()`), so each row mounts once and its label updates when moved. You can also pass a `fallback` prop to render when the list is empty.
 
 </Only>
 
-Notice that we use `task.at("title")` instead of a string name like `"tasks.0.title"`. String indexes break the moment a row moves, whereas row handles stay glued to their item. `<Items>` only re-renders when rows are added, removed, or reordered—typing inside a row never re-renders the list.
+Notice that we use `task.at("title")` instead of a string name like `"tasks.0.title"`. String indexes break the moment a row moves, whereas row handles stay tied to their item. `<Items>` only re-renders when rows are added, removed, or reordered; typing inside a row never re-renders the list.
 
 ## Modifying the list
 
@@ -71,7 +71,7 @@ If you omit `item` on `push()` or `insert()`, the store builds an empty row from
 
 ## Stable row keys
 
-Every row gets a stable key when it's created, and both `task.key` and the `task` handle itself stay identical for the lifetime of that row—even as it moves around the list. `<Items>` uses `task.key` automatically so inputs keep their focus and DOM state across reorders. You can inspect the current keys via the array snapshot's `keys`, or look up a row handle with `tasks.item(key)`.
+Every row gets a stable key when it's created, and both `task.key` and the `task` handle itself stay identical for the lifetime of that row, even as it moves around the list. `<Items>` uses `task.key` automatically so inputs keep their focus and DOM state across reorders. You can inspect the current keys via the array snapshot's `keys`, or look up a row handle with `tasks.item(key)`.
 
 <Only framework="react">
 
@@ -87,9 +87,9 @@ Need custom layout control around the list? Call `createItems(handle)` to get an
 
 ## Arrays without the `arrays()` plugin
 
-You don't need `arrays()` just to hold an array in form state—for example, a multi-select or tag list replaced wholesale via `setValue`. You just can't render individual rows with `Items` or call row-level commands (untyped calls throw [`arrays:missing`](/errors#core:arrays:missing) in development and no-op in production).
+You don't need `arrays()` just to hold an array in form state, for example a multi-select or tag list replaced wholesale via `setValue`. You just can't render individual rows with `Items` or call row-level commands (untyped calls throw [`arrays:missing`](/errors#core:arrays:missing) in development and no-op in production).
 
-Under the hood, without `arrays()`, keys are strictly positional (`k0`, `k1`, ...). That means state like `touched` belongs to the slot rather than the item: replacing `["a", "b", "c"]` with `["a", "b"]` and then `["a", "b", "d"]` reuses slot `k2` along with its old `touched` state. With `arrays()`, removed items stay gone and `"d"` gets a brand-new key and fresh state.
+Under the hood, without `arrays()`, keys are positional (`k0`, `k1`, ...). That means state like `touched` belongs to the slot rather than the item: replacing `["a", "b", "c"]` with `["a", "b"]` and then `["a", "b", "d"]` reuses slot `k2` along with its old `touched` state. With `arrays()`, removed items stay gone and `"d"` gets a new key and fresh state.
 
 ## Rendering list-level errors
 

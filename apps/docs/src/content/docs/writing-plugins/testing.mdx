@@ -6,7 +6,7 @@ order: 7
 navTitle: Testing and publishing
 ---
 
-Once your plugin works in your app, you can test it cleanly against `@lunarhue/forms-core` (no DOM or framework needed) and publish it so both React and Solid users can install it.
+Once your plugin works in your app, you can test it against `@lunarhue/forms-core` (no DOM or framework needed) and publish it so both React and Solid users can install it.
 
 ## How official third-party packages are structured
 
@@ -44,13 +44,13 @@ See [Solid signals](../integrations/solid-signals) for the complete walkthrough.
 
 </Only>
 
-Both packages declare `@lunarhue/forms-core` as a peer dependency so the app shares a single copy of core (if two copies end up installed, development builds log a warning).
+Both packages declare `@lunarhue/forms-core` as a peer dependency so the app shares a single copy of core. If two copies end up installed, development builds log a warning.
 
 ## Publishing a community plugin
 
-Follow three simple conventions when publishing your own plugin:
+Follow three conventions when publishing your own plugin:
 1. Name the package `forms-plugin-<name>`.
-2. Build it against `@lunarhue/forms-core/plugins`—never import `@lunarhue/forms-react` or `@lunarhue/forms-solid`. Because every adapter wraps the same core store, a core plugin automatically works across React, Solid, and future adapters.
+2. Build it against `@lunarhue/forms-core/plugins` and never import `@lunarhue/forms-react` or `@lunarhue/forms-solid`. Because every adapter wraps the same core store, a core plugin works across React, Solid, and future adapters.
 3. Put `@lunarhue/forms-core` in `peerDependencies` (and `devDependencies` for your own test suite):
 
 ```json
@@ -63,7 +63,7 @@ Follow three simple conventions when publishing your own plugin:
 
 ## Testing a plugin with `testStore`
 
-`@lunarhue/forms-core/plugins/testing` ships a lightweight `testStore` helper tailored for plugin tests. It has zero test-runner dependencies—so it works in Vitest, Jest, `node:test`, or `bun:test`—and lives on its own entry point so it never leaks into app bundles.
+`@lunarhue/forms-core/plugins/testing` ships a `testStore` helper for plugin tests. It has no test-runner dependencies, so it works in Vitest, Jest, `node:test`, or `bun:test`, and lives on its own entry point so it never ends up in app bundles.
 
 ```ts
 import { definePlugin } from "@lunarhue/forms-core/plugins";
@@ -89,13 +89,13 @@ it("trims the fields it names", () => {
 });
 ```
 
-`testStore` accepts the same config and trailing parts as `define` (`defaultValues`, `schema`, `validate`, `onSubmit`, `plugins`, etc.) and returns:
+`testStore` accepts the same config and trailing parts as `define` (`defaultValues`, `schema`, `validate`, `onSubmit`, `plugins`, and so on) and returns:
 
-- **`store`** — a fully typed form store (`store.plugins.<name>` works just like in an app). Drive it directly with `setValue`, `submit()` (runs `beforeSubmit`/`onSubmitted`), `reset()` (runs `onReset`), and `handleBlur()` (runs `onBlur`).
-- **`records`** — captures write records delivered at each timing: `records.sync`, `records.deferred`, and `records.idle` (clear between steps with `records.sync.length = 0`).
-- **`errors`** — collects any `{ plugin, error }` thrown by plugin hooks instead of rethrowing, so end each test with `expect(errors).toEqual([])`.
-- **`flush()`** — synchronously flushes waiting `deferred` and `idle` deliveries with no fake timers required (`deferred` deliveries also fire after `await Promise.resolve()`).
-- **`listen()`** — simulates a mounted component subscribing to the store so `onActive` runs, and returns the unsubscribe function to test cleanup.
-- **`server()`** — returns `{ form, fields }` SSR snapshots (keyed by dotted path, with `""` for root) so you can verify deterministic server rendering with `expect(testStore(config).server()).toEqual(testStore(config).server())`.
+- **`store`**: a fully typed form store (`store.plugins.<name>` works just like in an app). Drive it directly with `setValue`, `submit()` (runs `beforeSubmit` and `onSubmitted`), `reset()` (runs `onReset`), and `handleBlur()` (runs `onBlur`).
+- **`records`**: captures write records delivered at each timing: `records.sync`, `records.deferred`, and `records.idle` (clear between steps with `records.sync.length = 0`).
+- **`errors`**: collects any `{ plugin, error }` thrown by plugin hooks instead of rethrowing, so end each test with `expect(errors).toEqual([])`.
+- **`flush()`**: synchronously flushes waiting `deferred` and `idle` deliveries with no fake timers required (`deferred` deliveries also fire after `await Promise.resolve()`).
+- **`listen()`**: simulates a mounted component subscribing to the store so `onActive` runs, and returns the unsubscribe function to test cleanup.
+- **`server()`**: returns `{ form, fields }` SSR snapshots (keyed by dotted path, with `""` for root) so you can verify deterministic server rendering with `expect(testStore(config).server()).toEqual(testStore(config).server())`.
 
-`testStore` exercises core logic without a framework—pair it with a quick React or Solid component test if your plugin interacts with DOM elements or display text.
+`testStore` exercises core logic without a framework; pair it with a React or Solid component test if your plugin interacts with DOM elements or display text.

@@ -8,7 +8,7 @@ frameworks: [solid]
 
 import Install from "@/components/mdx/Install.astro";
 
-Want to keep a form synchronized with a Solid 2 signal? `signal()` mirrors values in both directions while letting the form keep its own internal store for validation, touched flags, and error state. Edits in the form update your signal, and external updates to the signal flow back into the form.
+To keep a form synchronized with a Solid 2 signal, use `signal()`. It mirrors values in both directions while letting the form keep its own internal store for validation, touched flags, and error state. Edits in the form update your signal, and external updates to the signal flow back into the form.
 
 <Install packages="@lunarhue/forms-bind" />
 
@@ -43,7 +43,7 @@ TypeScript verifies that the getter, setter, and form all share the same value t
 
 Form edits update the signal synchronously. In the other direction, external signal writes propagate into the form when Solid flushes its effects (not on the exact same line as `setSettings(...)`).
 
-Under the hood, the binding tracks the signal inside its own reactive root, created when the form gets its first listener (on mount) and disposed when the last listener unmounts—catching up automatically if it remounts later. It also calls the setter outside any reactive owner so writes triggered during rendering or memos won't throw.
+Under the hood, the binding tracks the signal inside its own reactive root, created when the form gets its first listener (on mount) and disposed when the last listener unmounts, catching up automatically if it remounts later. It also calls the setter outside any reactive owner so writes triggered during rendering or memos won't throw.
 
 Each form supports one external binding.
 

@@ -5,7 +5,7 @@ section: reference
 order: 1
 ---
 
-A quick reference of every public export, grouped by entry point. Type parameters are omitted here for readability—hover any symbol in your editor for full generics and doc comments.
+A quick reference of every public export, grouped by entry point. Type parameters are omitted here for readability; hover any symbol in your editor for full generics and doc comments.
 
 Your framework adapter re-exports everything from `@lunarhue/forms-core`, and its `/plugins` entry re-exports core's plugins, so you only need to import from the adapter you installed.
 
@@ -15,13 +15,13 @@ Your framework adapter re-exports everything from `@lunarhue/forms-core`, and it
 
 `@lunarhue/forms-react` targets React 18 and later. For React 16.8 and 17, enable the `@lunarhue/react-legacy` resolve condition (see [Install](../install#using-react-168-or-17)), or alias `#lunarhue/react` to `@lunarhue/forms-react/legacy` if your bundler doesn't support custom export conditions.
 
-For simple forms where bundle size is the top priority, `@lunarhue/forms-react/mini` offers a ~3 kB subset that upgrades cleanly to the full entry—see [Mini entry](../basics/mini).
+For simple forms where bundle size is the top priority, `@lunarhue/forms-react/mini` offers a ~3 kB subset that upgrades cleanly to the full entry. See [Mini entry](../basics/mini).
 
 </Only>
 
 <Only framework="solid">
 
-`@lunarhue/forms-solid` targets Solid 2. On Solid 1.8+, import from `@lunarhue/forms-solid/v1`—it exposes the exact same API and types, so upgrading to Solid 2 is a one-line import change.
+`@lunarhue/forms-solid` targets Solid 2. On Solid 1.8+, import from `@lunarhue/forms-solid/v1`. It exposes the exact same API and types, so moving to Solid 2 is a one-line import change.
 
 </Only>
 
@@ -38,11 +38,12 @@ createForms(options?: {
   show?: Show;               // when errors become visible ("touched-or-submitted" by default)
   equals?: Equals;           // custom dirty comparison (requires dirty())
   focusOnInvalid?: FocusOnInvalid; // focus behavior on invalid submit (true by default)
+  subscribe?: SubscribeMode; // e.g. perField() (React)
   onPluginError?: PluginErrorHandler;
 }): Forms
 ```
 
-Plugin arrays accept `false`, `null`, or `undefined` entries so conditional plugins like `plugins: [dirty(), dev && devtools()]` tree-shake cleanly. (TypeScript treats conditional plugins as not guaranteed to be installed.)
+Plugin arrays accept `false`, `null`, or `undefined` entries so conditional plugins like `plugins: [dirty(), dev && devtools()]` tree-shake cleanly. TypeScript treats conditional plugins as not guaranteed to be installed.
 
 | Method | What it does |
 | --- | --- |
@@ -79,7 +80,7 @@ forms.define({
 })
 ```
 
-`define` also accepts a factory function `(options) => config` for per-instance options—passing those options becomes the second argument to the form hook.
+`define` also accepts a factory function `(options) => config` for per-instance options. Passing those options becomes the second argument to the form hook.
 
 ### Validators
 
@@ -233,7 +234,7 @@ Throws if no matching `<form.Form>` ancestor is found.
 
 </Only>
 
-Every props helper type-checks against its expected field value type, requires `empty` when `undefined` isn't allowed, and wires `aria-invalid` + `aria-describedby` automatically while errors are shown.
+Every props helper type-checks against its expected field value type, requires `empty` when `undefined` isn't allowed, and wires `aria-invalid` and `aria-describedby` automatically while errors are shown.
 
 <Only framework="solid">
 
@@ -289,7 +290,7 @@ Kind-specific handle methods:
 | `setValue(patch)` / `setValue(value, { replace: true })` | Objects: shallow-merges a patch or replaces wholesale. |
 | `at(key)` | Objects: returns child handle. |
 | `push(item?)`, `insert(index, item?)` | Arrays: appends or inserts a row (requires `arrays()`). |
-| `remove(index)`, `move(from, to)` | Arrays: removes or moves a row while keeping keys/state (requires `arrays()`). |
+| `remove(index)`, `move(from, to)` | Arrays: removes or moves a row while keeping keys and state (requires `arrays()`). |
 | `item(key)` | Arrays: returns the handle for a row's stable key. |
 | `key` | Array items: the row's stable key. |
 
@@ -328,9 +329,11 @@ Value writes accept `{ edited: false }` for programmatic updates that shouldn't 
 | `FieldPath<V>`, `ValueAt<V, P>` | Valid dotted paths of `V` and the value type at path `P`. |
 | `ValueOf<H>`, `ErrorOf<H>` | Extracts value and error types from a handle. |
 | `FieldSnapshot<V>`, `FormSnapshot` | Snapshot types for fields and the form. |
+| `FormResetOptions<V>`, `ResetOptions`, `ResetValues<V>` | Options accepted by `store.reset(...)` and `handle.reset(...)`. |
+| `ErrorsByKind<E>`, `ValidatorKind` | Return type and keys of `errorsByKind(handle)`. |
 | `Submission`, `FormError`, `Choice`, `Draft<T>`, `StandardSchemaV1` | Supporting form, error, choice, draft, and schema types. |
 
-Internal helper types that show up in editor hovers aren't part of the public contract and may change between releases—stick to the exported types above.
+Internal helper types that show up in editor hovers aren't part of the public contract and may change between releases; stick to the exported types above.
 
 ### Core helpers
 
@@ -338,14 +341,14 @@ Internal helper types that show up in editor hovers aren't part of the public co
 | --- | --- |
 | `createFormsCore(config?)` | Framework-agnostic core entry point wrapped by adapters. |
 | `branch(handle, snapshot, key, value)` | Narrows an object handle to one variant of a discriminated union. |
-| `invalidFields(store)`, `subscribeInvalid(store, listener)` | Imperative helpers backing `useInvalidFields` / `createInvalidFields`. |
+| `invalidFields(store)`, `subscribeInvalid(store, listener)` | Imperative helpers backing `useInvalidFields` and `createInvalidFields`. |
 | `errorsByKind(handle)` | One-time read returning `{ schema, form, field }` validation errors (excludes `userErrors`). |
 | `splitPath(path)` | Splits `"items.0.name"` into `["items", 0, "name"]`. |
 | `fieldId(formId, path)`, `optionId(id, option)` | Generates the same DOM IDs used by adapters. |
 
 ## Plugins
 
-All built-in plugins live in one side-effect-free entry—your bundler drops anything you don't import.
+All built-in plugins live in one side-effect-free entry, so your bundler drops anything you don't import.
 
 <Only framework="react">
 
@@ -386,7 +389,7 @@ Import from `@lunarhue/forms-solid/plugins`.
 
 ### Text & masks (`/text`)
 
-Import from `@lunarhue/forms-react/text`, `@lunarhue/forms-solid/text`, or `@lunarhue/forms-core/text`. Standalone parts—no plugin needed.
+Import from `@lunarhue/forms-react/text`, `@lunarhue/forms-solid/text`, or `@lunarhue/forms-core/text`. Standalone parts, no plugin needed.
 
 | Export | What it does |
 | --- | --- |
@@ -409,15 +412,15 @@ Import from `@lunarhue/forms-core/plugins/testing` (core-only entry):
 
 | Export | Entry |
 | --- | --- |
-| `zod()` | `@lunarhue/forms-schema/zod` — Zod 4 (`zod` and `zod/mini`) default value inference. |
-| `valibot()` | `@lunarhue/forms-schema/valibot` — Valibot sync/async default value inference. |
+| `zod()` | `@lunarhue/forms-schema/zod`: Zod 4 (`zod` and `zod/mini`) default value inference. |
+| `valibot()` | `@lunarhue/forms-schema/valibot`: Valibot sync/async default value inference. |
 
 ## Bindings (`@lunarhue/forms-bind`)
 
 | Export | Entry |
 | --- | --- |
-| `zustand(store, options?)` | `@lunarhue/forms-bind/zustand` — binds a Zustand 5 store or slice (`select`, `update`, `isEqual`). |
-| `signal(get, set, options?)` | `@lunarhue/forms-bind/solid` — binds a Solid 2 signal. |
+| `zustand(store, options?)` | `@lunarhue/forms-bind/zustand`: binds a Zustand 5 store or slice (`select`, `update`, `isEqual`). |
+| `signal(get, set, options?)` | `@lunarhue/forms-bind/solid`: binds a Solid 2 signal. |
 
 <Only framework="react">
 

@@ -5,9 +5,9 @@ section: plugins
 order: 5
 ---
 
-Nothing frustrates a user faster than filling out a long form only to lose it to an accidental tab close or page refresh. `persist()` automatically saves a draft to browser storage and restores it when the user comes back.
+If a user refreshes the page or accidentally closes a tab while filling out a long form, `persist()` saves a draft to browser storage and restores it when they come back.
 
-Try typing in the demo below, then refresh the page—or click **Discard draft** to clear it.
+Try typing in the demo below, then refresh the page, or click **Discard draft** to clear it.
 
 <Demo name="persist/feedback" />
 
@@ -15,7 +15,7 @@ Try typing in the demo below, then refresh the page—or click **Discard draft**
 
 Pass a storage key to `persist("feedback-draft")`. Whenever the form changes, it waits until the browser is idle and saves the form values as JSON in `localStorage`.
 
-Want to use `sessionStorage` or a custom storage backend instead? Pass an options object with any storage that implements `getItem`, `setItem`, and `removeItem`:
+To use `sessionStorage` or a custom storage backend instead, pass an options object with any storage that implements `getItem`, `setItem`, and `removeItem`:
 
 ```ts
 persist({ key: "feedback-draft", storage: sessionStorage })
@@ -23,14 +23,14 @@ persist({ key: "feedback-draft", storage: sessionStorage })
 
 ## How drafts are restored
 
-The saved draft is restored as soon as the store gets its first subscriber (when your form mounts and renders its fields). Because the restore runs as a plugin write rather than a user edit, fields aren't marked `edited` and `history` won't record a bogus undo step.
+The saved draft is restored as soon as the store gets its first subscriber (when your form mounts and renders its fields). Because the restore runs as a plugin write rather than a user edit, fields aren't marked `edited` and `history` won't record an undo step.
 
-This also keeps SSR hydration clean: the server never subscribes, so both the server HTML and the initial hydration pass render `defaultValues`, and the saved draft appears cleanly on the render right after.
+This also keeps SSR hydration clean: the server never subscribes, so both the server HTML and the initial hydration pass render `defaultValues`, and the saved draft appears on the render right after.
 
 ## Clearing the draft
 
-Resetting the form writes `defaultValues` back, and `persist` saves those fresh defaults—effectively clearing the draft for the next reload. If you want to disable persistence altogether, omit `persist` from the `plugins` array (passing `persist({ key, storage: undefined })` still falls back to `localStorage`).
+Resetting the form writes `defaultValues` back, and `persist` saves those fresh defaults, clearing the draft for the next reload. To disable persistence altogether, omit `persist` from the `plugins` array (passing `persist({ key, storage: undefined })` still falls back to `localStorage`).
 
-## Handling storage errors gracefully
+## Handling storage errors
 
-Browser storage can throw—for instance, in private browsing modes or when storage quota is full. `persist` catches those errors so they never crash your form: failed saves are quietly skipped and retried on the next change, and corrupted JSON is automatically removed so the form falls back cleanly to its defaults.
+Browser storage can throw, for example in private browsing modes or when storage quota is full. `persist` catches those errors so they never break your form: failed saves are skipped and retried on the next change, and corrupted JSON is removed so the form falls back to its defaults.

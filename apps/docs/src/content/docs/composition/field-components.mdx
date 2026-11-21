@@ -6,9 +6,9 @@ order: 1
 navTitle: Field components
 ---
 
-Wrapping every input in `<form.Field>` works great when you're getting started, but once your app has more than a couple of forms, you'll want your own labeled inputs and selects wired up automatically.
+Wrapping every input in `<form.Field>` works fine when you're getting started, but once your app has more than a couple of forms, you'll want your own labeled inputs and selects wired up automatically.
 
-If you register a field component on `createForms()`, every form built from it gets that component right on `form` (like `form.TextField`), taking a typed `name` prop instead of a manual `field` prop—still with no plugins needed.
+If you register a field component on `createForms()`, every form built from it gets that component right on `form` (like `form.TextField`), taking a typed `name` prop instead of a manual `field` prop, still with no plugins needed.
 
 <Demo name="field-components/profile" />
 
@@ -62,8 +62,8 @@ Create `forms` once in a shared module and import it wherever you define forms.
 
 Each registered component takes all of its own props (minus `field`), plus either:
 
-- **`name`** — a dotted field path like `"address.city"`. TypeScript filters autocomplete to fields whose value type actually matches the component, so a `FieldApi<string>` component won't let you pass a number field (see [Typed names and handles](./typed-paths)).
-- **`handle`** — a field handle from `form.root.at(...)` or an array row.
+- **`name`**: a dotted field path like `"address.city"`. TypeScript filters autocomplete to fields whose value type matches the component, so a `FieldApi<string>` component won't accept a number field (see [Typed names and handles](./typed-paths)).
+- **`handle`**: a field handle from `form.root.at(...)` or an array row.
 
 ```tsx
 <form.TextField name="name" label="Name" />
@@ -78,7 +78,7 @@ Registered components also accept the same `validate` prop as `form.Field`, atta
 
 ## Supporting optional fields
 
-A component typed with `FieldApi<string>` only accepts required string fields—because an optional field like `nickname?: string` can start out `undefined`. To let one component handle both required and optional fields, include `undefined` in its type:
+A component typed with `FieldApi<string>` only accepts required string fields, because an optional field like `nickname?: string` can start out `undefined`. To let one component handle both required and optional fields, include `undefined` in its type:
 
 ```tsx framework=react
 interface TextFieldProps {
@@ -114,11 +114,11 @@ function TextField(props: TextFieldProps) {
 
 Now `<form.TextField />` works on both `name: string` and `nickname?: string`. The same pattern works for checkboxes (`FieldApi<boolean | undefined>`) and nullable fields (`FieldApi<string | null>`).
 
-One small caveat: TypeScript won't stop a `FieldApi<string | undefined>` component from manually calling `field.setValue(undefined)` on a required string field. Relying on `inputProps` (or writing a value of the expected type) keeps things safe; `FieldApi<number>` has the same trade-off because an empty number input can hold `undefined`.
+One small caveat: TypeScript won't stop a `FieldApi<string | undefined>` component from manually calling `field.setValue(undefined)` on a required string field. Relying on `inputProps` (or writing a value of the expected type) keeps things safe. `FieldApi<number>` has the same trade-off because an empty number input can hold `undefined`.
 
 ## Defining specialized field types
 
-Sometimes you want several distinct field types backed by the same UI component—like a `PhoneField` or `CodeField` that both render `TextField`, but with different masks or behavior attached. `defineField(component, ...parts)` creates a reusable field type you can register right alongside plain components:
+Sometimes you want several distinct field types backed by the same UI component, like a `PhoneField` or `CodeField` that both render `TextField`, but with different masks or behavior attached. `defineField(component, ...parts)` creates a reusable field type you can register right alongside plain components:
 
 ```ts
 const NameField = defineField(TextField);
@@ -126,4 +126,4 @@ const NameField = defineField(TextField);
 const forms = createForms({ fields: { TextField, NameField } });
 ```
 
-On its own, `defineField(TextField)` behaves identically to `TextField`. Where it really shines is when you attach parts—like an input mask or text transform—so every field rendered with it gets that behavior automatically. See [Parts on field components](../plugin-composition/field-parts) for the full walkthrough.
+On its own, `defineField(TextField)` behaves the same as `TextField`. Add parts like an input mask or text transform after the component so every field rendered with it gets that behavior automatically. See [Parts on field components](../plugin-composition/field-parts).

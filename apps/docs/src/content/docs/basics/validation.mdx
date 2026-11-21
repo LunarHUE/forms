@@ -5,33 +5,38 @@ section: basics
 order: 2
 ---
 
-Validation is built right into the core—you don't need any plugins or external libraries to check fields and display errors. Try submitting the demo empty, then type two mismatched passwords to see how errors appear and clear.
+Validation is built into the core, so you don't need any plugins or external libraries to check fields and display errors. Try submitting the demo empty, then enter a short username or mismatched passwords to see how errors appear and clear.
 
 <Demo name="validation/sign-up" />
 
 ## Validating individual fields
 
-To check individual fields, pass `fieldValidators({...})` to `validate.fields`. Its shape mirrors your `defaultValues`, and each function receives that field's typed value. Return an error object (`{ message: "..." }`) when something is wrong, or `undefined` when it's valid:
+To check individual fields, pass `fieldValidators({...})` to `validate.fields`. Its shape matches your `defaultValues`, and each validator receives that field's typed value. Return `{ message: "..." }` when something is wrong, or `undefined` when it passes.
+
+When a field has more than one rule, chain them with `pipe(...checks)` so they run in order and stop at the first failure:
 
 ```ts
 const signUp = forms.define({
   defaultValues: { username: "", password: "", confirm: "", terms: false },
   validate: {
     fields: fieldValidators({
-      username: (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+      username: pipe(
+        (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+        (name) => (/^[a-z0-9_]+$/i.test(name) ? undefined : { message: "Use letters, digits and underscores." }),
+      ),
       password: (password) => (password.length < 8 ? { message: "Use at least 8 characters." } : undefined),
     }),
   },
 });
 ```
 
-You can also drop a Standard Schema (like a single Zod or Valibot field schema) anywhere a validator function is accepted—see [Validating with a schema](./schema-validation) for details.
+You can also pass a Standard Schema (like a single Zod or Valibot field schema) anywhere a validator function is accepted. See [Validating with a schema](./schema-validation) for details.
 
 For array fields, wrap the item validator in a one-element tuple to apply it to every item in the list: `fieldValidators({ lines: [{ sku: checkSku }] })`.
 
 ## Cross-field (form) validation
 
-When a rule needs to compare two fields—like checking that `confirm` matches `password`—use `validate.form` with `formValidator(check)`. It receives the entire form value and returns errors keyed by dotted field name so each message lands right on the field it belongs to:
+When a rule needs to compare two fields, like checking that `confirm` matches `password`, use `validate.form` with `formValidator(check)`. It receives the whole form value and returns errors keyed by dotted field name so each message lands on the field it belongs to:
 
 ```ts
 validate: {
@@ -43,13 +48,13 @@ validate: {
 },
 ```
 
-You can also include a `form` key in that return object for errors that belong to the form as a whole rather than a single field.
+You can also include a `form` key in that return object for errors that belong to the form as a whole rather than one field.
 
-Both `fieldValidators` and `formValidator` are explicit imports so forms that don't use them don't bundle the tree-walking code. When written inline inside `define()`, they infer the form's value type automatically. If you extract them into standalone constants, pass the value type explicitly: `fieldValidators<SignUp>({ ... })`.
+Both `fieldValidators` and `formValidator` are explicit imports so forms that don't use them don't bundle the tree-walking code. Written inline inside `define()`, they infer the form's value type automatically. If you extract them into standalone constants, pass the value type explicitly: `fieldValidators<SignUp>({ ... })`.
 
 ## Adding validators from components
 
-Sometimes a rule only applies while a specific field or step is actually on screen. You can attach a validator directly to `form.Field` via its `validate` prop—it registers on mount and cleans up both itself and its errors when the field unmounts:
+Sometimes a rule only applies while a specific field or step is mounted. You can attach a validator directly to `form.Field` with its `validate` prop. It registers on mount and removes both itself and its errors on unmount:
 
 ```tsx
 <form.Field name="terms" validate={(accepted) => (accepted ? undefined : { message: "Accept the terms." })}>
@@ -59,7 +64,7 @@ Sometimes a rule only applies while a specific field or step is actually on scre
 
 <Only framework="react">
 
-You can do the same thing imperatively inside a component with `useValidator(handle, validator)`. Passing `undefined`, `null`, or `false` skips registration, which makes conditional checks easy without bending the rules of hooks:
+You can do the same thing imperatively inside a component with `useValidator(handle, validator)`. Passing `undefined`, `null`, or `false` skips registration, which makes conditional checks easy without breaking the rules of hooks:
 
 ```ts
 useValidator(form.root.at("terms"), requireTerms ? mustAccept : undefined);
@@ -77,11 +82,11 @@ createValidator(form.root.at("terms"), mustAccept);
 
 </Only>
 
-Keep in mind that unmounted component validators don't run on submit. If a rule must always be enforced (even on hidden wizard steps), put it in the form definition instead. Outside of components, `handle.registerValidator(validator)` attaches a validator programmatically and returns a cleanup function.
+Keep in mind that unmounted component validators don't run on submit. If a rule must always hold (even on hidden wizard steps), put it in the form definition instead. Outside of components, `handle.registerValidator(validator)` attaches a validator programmatically and returns a cleanup function.
 
 ## Controlling when validators run
 
-By default, a validator waits until the user blurs the field for the first time, and then re-runs on every keystroke after that so errors clear as soon as they're fixed.
+By default, a validator waits until the user blurs the field for the first time, then re-runs on every keystroke after that so errors clear as soon as they're fixed.
 
 To change that default across your whole app, set `validate` on `createForms` to `"input"`, `"blur"`, or `"submit"`. To override it for a single check, wrap the validator in `validateOn`:
 
@@ -89,19 +94,17 @@ To change that default across your whole app, set `validate` on `createForms` to
 username: validateOn(checkName, "input"),
 ```
 
-There are three validator wrappers—`validateOn`, `debounced`, and `recheckOnSubmit`—and they compose in any order around functions or Standard Schemas. They work everywhere a validator does (`fieldValidators`, `formValidator`, the `validate` prop, and `registerValidator`). We'll combine all three in [Async validation](./async-validation).
-
-If you want to run a quick synchronous check before an expensive one, chain them with `pipe(...checks)`. It runs checks in order and stops at the first error—wrap the whole `pipe` in `validateOn` to control when it triggers. See [Running cheap checks first](./async-validation#running-cheap-checks-first).
+There are three validator wrappers: `validateOn`, `debounced`, and `recheckOnSubmit`. They compose in any order around functions, Standard Schemas, or `pipe(...)`, and work everywhere a validator does (`fieldValidators`, `formValidator`, the `validate` prop, and `registerValidator`). We combine them with `pipe` in [Async validation](./async-validation).
 
 Submitting the form always runs every validator and blocks the submit if anything fails. You can also trigger validation on demand with `field.validate()` (for one field) or `form.store.validate()` (for the whole form); both resolve to `true` when valid.
 
 ## Deciding when to show errors
 
-Every field gives you two error arrays:
-- **`field.errors`** contains every active error on the field.
-- **`field.shownErrors`** contains only the errors that should be visible to the user right now (`aria-invalid` follows this one).
+Every field exposes two error arrays:
+- **`field.errors`** holds every active error on the field.
+- **`field.shownErrors`** holds only the errors that should be visible to the user right now (`aria-invalid` follows this one).
 
-In your UI, always render `field.shownErrors`. Which errors make it through is controlled by the `show` option on `createForms` (global) or `define` (per form):
+In your UI, render `field.shownErrors`. Which errors make it through is controlled by the `show` option on `createForms` (global) or `define` (per form):
 
 | `show` | When errors appear |
 | --- | --- |
@@ -110,15 +113,15 @@ In your UI, always render `field.shownErrors`. Which errors make it through is c
 | `"submitted"` | After the first submit attempt |
 | `"always"` | Immediately, even before interaction |
 
-Need custom logic? Pass a function instead—it receives `{ touched, edited, dirty, submitCount }` and returns `true` when errors should be shown.
+Need custom logic? Pass a function instead. It receives `{ touched, edited, dirty, submitCount }` and returns `true` when errors should show.
 
-If you'd rather work with custom error objects (like i18n keys or error codes) instead of `{ message: string }`, you can provide a `mapError` option on `createForms` to normalize schema issues and validator errors into your own shape.
+If you'd rather work with custom error objects (like i18n keys or error codes) instead of `{ message: string }`, pass a `mapError` option on `createForms` to normalize schema issues and validator errors into your own shape.
 
 ## Setting errors manually and telling error kinds apart
 
-`field.invalid` is `true` whenever a field has any error, including errors you set manually with `setErrors` (for example, server-side validation failures). Manual errors also appear in `field.userErrors`. Unlike validator errors, they don't block the next submit—they clear automatically as soon as the user edits the field. See [Submit](./submit) for the full server-error workflow.
+`field.invalid` is `true` whenever a field has any error, including errors you set manually with `setErrors` (for example, server-side validation failures). Manual errors also appear in `field.userErrors`. Unlike validator errors, they don't block the next submit, and they clear automatically as soon as the user edits the field. See [Submit](./submit) for the full server-error flow.
 
-Inside `field.errors`, errors always appear in a predictable order: schema errors first, then form validator errors, then field validator errors (in registration order), and finally user errors. If you need to distinguish between validation sources, `errorsByKind(handle)` breaks them out into `{ schema, form, field }` (excluding `userErrors`). It's a one-time snapshot read, so call it again when `field.errors` changes:
+Inside `field.errors`, errors always appear in a fixed order: schema errors first, then form validator errors, then field validator errors (in registration order), and finally user errors. If you need to tell validation sources apart, `errorsByKind(handle)` returns `{ schema, form, field }` (excluding `userErrors`). It's a one-time snapshot read, so call it again when `field.errors` changes:
 
 ```ts framework=react
 import { errorsByKind } from "@lunarhue/forms-react";

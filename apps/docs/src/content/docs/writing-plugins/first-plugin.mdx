@@ -6,13 +6,13 @@ order: 1
 navTitle: First plugin
 ---
 
-When none of the built-in plugins quite fits what your app needs, writing your own is straightforward. Suppose pasted text keeps sneaking double spaces into your forms, and you want to collapse them automatically across every string field. Try typing two spaces in a row below.
+When none of the built-in plugins fits what your app needs, you can write your own. Suppose pasted text keeps introducing double spaces into your forms, and you want to collapse them across every string field. Try typing two spaces in a row below.
 
 <Demo name="first-plugin/note" />
 
-## Do you need a plugin, or just a part?
+## A part or a plugin?
 
-Before reaching for `definePlugin`, check whether a standalone [part](./parts) is enough. If the behavior only targets specific field types, holds no internal state, and doesn't need to expose a form-level API, `transform`, `text`, and `observe` from `@lunarhue/forms-core/plugins` work with zero plugin installation:
+Before reaching for `definePlugin`, check whether a standalone [part](./parts) is enough. If the behavior only targets specific field types, holds no internal state, and doesn't need to expose a form-level API, `transform`, `text`, and `observe` from `@lunarhue/forms-core/plugins` work with no plugin installation:
 
 ```ts
 import { transform } from "@lunarhue/forms-core/plugins";
@@ -20,7 +20,7 @@ import { transform } from "@lunarhue/forms-core/plugins";
 export const NoteField = defineField(NoteInput, transform<string>((value) => value.replace(/ {2,}/g, " ")));
 ```
 
-Reach for a full plugin when the behavior applies across the whole form (like collapsing spaces everywhere), needs to store field/form meta, exposes a `form.plugins.<name>` API, or depends on another plugin.
+Write a plugin when the behavior covers the whole form (like collapsing spaces everywhere), needs field or form meta, exposes a `form.plugins.<name>` API, or depends on another plugin.
 
 ## Creating a plugin with `definePlugin`
 
@@ -39,9 +39,9 @@ export const collapseSpaces = definePlugin({
 const forms = createForms({ plugins: [collapseSpaces()] });
 ```
 
-`setup` runs once per store and returns form-wide hooks—here, `beforeWrite` intercepts every value write and returns the cleaned string. A plugin can also define a `part` hook (which runs once per attached [part](./parts) and returns hooks scoped to that path), or both.
+`setup` runs once per store and returns form-wide hooks. Here, `beforeWrite` intercepts every value write and returns the cleaned string. A plugin can also define a `part` hook (which runs once per attached [part](./parts) and returns hooks scoped to that path), or both.
 
-Need plugin options? Add a typed second parameter to `setup`, and the generated factory automatically accepts the same argument:
+Need plugin options? Add a typed second parameter to `setup`, and the generated factory accepts the same argument:
 
 ```ts
 export const squeeze = definePlugin({
@@ -58,25 +58,25 @@ Make the parameter optional to make options optional; omit it for a zero-argumen
 
 ## How `setup` and `onActive` work (and SSR)
 
-`setup` runs synchronously when the store is created—on both the server and the client—before anything subscribes. Any values, flags, or meta it sets become part of the store's initial state:
+`setup` runs synchronously when the store is created, on both the server and the client, before anything subscribes. Any values, flags, or meta it sets become part of the store's initial state:
 
 - **SSR-safe:** server HTML and the first client render see the exact same state, so hydration happens in one pass (this is how [`rules`](../plugins/rules) renders `disabled` and `hidden` fields on the server).
-- **Quiet startup:** setup produces no write records, triggers no `onWrite` hooks, and schedules no deferred/idle timers—so a server-side store that's never mutated never leaks timers.
-- **Baseline stays put:** values written in `setup` don't move the baseline (they'll look dirty against `defaultValues`). To override the initial value cleanly without marking the form dirty, use [`initialValue`](./submit#starting-values) instead.
+- **Quiet startup:** setup produces no write records, triggers no `onWrite` hooks, and schedules no deferred or idle timers, so a server-side store that's never mutated never leaks timers.
+- **Baseline stays put:** values written in `setup` don't move the baseline (they look dirty against `defaultValues`). To override the initial value without marking the form dirty, use [`initialValue`](./submit#starting-values) instead.
 
-Because `setup` runs on the server, keep it deterministic. Anything that touches browser APIs like `localStorage` belongs in `onActive`, which runs only when the store gets its first subscriber—and therefore never runs during SSR. (That's how [`persist`](../plugins/persist) restores drafts.)
+Because `setup` runs on the server, keep it deterministic. Anything that touches browser APIs like `localStorage` belongs in `onActive`, which runs only when the store gets its first subscriber and therefore never runs during SSR. (That is how [`persist`](../plugins/persist) restores drafts.)
 
 ## Intercepting and making writes
 
-`beforeWrite` runs in plugin order before each value write, returning either the value to store or `refuse` to cancel the write altogether. Whole-object writes pass through `setup` hooks once at the object's path, while part hooks receive the write walked down to their specific path (so a `masked` part on `phone` still cleans values during a whole-form reset).
+`beforeWrite` runs in plugin order before each value write, returning either the value to store or `refuse` to cancel the write. Whole-object writes pass through `setup` hooks once at the object's path, while part hooks receive the write walked down to their specific path (so a `masked` part on `phone` still cleans values during a whole-form reset).
 
-New rows added via `push` or `insert` also run through `beforeWrite` at the new row's path (with `before: undefined`). The row already has its key assigned; return a replacement row, or return `refuse` to remove it immediately. (Forms without any `beforeWrite` plugin skip this work completely.)
+New rows added via `push` or `insert` also run through `beforeWrite` at the new row's path (with `before: undefined`). The row already has its key assigned; return a replacement row, or return `refuse` to remove it immediately. Forms without any `beforeWrite` plugin skip this work completely.
 
-When a plugin writes values itself, wrap the writes in `ctx.write(...)`. Queued plugin writes run after the current round finishes, re-running active validators once at the end (without restarting unrelated async checks), and are tagged with `cause: { plugin: name }`. If your plugin is rebasing external data onto the baseline (like [`rebase`](../plugins/rebase)), you can pass `"rebase"` as the second argument: `ctx.write(fn, "rebase")`. Those are the only two causes available to plugins (`"user"` and `"reset"` belong to the form), letting other plugins decide how to react—for example, `masked` skips rebases.
+When a plugin writes values itself, wrap the writes in `ctx.write(...)`. Queued plugin writes run after the current round finishes, re-running active validators once at the end (without restarting unrelated async checks), and are tagged with `cause: { plugin: name }`. If your plugin is rebasing external data onto the baseline (like [`rebase`](../plugins/rebase)), pass `"rebase"` as the second argument: `ctx.write(fn, "rebase")`. Those are the only two causes available to plugins (`"user"` and `"reset"` belong to the form), letting other plugins decide how to react (for example, `masked` skips rebases).
 
 ## Writing after an `await`
 
-Once a hook hits an `await`, the synchronous hook round has already ended—so writing directly to `ctx.store` afterwards looks like a regular user edit (marking the field `edited` and pushing an undo step onto `history`). Always wrap post-`await` writes in `ctx.write` and pass `{ edited: false }` when the value isn't user input:
+Once a hook hits an `await`, the synchronous hook round has already ended, so writing directly to `ctx.store` afterwards looks like a regular user edit (marking the field `edited` and pushing an undo step onto `history`). Always wrap post-`await` writes in `ctx.write` and pass `{ edited: false }` when the value isn't user input:
 
 ```ts
 async beforeSubmit() {
@@ -90,7 +90,7 @@ async beforeSubmit() {
 
 ## Reacting to blur with `onBlur`
 
-`onBlur(path)` fires on every `handleBlur` call—not just the first blur that sets `touched`—and receives the field's stable path. It runs inside the blur's batch, right after `touched` is updated and blur validators finish, so any `ctx.write(...)` you do inside it lands in the same batch and notifies listeners just once:
+`onBlur(path)` fires on every `handleBlur` call, not just the first blur that sets `touched`, and receives the field's stable path. It runs inside the blur's batch, right after `touched` is updated and blur validators finish, so any `ctx.write(...)` you do inside it lands in the same batch and notifies listeners once:
 
 ```ts
 const trim = definePlugin({
