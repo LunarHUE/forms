@@ -17,8 +17,6 @@ uses the same one. `masked`, `digits` and `upper` come from your adapter's
 `text` entry, or from `@lunarhue/forms-core/text`:
 
 ```ts title="PhoneField.tsx"
-import { digits, masked } from "@lunarhue/forms-react/text";
-
 export const PhoneField = defineField(PhoneInput, masked({ clean: digits, display: formatPhone }));
 ```
 
