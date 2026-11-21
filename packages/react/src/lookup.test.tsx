@@ -8,6 +8,7 @@ import {
   type FormOf,
   type HandleLike,
   inputProps,
+  isFocused,
   radioProps,
   trackElements,
   useField,
@@ -30,6 +31,7 @@ function Bio({ handle }: { readonly handle: HandleLike }) {
   return (
     <div data-testid="bio" ref={ref}>
       <span data-testid="bio-inner">bio</span>
+      <input aria-label="bio text" />
     </div>
   );
 }
@@ -62,6 +64,7 @@ function Profile({ early }: { readonly early?: boolean }) {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("fieldOf", () => {
@@ -107,6 +110,57 @@ describe("elementsOf", () => {
     vi.stubEnv("NODE_ENV", "production");
     render(<Profile />);
     expect(elementsOf(current().root.at("name"))).toEqual([screen.getByLabelText("name")]);
+  });
+});
+
+describe("isFocused", () => {
+  it("is true for the field whose input has focus", () => {
+    render(<Profile />);
+    const root = current().root;
+    screen.getByLabelText("pro").focus();
+    expect(isFocused(root.at("plan"))).toBe(true);
+    expect(isFocused(root.at("name"))).toBe(false);
+    expect(isFocused(root.at("bio"))).toBe(false);
+  });
+
+  it("is true while focus is inside a custom input's element", () => {
+    render(<Profile />);
+    screen.getByLabelText("bio text").focus();
+    expect(isFocused(current().root.at("bio"))).toBe(true);
+    expect(isFocused(current().root.at("name"))).toBe(false);
+  });
+
+  it("is false once focus leaves", () => {
+    render(<Profile />);
+    const name = screen.getByLabelText("name");
+    name.focus();
+    name.blur();
+    expect(isFocused(current().root.at("name"))).toBe(false);
+    expect(isFocused(current().root)).toBe(false);
+  });
+
+  it("is false after the focused element unmounts", () => {
+    const { rerender } = render(<Profile early />);
+    const plan = current().root.at("plan");
+    screen.getByLabelText("team").focus();
+    expect(isFocused(plan)).toBe(true);
+    rerender(<Profile />);
+    expect(isFocused(plan)).toBe(false);
+  });
+
+  it("works in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    render(<Profile />);
+    screen.getByLabelText("bio text").focus();
+    expect(isFocused(current().root.at("bio"))).toBe(true);
+  });
+
+  it("is false with no document", () => {
+    render(<Profile />);
+    const name = current().root.at("name");
+    screen.getByLabelText("name").focus();
+    vi.stubGlobal("document", undefined);
+    expect(isFocused(name)).toBe(false);
   });
 });
 

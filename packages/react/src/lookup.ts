@@ -1,6 +1,6 @@
 import { type NamedAnyFieldHandle, trackedField } from "@lunarhue/forms-core";
 import type { HandleLike } from "./field.js";
-import { elementsFor, fields } from "./refs.js";
+import { elementsFor, fields, focusedElement } from "./refs.js";
 
 // The package has no node types, so this declares the global the development check reads.
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
@@ -12,6 +12,16 @@ declare const process: { readonly env: { readonly NODE_ENV?: string } };
  */
 export function elementsOf(handle: HandleLike): HTMLElement[] {
   return elementsFor(handle);
+}
+
+/**
+ * True when the focused element is one of `handle`'s elements or sits inside
+ * one, as the input of a custom component registered with `useFieldRef`
+ * does. It works in production with no `trackElements()` call, and returns
+ * false on the server.
+ */
+export function isFocused(handle: HandleLike): boolean {
+  return focusedElement(handle) !== undefined;
 }
 
 /**

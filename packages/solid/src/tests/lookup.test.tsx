@@ -1,6 +1,18 @@
 import { createSignal, Show } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createField, createForm, createForms, elementsOf, fieldOf, fieldRef, type FormOf, inputProps, radioProps, trackElements } from "../index.js";
+import {
+  createField,
+  createForm,
+  createForms,
+  elementsOf,
+  fieldOf,
+  fieldRef,
+  type FormOf,
+  inputProps,
+  isFocused,
+  radioProps,
+  trackElements,
+} from "../index.js";
 import { get, getAs, mount, settle } from "./dom.js";
 
 const forms = createForms();
@@ -29,6 +41,7 @@ function mountProfile() {
         <input data-plan="pro" {...radioProps(planField, "pro")} />
         <div data-bio ref={fieldRef(f.root.at("bio"))}>
           <span data-bio-inner>bio</span>
+          <input data-bio-text />
         </div>
       </form>
     );
@@ -39,6 +52,7 @@ function mountProfile() {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("fieldOf", () => {
@@ -97,6 +111,66 @@ describe("elementsOf", () => {
     vi.stubEnv("NODE_ENV", "production");
     const { form, host } = mountProfile();
     expect(elementsOf(form.root.at("name"))).toEqual([get(host, "[data-name]")]);
+  });
+});
+
+describe("isFocused", () => {
+  it("is true for the field whose input has focus", () => {
+    const { form, host } = mountProfile();
+    get(host, '[data-plan="pro"]').focus();
+    expect(isFocused(form.root.at("plan"))).toBe(true);
+    expect(isFocused(form.root.at("name"))).toBe(false);
+    expect(isFocused(form.root.at("bio"))).toBe(false);
+  });
+
+  it("is true while focus is inside a custom input's element", () => {
+    const { form, host } = mountProfile();
+    get(host, "[data-bio-text]").focus();
+    expect(isFocused(form.root.at("bio"))).toBe(true);
+    expect(isFocused(form.root.at("name"))).toBe(false);
+  });
+
+  it("is false once focus leaves", () => {
+    const { form, host } = mountProfile();
+    const name = get(host, "[data-name]");
+    name.focus();
+    name.blur();
+    expect(isFocused(form.root.at("name"))).toBe(false);
+    expect(isFocused(form.root)).toBe(false);
+  });
+
+  it("is false after the focused element is disposed", async () => {
+    const { form, host, setEarly } = mountProfile();
+    const plan = form.root.at("plan");
+    setEarly(true);
+    await settle();
+    get(host, '[data-plan="team"]').focus();
+    expect(isFocused(plan)).toBe(true);
+    setEarly(false);
+    await settle();
+    expect(isFocused(plan)).toBe(false);
+  });
+
+  it("is false once a registered element leaves the document", () => {
+    const { form, host } = mountProfile();
+    const bio = getAs(host, "[data-bio]", HTMLDivElement);
+    get(host, "[data-bio-text]").focus();
+    bio.remove();
+    expect(isFocused(form.root.at("bio"))).toBe(false);
+  });
+
+  it("works in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const { form, host } = mountProfile();
+    get(host, "[data-bio-text]").focus();
+    expect(isFocused(form.root.at("bio"))).toBe(true);
+  });
+
+  it("is false with no document", () => {
+    const { form, host } = mountProfile();
+    get(host, "[data-name]").focus();
+    vi.stubGlobal("document", undefined);
+    expect(isFocused(form.root.at("name"))).toBe(false);
   });
 });
 
