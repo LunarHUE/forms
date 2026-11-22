@@ -1,4 +1,4 @@
-import { apps, libraries } from "../../../../examples/compare/apps";
+import { libraries } from "../../../../examples/compare/apps";
 import sizesFile from "../../../../examples/compare/sizes.json";
 
 import {
@@ -28,11 +28,6 @@ export const COMPARE_APPS: readonly string[] = Object.keys(SIZES.apps);
 
 export function isCompareApp(app: string): boolean {
   return COMPARE_APPS.includes(app);
-}
-
-/** The app's name, like "Sign-up". */
-export function appTitle(app: string): string {
-  return apps.find((candidate) => candidate.name === app)?.title ?? app;
 }
 
 /** One app's numbers. Throws for an app sizes.json doesn't have. */
