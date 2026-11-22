@@ -47,8 +47,21 @@ A few extra details were needed on the TanStack side to keep behavior identical:
 - Order totals subscribe to `lines` directly (since array fields only re-render on row add/remove), and rows are keyed by index per TanStack's docs.
 - Record forms save inside `onSubmit` and attach server refusals via `form.setErrorMap`; because `isSubmitSuccessful` stays set, the "Saved" message lives in React state.
 
+## Why our single bundle looks heavier here
+
+This comparison is one flat app with no router. All four screens (Customer, Order, Company settings and the invite dialog) are imported eagerly into a single bundle, and one `createForms` in `forms.ts` installs `zod()`, `dirty()`, `rebase()`, `rules()`, `arrays()` and `history()` for every form. The invite dialog adds `persist()`, and the masked field types bring the `masked()` part. We kept it that way so the numbers compare form code and nothing else. A real multi-screen app shouldn't ship like this.
+
+Most of these plugins only matter on one or two screens. `arrays()` is for the Order line items. `dirty()`, `rebase()` and `history()` drive the save bar's change count, Refresh and Undo, which the invite dialog never shows. Put everything on one global `createForms` and every screen pays for all of it on first load.
+
+In a real app, two changes get most of that back:
+
+- **Split by route.** Lazy-load each record screen when the user navigates to it, and load dialogs or wizard steps when they open. The invite dialog's code shouldn't load until someone clicks Invite.
+- **Attach plugins where they're used.** Keep the shared `createForms` to what every form needs (`zod()`, and `rules()` if every screen has conditional fields), and pass the rest through each form's `define({ plugins })`, the way `inviteForm` already does with `persist()`. Then `arrays()` ships with the Order route and `history()` with the screens that have Undo.
+
+With both, each route's chunk carries only the plugins its forms use. This flat bundle hides that advantage, because nothing here is ever left out. A small form with no plugins at all, like a search box or a dialog without a saved draft, can go further and use [`/mini`](../basics/mini). The invite dialog here can't, since `/mini` has no plugin host and the draft needs `persist()`.
+
 ## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production (minified, JS only) in three slices: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything), and **App only** (excluding the form libraries too, so our plugins count in **Forms + app**, while TanStack's hand-written masks, undo, and draft persistence count in **App only**).
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production (minified, JS only) in three slices: **App only** (excluding React, `react-dom`, Zod, and the form libraries, so TanStack's hand-written masks, undo, and draft persistence count here while our plugins don't), **Forms + app** (adding the form library, so our plugins count here), and **Total** (everything).
 
 Measured from built package outputs against TanStack Form 1.33.5 and enforced in CI. Source and shared Playwright specs are in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
