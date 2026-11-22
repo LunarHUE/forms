@@ -27,8 +27,19 @@ export interface DemoFrameProps {
   /**
    * From Demo.astro: `[data-demo-live]` holding the demo's island and
    * `template[data-demo-initial]` holding its server HTML for reset.
+   * <Compare> passes its app here instead, with `onReset`.
    */
   children?: ReactNode;
+  /** Replaces the island swap below. <Compare> remounts its app. */
+  onReset?: () => void;
+  /** A row above the tabs. */
+  header?: ReactNode;
+  /** A row below the preview and code. */
+  footer?: ReactNode;
+  /** The stage's class. Default `demo-stage`, which styles bare elements (styles/demo.css). */
+  stageClassName?: string;
+  /** Extra classes for the code panel, like a height cap for long files. */
+  codeClassName?: string;
 }
 
 /** The first tab. Every other tab is a file, named by its path. */
@@ -39,12 +50,26 @@ const PREVIEW = "preview";
  * on a stage, and the chosen file's code. The preview stays mounted while a
  * file shows, so the form keeps what the reader typed.
  */
-export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
+export function DemoFrame({
+  id,
+  name,
+  files,
+  children,
+  onReset,
+  header,
+  footer,
+  stageClassName = "demo-stage",
+  codeClassName,
+}: DemoFrameProps) {
   const [tab, setTab] = useState(PREVIEW);
-  const file = files.find((candidate) => candidate.name === tab);
+  // When the files change under an open tab, as on <Compare>'s library
+  // switch, a name the new list lacks falls back to the entry file. The tab
+  // state keeps the name, so switching back opens it again.
+  const file =
+    tab === PREVIEW ? undefined : (files.find((candidate) => candidate.name === tab) ?? files[0]);
   const stage = useRef<HTMLDivElement>(null);
 
-  const reset = () => {
+  const swapIsland = () => {
     const live = stage.current?.querySelector<HTMLElement>("[data-demo-live]");
     const initial = stage.current?.querySelector<HTMLTemplateElement>("template[data-demo-initial]");
     if (!live || !initial) return;
@@ -55,6 +80,8 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
     for (const island of islands) island.dispatchEvent(new CustomEvent("astro:unmount"));
   };
 
+  const reset = onReset ?? swapIsland;
+
   const tabId = (part: string) => `${id}-${part}`.replace(/[^\w-]/g, "-");
 
   return (
@@ -63,6 +90,7 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
       data-demo={name}
       className="not-prose my-6 min-w-0 overflow-hidden rounded-lg border bg-background"
     >
+      {header}
       <div className="flex h-11 items-stretch gap-2 border-b bg-background pr-2 pl-1">
         <DemoTabs
           label="Demo"
@@ -75,7 +103,7 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
               mono: true,
             })),
           ]}
-          value={tab}
+          value={file?.name ?? PREVIEW}
           onChange={setTab}
           tabId={tabId}
         />
@@ -104,13 +132,19 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
         hidden={file !== undefined}
         className="demo-preview flex min-h-75 items-center justify-center bg-sidebar px-4 py-8 sm:px-10"
       >
-        <div ref={stage} className="demo-stage">
+        <div ref={stage} className={stageClassName}>
           {children}
         </div>
       </div>
 
       {file && (
-        <div role="tabpanel" id={tabId("code-panel")} aria-labelledby={tabId(file.name)}>
+        <div
+          role="tabpanel"
+          id={tabId("code-panel")}
+          aria-labelledby={tabId(file.name)}
+          data-edge-fade="y"
+          className={codeClassName}
+        >
           <CodeBlock
             html={file.html}
             lang={file.name.split(".").at(-1)}
@@ -119,6 +153,7 @@ export function DemoFrame({ id, name, files, children }: DemoFrameProps) {
           />
         </div>
       )}
+      {footer}
     </div>
   );
 }
