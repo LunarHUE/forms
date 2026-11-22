@@ -10,6 +10,14 @@ export const llmsFullHref = (framework: Framework): string => `/${framework}${LL
 const item = (page: SitePage) =>
   `- [${page.title}](${deployUrl(markdownHref(page.href))}): ${page.description}`;
 
+/** Points models at the Best practices section before they write a form. */
+const BEST_PRACTICES = [
+  "Before structuring a form, read the Best practices pages (the `best-practices/` pages for your framework) and follow",
+  "them. They cover choosing `/mini` or the full entry, keeping the shared `createForms` small, where plugins go, defining",
+  "forms at module scope, server errors with `setErrors`, live updates with `rebase()`, external stores, refs under React",
+  "Compiler, and parts that must be active during SSR.",
+].join("\n");
+
 /**
  * The index for language models, following https://llmstxt.org: a title, a
  * summary, then a list per framework linking each page's Markdown copy.
@@ -35,6 +43,7 @@ export function llmsIndex(pages: readonly SitePage[]): string {
       "list for the framework you use. Each link is the page's Markdown copy; the HTML page is the same URL",
       "without `.md`. Demos appear as their source files.",
     ].join("\n"),
+    BEST_PRACTICES,
     ...sections,
     `## Shared\n\n${shared.map(item).join("\n")}`,
     `## Full text\n\n${fullTexts.join("\n")}`,
@@ -45,6 +54,6 @@ export function llmsIndex(pages: readonly SitePage[]): string {
 export function llmsFull(pages: readonly SitePage[], framework?: Framework): string {
   const chosen = framework ? pages.filter((page) => page.framework === undefined || page.framework === framework) : pages;
   const scope = framework ? `${frameworkLabel(framework)} docs` : "docs for every framework";
-  const header = `# ${SITE_NAME}\n\n> ${SITE_DESCRIPTION}\n\nThe ${scope}, one page after another. Index: ${deployUrl(LLMS_HREF)}\n`;
+  const header = `# ${SITE_NAME}\n\n> ${SITE_DESCRIPTION}\n\nThe ${scope}, one page after another. Index: ${deployUrl(LLMS_HREF)}\n\n${BEST_PRACTICES}\n`;
   return [header, ...chosen.map((page) => page.markdown())].join("\n---\n\n");
 }
