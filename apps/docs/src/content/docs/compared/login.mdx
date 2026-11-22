@@ -34,6 +34,6 @@ On the TanStack Form side, we use `useForm` directly (skipping `createFormHook` 
 
 ## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three slices: **Forms + app** (excluding React and `react-dom`), **Total** (everything), and **App only** (excluding the form libraries too).
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three slices: **App only** (excluding React, `react-dom`, and the form libraries), **Forms + app** (adding the form library back), and **Total** (everything).
 
 Measured from built package outputs against TanStack Form 1.33.5 and enforced in CI. Source and shared Playwright specs live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).

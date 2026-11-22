@@ -41,6 +41,6 @@ On the TanStack Form side, the form uses Standard Schema support for Zod, `isDef
 
 ## How bundle sizes were measured
 
-[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three variants: **Forms + app** (excluding React, `react-dom`, and Zod), **Total** (everything including React and Zod), and **App only** (excluding the form libraries too). Both sides validate with the same Zod schema.
+[`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only) in three variants: **App only** (excluding React, `react-dom`, Zod, and the form libraries), **Forms + app** (adding the form library back), and **Total** (everything including React and Zod). Both sides validate with the same Zod schema.
 
 Our packages are measured from their built dist outputs against TanStack Form 1.33.5, verified automatically in CI. Source and shared Playwright specs live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
