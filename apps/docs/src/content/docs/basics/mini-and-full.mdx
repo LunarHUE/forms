@@ -13,21 +13,25 @@ Because `/mini`'s types are a strict subset of the full entry's, the two coexist
 
 ## Running both entries side by side
 
-Create two `createForms()` instances in your shared forms module, one from each entry:
+Give each `createForms()` instance its own module—one for `/mini` and one for the full entry:
+
+```ts title="forms-mini.ts" framework=react
+import { createForms } from "@lunarhue/forms-react/mini";
+
+export const miniForms = createForms({ fields: { MiniTextField } });
+```
 
 ```ts title="forms.ts" framework=react
-import { createForms as createFullForms } from "@lunarhue/forms-react";
-import { createForms as createMiniForms } from "@lunarhue/forms-react/mini";
+import { createForms } from "@lunarhue/forms-react";
 import { arrays, dirty } from "@lunarhue/forms-react/plugins";
 
-export const miniForms = createMiniForms({ fields: { MiniTextField } });
-export const fullForms = createFullForms({
+export const fullForms = createForms({
   plugins: [dirty(), arrays()],
   fields: { TextField, NumberField, Checkbox },
 });
 ```
 
-Each entry is independent at runtime, so a route that only renders a `miniForms` form never bundles the full core or any plugins.
+Keep them in separate files rather than exporting both from one `forms.ts`. Because `createForms()` runs at module evaluation time, putting both calls in the same file pulls the full core, its plugins, and its field components into every route that imports `miniForms`. With separate modules, a route that only imports `forms-mini.ts` never bundles the full entry (see [Bundling, plugins, and `/mini`](../best-practices/bundling-and-splitting)).
 
 ## Sharing field components (and the `ref` caveat)
 
