@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compareMarkdown, difference, formatBytes, sizeRows, type AppSizes, type CompareBuild } from "./compare";
+import { compareMarkdown, delta, difference, formatBytes, sizeRows, type AppSizes, type CompareBuild } from "./compare";
 
 const size = (gzip: number) => ({ min: gzip * 3, gzip, brotli: gzip - 100 });
 
@@ -26,6 +26,14 @@ describe("difference", () => {
     expect(difference(13388, 19000)).toBe("5.6 kB smaller (30%)");
     expect(difference(97032, 96726)).toBe("306 B larger (0.3%)");
     expect(difference(1601, 1601)).toBe("the same");
+  });
+});
+
+describe("delta", () => {
+  it("splits the gap into direction, bytes and percent", () => {
+    expect(delta(13388, 19000)).toEqual({ direction: "smaller", bytes: "5.6 kB", percent: "30%" });
+    expect(delta(97032, 96726)).toEqual({ direction: "larger", bytes: "306 B", percent: "0.3%" });
+    expect(delta(1601, 1601)).toEqual({ direction: "same", bytes: "0 B", percent: "0.0%" });
   });
 });
 
