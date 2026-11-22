@@ -222,8 +222,14 @@ function CompareSizes({ builds, current, sizes, elementId }: CompareSizesProps) 
       </div>
       <div role="tabpanel" id={elementId("sizes")} aria-labelledby={elementId(`size-${compression}`)}>
         <ul className="divide-y">
-          {rows.map((row, index) => (
-            <SizeRowView key={row.build} row={row} builds={[ours, theirs]} current={current} primary={index === 0} />
+          {rows.map((row) => (
+            <SizeRowView
+              key={row.build}
+              row={row}
+              builds={[ours, theirs]}
+              current={current}
+              primary={row.build === "forms"}
+            />
           ))}
         </ul>
       </div>
@@ -235,7 +241,7 @@ interface SizeRowViewProps {
   row: SizeRow;
   builds: readonly [CompareFrameBuild, CompareFrameBuild];
   current: CompareLibrary;
-  /** The first slice, Forms + app, is the comparison that matters most. */
+  /** Forms + app, the comparison that matters most. */
   primary: boolean;
 }
 

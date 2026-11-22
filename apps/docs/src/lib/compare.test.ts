@@ -38,13 +38,13 @@ describe("delta", () => {
 });
 
 describe("sizeRows", () => {
-  it("lists forms + app, total and app only for the chosen compression", () => {
+  it("lists app only, forms + app and total for the chosen compression", () => {
     expect(sizeRows(sizes, "gzip").map((row) => [row.build, row.difference])).toEqual([
+      ["app", "the same"],
       ["forms", "5.6 kB smaller (30%)"],
       ["total", "123 B larger (0.2%)"],
-      ["app", "the same"],
     ]);
-    expect(sizeRows(sizes, "min")[0]?.lunarhue).toBe(13388 * 3);
+    expect(sizeRows(sizes, "min")[1]?.lunarhue).toBe(13388 * 3);
   });
 });
 
@@ -54,9 +54,9 @@ describe("compareMarkdown", () => {
       [
         "| Build (gzip) | @lunarhue/forms is | @lunarhue/forms 0.2.0 | TanStack Form 1.33.5 |",
         "| --- | --- | --- | --- |",
+        "| App only | the same | 1.6 kB | 1.6 kB |",
         "| Forms + app | 5.6 kB smaller (30%) | 13.4 kB | 19.0 kB |",
         "| Total | 123 B larger (0.2%) | 80.8 kB | 80.7 kB |",
-        "| App only | the same | 1.6 kB | 1.6 kB |",
         "",
         '```tsx title="lunarhue/App.tsx"\nours\n```',
         "",

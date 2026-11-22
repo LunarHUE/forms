@@ -18,13 +18,13 @@ export const LIBRARY_PACKAGES: Record<CompareLibrary, string> = {
 };
 
 /** The builds scripts/size-compare.ts measures, in the order the docs show them. */
-export const SIZE_BUILDS = ["forms", "total", "app"] as const;
+export const SIZE_BUILDS = ["app", "forms", "total"] as const;
 export type SizeBuild = (typeof SIZE_BUILDS)[number];
 
 export const BUILD_LABELS: Record<SizeBuild, string> = {
+  app: "App only",
   forms: "Forms + app",
   total: "Total",
-  app: "App only",
 };
 
 export const COMPRESSIONS = ["gzip", "brotli", "min"] as const;
