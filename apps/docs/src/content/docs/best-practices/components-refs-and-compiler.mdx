@@ -1,0 +1,187 @@
+---
+title: Field components, UI libraries, and React Compiler
+description: Choose between inputProps and field pieces, pass ref so React Compiler keeps optimizing, and type dynamic forms without casts.
+section: best-practices
+order: 5
+navTitle: Components and refs
+---
+
+Field components are where the form meets your design system. The rules here are small, but getting them wrong costs you focus handling, accessibility wiring or compiler optimizations without any error to tell you.
+
+## `inputProps` or field pieces
+
+### What goes wrong
+
+<Only framework="react">
+
+`inputProps(field)` spread onto a headless primitive:
+
+```tsx
+<Field.Root>
+  <Field.Label>Email</Field.Label>
+  <Input {...inputProps(field)} />
+  <Field.Error />
+</Field.Root>
+```
+
+```tsx
+<Checkbox.Root {...checkboxProps(field)} />
+```
+
+The props helpers set `id`, `aria-invalid` and `aria-describedby` for a plain `<input>`, and Base UI's `Field` sets the same attributes for its own label and error parts. The two fight over the IDs. A checkbox primitive that renders a `<button>` has no use for `checked` and `onChange` from a native checkbox, so clicking it doesn't update the form.
+
+</Only>
+
+<Only framework="solid">
+
+`inputProps(field)` spread onto a headless primitive that renders its own label and error parts, or that isn't a native input at all. The helper sets `id`, `aria-invalid` and `aria-describedby` for a plain `<input>`, and the primitive sets the same attributes for its own parts. A checkbox primitive that renders a `<button>` has no use for native `checked` and `onChange`, so clicking it doesn't update the form.
+
+</Only>
+
+### Why
+
+The props helpers are for native elements. A primitive library already owns its labels, IDs and ARIA, and talks in values and change callbacks rather than DOM events.
+
+### Doing it right
+
+The test is what the component renders and who owns its attributes:
+
+- **A styled wrapper around a native `<input>`**, like an `Input` that forwards every prop to the element: use `inputProps`. You get `ref`, `disabled`, `readOnly` and the ARIA wiring for free.
+- **A primitive with its own value API** (Base UI, Radix, React Aria, Kobalte): bind the pieces. `field.text` and `field.setText(text, event)` for text, `field.handleBlur` for blur, `field.ref` so the form can focus it, and `field.value` with `field.setValue` for checkboxes, switches and selects.
+
+<Only framework="react">
+
+```tsx
+const { ref } = field;
+
+<Input ref={ref} value={field.text} onValueChange={(text, details) => field.setText(text, details.event)} onBlur={field.handleBlur} />
+
+<Checkbox.Root ref={ref} checked={field.value} onCheckedChange={(checked) => field.setValue(checked)} />
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+<input
+  ref={field.ref}
+  value={field.text}
+  onInput={(event) => field.setText(event.currentTarget.value, event)}
+  onBlur={field.handleBlur}
+/>
+```
+
+</Only>
+
+Bind `text`, not `value`, for text inputs: it includes a mask's formatting, and `setText` keeps the caret where the user put it. For numbers, `numberPieces(field)` gives you the same three pieces and handles in-progress text like `-` and `12.`. [Binding UI component libraries](../basics/fields#binding-ui-component-libraries) has a working demo.
+
+Don't skip `ref`. Without it, focus on invalid submit, `isFocused`, `rules()`-driven `disabled` and devtools inspection all miss the input, and nothing warns you.
+
+<Only framework="react">
+
+## Passing `ref` under React Compiler
+
+### What goes wrong
+
+```tsx
+function EmailInput({ field }: EmailInputProps) {
+  return <input ref={field.ref} name={field.name} value={field.text} onBlur={field.handleBlur} />;
+}
+```
+
+It works, but React Compiler skips the component.
+
+### Why
+
+The compiler sees `ref={field.ref}` and decides `field` itself is a ref. Reading a ref during render isn't allowed, so it bails out of compiling the whole component rather than risk it. You lose the memoization and get no error, just a slower component.
+
+### Doing it right
+
+Take `ref` out of `field` before JSX uses it, or get it from `useFieldRef(handle)` when the component receives a handle:
+
+```tsx
+function EmailInput({ field }: EmailInputProps) {
+  const { ref } = field;
+  return <input ref={ref} name={field.name} value={field.text} onBlur={field.handleBlur} />;
+}
+```
+
+`inputProps(field)` already does this, and so does a `<form.Field>` render callback: the compiler doesn't treat callbacks as render code, so `ref={field.ref}` inside one is fine. The library's own test suite compiles every one of these bindings with `panicThreshold: "all_errors"`, and keeps a test that confirms `ref={field.ref}` in render code still bails out, so this advice gets revisited when the compiler changes.
+
+</Only>
+
+## Forms whose fields come from data
+
+### What goes wrong
+
+A settings page renders whatever fields the server describes, so the value is a `Record<string, unknown>`. The quick fix for the types is a cast:
+
+<Only framework="react">
+
+```tsx
+<input {...inputProps(field as unknown as FieldApi<string>)} />
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+<input {...inputProps(field as unknown as FieldApi<string>)} />
+```
+
+</Only>
+
+The cast lies. If the server sends a number or `undefined` for that key, the input shows `"undefined"` or the form stores a string where a number used to be, and TypeScript has stopped checking.
+
+### Why
+
+`inputProps` needs a field whose value is a string, because it writes strings. A field of a `Record<string, unknown>` form holds `unknown`, so the compiler is right to refuse.
+
+### Doing it right
+
+Keep `unknown` and bind the pieces, which work on any field. `field.text` is the display string, falling back to the field's value, and `setText` writes what the user typed. For other controls, narrow the value where you read it:
+
+<Only framework="react">
+
+```tsx
+type SettingHandle = FieldHandle<unknown, typeof dirty | typeof rebase>;
+
+function SettingRow({ handle, label }: SettingRowProps) {
+  const field = useField(handle);
+  const { ref } = field;
+  return (
+    <label>
+      {label}
+      <input ref={ref} name={field.name} value={field.text} onChange={(event) => field.setText(event.target.value, event)} onBlur={field.handleBlur} />
+    </label>
+  );
+}
+
+<form.Field handle={form.root.at("autoUpdate")}>
+  {(field) => <Switch ref={field.ref} checked={Boolean(field.value)} onCheckedChange={(checked) => field.setValue(checked)} />}
+</form.Field>
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+type SettingHandle = FieldHandle<unknown, typeof dirty | typeof rebase>;
+
+function SettingRow(props: SettingRowProps) {
+  const field = createField(props.handle);
+  return (
+    <label>
+      {props.label}
+      <input ref={field.ref} name={field.name} value={field.text} onInput={(event) => field.setText(event.currentTarget.value, event)} onBlur={field.handleBlur} />
+    </label>
+  );
+}
+```
+
+</Only>
+
+`form.root.at(key)` takes any string key on a record form and returns a handle to `unknown`. Type the row's handle prop with `FieldHandle<unknown, ...>` and list the plugins it relies on in the second argument, the same way a [shared component](../plugin-composition/components) declares them.
