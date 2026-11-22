@@ -37,7 +37,6 @@ test("the sign-in comparison switches builds, their code and resets", async ({ p
   // The other build mounts fresh, in TanStack's colours.
   await tabs.nth(0).click();
   await expect(stage).toHaveAttribute("data-library", "tanstack");
-  await expect(block.locator(".compare-badge")).toContainText("TanStack Form");
   await expect(email).toHaveValue("");
   const submit = block.getByRole("button", { name: "Sign in" });
   await expect(submit).not.toHaveCSS("background-color", "rgb(24, 25, 28)");

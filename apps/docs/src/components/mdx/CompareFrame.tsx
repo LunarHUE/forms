@@ -102,9 +102,6 @@ export function CompareFrame({ id, app, builds, sizes }: CompareFrameProps) {
       footer={<CompareSizes builds={builds} current={build.library} sizes={sizes} elementId={elementId} />}
     >
       <div className="compare-app" data-library={build.library}>
-        <p className="compare-badge">
-          {build.title} <span>{build.version}</span>
-        </p>
         <LiveApp key={`${build.library}-${mounts}`} path={appPath(app, build.library)} cached={touched} />
       </div>
     </DemoFrame>
@@ -251,7 +248,7 @@ function SizeRowView({ row, builds, current, primary }: SizeRowViewProps) {
     <li data-size-build={row.build} className={cn("px-3 py-3 sm:px-4", primary && "bg-sidebar py-4")}>
       <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className={cn("font-medium", primary ? "text-sm" : "text-[13px]")}>{BUILD_LABELS[row.build]}</span>
-        <DeltaBadge delta={row.delta} ours={builds[0].title} />
+        <DeltaText delta={row.delta} ours={builds[0].title} />
       </div>
       <div className="grid gap-2">
         {builds.map((build) => (
@@ -310,32 +307,30 @@ function SizeBar({ build, bytes, share, dimmed, primary }: SizeBarProps) {
   );
 }
 
-interface DeltaBadgeProps {
+interface DeltaTextProps {
   delta: Delta;
-  /** Our library's name, read out before the badge. */
+  /** Our library's name, read out before the delta. */
   ours: string;
 }
 
-/** "−5.6 kB · 30% smaller": green when ours is smaller, amber when larger. */
-function DeltaBadge({ delta, ours }: DeltaBadgeProps) {
-  const tone = {
-    smaller: "bg-emerald-500/10 text-emerald-700 ring-emerald-600/20 dark:text-emerald-400 dark:ring-emerald-400/25",
-    larger: "bg-amber-500/10 text-amber-800 ring-amber-600/25 dark:text-amber-300 dark:ring-amber-400/25",
-    same: "bg-muted text-muted-foreground ring-border",
-  }[delta.direction];
-  const text =
-    delta.direction === "same"
-      ? "Same size"
-      : `${delta.direction === "smaller" ? "−" : "+"}${delta.bytes} · ${delta.percent} ${delta.direction}`;
+/** "−5.6 kB · 30% smaller", as plain text. */
+function DeltaText({ delta, ours }: DeltaTextProps) {
+  if (delta.direction === "same") {
+    return (
+      <span className="text-xs whitespace-nowrap text-muted-foreground">
+        <span className="sr-only">{ours} is </span>
+        Same size
+      </span>
+    );
+  }
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap tabular-nums ring-1 ring-inset",
-        tone,
-      )}
-    >
+    <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
       <span className="sr-only">{ours} is </span>
-      {text}
+      <span className="font-medium text-foreground">
+        {delta.direction === "smaller" ? "−" : "+"}
+        {delta.bytes}
+      </span>
+      {` · ${delta.percent} ${delta.direction}`}
     </span>
   );
 }

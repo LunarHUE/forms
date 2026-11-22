@@ -6,7 +6,7 @@
  * same class names to match the demos (styles/demo.css), scoped to the stage.
  *
  * Each library sets the accent its buttons, focus rings, checkboxes and
- * badge use. Ours keeps the docs' own colours. TanStack's is amber, so a
+ * changed-field dots use. Ours keeps the docs' own colours. TanStack's is amber, so a
  * switch shows at a glance which build runs.
  */
 
@@ -22,7 +22,6 @@
   --compare-accent-foreground: var(--primary-foreground);
   --compare-ring: var(--ring);
   --compare-mark: var(--brand);
-  --compare-tint: var(--brand-tint);
 }
 
 .compare-app[data-library="tanstack"] {
@@ -30,45 +29,12 @@
   --compare-accent-foreground: #ffffff;
   --compare-ring: #f59e0b;
   --compare-mark: #f59e0b;
-  --compare-tint: #fff7e6;
 }
 
 .dark .compare-app[data-library="tanstack"] {
   --compare-accent: #f59e0b;
   --compare-accent-foreground: #1c1203;
   --compare-ring: #fbbf24;
-  --compare-tint: #2a1e0a;
-}
-
-/* Which build runs, above the app's title. */
-.compare-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 22px;
-  margin: 0 0 12px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in oklab, var(--compare-mark) 35%, var(--border));
-  border-radius: 999px;
-  background: var(--compare-tint);
-  font-size: 12px;
-  font-weight: 500;
-  transition:
-    background-color 200ms,
-    border-color 200ms;
-}
-
-.compare-badge::before {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--compare-mark);
-  content: "";
-}
-
-.compare-badge span {
-  color: var(--muted-foreground);
-  font-weight: 400;
 }
 
 .compare-stage main {
