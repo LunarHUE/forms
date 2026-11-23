@@ -41,7 +41,7 @@ npm install @lunarhue/forms-devtools    # Live on-page form inspector plugin
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, pull request workflow, changesets, and bundle-size checks. Report security issues through [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, pull request workflow, changesets, and bundle-size checks. See [ROADMAP.md](ROADMAP.md) for the path to `1.0.0` and [STABILITY.md](STABILITY.md) for versioning and API stability guarantees. Report security issues through [SECURITY.md](SECURITY.md).
 
 ### Repo scripts
 
