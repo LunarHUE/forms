@@ -1,0 +1,164 @@
+---
+title: Live updates, autosave, and external stores
+description: Merge server pushes without clobbering edits, keep autosave in a plugin, and bind keyed store slices safely.
+section: best-practices
+order: 4
+navTitle: Live data and stores
+---
+
+Forms that sit on top of live data have one job the others don't: new data keeps arriving while the user types. These patterns keep the two from fighting.
+
+## Merging live updates
+
+### What goes wrong
+
+A settings pane gets fresh values over a WebSocket and writes them in:
+
+<Only framework="react">
+
+```tsx
+useEffect(() => {
+  form.store.reset({ values: incoming });
+}, [incoming]);
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+createEffect(
+  () => props.incoming,
+  (incoming) => form.store.reset({ values: incoming }),
+);
+```
+
+</Only>
+
+Every push wipes whatever the user was typing. Switching to `leaf.edited ? "keep" : "take"` with `rebase()` fixes most of it, but not all: a user who just clicked into a field hasn't edited it yet, so the next push replaces the value under their cursor.
+
+### Why
+
+`reset({ values })` discards edits by design. `rebase()` keeps what `resolve` tells it to keep, and `edited` only turns true on the first change. Focus is a separate fact you have to ask for.
+
+### Doing it right
+
+Rebase, and keep a leaf when it's edited or focused:
+
+```ts framework=react
+import { isFocused } from "@lunarhue/forms-react";
+
+form.plugins.rebase(form.root, incoming, (leaf) => {
+  const field = form.store.fieldAt(leaf.path);
+  return leaf.edited || (field !== undefined && isFocused(field)) ? "keep" : "take";
+});
+```
+
+```ts framework=solid
+import { isFocused } from "@lunarhue/forms-solid";
+
+form.plugins.rebase(form.root, incoming, (leaf) => {
+  const field = form.store.fieldAt(leaf.path);
+  return leaf.edited || (field !== undefined && isFocused(field)) ? "keep" : "take";
+});
+```
+
+`isFocused` looks at the elements registered through `field.ref`. An input that never receives `ref` is never focused as far as the form knows. A composite input bound to an object field registers on the parent, so check `leaf.path.slice(0, -1)` for those.
+
+<Only framework="react">
+
+This is why a [`/mini` field component](./bundling-and-splitting) registered on a full-entry form loses this protection: it never passes `ref`.
+
+</Only>
+
+## Autosave and commit on blur
+
+### What goes wrong
+
+The obvious way to save each field when the user leaves it is to call the save from the input:
+
+```tsx
+<input {...inputProps(field)} onBlur={() => { field.handleBlur(); save(field.name, field.value); }} />
+```
+
+Now every field component knows about saving. It saves fields that didn't change, ignores a refusal from the server, and has to be repeated in each component that should autosave.
+
+### Why
+
+Blur already goes through the form: `handleBlur` marks the field touched, runs blur validation, and calls every plugin's `onBlur(path)` hook. The UI doesn't need to know anything else happens.
+
+### Doing it right
+
+Put the commit in a plugin. It reads the field's snapshot, skips clean fields, and moves the baseline only when the server accepted the value, so a refused field stays dirty:
+
+```ts
+export const commitOnBlur = definePlugin({
+  name: "commitOnBlur",
+  requires: () => [dirty, rebase],
+  setup(ctx, options: { onCommitField: (path: Path, value: unknown) => boolean }) {
+    const commit = (path: Path) => {
+      const snapshot = ctx.store.getSnapshot(path);
+      if (!snapshot.dirty) return;
+      if (options.onCommitField(path, snapshot.value)) ctx.baseline.move(path, snapshot.value);
+    };
+    return { api: { commit }, onBlur: commit };
+  },
+});
+```
+
+Field components stay plain `inputProps` bindings. Controls with no blur, like a switch, call `form.plugins.commitOnBlur.commit(path)` after `setValue`. The same plugin is a natural home for the live-update merge above, as an API method, so both halves of syncing with the server live in one place.
+
+Test it against the store, with no rendering: `createStore`, `setValue`, `handleBlur`, then assert on what was committed and whether the field is still `dirty`.
+
+## Binding a slice of an external store
+
+<Only framework="react">
+
+### What goes wrong
+
+A review form keeps its draft summary in a Zustand store, keyed by pull request:
+
+```ts
+zustand(useReviewStore, {
+  select: (state) => ({ verdict: "comment", body: state.summaries[reviewKey] ?? "" }),
+  update: ({ body }) => ({ summaries: { [reviewKey]: body } }),
+});
+```
+
+Two bugs. `update` replaces `summaries`, so typing in one review deletes every other review's draft. And `select` builds a new object on every call, so any change to the store, even an unrelated one, looks like a new slice and gets written into the form.
+
+### Why
+
+`update`'s return value is merged into the store at the top level only, the way Zustand's `setState` works. The binding compares slices with `Object.is` unless you give it `isEqual`.
+
+### Doing it right
+
+Use `update`'s second argument, the current state, to keep the sibling keys, and compare only what you actually bind:
+
+```ts
+zustand<ReviewStoreState, ReviewDraft>(useReviewStore, {
+  select: (state) => ({ verdict: "comment", body: state.summaries[reviewKey] ?? "" }),
+  update: ({ body }, state) => {
+    const { [reviewKey]: _previous, ...others } = state.summaries;
+    return { summaries: body.length > 0 ? { ...others, [reviewKey]: body } : others };
+  },
+  isEqual: (previous, next) => previous.body === next.body,
+  incoming: "rebase",
+});
+```
+
+Dropping the key when the body is empty means `reset({ values: EMPTY_DRAFT })` after a save clears the stored draft too. `incoming: "rebase"` keeps the verdict the user picked when the summary changes from another tab, since `verdict` isn't stored at all and `select` always returns the default for it.
+
+Passing both type arguments matters here. With `incoming` set and a slice `select`, TypeScript otherwise picks the whole-store overload first and leaves `state` untyped. If the key comes from options, build the binding in the definition's function form: `plugins: [reviewBinding(options.reviewKey)]`.
+
+[Zustand](../integrations/zustand) has the full option list.
+
+</Only>
+
+<Only framework="solid">
+
+For a Solid store rather than a plain signal, use `bind()` from `@lunarhue/forms-solid/plugins` with `get`, `set` and `subscribe`. The same rules apply: `set` should write only the slice you own, and `get` should return a stable value when nothing you bind changed.
+
+[Solid signals](../integrations/solid-signals) has the full option list.
+
+</Only>

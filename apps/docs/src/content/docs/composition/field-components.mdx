@@ -127,3 +127,29 @@ const forms = createForms({ fields: { TextField, NameField } });
 ```
 
 On its own, `defineField(TextField)` behaves the same as `TextField`. Add parts like an input mask or text transform after the component so every field rendered with it gets that behavior automatically. See [Parts on field components](../plugin-composition/field-parts).
+
+## What registering costs
+
+Everything you pass to `createForms({ fields })` ships with every form built from that `forms` object. Bundlers drop unused exports, but they can't drop unused keys of an object passed to a function call. A login form that never renders `form.RichTextEditor` still bundles the editor, and a `MoneyField` made with `defineField(MoneyInput, masked(...))` brings its mask along too.
+
+So register the small fields nearly every form uses, and leave the heavy or rare ones to the forms that need them:
+
+```ts title="forms.ts"
+export const forms = createForms({ fields: { TextField, Checkbox, Select } });
+```
+
+For a date picker, a rich text editor or a money input that only a few screens use, render it with `<form.Field>` in the module that needs it, so the import lives there:
+
+```tsx framework=react
+import { DatePicker } from "./DatePicker";
+
+<form.Field name="dueDate">{(field) => <DatePicker field={field} label="Due" />}</form.Field>
+```
+
+```tsx framework=solid
+import { DatePicker } from "./DatePicker";
+
+<form.Field name="dueDate">{(field) => <DatePicker field={field} label="Due" />}</form.Field>
+```
+
+When a whole feature leans on those fields, give it its own `createForms` next to its routes. See [Bundling, plugins, and `/mini`](../best-practices/bundling-and-splitting) for that pattern.

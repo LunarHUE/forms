@@ -1,0 +1,127 @@
+---
+title: Bundling, plugins, and /mini
+description: Keep the shared createForms small, load heavy fields and plugins with the routes that use them, and choose /mini on purpose.
+section: best-practices
+order: 1
+navTitle: Bundling and splitting
+---
+
+Most forms bundle surprises come from one file: the shared module that calls `createForms()`. Every form in the app imports it, so whatever that module imports ships with every form.
+
+## The shared `createForms` that holds everything
+
+### What goes wrong
+
+It's tempting to register every field component and plugin the app will ever need in one place:
+
+```ts title="forms.ts"
+export const forms = createForms({
+  plugins: [dirty(), history(), arrays()],
+  fields: { TextField, Checkbox, Select, DatePicker, RichTextEditor, MoneyField },
+});
+```
+
+Now the sign-in dialog ships a rich text editor, a date picker, undo history and array commands it never touches.
+
+### Why
+
+`fields` and `plugins` are values passed to a function call. Tree shaking removes exports nobody imports. It can't remove a key from an object literal, because the bundler has no way to know that the sign-in form never renders `form.RichTextEditor`. So `RichTextEditor` stays, along with everything it imports. A field type made with `defineField(MoneyInput, masked(...))` keeps its mask code too, and each plugin factory you call keeps its plugin.
+
+### Doing it right
+
+Keep the shared instance down to what nearly every form uses:
+
+```ts title="forms.ts" framework=react
+import { createForms } from "@lunarhue/forms-react";
+import { dirty } from "@lunarhue/forms-react/plugins";
+
+export const forms = createForms({
+  plugins: [dirty()],
+  fields: { TextField, Checkbox, Select },
+});
+```
+
+```ts title="forms.ts" framework=solid
+import { createForms } from "@lunarhue/forms-solid";
+import { dirty } from "@lunarhue/forms-solid/plugins";
+
+export const forms = createForms({
+  plugins: [dirty()],
+  fields: { TextField, Checkbox, Select },
+});
+```
+
+Then move the rest next to the code that uses it. A heavy field used on one screen can render through `<form.Field>`, so its import lives in that screen's module:
+
+```tsx
+import { DatePicker } from "./DatePicker";
+
+<form.Field name="dueDate">{(field) => <DatePicker field={field} label="Due" />}</form.Field>
+```
+
+A feature that uses those fields everywhere, like invoicing, gets its own instance in its own folder:
+
+```ts title="invoices/forms.ts"
+export const invoiceForms = createForms({
+  plugins: [dirty(), arrays()],
+  fields: { TextField, Select, DatePicker, MoneyField },
+});
+```
+
+Import `invoiceForms` only from invoice routes. As long as your router loads those routes lazily, the date picker, the money mask and `arrays()` load with them. Reusing `TextField` in both instances costs nothing extra; it's the same module.
+
+One thing to know about a second instance: `useFormContext(forms)` only finds forms made by that same `forms`. A shared submit button that has to work under any form should call `useFormContext()` with no argument, which returns any form with its `submit`, `formProps` and state.
+
+## Plugins that belong to one form
+
+If only the document editor needs undo, don't put `history()` on the shared instance. Put it on the definition:
+
+```ts title="editor/document-form.ts"
+export const documentForm = forms.define({
+  defaultValues,
+  plugins: [history()],
+  onSubmit: saveDocument,
+});
+```
+
+`history()` now ships with the module that defines `documentForm`, and nowhere else. Keep the definition in the route's own module (not in a shared `definitions.ts` barrel) so the split actually happens. You lose nothing on types: a component that reads `form.plugins.history` on a form without it is a compile error that names the missing plugin.
+
+### Wizards and lazy steps
+
+A multi-step wizard is one form, so its definition and plugins load with the wizard route. Each step's components can still load lazily. The catch is that a field type's parts attach the first time the field renders. If a later step's `PhoneField` mask has to be active before the step is on screen (in server-rendered HTML, on a restored draft, or for a value another step writes), pin it on the definition:
+
+```ts
+const signup = forms.define({ defaultValues, onSubmit }, PhoneField.at("phone"));
+```
+
+See [Parts on field components](../plugin-composition/field-parts).
+
+<Only framework="react">
+
+## Choosing `/mini` or the full entry
+
+`@lunarhue/forms-react/mini` is about 2.6 kB brotli against about 11 kB for the full entry. It covers sync validation, Standard Schema, `define((options) => ...)`, registered field components and `reset({ values })`. It has no plugins, async validation, arrays, `useFormContext`, `field.ref` or focus on invalid submit.
+
+A good default:
+
+- **`/mini`** for dialogs, sign-in, search and other small forms that validate locally and submit once. A dialog that adds an account, checks a name against a schema and saves the decoded result is a good fit.
+- **Full** for anything that needs a plugin (`dirty()`, `rebase()`, `baselineOnSubmit()`, a [Zustand](../integrations/zustand) binding), async checks, arrays or focus management.
+
+### Put each instance in its own module
+
+Running both entries side by side works, but only if a mini form's import chain never reaches the full instance. This looks harmless and isn't:
+
+```ts title="ui/forms.ts"
+export const appForms = createForms({ plugins: [dirty(), rebase(), baselineOnSubmit()], fields });
+export const miniForms = createMiniForms({ fields });
+```
+
+A dialog that imports `miniForms` from this file also pulls in `appForms`, because the bundler can't prove the `createForms(...)` call above it is safe to drop. That's the full core plus three plugins in a dialog that wanted 2.6 kB. Give each instance its own file, `ui/forms.ts` and `ui/mini-forms.ts`, and have mini forms import only the second.
+
+### Sharing a field component, and the missing `ref`
+
+A field component typed against `/mini`'s `FieldApi` and `inputProps` registers on both instances. On a full-entry form, though, it never passes `ref`, so that input isn't one of the field's elements: focus on invalid submit skips it, `isFocused(handle)` is always `false`, and `rules()` can't forward `disabled` to it. That last one bites when you [rebase live updates](./live-data-and-external-stores) and rely on `isFocused` to protect the input under the cursor.
+
+When a form graduates from `/mini`, switch its field components to the full entry's `FieldApi` and `inputProps` too. [Mixing `/mini` and full](../basics/mini-and-full) walks through the steps.
+
+</Only>

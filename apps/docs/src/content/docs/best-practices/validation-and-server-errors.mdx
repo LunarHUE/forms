@@ -1,0 +1,131 @@
+---
+title: Validation pipelines and server errors
+description: Run cheap checks before server checks, let the schema decode what onSubmit gets, and report refusals with setErrors.
+section: best-practices
+order: 3
+navTitle: Validation and server errors
+---
+
+Validation goes wrong in a few predictable places: the server gets asked about input that was never going to pass, the submitted value gets decoded twice, and a refused save looks like a successful one.
+
+## Cheap checks first, then the server
+
+### What goes wrong
+
+```ts
+username: debounced(async (name, { signal }) => {
+  if (name.length < 3) return { message: "Use at least 3 characters." };
+  return (await isTaken(name, signal)) ? { message: "That name is taken." } : undefined;
+}, 400),
+```
+
+Typing `ab` waits 400 ms and then runs an async check just to say the name is too short. Every rule, even one that needs no server, now pays for the debounce, and the field goes `validating` for input that was never going to pass.
+
+### Why
+
+Once a validator returns a promise, the whole thing is async. The debounce and the in-flight state apply to the cheap rule as much as the expensive one.
+
+### Doing it right
+
+Chain them with `pipe`. It runs checks in order and stops at the first error, so while a local check fails the pipe stays synchronous and the server check never starts:
+
+```ts
+username: validateOn(
+  pipe(
+    (name) => (name.length < 3 ? { message: "Use at least 3 characters." } : undefined),
+    (name) => (/^[a-z0-9_]+$/i.test(name) ? undefined : { message: "Use letters, digits and underscores." }),
+    debounced(async (name, { signal }) => ((await isTaken(name, signal)) ? { message: "That name is taken." } : undefined), 400),
+  ),
+  "input",
+),
+```
+
+Pass `signal` to `fetch` so a superseded request is cancelled. If the answer can go stale (someone else takes the name while the form sits open), wrap the pipe in `recheckOnSubmit` so submit always asks again. [Async validation](../basics/async-validation) has the details.
+
+## Let the schema decode the submitted value
+
+### What goes wrong
+
+A form validates with a schema, then `onSubmit` parses the same value again to get the typed result it wants to save:
+
+```ts
+onSubmit: (draft) => {
+  const provider = parseProvider(draft); // second decode
+  if (!provider.ok) throw new Error("unreachable?");
+  return save(provider.value);
+},
+```
+
+Now there are two decoders that have to agree, and an error branch that the form will never show to anyone.
+
+### Why
+
+When a definition has a `schema`, `onSubmit` only runs if the schema passed, and it receives the schema's parsed output, transforms and coercion already applied. The raw values are still on `ctx.input` if you need them.
+
+### Doing it right
+
+Make the decoder the schema. If it isn't a Zod or Valibot schema already, a small Standard Schema wrapper turns any function that returns a result into one. Field errors go in `issues` with a `path`, and the form puts each on its field:
+
+```ts
+function providerSchema(existingIds: ReadonlySet<string>): StandardSchemaV1<ProviderDraft, Provider> {
+  return {
+    "~standard": {
+      version: 1,
+      vendor: "app",
+      validate(value) {
+        const result = providerFromDraft(value as ProviderDraft, existingIds);
+        if (result.ok) return { value: result.value };
+        return { issues: Object.entries(result.errors).map(([key, message]) => ({ message, path: [key] })) };
+      },
+    },
+  };
+}
+
+export const providerForm = forms.define((options: ProviderFormOptions) => ({
+  defaultValues: { name: "", account: "" },
+  schema: providerSchema(options.existingIds),
+  onSubmit: (provider) => options.onSave(provider.id, provider.config),
+}));
+```
+
+`provider` is typed as `Provider`, the schema's output.
+
+<Only framework="react">
+
+This works on `/mini` too.
+
+</Only>
+
+## When the server refuses a save
+
+### What goes wrong
+
+Say your API call reports a refusal as a value instead of throwing, and `onSubmit` passes it along:
+
+```ts
+onSubmit: async (draft) => {
+  const refusal = await submitReview(draft);
+  return refusal; // "The host refused the review." or undefined
+},
+```
+
+The submission ends `"succeeded"`. `baselineOnSubmit()` moves the baseline to the refused draft, so the form reads as clean. A submit handler that clears the draft on success clears it, and the user's text is gone along with the save that never happened.
+
+Throwing instead isn't much better. The submit ends `"failed"`, which is meant for errors you didn't expect, like a dropped connection. The message only shows if you render `submission.error`, and focus stays where it was.
+
+### Why
+
+The form decides how a submit ended from what `onSubmit` does. Returning means it worked. Throwing means it broke. The way to say "the server checked this and said no" is `setErrors`.
+
+### Doing it right
+
+```ts
+onSubmit: async (draft, { store }) => {
+  const refusal = await options.onSubmitDraft(draft);
+  if (refusal !== undefined) store.setErrors({ form: { message: refusal } });
+},
+```
+
+When `onSubmit` sets errors, the submit ends `"invalid"`. `baselineOnSubmit()` leaves the draft dirty, focus moves to the first field with an error (or to the `<form>` for form-level errors), and your success path doesn't run.
+
+Render root errors somewhere, since a `form` error lives on `form.root`, not on a field. Server errors don't block the next attempt: each clears when the user edits that field, and all of them clear when the next submit starts. Use `fields` in `setErrors` to put a message on the field the server objected to. [Submit](../basics/submit#when-the-server-says-no) covers unknown field names.

@@ -1,0 +1,174 @@
+---
+title: Definitions, dialogs, and long-lived forms
+description: Define forms at module scope, know when options are read, and pick reset({ values }) or rebase() after a save.
+section: best-practices
+order: 2
+navTitle: Definitions and lifecycle
+---
+
+A form definition describes a form. An instance is one running copy of it. Most lifecycle bugs come from mixing the two up: making a definition where an instance belongs, or expecting an instance to notice that its inputs changed.
+
+## Define at module scope
+
+### What goes wrong
+
+<Only framework="react">
+
+```tsx
+function NoteForm() {
+  const form = useForm(forms.define({ defaultValues: { text: "" } }));
+  // ...
+}
+```
+
+Without React Compiler, this throws `Too many re-renders` on the first render. With the compiler, it usually works, because the compiler memoizes the `define` call. Then one day the definition reads a prop, the compiler recomputes it when that prop changes, and the form quietly starts over with empty values.
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+function NoteForm(props: NoteFormProps) {
+  const form = createForm(forms.define({ defaultValues: { text: props.text } }));
+  // ...
+}
+```
+
+Solid runs the component once, so this doesn't break at runtime. It still leaves you with a definition nobody else can reach: tests can't call `createStore` on it, and `useFormContext(definition)` can't find it.
+
+</Only>
+
+### Why
+
+<Only framework="react">
+
+`useForm` treats a different definition as a hot reload. It builds a new form from the new definition and drops the old form's values. A definition made during render is a different object on every render, so the form never settles.
+
+</Only>
+
+<Only framework="solid">
+
+The definition is the thing other code looks forms up by. Making it inside a component gives each instance its own private definition.
+
+</Only>
+
+### Doing it right
+
+Define once at module scope. When a form needs per-instance input, like the record it edits or a set of names that are already taken, use the function form of `define` and pass that input when you create the instance:
+
+```ts
+export const providerForm = forms.define((options: ProviderFormOptions) => ({
+  defaultValues: options.existing ?? { name: "", account: "" },
+  schema: providerSchema(options.existingIds),
+  onSubmit: (provider) => options.onSave(provider),
+}));
+```
+
+```tsx framework=react
+const form = useForm(providerForm, { existing, existingIds, onSave });
+```
+
+```tsx framework=solid
+const form = createForm(providerForm, { existing, existingIds, onSave });
+```
+
+A module-scope definition is also easy to test without rendering anything:
+
+```ts
+const store = providerForm.createStore({ existingIds: new Set(["personal"]), onSave });
+store.fieldAt(["name"])!.setValue("Personal");
+expect((await store.submit()).status).toBe("invalid");
+```
+
+## When options are read
+
+<Only framework="react">
+
+`useForm` reads its options on the first render only. Whether that's a problem depends on how long the form lives.
+
+### Dialogs that mount per open
+
+A dialog whose parent renders it only while it's open gets a fresh `useForm` call every time it opens. Each open starts from a new draft with the props of that moment, so passing `existing` and an `onSave` callback straight through options is fine:
+
+```tsx
+{editing ? <ProviderDialog existing={editing} onClose={() => setEditing(undefined)} /> : null}
+```
+
+The trap is a dialog that stays mounted and toggles an `open` prop. Then the form was created once, with whatever record and callbacks it had the first time, and the second open shows the first open's leftovers. Mount the dialog per open, or give it a `key` for the record it edits.
+
+### Forms that stay mounted
+
+A review form under a pull request, or a settings pane, stays mounted while its props change. Any callback that went in through options keeps its first-render closure. Two fixes, in order of preference:
+
+1. **Act on the result in your submit handler.** `await form.submit()` and do the follow-up there, where you have the current props.
+2. **Pass a stable wrapper** that calls the latest callback through a ref, when `onSubmit` itself needs it:
+
+```tsx
+const latest = useRef(onSubmitDraft);
+useEffect(() => {
+  latest.current = onSubmitDraft;
+});
+const form = useForm(reviewForm, { reviewKey, onSubmitDraft: (draft) => latest.current(draft) });
+```
+
+For a value the form is keyed on, like `reviewKey`, don't use a ref. Put `key={reviewKey}` on the form component so a new key gets a new form. [Long-lived forms](../basics/long-lived-forms) covers validators that depend on props.
+
+</Only>
+
+<Only framework="solid">
+
+`createForm` runs once when the component initializes. Because Solid props are getters, a wrapper that reads `props.onSave` when it's called always sees the latest callback:
+
+```tsx
+const form = createForm(reviewForm, { reviewKey: props.reviewKey, onSubmitDraft: (draft) => props.onSubmitDraft(draft) });
+```
+
+What a wrapper can't fix is a value read at creation, like `reviewKey` above or the record that fills `defaultValues`. If it can change, wrap the form component in a keyed `<Show>` so a new value gets a new form. [Long-lived forms](../basics/long-lived-forms) covers validators that depend on props.
+
+</Only>
+
+## After a save: `reset({ values })` or `rebase()`
+
+### What goes wrong
+
+After a successful save, writing the saved values back with `setValue` leaves the form dirty against the old baseline, and the next `reset()` goes back to the values from before the save. Replacing the whole form when a fresh copy of the same record arrives throws away what the user was halfway through typing.
+
+### Doing it right
+
+Ask whether the user's current edits should survive.
+
+- **Discard them** after a save that should clear the form, or when you load a different record into the same form: `form.store.reset({ values })`. It writes the values and makes them the new baseline in one step, so the form is clean.
+- **Keep them** when a fresher copy of the same record arrives while the user may be editing: [`rebase()`](../plugins/rebase). See [Live updates](./live-data-and-external-stores).
+- **Keep the saved values as they are** and just mark the form clean: install [`baselineOnSubmit()`](../plugins/dirty) and do nothing.
+
+Clearing after a save has one race worth handling. If the user kept typing while the request was in flight, resetting would erase text the server never saw. Compare against what you sent:
+
+<Only framework="react">
+
+```tsx
+async function save(event: FormEvent) {
+  event.preventDefault();
+  const sent = form.store.root.peek().value;
+  const submission = await form.submit();
+  if (submission.status !== "succeeded") return;
+  if (form.store.root.peek().value.body === sent.body) form.store.reset({ values: EMPTY_DRAFT });
+}
+```
+
+</Only>
+
+<Only framework="solid">
+
+```tsx
+async function save(event: SubmitEvent) {
+  event.preventDefault();
+  const sent = form.store.root.peek().value;
+  const submission = await form.submit();
+  if (submission.status !== "succeeded") return;
+  if (form.store.root.peek().value.body === sent.body) form.store.reset({ values: EMPTY_DRAFT });
+}
+```
+
+</Only>
+
+If the form is bound to an external store, `reset({ values })` writes through the binding, so the stored draft clears too.
