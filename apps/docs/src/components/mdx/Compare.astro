@@ -3,20 +3,23 @@
  * One comparison app from examples/compare, built with our library and with
  * TanStack Form. Authors write `<Compare app="signup" />`.
  *
- * The preview is an iframe on /compare/<app>/<library>
- * (pages/compare/[app]/[library].astro), so the app's own stylesheet stays
- * out of the docs. The page is the same for every framework: the apps are
- * React, and the pages around them say so on Solid.
+ * The block is the demo frame (DemoFrame.tsx) with a library switch on top.
+ * Preview runs the picked build's App.tsx right on the stage, loaded on the
+ * client as its own chunk. The app's own stylesheet stays out of the docs:
+ * styles/compare.css styles its markup like the demos. The block is the same
+ * for every framework: the apps are React, and the pages around them say so
+ * on Solid.
  *
- * The code tabs show each library's files as they are, read with `?raw`.
- * The sizes come from examples/compare/sizes.json, written by
+ * The code tabs show the picked library's files as they are, read with
+ * `?raw`. The sizes come from examples/compare/sizes.json, written by
  * scripts/size-compare.ts.
  */
-import { appSizes, appTitle, compareBuilds, isCompareApp } from "@/lib/compare-sources";
+import { appSizes, compareBuilds, isCompareApp } from "@/lib/compare-sources";
 import { highlight } from "@/lib/highlight";
 
 import { CompareFrame, type CompareFrameBuild } from "./CompareFrame";
 import { demoId } from "./demo/ids";
+import "@/styles/compare.css";
 
 interface Props {
   /** The app's folder in examples/compare, like `signup`. */
@@ -27,11 +30,10 @@ const { app } = Astro.props;
 if (!isCompareApp(app)) throw new Error(`<Compare app="${app}">: examples/compare/sizes.json has no such app.`);
 
 const builds: CompareFrameBuild[] = await Promise.all(
-  compareBuilds(app).map(async ({ library, title: libraryTitle, version, files }) => ({
+  compareBuilds(app).map(async ({ library, title, version, files }) => ({
     library,
-    title: libraryTitle,
+    title,
     version,
-    src: `/compare/${app}/${library}`,
     files: await Promise.all(
       files.map(async ({ name, code }) => ({ name, code, html: await highlight(code, name.split(".").at(-1)) })),
     ),
@@ -41,5 +43,5 @@ const builds: CompareFrameBuild[] = await Promise.all(
 
 <!-- Search skips the block: its labels and source would crowd the page's prose in results. -->
 <div data-pagefind-ignore>
-  <CompareFrame client:visible id={demoId(Astro.request, `compare/${app}`)} title={appTitle(app)} builds={builds} sizes={appSizes(app)} />
+  <CompareFrame client:visible id={demoId(Astro.request, `compare/${app}`)} app={app} builds={builds} sizes={appSizes(app)} />
 </div>

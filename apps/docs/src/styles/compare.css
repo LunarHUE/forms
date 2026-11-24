@@ -1,0 +1,313 @@
+/*
+ * The comparison apps from examples/compare run inside <Compare>
+ * (components/mdx/CompareFrame.tsx). Their own stylesheet,
+ * examples/compare/shared/styles.css, styles body, main and bare elements
+ * for a page of their own, so the docs never load it. This file styles the
+ * same class names to match the demos (styles/demo.css), scoped to the stage.
+ *
+ * Each library sets the accent its buttons, focus rings, checkboxes and
+ * changed-field dots use. Ours keeps the docs' own colours. TanStack's is amber, so a
+ * switch shows at a glance which build runs.
+ */
+
+.compare-stage {
+  width: min(100%, 560px);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--foreground);
+}
+
+.compare-app {
+  --compare-accent: var(--primary);
+  --compare-accent-foreground: var(--primary-foreground);
+  --compare-ring: var(--ring);
+  --compare-mark: var(--brand);
+}
+
+.compare-app[data-library="tanstack"] {
+  --compare-accent: #b45309;
+  --compare-accent-foreground: #ffffff;
+  --compare-ring: #f59e0b;
+  --compare-mark: #f59e0b;
+}
+
+.dark .compare-app[data-library="tanstack"] {
+  --compare-accent: #f59e0b;
+  --compare-accent-foreground: #1c1203;
+  --compare-ring: #fbbf24;
+}
+
+.compare-stage main {
+  margin: 0;
+}
+
+.compare-stage h1 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.compare-stage h2 {
+  margin: 24px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.compare-stage section:first-of-type h2 {
+  margin-top: 0;
+}
+
+.compare-stage section {
+  margin: 0 0 24px;
+}
+
+.compare-stage .lede {
+  margin: 0 0 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.compare-stage form {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.compare-stage fieldset {
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 12px 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.compare-stage legend {
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.compare-stage .field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.compare-stage .field label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.compare-stage .field[data-changed] label::after {
+  color: var(--compare-mark);
+  content: " \2022";
+}
+
+.compare-stage input:not([type="checkbox"]),
+.compare-stage select,
+.compare-stage textarea {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.compare-stage textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 12px;
+  resize: vertical;
+}
+
+.compare-stage input:focus-visible,
+.compare-stage select:focus-visible,
+.compare-stage textarea:focus-visible {
+  border-color: var(--compare-ring);
+  outline: 2px solid color-mix(in oklab, var(--compare-ring) 30%, transparent);
+  outline-offset: 0;
+}
+
+.compare-stage [aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+.compare-stage input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--compare-accent);
+}
+
+.compare-stage .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-stage .field .check {
+  font-weight: 400;
+}
+
+.compare-stage .errors {
+  margin: 0;
+  padding: 0;
+  color: var(--destructive);
+  font-size: 13px;
+  list-style: none;
+}
+
+.compare-stage .errors:empty {
+  display: none;
+}
+
+.compare-stage .checking {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.compare-stage .actions,
+.compare-stage .save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.compare-stage .save-bar .count {
+  margin-right: auto;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.compare-stage button {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.compare-stage button:hover {
+  background: var(--muted);
+}
+
+.compare-stage button[type="submit"] {
+  border-color: var(--compare-accent);
+  background: var(--compare-accent);
+  color: var(--compare-accent-foreground);
+}
+
+.compare-stage button[type="submit"]:hover {
+  background: color-mix(in oklab, var(--compare-accent) 85%, var(--background));
+}
+
+.compare-stage button:focus-visible {
+  outline: 2px solid var(--compare-ring);
+  outline-offset: 2px;
+}
+
+.compare-stage button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compare-stage button:disabled:hover {
+  background: var(--background);
+}
+
+.compare-stage button[type="submit"]:disabled:hover {
+  background: var(--compare-accent);
+}
+
+.compare-stage [role="status"] {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.compare-stage [role="alert"] {
+  color: var(--destructive);
+}
+
+/* Controls that act on the fake server, set apart from the form. */
+.compare-stage .server {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.compare-stage .server button {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.compare-stage .summary {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in oklab, var(--destructive) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--destructive) 6%, transparent);
+  font-size: 13px;
+}
+
+.compare-stage .summary p {
+  margin: 0;
+}
+
+.compare-stage .summary ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.compare-stage .summary a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--compare-mark);
+  text-underline-offset: 2px;
+}
+
+.compare-stage .line {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.compare-stage .line .field {
+  margin-bottom: 0;
+}
+
+.compare-stage dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.compare-stage dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}

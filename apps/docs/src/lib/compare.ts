@@ -18,13 +18,13 @@ export const LIBRARY_PACKAGES: Record<CompareLibrary, string> = {
 };
 
 /** The builds scripts/size-compare.ts measures, in the order the docs show them. */
-export const SIZE_BUILDS = ["forms", "total", "app"] as const;
+export const SIZE_BUILDS = ["app", "forms", "total"] as const;
 export type SizeBuild = (typeof SIZE_BUILDS)[number];
 
 export const BUILD_LABELS: Record<SizeBuild, string> = {
+  app: "App only",
   forms: "Forms + app",
   total: "Total",
-  app: "App only",
 };
 
 export const COMPRESSIONS = ["gzip", "brotli", "min"] as const;
@@ -66,23 +66,41 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1000).toFixed(1)} kB`;
 }
 
+/** How ours compares with TanStack's, in pieces the docs lay out themselves. */
+export interface Delta {
+  readonly direction: "smaller" | "larger" | "same";
+  /** The gap, like "5.6 kB". "0 B" when the same. */
+  readonly bytes: string;
+  /** The gap as a share of TanStack's size, like "30%". One decimal under 1%. */
+  readonly percent: string;
+}
+
+export function delta(ours: number, theirs: number): Delta {
+  const gap = theirs - ours;
+  const percent = theirs === 0 ? 0 : (Math.abs(gap) / theirs) * 100;
+  return {
+    direction: gap > 0 ? "smaller" : gap < 0 ? "larger" : "same",
+    bytes: formatBytes(Math.abs(gap)),
+    percent: `${percent < 1 ? percent.toFixed(1) : Math.round(percent).toString()}%`,
+  };
+}
+
 export interface SizeRow {
   readonly build: SizeBuild;
   readonly lunarhue: number;
   readonly tanstack: number;
   /** "5.6 kB smaller (30%)", or "larger" when ours is bigger, or "the same". */
   readonly difference: string;
+  readonly delta: Delta;
   /** True when ours is smaller. */
   readonly smaller: boolean;
 }
 
 /** Our size against TanStack's, read as ours: "5.6 kB smaller (30%)". */
 export function difference(ours: number, theirs: number): string {
-  const delta = theirs - ours;
-  if (delta === 0) return "the same";
-  const percent = (Math.abs(delta) / theirs) * 100;
-  const shown = percent < 1 ? percent.toFixed(1) : Math.round(percent).toString();
-  return `${formatBytes(Math.abs(delta))} ${delta > 0 ? "smaller" : "larger"} (${shown}%)`;
+  const { direction, bytes, percent } = delta(ours, theirs);
+  if (direction === "same") return "the same";
+  return `${bytes} ${direction} (${percent})`;
 }
 
 /** One row per build, in `SIZE_BUILDS` order. */
@@ -90,7 +108,14 @@ export function sizeRows(sizes: AppSizes, compression: Compression): SizeRow[] {
   return SIZE_BUILDS.map((build) => {
     const lunarhue = sizes.lunarhue[build][compression];
     const tanstack = sizes.tanstack[build][compression];
-    return { build, lunarhue, tanstack, difference: difference(lunarhue, tanstack), smaller: lunarhue < tanstack };
+    return {
+      build,
+      lunarhue,
+      tanstack,
+      difference: difference(lunarhue, tanstack),
+      delta: delta(lunarhue, tanstack),
+      smaller: lunarhue < tanstack,
+    };
   });
 }
 

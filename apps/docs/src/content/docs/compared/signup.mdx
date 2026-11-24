@@ -40,8 +40,8 @@ You will notice one small difference in the preview: TanStack's submit ignores c
 
 [`scripts/size-compare.ts`](https://github.com/LunarHUE/forms/blob/main/scripts/size-compare.ts) builds each app for production with Vite (minified, JavaScript only, since both share the same CSS) in three variants per library:
 
-- **Forms + app**: the form library plus the app's own form code (excluding React, `react-dom`, and Zod).
+- **App only**: just the form-specific app code, excluding React, `react-dom`, Zod, and the form libraries.
+- **Forms + app**: the form library plus the app's own form code (still excluding React, `react-dom`, and Zod).
 - **Total**: everything the page loads, including React and Zod.
-- **App only**: just the form-specific app code, excluding the form libraries too.
 
 Our packages are measured from their built dist outputs, compared against TanStack Form 1.33.5. CI re-runs this script on every PR and fails if the committed numbers drift. Both apps and their shared Playwright test suite live in [`examples/compare`](https://github.com/LunarHUE/forms/tree/main/examples/compare).
